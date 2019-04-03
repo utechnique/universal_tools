@@ -1,0 +1,2 @@
+premake5 embed
+pause

@@ -1,0 +1,640 @@
+//----------------------------------------------------------------------------//
+//---------------------------------|  U  T  |---------------------------------//
+//----------------------------------------------------------------------------//
+#pragma once
+//----------------------------------------------------------------------------//
+#include "common/ut_common.h"
+#include "containers/ut_iterator.h"
+#include "containers/ut_ref.h"
+#include "containers/ut_array.h"
+#include "pointers/ut_unique_ptr.h"
+#include "error/ut_error.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ut)
+//----------------------------------------------------------------------------//
+// ut::Tree template class is a container for an unordered tree data.
+template<typename T>
+class Tree
+{
+	// Definitions for node and data types.
+	typedef Tree<T> NodeType;
+	typedef T DataType;
+
+	// ut::Tree<>::IteratorTemplate is a template class for all tree iterators.
+	// ut::Tree<>::Iterator is implemented as IteratorTemplate<NodeType> and
+	// ut::Tree<>::ConstIterator is derived from IteratorTemplate<const NodeType>
+	// to implement conversion from non-const (ut::Tree<>::ConstIterator)
+	// iterator type.
+	template<typename IteratorNodeType>
+	class IteratorTemplate
+	{
+		friend class Tree<T>;
+	public:
+		// Default constructor
+		IteratorTemplate() : node(nullptr)
+		{ }
+
+		// Constructor
+		//    @param p - initialize iterator with this pointer
+		IteratorTemplate(IteratorNodeType* ptr) : node(ptr)
+		{ }
+
+		// Copy constructor
+		IteratorTemplate(const IteratorTemplate& copy) : node(copy.node)
+		{ }
+
+		// Assignment operator
+		IteratorTemplate& operator = (const IteratorTemplate& copy)
+		{
+			node = copy.node;
+			return *this;
+		}
+
+		// Returns constant reference of the managed object
+		IteratorNodeType& operator*() const
+		{
+			return (*node);
+		}
+
+		// Inheritance operator, provides access to the owned object.
+		// Return value can't be changed, it must be constant.
+		IteratorNodeType* operator->() const
+		{
+			return node;
+		}
+
+		// Increment operator
+		IteratorTemplate& operator++()
+		{
+			// node value 'nullptr' means the end of a tree
+			if (node == nullptr)
+			{
+				return *this;
+			}
+
+			// step down if node has at least one child
+			if (node->GetNumChildren() > 0)
+			{
+				node = &node->child_nodes[0];
+			}
+			else
+			{
+				// step up or right otherwise
+				Result<NodeType*, Error> result = node->GetNextSibling();
+				if (result)
+				{
+					node = result.GetResult();
+				}
+				else
+				{
+					node = nullptr;
+				}
+			}
+
+			return *this;
+		}
+
+		// Post increment operator
+		IteratorTemplate operator++(int)
+		{
+			IteratorTemplate tmp = *this;
+			++(*this);
+			return tmp;
+		}
+
+		// Decrement operator
+		IteratorTemplate& operator--()
+		{
+			// node value 'nullptr' means the end of a tree
+			if (node == nullptr)
+			{
+				return *this;
+			}
+
+			// step up if node has at least one child
+			Result<NodeType*, Error> result = node->GetPreviousNode();
+			if (result)
+			{
+				node = result.GetResult();
+			}
+			else
+			{
+				node = nullptr;
+			}
+
+			return *this;
+		}
+
+		// Post decrement operator
+		IteratorTemplate operator--(int)
+		{
+			IteratorTemplate tmp = *this;
+			node--;
+			return tmp;
+		}
+
+		// Comparison operator 'equal to'
+		bool operator == (const IteratorTemplate& right) const
+		{
+			return node == right.node;
+		}
+
+		// Comparison operator 'not equal to'
+		bool operator != (const IteratorTemplate& right) const
+		{
+			return node != right.node;
+		}
+
+	protected:
+		// managed object
+		IteratorNodeType* node;
+	};
+
+public:
+	// ut::Tree<>::Iterator is a bidirectional iterator
+	// to iterate over the whole tree container. This class is capable only to read
+	// the content of the container. Use ut::Array<>::Iterator if you want to
+	// write (modify) the container data.
+	typedef IteratorTemplate<NodeType> Iterator;
+
+	// ut::Tree<>::ConstIterator is a bidirectional constant iterator
+	// to iterate over the whole tree container. This class is capable only to read
+	// the content of the container. Use ut::Array<>::Iterator if you want to
+	// write (modify) the container data.
+	class ConstIterator : public IteratorTemplate<const NodeType>
+	{
+		// Base iterator type
+		typedef IteratorTemplate<const NodeType> Base;
+	public:
+		// Default constructor
+		ConstIterator() : Base(nullptr)
+		{ }
+
+		// Constructor
+		//    @param p - initialize iterator with this pointer
+		ConstIterator(const NodeType* ptr) : Base(ptr)
+		{ }
+
+		// Copy constructor
+		ConstIterator(const ConstIterator& copy) : Base(copy)
+		{ }
+
+		// Copy constructor
+		ConstIterator(const Iterator& copy) : Base(copy)
+		{ }
+
+		// Assignment operator
+		ConstIterator& operator = (const ConstIterator& copy)
+		{
+			Base::node = copy.node;
+			return *this;
+		}
+
+		// Assignment operator (for non-const argument)
+		ConstIterator& operator = (const Iterator& copy)
+		{
+			Base::node = &(*copy.node);
+			return *this;
+		}
+
+		// Comparison operator 'equal to' for non-const argument
+		bool operator == (const Iterator& right) const
+		{
+			return Base::node == &(*right.node);
+		}
+
+		// Comparison operator 'not equal to' for non-const argument
+		bool operator != (const Iterator& right) const
+		{
+			return Base::node != &(*right.node);
+		}
+	};
+
+	// Constructor, @data has default value
+	Tree() : parent(nullptr), id(0)
+	{ }
+
+	// Constructor, @data is copied from parameter
+	Tree(const DataType& data_copy) : data(data_copy), parent(nullptr), id(0)
+	{ }
+
+	// Constructor, @data is moved from parameter
+#if CPP_STANDARD >= 2011
+	Tree(DataType && data_copy) : data(Move(data_copy)), parent(nullptr), id(0)
+	{ }
+#endif
+
+	// Returns desired element from child array
+	inline NodeType& operator [] (const size_t id)
+	{
+		return child_nodes[id];
+	}
+
+	// Returns desired element from child array
+	inline const NodeType& operator [] (const size_t id) const
+	{
+		return child_nodes[id];
+	}
+
+	// Returns desired element from the whole tree
+	NodeType& operator () (const size_t id)
+	{
+		Result<NodeType*, size_t> result = Iterate(id);
+		return result ? *result.GetResult() : *this;
+	}
+
+	// Returns desired element from the whole tree
+	const NodeType& operator () (const size_t id) const
+	{
+		Result<const NodeType*, size_t> result = Iterate(id);
+		return result ? *result.GetResult() : *this;
+	}
+
+	// Adds new child node to the end of the array
+	// @data_copy is a constant reference
+	//    @param copy - new element
+	bool Add(const NodeType& child_node)
+	{
+		if (!child_nodes.Add(child_node))
+		{
+			return false;
+		}
+		ResetChildsId();
+		return true;
+	}
+
+	// Moves new child node to the end of the array
+	// @data_copy is a constant reference
+	//    @param copy - new element
+#if CPP_STANDARD >= 2011
+	bool Add(NodeType && child_node)
+	{
+		if (!child_nodes.Add(Move(child_node)))
+		{
+			return false;
+		}
+		ResetChildsId();
+		return true;
+	}
+#endif
+
+	// Adds new child node to the end of the array (reference)
+	// @data_copy is a constant reference
+	//    @param copy - new element
+	bool Add(const DataType& data_copy)
+	{
+		return EmplaceBack(data_copy);
+	}
+
+	// Adds new child node to the end of the array (r-value reference)
+	// uses move semantics to perform copying
+	//    @param copy - new element
+#if CPP_STANDARD >= 2011
+	bool Add(DataType && data_copy)
+	{
+		return EmplaceBack(Move(data_copy));
+	}
+#endif
+
+	// Inserts elements at the specified location in the container.
+	//    @param position - iterator before which the content will be inserted
+	//    @param copy - element to be copied
+	//    @return - 'true' if element was inserted successfully
+	//              'false' if not enough memory, or @position is out of range
+	bool Insert(size_t position, const DataType& copy)
+	{
+		return Emplace(copy, position);
+	}
+
+	// Inserts elements at the specified location in the container.
+	//    @param position - iterator before which the content will be inserted
+	//    @param element - element to be moved
+	//    @return - 'true' if element was inserted successfully
+	//              'false' if not enough memory, or @position is out of range
+#if CPP_STANDARD >= 2011
+	bool Insert(size_t position, DataType && element)
+	{
+		return Emplace(Move(element), position);
+	}
+#endif
+
+	// Inserts elements at the specified location in the container.
+	//    @param position - iterator before which the content will be inserted
+	//    @param copy - element to be copied
+	//    @return - 'true' if element was inserted successfully
+	//              'false' if not enough memory, or @position is out of range
+	bool Insert(typename Array<NodeType>::ConstIterator position, const DataType& copy)
+	{
+		Optional<size_t> child_id = ConvertChildIdFromIterator(position);
+		if (child_id && Emplace(copy, child_id.Get()))
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	// Inserts elements at the specified location in the container.
+	//    @param position - iterator before which the content will be inserted
+	//    @param element - element to be moved
+	//    @return - 'true' if element was inserted successfully
+	//              'false' if not enough memory, or @position is out of range
+#if CPP_STANDARD >= 2011
+	bool Insert(typename Array<NodeType>::ConstIterator position, DataType && element)
+	{
+		Optional<size_t> child_id = ConvertChildIdFromIterator(position);
+		if (child_id && Emplace(Move(element), child_id.Get()))
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+#endif
+
+	// Removes desired child element
+	//    @param node_id - index of the child node
+	void Remove(size_t node_id)
+	{
+		if (node_id < child_nodes.GetNum())
+		{
+			// remove child node
+			child_nodes.Remove(node_id);
+
+			// re-assign id of the child nodes
+			ResetChildsId();
+		}
+	}
+
+	// Removes desired child element
+	//    @param iterator - element's position
+	void Remove(typename Array<NodeType>::ConstIterator iterator)
+	{
+		Optional<size_t> child_id = ConvertChildIdFromIterator(iterator);
+		if (child_id)
+		{
+			Remove(child_id.Get());
+		}
+	}
+
+	// Removes child nodes of the tree
+	void Empty()
+	{
+		child_nodes.Empty();
+	}
+
+	// Returns the parent node
+	const NodeType* GetParent() const
+	{
+		return parent;
+	}
+
+	// Returns the parent node
+	NodeType* GetParent()
+	{
+		return parent;
+	}
+
+	// Returns the number of child nodes
+	inline size_t GetNumChildren() const
+	{
+		return child_nodes.GetNum();
+	}
+
+	// Returns the number of all nodes
+	inline size_t GetNum() const
+	{
+		size_t total_num = 1;
+		for (size_t i = 0; i < child_nodes.GetNum(); i++)
+		{
+			total_num += child_nodes[i].GetNum();
+		}
+		return total_num;
+	}
+
+	// Returns constant read / write iterator that points to the first element
+	typename Array<NodeType>::ConstIterator BeginLeaves(iterator::Position position = iterator::first) const
+	{
+		return child_nodes.Begin(position);
+	}
+
+	// Returns constant read / write iterator that points to the last element
+	typename Array<NodeType>::ConstIterator EndLeaves(iterator::Position position = iterator::last) const
+	{
+		return child_nodes.End(position);
+	}
+
+	// Returns a read / write iterator that points to the first element
+	typename Array<NodeType>::Iterator BeginLeaves(iterator::Position position = iterator::first)
+	{
+		return child_nodes.Begin(position);
+	}
+
+	// Returns a read / write iterator that points to the last element
+	typename Array<NodeType>::Iterator EndLeaves(iterator::Position position = iterator::last)
+	{
+		return child_nodes.End(position);
+	}
+
+	// Returns constant read / write iterator that points to the first element
+	ConstIterator Begin(iterator::Position position = iterator::first) const
+	{
+		return position == iterator::first ? ConstIterator(this) : ConstIterator(GetLastNode());
+	}
+
+	// Returns constant read / write iterator that points to the last element
+	ConstIterator End(iterator::Position position = iterator::last) const
+	{
+		return ConstIterator(nullptr);
+	}
+
+	// Returns constant read / write iterator that points to the first element
+	Iterator Begin(iterator::Position position = iterator::first)
+	{
+		return position == iterator::first ? Iterator(this) : Iterator(GetLastNode());
+	}
+
+	// Returns constant read / write iterator that points to the last element
+	Iterator End(iterator::Position position = iterator::last)
+	{
+		return Iterator(nullptr);
+	}
+
+	// value of the node
+	DataType data;
+
+private:
+	// Inserts elements at the specified location in the container.
+	//    @param copy - data to be copied
+	//    @param position - iterator before which the content will be inserted
+	//    @return - 'true' if element was inserted successfully
+	//              'false' if not enough memory, or @position is out of range
+	template <typename ArgType>
+#if CPP_STANDARD >= 2011
+	inline bool Emplace(ArgType && copy, size_t position)
+#else
+	inline bool Emplace(const ArgType& copy, size_t position)
+#endif
+	{
+		// insert new child node
+		if (!child_nodes.Insert(position, Forward<ArgType>(copy)))
+		{
+			return false;
+		}
+
+		// set the parent of the new node
+		child_nodes[position].parent = this;
+
+		// reset all child nodes' id
+		ResetChildsId();
+
+		// success
+		return true;
+	}
+
+	// Adds new child node to the end of the array
+	//    @param copy - data to be copied
+	//    @return - true if succeeded
+	template <typename ArgType>
+#if CPP_STANDARD >= 2011
+	inline bool EmplaceBack(ArgType && copy)
+#else
+	inline bool EmplaceBack(const ArgType& copy)
+#endif
+	{
+		// add new node to the end of the array
+		if (!child_nodes.Add(NodeType(Forward<ArgType>(copy))))
+		{
+			return false;
+		}
+
+		// set parent and id of the new node
+		size_t child_id = child_nodes.GetNum() - 1;
+		child_nodes[child_id].parent = this;
+		child_nodes[child_id].id = child_id;
+
+		// success
+		return true;
+	}
+
+	// Iterates all nodes inside a tree searching for the desired node
+	//    @param position - position of the desired node
+	//    @return - pointer of the node, or new position if node was not found
+	Result<NodeType*, size_t> Iterate(size_t position) const
+	{
+		NodeType* node = this;
+		size_t child_id = 0;
+		while (position)
+		{
+			if (child_id >= child_nodes.GetNum())
+			{
+				return MakeAlt<size_t>(position);
+			}
+			else
+			{
+				position--;
+				Result<NodeType*, size_t> result = child_nodes[child_id].Iterate(position);
+				if (result)
+				{
+					return result.GetResult();
+				}
+				else
+				{
+					child_id++;
+					position = result.GetAlt();
+				}
+			}
+		}
+		return node;
+	}
+	
+	// Returns the next sibling node in the parent tree
+	//    @return - pointer to the sibling node or error if failed
+	Result<NodeType*, Error> GetNextSibling() const
+	{
+		if (parent == nullptr)
+		{
+			return MakeError(error::out_of_bounds);
+		}
+
+		size_t sibling_id = id + 1;
+		if (sibling_id < parent->child_nodes.GetNum())
+		{
+			return &parent->child_nodes[sibling_id];
+		}
+		else
+		{
+			return parent->GetNextSibling();
+		}
+	}
+
+	// Returns the previous node in the tree (according to the current node's id)
+	//    @return - pointer to the previous node or error if failed
+	Result<NodeType*, Error> GetPreviousNode() const
+	{
+		if (parent == nullptr)
+		{
+			return MakeError(error::out_of_bounds);
+		}
+		return id == 0 ? parent : parent->child_nodes[id - 1].GetLastNode();
+	}
+
+	// Returns the very last node of the tree
+	//    @return - constant pointer to the last node
+	const NodeType* GetLastNode() const
+	{
+		return child_nodes.GetNum() == 0 ? this : child_nodes.GetLast().GetLastNode();
+	}
+
+	// Returns the very last node of the tree
+	//    @return - non-const pointer to the last node
+	NodeType* GetLastNode()
+	{
+		return child_nodes.GetNum() == 0 ? this : child_nodes.GetLast().GetLastNode();
+	}
+
+	// Re-assigns id and a parent of the every child node after @start id
+	inline void ResetChildsId()
+	{
+		const size_t size = child_nodes.GetNum();
+		for (size_t i = 0; i < size; i++)
+		{
+			child_nodes[i].id = i;
+			child_nodes[i].parent = this;
+			child_nodes[i].ResetChildsId();
+		}
+	}
+
+	// Calculates child node id from iterator
+	//    @param iterator - iterator to be converted
+	//    @return - id of a child, or nothing if failed
+	inline Optional<size_t> ConvertChildIdFromIterator(typename Array<NodeType>::ConstIterator iterator)
+	{
+		const NodeType* ptr = &(*iterator);
+		if (ptr >= child_nodes.GetAddress() && ptr < child_nodes.GetAddress() + child_nodes.GetNum())
+		{
+			size_t child_id = ptr - child_nodes.GetAddress();
+			return child_id;
+		}
+		return Optional<size_t>();
+	}
+
+	// parent node
+	NodeType* parent;
+
+	// id of the node
+	size_t id;
+
+	// array of the child nodes
+	Array<NodeType> child_nodes;
+};
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(ut)
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//

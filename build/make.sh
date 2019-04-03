@@ -1,0 +1,1 @@
+cd gmake && make config=debug_x64 $1 && make config=release_x64 $1

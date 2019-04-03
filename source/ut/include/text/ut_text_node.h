@@ -1,0 +1,88 @@
+//----------------------------------------------------------------------------//
+//---------------------------------|  U  T  |---------------------------------//
+//----------------------------------------------------------------------------//
+#pragma once
+//----------------------------------------------------------------------------//
+#include "common/ut_common.h"
+#include "containers/ut_tree.h"
+#include "error/ut_error.h"
+#include "pointers/ut_unique_ptr.h"
+#include "text/ut_string.h"
+#include "streams/ut_input_stream.h"
+#include "streams/ut_output_stream.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ut)
+START_NAMESPACE(text)
+//----------------------------------------------------------------------------//
+// ut::text::node::Type is a namespace containg possible node types for a text document.
+// Consider that only ut::node::general is common for all formats.
+namespace node
+{
+	enum Type
+	{
+		general,
+		comment,
+		xml_pi,
+		xml_doctype,
+		xml_declaration,
+		xml_cdata,
+	};
+}
+
+//----------------------------------------------------------------------------//
+// ut::text::Node is collecting class for all possible nodes in any text document.
+// It is quite excessive, but fulfills criterions for all text formats. 
+class Node
+{
+public:
+	// Constructor, takes node type as an argument
+	//    @param node_type - type of the node
+	Node(node::Type node_type = node::general);
+
+	// Copy constructor
+	Node(const Node& copy);
+
+	// Move constructor
+#if CPP_STANDARD >= 2011
+	Node(Node && copy);
+#endif
+
+	// Assignment operator
+	Node& operator = (const Node& copy);
+
+	// Move operator
+#if CPP_STANDARD >= 2011
+	Node& operator = (Node && copy);
+#endif
+
+	// Returns a type of the node
+	node::Type GetType() const;
+
+	// name of the node
+	String name;
+
+	// value of the node
+	Optional<String> value;
+
+	// name of the value type
+	Optional<String> value_type;
+
+	// set to 'true' if this node is an attribute,
+	// this member takes effect only for xml documents
+	bool is_attribute;
+
+	// set to 'true' if this node is an array
+	// this member takes effect only for json documents
+	bool is_array;
+
+private:
+	// type of this node
+	node::Type type;
+};
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(text)
+END_NAMESPACE(ut)
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
