@@ -1,10 +1,10 @@
 # UNIVERSAL TOOLS
 
-Universal tools (UT) is an open-source cross-platform framework that is designed to make life easier for C++ developers. Goal of the UT is to be as light as possible and to provide base functionality in the same time.
+Universal tools (UT) is an open-source cross-platform framework that is designed to make life easier for C++ developers. The goal of the UT is to be as light as possible and to provide base functionality at the same time.
 
 ### Why UT?
 
-The same code, that is written with UT, is both c++11 and c++03 compliant (and utilizes features such as r-value and move-semantics for c++11 version). UT doesn't use stl or boost, but provides own version of containers, smart-pointers, streams, serialization system etc. Code of the UT aims to be simple, understandable and densely commented. This project is an attempt to make light universal basis for projects with no external dependencies, so that the all code could be compiled in one environment "in one click".
+The same code, that is written with UT, is both c++11 and c++03 compliant (and utilizes features such as r-value and move-semantics for c++11 version). UT doesn't use stl or boost, but provides own version of containers, smart-pointers, streams, serialization system etc. Code of the UT aims to be simple, understandable and densely commented. This project is an attempt to make a light universal basis for projects with no external dependencies, so that the all code could be compiled in one environment "in one click".
 
 ### Get started
 
@@ -25,7 +25,7 @@ Some of the noteworthy concepts implemented in the UT library:
 * Smart pointers: UniquePtr, SharedPtr, WeakPtr.
 * Containers: Array, Map, Tree, AVL Tree.
 * Multithreading: Thread, Job, Mutex, Synchronized, RWLock, ScopeLock.
-* Non-blocking native console: input and output are asynchronous (input string is always on the bottom line).
+* Nonblocking native console: input and output are asynchronous (input string is always on the bottom line).
 * Serialization system: entities can be serialized in binary or text (json and xml formats are supported) form.
 * Modern error handling: ut::Result (similar to std::Expected) and ut::Optional (same as std::Optional).
 * Move semantics: ut::Move.
