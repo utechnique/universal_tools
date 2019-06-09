@@ -5,9 +5,9 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "meta/ut_parameter.h"
-#include "meta/ut_string_parameter.h"
-#include "meta/ut_ptr_parameter.h"
-#include "meta/ut_array_parameter.h"
+#include "meta/parameters/ut_string_parameter.h"
+#include "meta/parameters/pointers/ut_unique_ptr_parameter.h"
+#include "meta/parameters/containers/ut_array_parameter.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

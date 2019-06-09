@@ -19,7 +19,7 @@ class SharedPtr
 public:
 	// Constructor. Creates a new reference controller from the raw pointer.
 	SharedPtr(ObjectType* managed_object = nullptr) : object(managed_object)
-	                                             , referencer(new ReferenceController<ObjectType>(managed_object))
+	                                                , referencer(new ReferenceController<ObjectType>(managed_object))
 	{ }
 
 	// Copy constructor. Copies referencer object. Reference count is increased by 1 here.

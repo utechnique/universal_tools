@@ -16,7 +16,7 @@ int UT_MAIN(UT_MAIN_ARG)
 	}
 	catch(const ut::Error& error)
 	{
-		ut::log << "\n" << error.GetDesc();
+		ut::log << error.GetDesc() << ut::cret;
 	}
 
 	// finish logging
