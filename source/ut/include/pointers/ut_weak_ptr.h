@@ -8,12 +8,14 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-
-template<typename ObjectType>
+// template class ut::WeakPtr is a smart pointer that holds a non - owning("weak")
+// reference to an object that is managed by ut::SharedPtr. It must be converted
+// to ut::SharedPtr in order to access the referenced object.
+template<typename ObjectType, thread_safety::Mode thread_safety_mode = thread_safety::on>
 class WeakPtr
 {
 	// SharedPtr is a friend to get access to the reference controller.
-	template <typename> friend class SharedPtr;
+	template <typename, thread_safety::Mode> friend class SharedPtr;
 public:
 	// Default constructor.
 	WeakPtr() : object(nullptr), referencer(nullptr)
@@ -32,15 +34,15 @@ public:
 #endif
 
 	// Constructor from shared pointer.
-	WeakPtr(const SharedPtr<ObjectType>& copy) : object(copy.object)
-	                                           , referencer(copy.referencer)
+	WeakPtr(const SharedPtr<ObjectType, thread_safety_mode>& copy) : object(copy.object)
+	                                                               , referencer(copy.referencer)
 	{ }
 
 	// Assign operator. Reference count to the old object is decreased by 1 here, and
 	// reference count to the new object is increased by 1.
 	WeakPtr& operator=(const WeakPtr& copy)
 	{
-		Reset< WeakPtr<ObjectType> >(copy);
+		Reset< WeakPtr<ObjectType, thread_safety_mode> >(copy);
 		return *this;
 	}
 
@@ -54,9 +56,9 @@ public:
 #endif
 
 	// Assign operator. Takes shared pointer here.
-	WeakPtr& operator=(const SharedPtr<ObjectType>& copy)
+	WeakPtr& operator=(const SharedPtr<ObjectType, thread_safety_mode>& copy)
 	{
-		Reset< SharedPtr<ObjectType> >(copy);
+		Reset< SharedPtr<ObjectType, thread_safety_mode> >(copy);
 		return *this;
 	}
 
@@ -152,9 +154,9 @@ public:
 	// pointer is valid before trying to dereference the shared pointer!
 	//    @return - Shared pointer for this object (will only be valid if still referenced!)
 	// 
-	SharedPtr<ObjectType> Pin() const
+	SharedPtr<ObjectType, thread_safety_mode> Pin() const
 	{
-		return SharedPtr<ObjectType>(*this);
+		return SharedPtr<ObjectType, thread_safety_mode>(*this);
 	}
 
 	// Recreates referencer object, it decrements the old reference count while destructing,
@@ -163,7 +165,7 @@ public:
 	void Reset(const PointerType& copy)
 	{
 		DestructReferencer();
-		new(&referencer) WeakReferencer<ObjectType>(copy.referencer);
+		new(&referencer) WeakReferencer<ObjectType, thread_safety_mode>(copy.referencer);
 		object = copy.object;
 	}
 
@@ -180,7 +182,7 @@ private:
 	// Referencer for the weak pointers, contains a pointer to the reference controller.
 	// WeakReferencer<> class is a convenient wrapper, that uses reference controller
 	// to increment reference count on construction and decrement this count on destruction.
-	WeakReferencer<ObjectType> referencer;
+	WeakReferencer<ObjectType, thread_safety_mode> referencer;
 };
 
 //----------------------------------------------------------------------------//

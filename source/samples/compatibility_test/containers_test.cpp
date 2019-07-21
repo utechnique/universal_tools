@@ -318,7 +318,8 @@ SharedPtrTask::SharedPtrTask() : TestTask("Shared pointer")
 
 void SharedPtrTask::Execute()
 {
-	ut::WeakPtr<int> weak;
+	static const ut::thread_safety::Mode safety_mode = ut::thread_safety::on;
+	ut::WeakPtr<int, safety_mode> weak;
 
 	if (weak.IsValid()) // can't be valid here
 	{
@@ -329,14 +330,14 @@ void SharedPtrTask::Execute()
 
 	if(true)
 	{
-		ut::SharedPtr<int> ptr(new int(-1));
-		ut::SharedPtr<int> alt_ptr(new int(2));
+		ut::SharedPtr<int, safety_mode> ptr(new int(-1));
+		ut::SharedPtr<int, safety_mode> alt_ptr(new int(2));
 
-		ut::SharedPtr<int> ptr0(ptr);
+		ut::SharedPtr<int, safety_mode> ptr0(ptr);
 
 		ptr = alt_ptr;
 
-		ut::WeakPtr<int> weak0(ptr);
+		ut::WeakPtr<int, safety_mode> weak0(ptr);
 
 		weak0 = alt_ptr;
 
@@ -348,7 +349,7 @@ void SharedPtrTask::Execute()
 			failed_test_counter.Increment();
 		}
 
-		ut::SharedPtr<int> ptr_convertion = weak.Pin();
+		ut::SharedPtr<int, safety_mode> ptr_convertion = weak.Pin();
 	}
 
 	if (weak.IsValid()) // can't be valid here

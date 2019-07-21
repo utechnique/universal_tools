@@ -8,30 +8,62 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
+// ut::RefControllerBase is a base class for both thread-safe and thread-unsafe
+// variants of a reference controller. It owns count of both weak and strong
+// references and a pointer to the managed object.
+template <typename ObjectType>
+class RefControllerBase : public NonCopyable
+{
+public:
+	// Constructor. Note that both strong (shared) and weak reference count
+	// is set to 1. Also controller takes control of the managed object.
+	RefControllerBase(ObjectType *in_object) : strong_count(1)
+	                                         , weak_count(1)
+	                                         , object(in_object)
+	{ }
+
+	// Destroys managed object.
+	void DestroyObject()
+	{
+		delete object;
+	}
+
+protected:
+	int32 strong_count;
+	int32 weak_count;
+
+private:
+	ObjectType *object;
+};
+
+//----------------------------------------------------------------------------//
 // ut::ReferenceController is a class incapsulating reference counting features.
 // It is responsible for self-destruction if weak reference count becomes zero
 // and destroying managed object if strong (shared) count becomes zero.
+template <typename ObjectType, thread_safety::Mode mode>
+class ReferenceController;
+
+// Thread-safe variant of a reference controller.
 template <typename ObjectType>
-class ReferenceController : public NonCopyable
+class ReferenceController<ObjectType, thread_safety::on> : public RefControllerBase<ObjectType>
 {
+	typedef RefControllerBase<ObjectType> Base;
 public:
 	// SharedReferencer and WeakReferencer are made friends, so that
 	// self-deletion could be performed only from the reliable source.
-	template <typename> friend class SharedReferencer;
-	template <typename> friend class WeakReferencer;
+	template <typename, thread_safety::Mode> friend class SharedReferencer;
+	template <typename, thread_safety::Mode> friend class WeakReferencer;
 
 	// Constructor. Note that both strong (shared) and weak reference count
 	// is set to 1. Also controller takes control of the managed object.
-	ReferenceController(ObjectType *in_object) : strong_count(1)
-	                                           , weak_count(1)
-	                                           , object(in_object)
+	ReferenceController(ObjectType *in_object) : Base(in_object)
 	{ }
 
 private:
 	// Increments strong (shared) reference count.
 	void AddStrongRef()
 	{
-		atomics::interlocked::Increment(&strong_count);
+		atomics::interlocked::Increment(&this->strong_count);
 	}
 
 	// Adds a shared reference to this counter ONLY if there is already at least one reference
@@ -42,7 +74,7 @@ private:
 		{
 			// Peek at the current shared reference count.  Remember, this value may be updated by
 			// multiple threads.
-			const int32 original_count = atomics::interlocked::Read((int32 volatile*)&strong_count);
+			const int32 original_count = atomics::interlocked::Read((int32 volatile*)&this->strong_count);
 			if (original_count == 0)
 			{
 				// Never add a shared reference if the pointer has already expired
@@ -50,11 +82,14 @@ private:
 			}
 
 			// Attempt to increment the reference count.
-			const int32 cmp_result = atomics::interlocked::CompareExchange(&strong_count, original_count + 1, original_count);
+			const int32 cmp_result = atomics::interlocked::CompareExchange(&this->strong_count,
+			                                                               original_count + 1,
+			                                                               original_count);
 
-			// We need to make sure that we never revive a counter that has already expired, so if the
-			// actual value what we expected (because it was touched by another thread), then we'll try
-			// again. Note that only in very unusual cases will this actually have to loop.
+			// We need to make sure that we never revive a counter that has already expired, so
+			// if the actual value what we expected (because it was touched by another thread),
+			// then we'll try again. Note that only in very unusual cases will this actually have
+			// to loop.
 			if (cmp_result == original_count)
 			{
 				return true;
@@ -65,19 +100,19 @@ private:
 	// Increments weak reference count.
 	void AddWeakRef()
 	{
-		atomics::interlocked::Increment(&weak_count);
+		atomics::interlocked::Increment(&this->weak_count);
 	}
 
 	// Decrements strong (shared) reference count.
 	void ReleaseStrongRef()
 	{
-		if (atomics::interlocked::Decrement(&strong_count) == 0)
+		if (atomics::interlocked::Decrement(&this->strong_count) == 0)
 		{
 			// last shared reference was released!
-			DestroyObject();
+			Base::DestroyObject();
 
-			// No more shared referencers, so decrement the weak reference count by one.  When the weak
-			// reference count reaches zero, this object will be deleted.
+			// No more shared referencers, so decrement the weak reference count by one.
+			// When the weak reference count reaches zero, this object will be deleted.
 			ReleaseWeakRef();
 		}
 	}
@@ -85,7 +120,7 @@ private:
 	// Decrements weak reference count.
 	void ReleaseWeakRef()
 	{
-		if (atomics::interlocked::Decrement(&weak_count) == 0)
+		if (atomics::interlocked::Decrement(&this->weak_count) == 0)
 		{
 			// No more references to this reference count.  Destroy it!
 			delete this;
@@ -96,39 +131,104 @@ private:
 	const int32 GetStrongRefCount()
 	{
 		// This reference count may be accessed by multiple threads
-		return atomics::interlocked::Read((int32 volatile*)&strong_count);
+		return atomics::interlocked::Read((int32 volatile*)&this->strong_count);
 	}
+};
 
-	// Destroys managed object.
-	void DestroyObject()
-	{
-		delete object;
-	}
+// Unsafe variant of a reference controller.
+template <typename ObjectType>
+class ReferenceController<ObjectType, thread_safety::off> : public RefControllerBase<ObjectType>
+{
+	typedef RefControllerBase<ObjectType> Base;
+public:
+	// SharedReferencer and WeakReferencer are made friends, so that
+	// self-deletion could be performed only from the reliable source.
+	template <typename, thread_safety::Mode> friend class SharedReferencer;
+	template <typename, thread_safety::Mode> friend class WeakReferencer;
+
+	// Constructor. Note that both strong (shared) and weak reference count
+	// is set to 1. Also controller takes control of the managed object.
+	ReferenceController(ObjectType *in_object) : Base(in_object)
+	{ }
 
 private:
-	int32 strong_count;
-	int32 weak_count;
-	ObjectType *object;
+	// Increments strong (shared) reference count.
+	void AddStrongRef()
+	{
+		++this->strong_count;
+	}
+
+	// Adds a shared reference to this counter ONLY if there is already at least one reference
+	// @return  True if the shared reference was added successfully
+	bool ConditionallyAddStrongRef()
+	{
+		if (this->strong_count == 0)
+		{
+			// Never add a shared reference if the pointer has already expired
+			return false;
+		}
+
+		++this->strong_count;
+		return true;
+	}
+
+	// Increments weak reference count.
+	void AddWeakRef()
+	{
+		++this->weak_count;
+	}
+
+	// Decrements strong (shared) reference count.
+	void ReleaseStrongRef()
+	{
+		if (--this->strong_count == 0)
+		{
+			// Last shared reference was released!  Destroy the referenced object.
+			Base::DestroyObject();
+
+			// No more shared referencers, so decrement the weak reference count by one.
+			// When the weak reference count reaches zero, this object will be deleted.
+			ReleaseWeakRef();
+		}
+	}
+
+	// Decrements weak reference count.
+	void ReleaseWeakRef()
+	{
+		if (--this->weak_count == 0)
+		{
+			// No more references to this reference count.  Destroy it!
+			delete this;
+		}
+	}
+
+	// Returns the shared reference count
+	const int32 GetStrongRefCount()
+	{
+		// This reference count may be accessed by multiple threads
+		return this->strong_count;
+	}
 };
 
 //----------------------------------------------------------------------------//
 // Forward Declaration for the ut::WeakReferencer template class.
-template <typename> class WeakReferencer;
+template <typename, thread_safety::Mode> class WeakReferencer;
 
 //----------------------------------------------------------------------------//
 // ut::SharedReferencer is a wrapper class for managing reference controller
 // object for shared pointers. Reference controller is used to increment
 // strong (shared) reference count on construction and decrement the count on
 // destruction.
-template <typename ObjectType>
+template <typename ObjectType, thread_safety::Mode thread_safety_mode>
 class SharedReferencer
 {
+	typedef ReferenceController<ObjectType, thread_safety_mode> Controller;
 	// WeakReferencer is a friend to get access to the controller object.
-	template <typename> friend class WeakReferencer;
+	template <typename, thread_safety::Mode> friend class WeakReferencer;
 public:
 	// Constructor, takes control over reference controller object.
 	// @controller supposed to be created using new() operator or to be nullptr.
-	SharedReferencer(ReferenceController<ObjectType>* in_controller) : controller(in_controller)
+	SharedReferencer(Controller* in_controller) : controller(in_controller)
 	{ }
 
 	// Copy constructor, copies a pointer to the reference controller and
@@ -152,7 +252,7 @@ public:
 
 	// Constructor, creates a shared referencer object from a weak referencer object. This will only result
 	// in a valid object reference if the object already has at least one other shared referencer.
-	SharedReferencer(const WeakReferencer<ObjectType>& weak) : controller(weak.controller)
+	SharedReferencer(const WeakReferencer<ObjectType, thread_safety_mode>& weak) : controller(weak.controller)
 	{
 		// If the incoming reference had an object associated with it, then go ahead and increment the
 		// shared reference count
@@ -192,22 +292,23 @@ private:
 #endif
 
 	// Reference-counting controller
-	ReferenceController<ObjectType>* controller;
+	Controller* controller;
 };
 
 //----------------------------------------------------------------------------//
 // ut::WeakReferencer is a wrapper class for managing reference controller
 // object for weak pointers. Reference controller is used to increment
 // weak reference count on construction and decrement the count on destruction.
-template <typename ObjectType>
+template <typename ObjectType, thread_safety::Mode thread_safety_mode>
 class WeakReferencer
 {
+	typedef ReferenceController<ObjectType, thread_safety_mode> Controller;
 	// SharedReferencer is a friend to get access to the controller object.
-	template <typename> friend class SharedReferencer;
+	template <typename, thread_safety::Mode> friend class SharedReferencer;
 public:
 	// Constructor, takes control over reference controller object.
 	// @controller supposed to be created using new() operator or to be nullptr.
-	WeakReferencer(ReferenceController<ObjectType>* in_controller) : controller(in_controller)
+	WeakReferencer(Controller* in_controller) : controller(in_controller)
 	{ }
 
 	// Copy constructor, copies a pointer to the reference controller and
@@ -231,7 +332,7 @@ public:
 
 	// Constructor from the shared pointer, copies a pointer to the
 	// reference controller and increments weak reference count.
-	WeakReferencer(const SharedReferencer<ObjectType>& copy) : controller(copy.controller)
+	WeakReferencer(const SharedReferencer<ObjectType, thread_safety_mode>& copy) : controller(copy.controller)
 	{
 		if (controller != nullptr)
 		{
@@ -263,7 +364,7 @@ private:
 #endif
 
 	// Reference-counting controller
-	ReferenceController<ObjectType>* controller;
+	Controller* controller;
 };
 
 //----------------------------------------------------------------------------//

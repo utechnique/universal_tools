@@ -9,17 +9,31 @@
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // Forward Declaration for the ut::WeakPtr template class.
-template<class T> class WeakPtr;
+template<class T, thread_safety::Mode> class WeakPtr;
 
-template<typename ObjectType>
+//----------------------------------------------------------------------------//
+// template class ut::SharedPtr is a smart pointer that retains shared ownership
+// of an object through a pointer. Several ut::SharedPtr objects may own the
+// same object. The object is destroyed and its memory deallocated when either
+// of the following happens:
+//     - the last remaining ut::SharedPtr owning the object is destroyed;
+//     - the last remaining shared_ptr owning the object is assigned another
+//       pointer via operator= or Reset().
+// A ut::SharedPtr can share ownership of an object while storing a pointer to
+// another object.This feature can be used to point to member objects while
+// owning the object they belong to.The stored pointer is the one accessed by
+// ut::SharedPtr::Get(), the dereference and the comparison operators.The
+// managed pointer is the one passed to the deleter when use count reaches zero.
+template<typename ObjectType, thread_safety::Mode thread_safety_mode = thread_safety::on>
 class SharedPtr
 {
+	typedef ReferenceController<ObjectType, thread_safety_mode> Controller;
 	// WeakPtr is a friend to get access to the reference controller.
-	template <typename> friend class WeakPtr;
+	template <typename, thread_safety::Mode> friend class WeakPtr;
 public:
 	// Constructor. Creates a new reference controller from the raw pointer.
 	SharedPtr(ObjectType* managed_object = nullptr) : object(managed_object)
-	                                                , referencer(new ReferenceController<ObjectType>(managed_object))
+	                                                , referencer(new Controller(managed_object))
 	{ }
 
 	// Copy constructor. Copies referencer object. Reference count is increased by 1 here.
@@ -135,7 +149,7 @@ public:
 	void Reset(ObjectType* obj = nullptr)
 	{
 		DestructReferencer();
-		new(&referencer) SharedReferencer<ObjectType>(new ReferenceController<ObjectType>(obj));
+		new(&referencer) SharedReferencer<ObjectType, thread_safety_mode>(new Controller(obj));
 		object = obj;
 	}
 
@@ -144,7 +158,7 @@ public:
 	void Reset(const SharedPtr& copy)
 	{
 		DestructReferencer();
-		new(&referencer) SharedReferencer<ObjectType>(copy.referencer);
+		new(&referencer) SharedReferencer<ObjectType, thread_safety_mode>(copy.referencer);
 		object = copy.object;
 	}
 
@@ -156,8 +170,8 @@ private:
 	// NOTE: This constructor is private to force users to be explicit when converting a weak
 	//       pointer to a shared pointer. Use the weak pointer's Pin() method instead!
 	template <typename OtherType>
-	SharedPtr(const WeakPtr<OtherType>& weak) : object(nullptr)
-	                                          , referencer(weak.referencer)
+	SharedPtr(const WeakPtr<OtherType, thread_safety_mode>& weak) : object(nullptr)
+	                                                              , referencer(weak.referencer)
 	{
 		// Check that the shared reference was created from the weak reference successfully.  We'll only
 		// cache a pointer to the object if we have a valid shared reference.
@@ -179,7 +193,7 @@ private:
 	// Referencer for the shared pointers, contains a pointer to the reference controller.
 	// SharedReferencer<> class is a convenient wrapper, that uses reference controller
 	// to increment reference count on construction and decrement this count on destruction.
-	SharedReferencer<ObjectType> referencer;
+	SharedReferencer<ObjectType, thread_safety_mode> referencer;
 };
 
 //----------------------------------------------------------------------------//
