@@ -41,7 +41,7 @@ MetaEditorItem::MetaEditorItem(const MetaEditorItem& copy) : item(copy.item)
                                                            , description(copy.description)
 {
 	// copy input widget only if it exists
-	if (copy.input != nullptr)
+	if (copy.input)
 	{
 		// perform polymorphic copying
 		const ut::DynamicType& dynamic_type = copy.input->Identify();

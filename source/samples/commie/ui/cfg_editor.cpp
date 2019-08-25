@@ -69,7 +69,7 @@ ut::Optional<ut::Error> CfgEditor::Open(Configuration& cfg)
 	json_doc << cfg;
 
 	// open cfg window
-	if (window.Get() != nullptr)
+	if (window != nullptr)
 	{
 		// if window has been already created - just rebuild a tree
 		ut::Optional<ut::Error> rebuild_error = meta_editor.Rebuild(json_doc);

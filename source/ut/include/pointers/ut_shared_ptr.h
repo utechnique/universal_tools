@@ -108,40 +108,10 @@ public:
 		return *object;
 	}
 
-	// Comparison operator, returns 'true' if @pointer is not a null
-	bool operator == (bool b_value) const
+	// Bool conversion operator
+	operator bool() const
 	{
-		return object && b_value;
-	}
-
-	// Comparison operator, returns 'true' if @object if has the same address as @ptr
-	bool operator == (ObjectType* ptr) const
-	{
-		return object == ptr;
-	}
-
-	// Comparison operator, returns 'false' if @object if has the same address as @ptr
-	bool operator != (ObjectType* ptr) const
-	{
-		return object != ptr;
-	}
-
-	// Returns 'true' if both @object and @ptr are non-null
-	bool operator && (ObjectType* ptr) const
-	{
-		return object && ptr;
-	}
-
-	// Returns 'true' if both @object is not a null and @b_value is 'true'
-	bool operator && (bool b_value) const
-	{
-		return object && b_value;
-	}
-
-	// Returns 'true' if @object is null
-	bool operator ! () const
-	{
-		return !object;
+		return object != nullptr;
 	}
 
 	// Recreates referencer object, it decrements the old reference count while destructing,
@@ -195,6 +165,73 @@ private:
 	// to increment reference count on construction and decrement this count on destruction.
 	SharedReferencer<ObjectType, thread_safety_mode> referencer;
 };
+
+//----------------------------------------------------------------------------//
+// Comparison operators for ut::SharedPtr
+template <class T1, class T2>
+inline bool operator == (const SharedPtr<T1>& left, const SharedPtr<T2>& right)
+{ return left.Get() == right.Get(); }
+
+template <class T1, class T2>
+inline bool operator != (const SharedPtr<T1>& left, const SharedPtr<T2>& right)
+{ return left.Get() != right.Get(); }
+
+template <class T1, class T2>
+inline bool operator > (const SharedPtr<T1>& left, const SharedPtr<T2>& right)
+{ return left.Get() > right.Get(); }
+
+template <class T1, class T2>
+inline bool operator >= (const SharedPtr<T1>& left, const SharedPtr<T2>& right)
+{ return left.Get() >= right.Get(); }
+
+template <class T1, class T2>
+inline bool operator < (const SharedPtr<T1>& left, const SharedPtr<T2>& right)
+{ return left.Get() < right.Get(); }
+
+template <class T1, class T2>
+inline bool operator <= (const SharedPtr<T1>& left, const SharedPtr<T2>& right)
+{ return left.Get() <= right.Get(); }
+
+
+//----------------------------------------------------------------------------//
+// Comparison operators for ut::SharedPtr with nullptr_t type
+#if CPP_STANDARD >= 2011
+	template <class T> inline bool operator == (const SharedPtr<T>& left, nullptr_t)
+	{ return left.Get() == nullptr; }
+
+	template <class T> inline bool operator == (nullptr_t, const SharedPtr<T>& right)
+	{ return nullptr == right.Get(); }
+
+	template <class T> inline bool operator != (const SharedPtr<T>& left, nullptr_t)
+	{ return left.Get() != nullptr; }
+
+	template <class T> inline bool operator != (nullptr_t, const SharedPtr<T>& right)
+	{ return nullptr != right.Get(); }
+
+	template <class T> inline bool operator > (const SharedPtr<T>& left, nullptr_t)
+	{ return left.Get() > nullptr; }
+
+	template <class T> inline bool operator > (nullptr_t, const SharedPtr<T>& right)
+	{ return nullptr > right.Get(); }
+
+	template <class T> inline bool operator >= (const SharedPtr<T>& left, nullptr_t)
+	{ return left.Get() >= nullptr; }
+
+	template <class T> inline bool operator >= (nullptr_t, const SharedPtr<T>& right)
+	{ return nullptr >= right.Get(); }
+
+	template <class T> inline bool operator < (const SharedPtr<T>& left, nullptr_t)
+	{ return left.Get() < nullptr; }
+
+	template <class T> inline bool operator < (nullptr_t, const SharedPtr<T>& right)
+	{ return nullptr < right.Get(); }
+
+	template <class T> inline bool operator <= (const SharedPtr<T>& left, nullptr_t)
+	{ return left.Get() <= nullptr; }
+
+	template <class T> inline bool operator <= (nullptr_t, const SharedPtr<T>& right)
+	{ return nullptr <= right.Get(); }
+#endif // CPP_STANDARD >= 2011
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

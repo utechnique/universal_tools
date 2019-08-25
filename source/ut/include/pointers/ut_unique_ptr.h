@@ -143,40 +143,10 @@ public:
 		return *pointer;
 	}
 
-	// Comparison operator, returns 'true' if @pointer is not a null
-	bool operator == (bool b_value) const
+	// Bool conversion operator
+	operator bool() const
 	{
-		return pointer && b_value;
-	}
-
-	// Comparison operator, returns 'true' if @pointer if has the same address as @ptr
-	bool operator == (ElementType* ptr) const
-	{
-		return pointer == ptr;
-	}
-
-	// Comparison operator, returns 'false' if @pointer if has the same address as @ptr
-	bool operator != (ElementType* ptr) const
-	{
-		return pointer != ptr;
-	}
-
-	// Returns 'true' if both @pointer and @ptr are non-null
-	bool operator && (ElementType* ptr) const
-	{
-		return pointer && ptr;
-	}
-
-	// Returns 'true' if both @pointer is not a null and @b_value is 'true'
-	bool operator && (bool b_value) const
-	{
-		return pointer && b_value;
-	}
-
-	// Returns 'true' if @pointer is null
-	bool operator ! () const
-	{
-		return !pointer;
+		return pointer != nullptr;
 	}
 
 	// Resets the managed object, sets @pointer to null
@@ -262,6 +232,73 @@ protected:
 template <typename T> struct LValRef< UniquePtr<T> > { typedef UniquePtr<T>& Type; };
 template <typename T> struct RValRef< UniquePtr<T> > { typedef UniquePtr<T>& Type; };
 #endif
+
+//----------------------------------------------------------------------------//
+// Comparison operators for ut::UniquePtr
+template <class T1, class T2>
+inline bool operator == (const UniquePtr<T1>& left, const UniquePtr<T2>& right)
+{ return left.Get() == right.Get(); }
+
+template <class T1, class T2>
+inline bool operator != (const UniquePtr<T1>& left, const UniquePtr<T2>& right)
+{ return left.Get() != right.Get(); }
+
+template <class T1, class T2>
+inline bool operator > (const UniquePtr<T1>& left, const UniquePtr<T2>& right)
+{ return left.Get() > right.Get(); }
+
+template <class T1, class T2>
+inline bool operator >= (const UniquePtr<T1>& left, const UniquePtr<T2>& right)
+{ return left.Get() >= right.Get(); }
+
+template <class T1, class T2>
+inline bool operator < (const UniquePtr<T1>& left, const UniquePtr<T2>& right)
+{ return left.Get() < right.Get(); }
+
+template <class T1, class T2>
+inline bool operator <= (const UniquePtr<T1>& left, const UniquePtr<T2>& right)
+{ return left.Get() <= right.Get(); }
+
+
+//----------------------------------------------------------------------------//
+// Comparison operators for ut::UniquePtr with nullptr_t type
+#if CPP_STANDARD >= 2011
+	template <class T> inline bool operator == (const UniquePtr<T>& left, nullptr_t)
+	{ return left.Get() == nullptr; }
+
+	template <class T> inline bool operator == (nullptr_t, const UniquePtr<T>& right)
+	{ return nullptr == right.Get(); }
+
+	template <class T> inline bool operator != (const UniquePtr<T>& left, nullptr_t)
+	{ return left.Get() != nullptr; }
+
+	template <class T> inline bool operator != (nullptr_t, const UniquePtr<T>& right)
+	{ return nullptr != right.Get(); }
+
+	template <class T> inline bool operator > (const UniquePtr<T>& left, nullptr_t)
+	{ return left.Get() > nullptr; }
+
+	template <class T> inline bool operator > (nullptr_t, const UniquePtr<T>& right)
+	{ return nullptr > right.Get(); }
+
+	template <class T> inline bool operator >= (const UniquePtr<T>& left, nullptr_t)
+	{ return left.Get() >= nullptr; }
+
+	template <class T> inline bool operator >= (nullptr_t, const UniquePtr<T>& right)
+	{ return nullptr >= right.Get(); }
+
+	template <class T> inline bool operator < (const UniquePtr<T>& left, nullptr_t)
+	{ return left.Get() < nullptr; }
+
+	template <class T> inline bool operator < (nullptr_t, const UniquePtr<T>& right)
+	{ return nullptr < right.Get(); }
+
+	template <class T> inline bool operator <= (const UniquePtr<T>& left, nullptr_t)
+	{ return left.Get() <= nullptr; }
+
+	template <class T> inline bool operator <= (nullptr_t, const UniquePtr<T>& right)
+	{ return nullptr <= right.Get(); }
+#endif // CPP_STANDARD >= 2011
 
 //----------------------------------------------------------------------------//
 // struct ut::ArrPtrRefCast is a proxy structure for ut::Array<ut::UniquePtr>

@@ -105,42 +105,6 @@ public:
 		return *object;
 	}
 
-	// Comparison operator, returns 'true' if @pointer is not a null
-	bool operator == (bool b_value) const
-	{
-		return object && b_value;
-	}
-
-	// Comparison operator, returns 'true' if @object if has the same address as @ptr
-	bool operator == (ObjectType* ptr) const
-	{
-		return object == ptr;
-	}
-
-	// Comparison operator, returns 'false' if @object if has the same address as @ptr
-	bool operator != (ObjectType* ptr) const
-	{
-		return object != ptr;
-	}
-
-	// Returns 'true' if both @object and @ptr are non-null
-	bool operator && (ObjectType* ptr) const
-	{
-		return object && ptr;
-	}
-
-	// Returns 'true' if both @object is not a null and @b_value is 'true'
-	bool operator && (bool b_value) const
-	{
-		return object && b_value;
-	}
-
-	// Returns 'true' if @object is null
-	bool operator ! () const
-	{
-		return !object;
-	}
-
 	// Tests to see whether or not this weak counter contains a valid reference
 	// @return - true if reference is valid
 	const bool IsValid() const
