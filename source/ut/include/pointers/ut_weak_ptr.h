@@ -62,49 +62,6 @@ public:
 		return *this;
 	}
 
-	// Overloaded inheritance operator, provides access to the owned object
-	ObjectType* operator -> ()
-	{
-		UT_ASSERT(object != nullptr);
-		return object;
-	}
-
-	// Overloaded inheritance operator, provides read access to the owned object
-	const ObjectType* operator -> () const
-	{
-		UT_ASSERT(object != nullptr);
-		return object;
-	}
-
-	// Returns the @object object, equivalent to *Get()
-	ObjectType& operator* ()
-	{
-		UT_ASSERT(object != nullptr);
-		return *object;
-	}
-
-	// Returns a pointer to the managed object or nullptr if no object is owned
-	ObjectType* Get() const
-	{
-		return object;
-	}
-
-	// Returns the reference to the managed object, this function is unsafe,
-	// check @object value before calling
-	ObjectType& GetRef()
-	{
-		UT_ASSERT(object != nullptr);
-		return *object;
-	}
-
-	// Returns constant reference to the managed object, this function is unsafe,
-	// check @object value before calling
-	const ObjectType& GetRef() const
-	{
-		UT_ASSERT(object != nullptr);
-		return *object;
-	}
-
 	// Tests to see whether or not this weak counter contains a valid reference
 	// @return - true if reference is valid
 	const bool IsValid() const
