@@ -164,7 +164,7 @@ template<> String Print<uint32>(uint32 val)
 template<> String Print<int64>(int64 val)
 {
 	String str;
-	str.Print("%li", val);
+	str.Print("%lli", val);
 	return str;
 }
 
@@ -172,7 +172,7 @@ template<> String Print<int64>(int64 val)
 template<> String Print<uint64>(uint64 val)
 {
 	String str;
-	str.Print("%lu", val);
+	str.Print("%llu", val);
 	return str;
 }
 
@@ -289,7 +289,7 @@ template<> uint32 Scan<uint32>(const String& str)
 template<> int64 Scan<int64>(const String& str)
 {
 	int64 val;
-	str.Scan("%li", &val);
+	str.Scan("%lli", &val);
 	return val;
 }
 
@@ -297,7 +297,7 @@ template<> int64 Scan<int64>(const String& str)
 template<> uint64 Scan<uint64>(const String& str)
 {
 	uint64 val;
-	str.Scan("%lu", &val);
+	str.Scan("%llu", &val);
 	return val;
 }
 
