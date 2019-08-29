@@ -113,7 +113,7 @@ private:
 	template<typename ElementType>
 	inline Optional<Error> SaveVariantBinary(OutputStream& stream, SFINAE_IS_NOT_ARCHIVE)
 	{
-		return stream.Write(ptr, sizeof(T), 1);
+		return endian::Write<T, skSerializationEndianness>(stream, static_cast<const T*>(ptr));
 	}
 
 	// Text version for simple types
@@ -159,7 +159,7 @@ private:
 	template<typename ElementType>
 	inline Optional<Error> LoadVariantBinary(InputStream& stream, SFINAE_IS_NOT_ARCHIVE)
 	{
-		return stream.Read(ptr, sizeof(T), 1);
+		return endian::Read<T, skSerializationEndianness>(stream, static_cast<T*>(ptr));
 	}
 
 	// Text version for simple types

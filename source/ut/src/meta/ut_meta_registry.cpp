@@ -13,7 +13,7 @@ Optional<Error> MetaRegistry::Save(OutputStream& stream)
 {
 	// write the number of parameters
 	const SizeType parameters_num = static_cast<SizeType>(parameters.GetNum());
-	Optional<Error> save_num_error = stream.Write(&parameters_num, sizeof(parameters_num), 1);
+	Optional<Error> save_num_error = endian::Write<SizeType, skSerializationEndianness>(stream, &parameters_num);
 	if (save_num_error)
 	{
 		return save_num_error;
@@ -48,7 +48,7 @@ Optional<Error> MetaRegistry::Save(OutputStream& stream)
 
 		// write fictive parameter size
 		const SizeType fictive_size = 0;
-		Optional<Error> write_fictive_size_error = stream.Write(&fictive_size, sizeof(fictive_size), 1);
+		Optional<Error> write_fictive_size_error = endian::Write<SizeType, skSerializationEndianness>(stream, &fictive_size);
 		if (write_fictive_size_error)
 		{
 			return write_fictive_size_error;
@@ -84,7 +84,7 @@ Optional<Error> MetaRegistry::Save(OutputStream& stream)
 		}
 
 		// write the real parameter size
-		Optional<Error> write_real_size_error = stream.Write(&parameter_size, sizeof(parameter_size), 1);
+		Optional<Error> write_real_size_error = endian::Write<SizeType, skSerializationEndianness>(stream, &parameter_size);
 		if (write_real_size_error)
 		{
 			return write_real_size_error;
@@ -109,7 +109,7 @@ Optional<Error> MetaRegistry::Load(InputStream& stream)
 {
 	// read the number of parameters
 	SizeType parameters_num = 0;
-	Optional<Error> read_num_error = stream.Read(&parameters_num, sizeof(parameters_num), 1);
+	Optional<Error> read_num_error = endian::Read<SizeType, skSerializationEndianness>(stream, &parameters_num);
 	if (read_num_error)
 	{
 		return read_num_error;
@@ -138,7 +138,7 @@ Optional<Error> MetaRegistry::Load(InputStream& stream)
 
 		// read parameter size
 		SizeType parameter_size = 0;
-		Optional<Error> read_parameter_size_error = stream.Read(&parameter_size, sizeof(parameter_size), 1);
+		Optional<Error> read_parameter_size_error = endian::Read<SizeType, skSerializationEndianness>(stream, &parameter_size);
 		if (read_parameter_size_error)
 		{
 			return read_parameter_size_error;

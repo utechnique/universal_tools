@@ -226,9 +226,9 @@ SerializationTest::SerializationTest(bool in_alternate) : alternate(in_alternate
 void SerializationTest::Serialize(ut::MetaStream& stream)
 {
 	stream << ival;
+	stream << uval;
 	stream << str;
 	stream << arr;
-	stream << uval;
 	stream << a;
 	stream << strarr;
 	stream << dyn_type_ptr;
@@ -398,8 +398,8 @@ void ReflectiveAltB::Register(ut::MetaRegistry& registry)
 // (if loading will fail - parameters would have default values against changed ones)
 void ChangeSerializedObject(SerializationTest& object)
 {
-	object.ival = -123;
-	object.uval = 321;
+	object.ival = -0x01234567;
+	object.uval = 0x0123456789ABCDEF;
 	object.fval = 123.321f;
 	object.str = "test_string";
 
@@ -450,8 +450,8 @@ void ChangeSerializedObject(SerializationTest& object)
 // note that ChangeSerializedObject() must be called before saving an object
 bool CheckSerializedObject(const SerializationTest& object)
 {
-	if (object.ival != -123) return false;
-	if (object.uval != 321) return false;
+	if (object.ival != -0x01234567) return false;
+	if (object.uval != 0x0123456789ABCDEF) return false;
 	if (object.fval > 123.321f + 0.0001f || object.fval < 123.321f - 0.0001f) return false;
 	if (object.str != "test_string") return false;
 

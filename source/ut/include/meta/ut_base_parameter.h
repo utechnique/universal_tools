@@ -5,12 +5,18 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "meta/ut_archive.h"
+#include "system/ut_endianness.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // ut::skLogSerializationEvents static variable indicates if exceptional
 // serialization events must be logged to the global log (ut::log).
 static const bool skLogSerializationEvents = true;
+
+//----------------------------------------------------------------------------//
+// ut::skSerializationOrder static variable defines an order of bytes of the
+// variable to be serialized (big-endian or little-endian).
+static const endian::order skSerializationEndianness = endian::little;
 
 //----------------------------------------------------------------------------//
 // ut::BaseParameter is abstract class to serialize custom data. Every

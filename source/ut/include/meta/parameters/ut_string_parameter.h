@@ -32,9 +32,23 @@ public:
 	//    @return - ut::Error if encountered an error
 	Optional<Error> Save(OutputStream& stream)
 	{
+		// get string object and calculate it's length
 		TString<T>& str = *((TString<T>*)ptr);
 		size_t len = str.Length() + 1;
-		return stream.Write(str.GetAddress(), sizeof(T), len);
+
+		// write a string character by character
+		const T* start = str.GetAddress();
+		for (size_t i = 0; i < len; i++)
+		{
+			Optional<Error> write_error = endian::Write<T, skSerializationEndianness>(stream, start + i);
+			if (write_error)
+			{
+				return write_error;
+			}
+		}
+
+		// success
+		return Optional<Error>();
 	}
 
 	// Loads managed data from the stream
@@ -53,7 +67,7 @@ public:
 		T c;
 		do
 		{
-			Optional<Error> read_error = stream.Read(&c, sizeof(T), 1);
+			Optional<Error> read_error = endian::Read<T, skSerializationEndianness>(stream, &c);
 			if (read_error)
 			{
 				return read_error;

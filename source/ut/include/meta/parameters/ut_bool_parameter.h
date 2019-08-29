@@ -32,7 +32,7 @@ public:
 	{
 		bool value = *static_cast<bool*>(ptr);
 		byte b8value = value ? 1 : 0;
-		return stream.Write(&b8value, 1, 1);
+		return endian::Write<byte, skSerializationEndianness>(stream, &b8value);
 	}
 
 	// Loads managed data from the stream
@@ -42,7 +42,7 @@ public:
 	{
 		// read 1 byte
 		byte b8value;
-		Optional<Error> read_error = stream.Read(&b8value, 1, 1);
+		Optional<Error> read_error = endian::Read<byte, skSerializationEndianness>(stream, &b8value);
 		if (read_error)
 		{
 			return read_error;

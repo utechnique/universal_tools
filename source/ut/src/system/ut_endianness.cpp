@@ -1,19 +1,30 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
-//----------------------------------------------------------------------------//
-//  This file is a set of all header files wrapping system API
-//----------------------------------------------------------------------------//
 #include "system/ut_endianness.h"
-#include "system/ut_mutex.h"
-#include "system/ut_lock.h"
-#include "system/ut_sync.h"
-#include "system/ut_thread.h"
-#include "system/ut_cmdline.h"
-#include "system/ut_memory.h"
-#include "system/ut_console.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ut)
+START_NAMESPACE(endian)
+//----------------------------------------------------------------------------//
+// A simple way to detect endianness is to check first (or last) byte of a
+// bigger integer variable after initialization.
+order DetectEndianness()
+{
+	uint32 u = 0x00000001;
+	uint8 c = *(uint8*)&u;
+	return c == 0x01 ? little : big;
+}
 
+// Use this function to know endianness order of the current platform.
+order GetNative()
+{
+	static order endianness_order = DetectEndianness();
+	return endianness_order;
+}
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(endian)
+END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

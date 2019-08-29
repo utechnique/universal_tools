@@ -156,7 +156,7 @@ public:
 	ut::Array<SerializationSubClass> arr;
 
 	ut::int32  ival;
-	ut::uint32 uval;
+	ut::uint64 uval;
 	ut::String str;
 	ut::Array<ut::String> strarr;
 	ut::UniquePtr<TestBase> dyn_type_ptr;

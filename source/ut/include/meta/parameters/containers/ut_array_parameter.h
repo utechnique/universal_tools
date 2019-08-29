@@ -34,17 +34,17 @@ public:
 		Array<T>& arr = *static_cast<Array<T>*>(ptr);
 
 		// get array size
-		const uint32 num = (uint32)arr.GetNum();
+		const SizeType num = static_cast<SizeType>(arr.GetNum());
 
 		// write array size as 32-bit integer
-		Optional<Error> write_num_error = stream.Write(&num, sizeof(num), 1);
+		Optional<Error> write_num_error = endian::Write<SizeType, skSerializationEndianness>(stream, &num);
 		if (write_num_error)
 		{
 			return write_num_error;
 		}
 
 		// write array elements sequentially
-		for (uint32 i = 0; i < num; i++)
+		for (SizeType i = 0; i < num; i++)
 		{
 			// save every element via corresponding parameter
 			Parameter<T> parameter(&arr[i]);
@@ -68,8 +68,8 @@ public:
 		Array<T>& arr = *static_cast<Array<T>*>(ptr);
 
 		// read array size as 32-bit integer
-		uint32 num;
-		Optional<Error> read_num_error = stream.Read(&num, sizeof(num), 1);
+		SizeType num;
+		Optional<Error> read_num_error = endian::Read<SizeType, skSerializationEndianness>(stream, &num);
 		if (read_num_error)
 		{
 			return read_num_error;
@@ -79,7 +79,7 @@ public:
 		arr.Resize(num);
 
 		// read array elements sequentially
-		for (uint32 i = 0; i < num; i++)
+		for (SizeType i = 0; i < num; i++)
 		{
 			// load every element via corresponding parameter
 			Parameter<T> parameter(&arr[i]);
