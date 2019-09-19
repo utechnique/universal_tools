@@ -20,16 +20,16 @@ UiCfg::UiCfg()
 
 // Registers named parameters to the intermediate serialization registry.
 //    @param registry - register parameters here,
-//                      just call registry.Add(parameter, "desired_name");
-void UiCfg::Register(ut::MetaRegistry& registry)
+//                      just call snapshot.Add(parameter, "desired_name");
+void UiCfg::Reflect(ut::meta::Snapshot& snapshot)
 {
 #if COMMIE_DESKTOP
-	registry.Add(position_x, "position_x");
-	registry.Add(position_y, "position_y");
-	registry.Add(width, "width");
-	registry.Add(height, "height");
-	registry.Add(lr_ratio, "lr_ratio");
-	registry.Add(tb_ratio, "tb_ratio");
+	snapshot.Add(position_x, "position_x");
+	snapshot.Add(position_y, "position_y");
+	snapshot.Add(width, "width");
+	snapshot.Add(height, "height");
+	snapshot.Add(lr_ratio, "lr_ratio");
+	snapshot.Add(tb_ratio, "tb_ratio");
 #endif // COMMIE_DESKTOP
 }
 
@@ -47,17 +47,17 @@ Configuration::Configuration() : server_mode(false)
 
 // Registers named parameters to the intermediate serialization registry.
 //    @param registry - register parameters here,
-//                      just call registry.Add(parameter, "desired_name");
-void Configuration::Register(ut::MetaRegistry& registry)
+//                      just call snapshot.Add(parameter, "desired_name");
+void Configuration::Reflect(ut::meta::Snapshot& snapshot)
 {
-	registry.Add(server_mode, "server_mode");
-	registry.Add(address.ip, "ip");
-	registry.Add(address.port, "port");
-	registry.Add(authorization_password, "password");
-	registry.Add(encryption_key, "encryption_key");
-	registry.Add(name, "name");
-	registry.Add(console, "console");
-	registry.Add(ui, "ui");
+	snapshot.Add(server_mode, "server_mode");
+	snapshot.Add(address.ip, "ip");
+	snapshot.Add(address.port, "port");
+	snapshot.Add(authorization_password, "password");
+	snapshot.Add(encryption_key, "encryption_key");
+	snapshot.Add(name, "name");
+	snapshot.Add(console, "console");
+	snapshot.Add(ui, "ui");
 }
 
 //----------------------------------------------------------------------------//

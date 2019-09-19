@@ -9,11 +9,11 @@ START_NAMESPACE(commie)
 //----------------------------------------------------------------------------//
 // commie::ClientInfo is the smallest information that is needed to describe
 // a client. Object of this class can be serialized.
-class ClientInfo : public ut::Serializable
+class ClientInfo : public ut::meta::Reflective
 {
 public:
 	// Serializes data.
-	void Serialize(ut::MetaStream& stream);
+	void Reflect(ut::meta::Snapshot& snapshot);
 
 	// name of the client
 	ut::String name;

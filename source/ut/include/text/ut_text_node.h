@@ -67,6 +67,12 @@ public:
 	// name of the value type
 	Optional<String> value_type;
 
+	// some text document don't support simultaneous existance of child
+	// nodes and value (json), thus we must isolate a value in a new node, and this
+	// variable (text::Node::encapsulation_name) is a name of such a node, default
+	// name (Document::skValueNodeName) will be used if this variable is empty
+	Optional<String> encapsulation_name;
+
 	// set to 'true' if this node is an attribute,
 	// this member takes effect only for xml documents
 	bool is_attribute;

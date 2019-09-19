@@ -36,8 +36,7 @@ Optional<Error> ReceiveCommand::Execute(Connection& connection)
 
 	// deserialize command
 	UniquePtr<Command> cmd;
-	Parameter< UniquePtr<Command> > parameter(&cmd);
-	Optional<Error> deserialization_error = parameter.Load(stream);
+	Optional<Error> deserialization_error = meta::Snapshot::Capture(cmd).Load(stream);
 	if (deserialization_error)
 	{
 		return deserialization_error;
@@ -46,7 +45,7 @@ Optional<Error> ReceiveCommand::Execute(Connection& connection)
 	// validate command type, but only if command name was set
 	if (cmd_name.Length() != 0)
 	{
-		const ut::DynamicType& dynamic_type = cmd->Identify();
+		const DynamicType& dynamic_type = cmd->Identify();
 		if (dynamic_type.GetName() != cmd_name)
 		{
 			return Error(error::types_not_match);
@@ -77,8 +76,7 @@ Optional<Error> SendCommand::Execute(Connection& connection)
 {
 	// serialize command
 	BinaryStream stream;
-	Parameter< UniquePtr<Command> > parameter(&cmd);
-	ut::Optional<ut::Error> serialization_error = parameter.Save(stream);
+	Optional<Error> serialization_error = meta::Snapshot::Capture(cmd).Save(stream);
 
 	// validate serialization result
 	if (serialization_error)
@@ -133,8 +131,7 @@ Optional<Error> SendCommandFromStack::Execute(Connection& connection)
 	// serialize command
 	BinaryStream stream;
 	UniquePtr<Command>& cmd = pick_result ? picked_cmd : idle_cmd;
-	Parameter< UniquePtr<Command> > parameter(&cmd);
-	ut::Optional<ut::Error> serialization_error = parameter.Save(stream);
+	Optional<Error> serialization_error = meta::Snapshot::Capture(cmd).Save(stream);
 
 	// validate serialization result
 	if (serialization_error)

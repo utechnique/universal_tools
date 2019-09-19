@@ -42,10 +42,10 @@ const ut::DynamicType& ClientAuthorizationCmd::Identify() const
 }
 
 // Serialization
-void ClientAuthorizationCmd::Serialize(ut::MetaStream& stream)
+void ClientAuthorizationCmd::Reflect(ut::meta::Snapshot& snapshot)
 {
-	stream << password;
-	stream << client_name;
+	snapshot << password;
+	snapshot << client_name;
 }
 
 // Executes command if received by client.

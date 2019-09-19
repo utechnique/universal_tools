@@ -18,6 +18,10 @@ public:
 	Ref(T& ref) : ptr(&ref)
 	{ }
 
+	// Copy constructor
+	Ref(const Ref& ref) : ptr(ref.ptr)
+	{ }
+
 	// Conversion operator
 	operator T& () const
 	{
@@ -28,6 +32,18 @@ public:
 	T& Get()
 	{
 		return *ptr;
+	}
+
+	// Overloaded inheritance operator, provides access to the owned object
+	T* operator -> ()
+	{
+		return ptr;
+	}
+
+	// Overloaded inheritance operator, provides read access to the owned object
+	const T* operator -> () const
+	{
+		return ptr;
 	}
 
 private:
@@ -44,6 +60,10 @@ public:
 	ConstRef(const T& ref) : ptr(&ref)
 	{ }
 
+	// Copy constructor
+	ConstRef(const ConstRef& ref) : ptr(ref.ptr)
+	{ }
+
 	// Conversion operator
 	operator const T& () const
 	{
@@ -54,6 +74,12 @@ public:
 	const T& Get()
 	{
 		return *ptr;
+	}
+
+	// Overloaded inheritance operator, provides read access to the owned object
+	const T* operator -> () const
+	{
+		return ptr;
 	}
 
 private:

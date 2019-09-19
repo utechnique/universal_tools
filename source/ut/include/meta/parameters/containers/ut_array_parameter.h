@@ -4,9 +4,10 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
-#include "meta/ut_parameter.h"
+#include "meta/ut_meta_parameter.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
+START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
 // ut::Parameter<Array> is a template specialization for array types.
 template<typename T>
@@ -21,163 +22,119 @@ public:
 	// Returns the name of the managed type
 	String GetTypeName() const
 	{
-		const Parameter<T> parameter(static_cast<T*>(ptr));
-		return parameter.GetTypeName() + "_array";
+		return skTypeName;
 	}
 
-	// Writes managed data to the stream
-	//    @param stream - data will be written to this stream
-	//    @return - ut::Error if encountered an error
-	Optional<Error> Save(OutputStream& stream)
+	// Registers children into reflection tree.
+	//    @param snapshot - reference to the reflection tree
+	void Reflect(Snapshot& snapshot)
 	{
 		// get array reference from pointer
 		Array<T>& arr = *static_cast<Array<T>*>(ptr);
 
-		// get array size
-		const SizeType num = static_cast<SizeType>(arr.GetNum());
+		// register all elements
+		for (size_t i = 0; i < arr.GetNum(); i++)
+		{
+			snapshot << arr[i];
+		}
+	}
 
-		// write array size as 32-bit integer
-		Optional<Error> write_num_error = endian::Write<SizeType, skSerializationEndianness>(stream, &num);
+	// Serializes managed object.
+	//    @param controller - meta controller that helps to write data
+	//    @return - ut::Error if encountered an error
+	Optional<Error> Save(Controller& controller)
+	{
+		// get array reference from pointer
+		Array<T>& arr = *static_cast<Array<T>*>(ptr);
+
+		// write value type name
+		if (controller.GetInfo().HasTypeInformation())
+		{
+			String value_type_name = GetValueTypeName();
+			Optional<Error> write_value_type_error = controller.WriteAttribute(value_type_name, node_names::skValueType);
+			if (write_value_type_error)
+			{
+				return write_value_type_error;
+			}
+		}
+
+		// write array size
+		Controller::SizeType num = static_cast<Controller::SizeType>(arr.GetNum());
+		Optional<Error> write_num_error = controller.WriteAttribute(num, node_names::skCount);
 		if (write_num_error)
 		{
 			return write_num_error;
 		}
 
-		// write array elements sequentially
-		for (SizeType i = 0; i < num; i++)
-		{
-			// save every element via corresponding parameter
-			Parameter<T> parameter(&arr[i]);
-			Optional<Error> save_element_error = parameter.Save(stream);
-			if (save_element_error)
-			{
-				return save_element_error;
-			}
-		}
-
 		// success
 		return Optional<Error>();
 	}
 
-	// Loads managed data from the stream
-	//    @param stream - data will be loaded from this stream
+	// Deserializes managed object.
+	//    @param controller - meta controller that helps to read data
 	//    @return - ut::Error if encountered an error
-	Optional<Error> Load(InputStream& stream)
+	Optional<Error> Load(Controller& controller)
 	{
 		// get array reference from pointer
 		Array<T>& arr = *static_cast<Array<T>*>(ptr);
 
-		// read array size as 32-bit integer
-		SizeType num;
-		Optional<Error> read_num_error = endian::Read<SizeType, skSerializationEndianness>(stream, &num);
-		if (read_num_error)
+		// read value typename and compare with current one
+		if (controller.GetInfo().HasTypeInformation())
 		{
-			return read_num_error;
+			Result<String, Error> read_type_result = controller.ReadAttribute<String>(node_names::skValueType);
+			if (!read_type_result)
+			{
+				return read_type_result.MoveAlt();
+			}
+
+			// check types
+			String current_type_name = GetValueTypeName();
+			if (current_type_name != read_type_result.GetResult())
+			{
+				return Error(error::types_not_match);
+			}
+		}
+
+		// read array size
+		Result<Controller::SizeType, Error> read_num_result = controller.ReadAttribute<Controller::SizeType>(node_names::skCount);
+		if (!read_num_result)
+		{
+			return read_num_result.MoveAlt();
 		}
 
 		// resize the array
-		arr.Resize(num);
-
-		// read array elements sequentially
-		for (SizeType i = 0; i < num; i++)
-		{
-			// load every element via corresponding parameter
-			Parameter<T> parameter(&arr[i]);
-			Optional<Error> load_element_error = parameter.Load(stream);
-			if (load_element_error)
-			{
-				return load_element_error;
-			}
-		}
+		arr.Resize(static_cast<size_t>(read_num_result.GetResult()));
 
 		// success
 		return Optional<Error>();
 	}
 
-	// Writes managed object data to the text node.
-	//    @param node - text node to contain the managed data
-	//    @return - ut::Error if encountered an error
-	Optional<Error> Save(Tree<text::Node>& node)
+	// Returns 'true' - managed object is an array.
+	bool IsArray() const
 	{
-		// set node name
-		SetTextNodeName(node);
-
-		// this is array node
-		node.data.is_array = true;
-
-		// get array reference from pointer
-		Array<T>& arr = *static_cast<Array<T>*>(ptr);
-
-		// get array size
-		const size_t num = arr.GetNum();
-
-		// write array elements sequentially
-		for (size_t i = 0; i < num; i++)
-		{
-			// create a new node for the element
-			Tree<text::Node> element_node;
-
-			// save every element via corresponding parameter
-			Parameter<T> parameter(&arr[i]);
-			Optional<Error> save_element_error = parameter.Save(element_node);
-
-			// validate the result
-			if (save_element_error)
-			{
-				return save_element_error;
-			}
-			
-			// add node to the tree
-			if (!node.Add(element_node))
-			{
-				return Error(error::out_of_memory);
-			}
-		}
-
-		// success
-		return Optional<Error>();
+		return true;
 	}
 
-	// Loads managed object data from the text node.
-	//    @param node - text node containing the managed data
-	//    @return - ut::Error if encountered an error
-	Optional<Error> Load(const Tree<text::Node>& node)
+private:
+
+	// Returns a name of the contained value type
+	String GetValueTypeName() const
 	{
-		// get array reference from pointer
-		Array<T>& arr = *static_cast<Array<T>*>(ptr);
-
-		// get array size
-		const size_t num = node.GetNumChildren();
-
-		// resize the array
-		if (!arr.Resize(num))
-		{
-			return Error(error::out_of_memory);
-		}
-
-		// read array elements sequentially
-		for (size_t i = 0; i < num; i++)
-		{
-			// create a new node for the element
-			Tree<text::Node> element_node;
-
-			// save every element via corresponding parameter
-			Parameter<T> parameter(&arr[i]);
-			Optional<Error> load_element_error = parameter.Load(node[i]);
-
-			// validate the result
-			if (load_element_error)
-			{
-				return load_element_error;
-			}
-		}
-
-		// success
-		return Optional<Error>();
+		const Parameter<T> parameter(static_cast<T*>(ptr));
+		return parameter.GetTypeName();
 	}
+
+	// name of the ut::Array type
+	static const char* skTypeName;
 };
 
 //----------------------------------------------------------------------------//
+// name of the ut::Array type
+template<typename T>
+const char* Parameter< Array<T> >::skTypeName = "array";
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(meta)
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

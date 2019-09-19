@@ -65,8 +65,9 @@ CfgEditor::CfgEditor(class DesktopUI& parent_ui) : desktop_ui(parent_ui)
 ut::Optional<ut::Error> CfgEditor::Open(Configuration& cfg)
 {
 	// serialize configuration to the text document
+	ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(cfg);
 	ut::JsonDoc json_doc;
-	json_doc << cfg;
+	json_doc << cfg_snapshot;
 
 	// open cfg window
 	if (window != nullptr)
@@ -148,8 +149,9 @@ ut::Optional<ut::Error> CfgEditor::ResetValues()
 {
 	// serialize default cfg object
 	Configuration cfg;
+	ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(cfg);
 	ut::XmlDoc document;
-	document << cfg;
+	document << cfg_snapshot;
 
 	// rebuild tree
 	ut::Optional<ut::Error> rebuild_error = meta_editor.Rebuild(document);

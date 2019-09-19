@@ -27,9 +27,9 @@ const ut::DynamicType& IdleCmd::Identify() const
 }
 
 // Serialization
-void IdleCmd::Serialize(ut::MetaStream& stream)
+void IdleCmd::Reflect(ut::meta::Snapshot& snapshot)
 {
-	stream << milliseconds_to_wait;
+	snapshot << milliseconds_to_wait;
 }
 
 // Executes command if received by client.

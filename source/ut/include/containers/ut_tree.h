@@ -12,23 +12,29 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// ut::Tree template class is a container for an unordered tree data.
-template<typename T>
-class Tree
+// ut::BaseTree is a base template class for unordered trees. You can expand
+// it's functionality using curiously recurring template pattern in derived
+// class (see ut::Tree<> template class for example), also you can specialize
+// ut::Tree for your data typw (see how it's derived from ut::BaseTree in
+// default template version).
+template<typename T, typename TreeContainer>
+class BaseTree
 {
+protected:
 	// Definitions for node and data types.
-	typedef Tree<T> NodeType;
+	typedef TreeContainer NodeType;
 	typedef T DataType;
 
-	// ut::Tree<>::IteratorTemplate is a template class for all tree iterators.
-	// ut::Tree<>::Iterator is implemented as IteratorTemplate<NodeType> and
-	// ut::Tree<>::ConstIterator is derived from IteratorTemplate<const NodeType>
-	// to implement conversion from non-const (ut::Tree<>::ConstIterator)
+	// ut::BaseTree<>::IteratorTemplate is a template class for all tree iterators.
+	// ut::BaseTree<>::Iterator is implemented as IteratorTemplate<NodeType> and
+	// ut::BaseTree<>::ConstIterator is derived from IteratorTemplate<const NodeType>
+	// to implement conversion from non-const (ut::BaseTree<>::ConstIterator)
 	// iterator type.
 	template<typename IteratorNodeType>
 	class IteratorTemplate
 	{
-		friend class Tree<T>;
+		friend BaseTree<DataType, NodeType>;
+		friend NodeType;
 	public:
 		// Default constructor
 		IteratorTemplate() : node(nullptr)
@@ -151,13 +157,13 @@ class Tree
 	};
 
 public:
-	// ut::Tree<>::Iterator is a bidirectional iterator
+	// ut::BaseTree<>::Iterator is a bidirectional iterator
 	// to iterate over the whole tree container. This class is capable only to read
 	// the content of the container. Use ut::Array<>::Iterator if you want to
 	// write (modify) the container data.
 	typedef IteratorTemplate<NodeType> Iterator;
 
-	// ut::Tree<>::ConstIterator is a bidirectional constant iterator
+	// ut::BaseTree<>::ConstIterator is a bidirectional constant iterator
 	// to iterate over the whole tree container. This class is capable only to read
 	// the content of the container. Use ut::Array<>::Iterator if you want to
 	// write (modify) the container data.
@@ -211,17 +217,55 @@ public:
 	};
 
 	// Constructor, @data has default value
-	Tree() : parent(nullptr), id(0)
+	BaseTree() : parent(nullptr), id(0)
 	{ }
 
 	// Constructor, @data is copied from parameter
-	Tree(const DataType& data_copy) : data(data_copy), parent(nullptr), id(0)
+	BaseTree(const DataType& data_copy) : data(data_copy), parent(nullptr), id(0)
 	{ }
 
 	// Constructor, @data is moved from parameter
 #if CPP_STANDARD >= 2011
-	Tree(DataType && data_copy) : data(Move(data_copy)), parent(nullptr), id(0)
+	BaseTree(DataType && data_copy) : data(Move(data_copy)), parent(nullptr), id(0)
 	{ }
+#endif
+
+	// Copy constructor
+	BaseTree(const BaseTree& copy) : data(copy.data)
+	                               , parent(copy.parent)
+	                               , id(copy.id)
+	                               , child_nodes(copy.child_nodes)
+	{ }
+
+	// Move constructor
+#if CPP_STANDARD >= 2011
+	BaseTree(BaseTree && rval) : data(Move(rval.data))
+	                           , parent(rval.parent)
+	                           , id(rval.id)
+	                           , child_nodes(Move(rval.child_nodes))
+	{ }
+#endif
+
+	// Assignment operator
+	BaseTree& operator = (const BaseTree& copy)
+	{
+		data = copy.data;
+		parent = copy.parent;
+		id = copy.id;
+		child_nodes = copy.child_nodes;
+		return *this;
+	}
+
+	// Move operator
+#if CPP_STANDARD >= 2011
+	BaseTree& operator = (BaseTree && rval)
+	{
+		data = Move(rval.data);
+		parent = rval.parent;
+		id = rval.id;
+		child_nodes = Move(rval.child_nodes);
+		return *this;
+	}
 #endif
 
 	// Returns desired element from child array
@@ -240,14 +284,14 @@ public:
 	NodeType& operator () (const size_t id)
 	{
 		Result<NodeType*, size_t> result = Iterate(id);
-		return result ? *result.GetResult() : *this;
+		return result ? *result.GetResult() : *static_cast<NodeType*>(this);
 	}
 
 	// Returns desired element from the whole tree
 	const NodeType& operator () (const size_t id) const
 	{
 		Result<const NodeType*, size_t> result = Iterate(id);
-		return result ? *result.GetResult() : *this;
+		return result ? *result.GetResult() : *static_cast<NodeType*>(this);
 	}
 
 	// Adds new child node to the end of the array
@@ -399,6 +443,20 @@ public:
 		return parent;
 	}
 
+	// Returns the last one-level child node
+	//    @return - constant reference to the last child node
+	const NodeType& GetLastChild() const
+	{
+		return child_nodes.GetLast();
+	}
+
+	// Returns the last one-level child node
+	//    @return - constant reference to the last child node
+	NodeType& GetLastChild()
+	{
+		return child_nodes.GetLast();
+	}
+
 	// Returns the number of child nodes
 	inline size_t GetNumChildren() const
 	{
@@ -443,7 +501,7 @@ public:
 	// Returns constant read / write iterator that points to the first element
 	ConstIterator Begin(iterator::Position position = iterator::first) const
 	{
-		return position == iterator::first ? ConstIterator(this) : ConstIterator(GetLastNode());
+		return position == iterator::first ? ConstIterator(static_cast<NodeType*>(this)) : ConstIterator(GetLastNode());
 	}
 
 	// Returns constant read / write iterator that points to the last element
@@ -455,7 +513,7 @@ public:
 	// Returns constant read / write iterator that points to the first element
 	Iterator Begin(iterator::Position position = iterator::first)
 	{
-		return position == iterator::first ? Iterator(this) : Iterator(GetLastNode());
+		return position == iterator::first ? Iterator(static_cast<NodeType*>(this)) : Iterator(GetLastNode());
 	}
 
 	// Returns constant read / write iterator that points to the last element
@@ -467,7 +525,7 @@ public:
 	// value of the node
 	DataType data;
 
-private:
+protected:
 	// Inserts elements at the specified location in the container.
 	//    @param copy - data to be copied
 	//    @param position - iterator before which the content will be inserted
@@ -487,7 +545,7 @@ private:
 		}
 
 		// set the parent of the new node
-		child_nodes[position].parent = this;
+		child_nodes[position].parent = static_cast<NodeType*>(this);
 
 		// reset all child nodes' id
 		ResetChildsId();
@@ -514,7 +572,7 @@ private:
 
 		// set parent and id of the new node
 		size_t child_id = child_nodes.GetNum() - 1;
-		child_nodes[child_id].parent = this;
+		child_nodes[child_id].parent = static_cast<NodeType*>(this);
 		child_nodes[child_id].id = child_id;
 
 		// success
@@ -526,7 +584,7 @@ private:
 	//    @return - pointer of the node, or new position if node was not found
 	Result<NodeType*, size_t> Iterate(size_t position) const
 	{
-		NodeType* node = this;
+		NodeType* node = static_cast<NodeType*>(this);
 		size_t child_id = 0;
 		while (position)
 		{
@@ -551,7 +609,7 @@ private:
 		}
 		return node;
 	}
-	
+
 	// Returns the next sibling node in the parent tree
 	//    @return - pointer to the sibling node or error if failed
 	Result<NodeType*, Error> GetNextSibling() const
@@ -587,24 +645,24 @@ private:
 	//    @return - constant pointer to the last node
 	const NodeType* GetLastNode() const
 	{
-		return child_nodes.GetNum() == 0 ? this : child_nodes.GetLast().GetLastNode();
+		return child_nodes.GetNum() == 0 ? static_cast<NodeType*>(this) : child_nodes.GetLast().GetLastNode();
 	}
 
 	// Returns the very last node of the tree
 	//    @return - non-const pointer to the last node
 	NodeType* GetLastNode()
 	{
-		return child_nodes.GetNum() == 0 ? this : child_nodes.GetLast().GetLastNode();
+		return child_nodes.GetNum() == 0 ? static_cast<NodeType*>(this) : child_nodes.GetLast().GetLastNode();
 	}
 
-	// Re-assigns id and a parent of the every child node after @start id
+	// Re-assigns id and a parent of the every child node
 	inline void ResetChildsId()
 	{
 		const size_t size = child_nodes.GetNum();
 		for (size_t i = 0; i < size; i++)
 		{
 			child_nodes[i].id = i;
-			child_nodes[i].parent = this;
+			child_nodes[i].parent = static_cast<NodeType*>(this);
 			child_nodes[i].ResetChildsId();
 		}
 	}
@@ -631,6 +689,28 @@ private:
 
 	// array of the child nodes
 	Array<NodeType> child_nodes;
+};
+
+//----------------------------------------------------------------------------//
+// ut::Tree template class is a container for an unordered tree data.
+template<typename T>
+class Tree : public BaseTree<T, Tree<T> >
+{
+	typedef BaseTree<T, Tree<T> > Base;
+public:
+	// Constructor, @data has default value
+	Tree() : Base()
+	{ }
+
+	// Constructor, @data is copied from parameter
+	Tree(const typename Base::DataType& data_copy) : Base(data_copy)
+	{ }
+
+	// Constructor, @data is moved from parameter
+#if CPP_STANDARD >= 2011
+	Tree(typename Base::DataType && data_rval_ref) : Base(data_rval_ref)
+	{ }
+#endif
 };
 
 //----------------------------------------------------------------------------//

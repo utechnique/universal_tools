@@ -892,6 +892,7 @@ Optional<Error> XmlDoc::WriteGeneralNode(OutputStream& stream,
 	stream << tabulation << "<" << node_name;
 
 	// write attributes
+	bool has_non_attribute_children = false;
 	if (has_children)
 	{
 		for (size_t i = 0; i < node.GetNumChildren(); i++)
@@ -899,6 +900,7 @@ Optional<Error> XmlDoc::WriteGeneralNode(OutputStream& stream,
 			// skip non-attribute elements
 			if (!node[i].data.is_attribute)
 			{
+				has_non_attribute_children = true;
 				continue;
 			}
 
@@ -915,6 +917,11 @@ Optional<Error> XmlDoc::WriteGeneralNode(OutputStream& stream,
 	}
 
 	// end opening tag
+	bool is_empty = !has_value && !has_non_attribute_children;
+	if (is_empty)
+	{
+		stream << " /";
+	}
 	stream << ">";
 
 	// write value
@@ -961,7 +968,13 @@ Optional<Error> XmlDoc::WriteGeneralNode(OutputStream& stream,
 	}
 
 	// close tag
-	stream << "</" << node_name << ">" << CarriageReturn<char>();
+	if (!is_empty)
+	{
+		stream << "</" << node_name << ">";
+	}
+	
+	// new line
+	stream << CarriageReturn<char>();
 
 	// success
 	return Optional<Error>();

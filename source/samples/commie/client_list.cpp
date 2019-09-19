@@ -6,11 +6,11 @@
 START_NAMESPACE(commie)
 //----------------------------------------------------------------------------//
 // Serializes data.
-void ClientInfo::Serialize(ut::MetaStream& stream)
+void ClientInfo::Reflect(ut::meta::Snapshot& snapshot)
 {
-	stream << name;
-	stream << address.ip;
-	stream << address.port;
+	snapshot << name;
+	snapshot << address.ip;
+	snapshot << address.port;
 }
 
 //----------------------------------------------------------------------------//

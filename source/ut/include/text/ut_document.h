@@ -73,7 +73,7 @@ public:
 	// the child nodes and values (JSON for example), to save this type
 	// of documents we need to wrap the value into another child node, and
 	// this node must have the following name - ut::text::Document::skValueNodeName
-	static const String skValueNodeName;
+	static const char* skValueNodeName;
 
 protected:
 	// Skips characters until predicate evaluates to true

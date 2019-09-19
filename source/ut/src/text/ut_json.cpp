@@ -621,7 +621,7 @@ Optional<Error> JsonDoc::WriteNode(OutputStream& stream,
 	stream << tabulation;
 	if (write_name)
 	{
-		stream << "\"" << node.data.name << "\" : ";
+		stream << "\"" << node.data.name << "\": ";
 	}
 
 	if (has_children)
@@ -655,9 +655,20 @@ Optional<Error> JsonDoc::WriteNode(OutputStream& stream,
 		// odd behaviour for json - when the node has values and children simultaneously
 		if (has_value)
 		{
+			// create a separate node for the value
 			Tree<text::Node> value_node;
-			value_node.data.name = Document::skValueNodeName;
 			value_node.data.value = node.data.value;
+			value_node.data.value_type = node.data.value_type;
+
+			// set value node name
+			if (node.data.encapsulation_name)
+			{
+				value_node.data.name = node.data.encapsulation_name.Get();
+			}
+			else
+			{
+				value_node.data.name = Document::skValueNodeName;
+			}
 
 			// write value node
 			Optional<Error> write_value_error = WriteNode(stream,

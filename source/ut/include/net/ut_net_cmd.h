@@ -4,9 +4,8 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
-#include "meta/ut_meta_stream.h"
 #include "meta/ut_polymorphic.h"
-#include "meta/ut_serializable.h"
+#include "meta/ut_meta_snapshot.h"
 #include "events/ut_signal.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
@@ -27,12 +26,12 @@ struct CmdSignalCombiner
 // Use ut::net::Host::CreateConnection() to create connection with custom
 // sequence of actions before sending commands. Also you need to register every
 // command type manually or using UT_REGISTER_TYPE() macro.
-class Command : public Serializable, public Polymorphic
+class Command : public meta::Reflective, public Polymorphic
 {
 public:
 	// Serializes members of the command.
 	//    @param stream - meta stream to serialize members in.
-	virtual void Serialize(MetaStream& stream) = 0;
+	virtual void Reflect(class meta::Snapshot& snapshot) = 0;
 
 	// Identify() method must be implemented for the polymorphic types.
 	virtual const DynamicType& Identify() const = 0;

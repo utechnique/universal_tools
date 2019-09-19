@@ -23,67 +23,74 @@ UT_REGISTER_TYPE(ReflectiveBaseAlt, ReflectiveAltB, "reflective_B")
 //----------------------------------------------------------------------------//
 SerializationTestUnit::SerializationTestUnit() : TestUnit("SERIALIZATION")
 {
-	tasks.Add(new SerializationTask);
-	tasks.Add(new TextSerializationTask);
+	tasks.Add(new SerializationVariantsTask);
 }
 
 //----------------------------------------------------------------------------//
-SerializationTask::SerializationTask() : TestTask("Binary serialization")
-{ }
-
-void SerializationTask::Execute()
+SerializationVariantsTask::SerializationVariantsTask() : TestTask("Serialization variants")
 {
-	// create and change the object
-	SerializationTest object0(false);
-	ChangeSerializedObject(object0);
+	ut::meta::Info serialization_info = ut::meta::Info::CreateComplete();
 
-	// save changed object to the stream
-	ut::BinaryStream stream;
-	ut::Optional<ut::Error> save_error = object0.Save(stream);
-	if (save_error)
-	{
-		report += "Failed to save binary object:\n";
-		report += save_error.Get().GetDesc();
-		failed_test_counter.Increment();
-		return;
-	}
+	// normal/full
+	info_variants.Add(PairType("full", serialization_info));
 
-	// move stream cursor back
-	stream.MoveCursor(0);
+	// big endian
+	serialization_info.SetEndianness(ut::endian::big);
+	info_variants.Add(PairType("big endian", serialization_info));
 
-	// load another object from the stream, it must be
-	// the same as the original one
-	SerializationTest object1(true);
-	ut::Optional<ut::Error> load_error = object1.Load(stream);
-	if (load_error)
-	{
-		report += "Failed to load binary object:\n";
-		report += load_error.Get().GetDesc();
-		failed_test_counter.Increment();
-		return;
-	}
+	// no type information
+	serialization_info.EnableTypeInformation(false);
+	info_variants.Add(PairType("no type information", serialization_info));
 
-	// validate object immutability after save/load action
-	if (CheckSerializedObject(object1))
+	// no linkage information
+	serialization_info.EnableLinkageInformation(false);
+	info_variants.Add(PairType("no linkage information", serialization_info));
+
+	// no name information
+	serialization_info.EnableBinaryNames(false);
+	info_variants.Add(PairType("no name information", serialization_info));
+
+	// no value encapsulation
+	serialization_info.EnableValueEncapsulation(false);
+	info_variants.Add(PairType("no encapsulation", serialization_info));
+}
+
+void SerializationVariantsTask::Execute()
+{
+	report += ut::String("Testing serialization with different header information.") + ut::CRet();
+	for (size_t i = 0; i < info_variants.GetNum(); i++)
 	{
-		report += "Success: Objects match after serialization/deserialization. ";
-	}
-	else
-	{
-		report += "FAIL: Objects don't match after serialization/deserialization. ";
-		failed_test_counter.Increment();
+		report += ut::String("Variant: \"") + info_variants[i].first + "\":" + ut::CRet();
+		bool result = TestVariant(info_variants[i].second, info_variants[i].first);
+		report += result ? "Success" : "Failed";
+
+		if (i != info_variants.GetNum() - 1)
+		{
+			report += ut::CRet() + ut::CRet();
+		}
 	}
 }
 
-//----------------------------------------------------------------------------//
-TextSerializationTask::TextSerializationTask() : TestTask("Text serialization")
-{ }
-
-void TextSerializationTask::Execute()
+void SerializationVariantsTask::AddReportEntry(const ut::String& entry)
 {
+	report += entry + ut::CRet();
+}
+
+bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
+                                            const ut::String& name)
+{
+	// make a copy of provided info structure to override slot for the log
+	// signal, so that we could intercept serialization event's description.
+	ut::meta::Info info(in_info);
+	ut::MemberInvoker<void (SerializationVariantsTask::*)(const ut::String&)>
+		log_entry_slot(&SerializationVariantsTask::AddReportEntry, this);
+	info.ConnectLogSignalSlot(log_entry_slot);
+
 	// create and change the object
-	SerializationTest object0(false);
-	ChangeSerializedObject(object0);
+	bool is_mutable = info.HasTypeInformation() && info.HasBinaryNames();
+	SerializationTest test_obj(false);
+	ChangeSerializedObject(test_obj);
+	ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(test_obj, "test_object", info);
 
 	// you can save serialized object to .xml file here
 	bool save_to_file = false;
@@ -92,117 +99,144 @@ void TextSerializationTask::Execute()
 		ut::File xml_file;
 		ut::File json_file;
 		ut::File binary_file;
-		const ut::String xml_filename = "serialization.xml";
-		const ut::String json_filename = "serialization.json";
-		const ut::String binary_filename = "serialization.bin";
+		const ut::String xml_filename = name + ".xml";
+		const ut::String json_filename = name + ".json";
+		const ut::String binary_filename = name + ".bin";
 
-		report += "Saving xml file: ";
 		ut::Optional<ut::Error> open_xml_error = xml_file.Open(xml_filename, ut::file_access_write);
 		if (open_xml_error)
 		{
-			report += "failed. ";
+			report += "Saving xml file: failed. ";
 			report += open_xml_error.Get().GetDesc();
 			failed_test_counter.Increment();
 		}
 		else
 		{
 			ut::XmlDoc xml_doc;
-			xml_file << (xml_doc << object0);
-			report += "success. ";
+			xml_file << (xml_doc << snapshot);
 		}
 		xml_file.Close();
 
-		report += "Saving json file: ";
 		ut::Optional<ut::Error> open_json_error = json_file.Open(json_filename, ut::file_access_write);
 		if (open_json_error)
 		{
-			report += "failed. ";
+			report += "Saving json file: failed. ";
 			report += open_json_error.Get().GetDesc();
 			failed_test_counter.Increment();
 		}
 		else
 		{
 			ut::JsonDoc json_doc;
-			json_file << (json_doc << object0);
-			report += "success. ";
+			json_file << (json_doc << snapshot);
 		}
 		json_file.Close();
 
-		report += "Saving binary file: ";
 		ut::Optional<ut::Error> open_binary_error = binary_file.Open(binary_filename, ut::file_access_write);
 		if (open_binary_error)
 		{
-			report += "failed. ";
+			report += "Saving binary file: failed. ";
 			report += open_binary_error.Get().GetDesc();
 			failed_test_counter.Increment();
 		}
 		else
 		{
-			object0.Save(binary_file);
-			report += "success. ";
+			snapshot.Save(binary_file);
 		}
 		binary_file.Close();
 	}
 
+	// binary serialization
+	ut::BinaryStream binary_stream;
+	ut::Optional<ut::Error> save_error = snapshot.Save(binary_stream);
+	if (save_error)
+	{
+		report += ut::String("Failed to save binary object.") + ut::CRet();
+		report += save_error.Get().GetDesc();
+		failed_test_counter.Increment();
+		return false;
+	}
+	binary_stream.MoveCursor(0); // move stream cursor back
+
 	// xml serialization
 	ut::BinaryStream xml_stream;
 	ut::XmlDoc save_xml;
-	xml_stream << (save_xml << object0);
+	xml_stream << (save_xml << snapshot);
 	xml_stream.MoveCursor(0);
 
 	// json serialization
 	ut::BinaryStream json_stream;
 	ut::JsonDoc save_json;
-	json_stream << (save_json << object0);
+	json_stream << (save_json << snapshot);
 	json_stream.MoveCursor(0);
 
 	// load another object from the stream, it must be
 	// the same as the original one
-	SerializationTest xml_object(true);
+	SerializationTest binary_object(is_mutable);
+	ut::meta::Snapshot binary_snapshot = ut::meta::Snapshot::Capture(binary_object, "test_object", info);
+	ut::Optional<ut::Error> load_error = binary_snapshot.Load(binary_stream);
+	if (load_error)
+	{
+		report += ut::String("Failed to load binary object:") + ut::CRet();
+		report += load_error.Get().GetDesc();
+		failed_test_counter.Increment();
+		return false;
+	}
+
+	SerializationTest xml_object(is_mutable);
+	ut::meta::Snapshot xml_snapshot = ut::meta::Snapshot::Capture(xml_object, "test_object", info);
 	ut::XmlDoc load_xml;
-	xml_stream >> load_xml >> xml_object;
-	SerializationTest json_object(true);
+	xml_stream >> load_xml >> xml_snapshot;
+
+	SerializationTest json_object(is_mutable);
 	ut::JsonDoc load_json;
-	json_stream >> load_json >> json_object;
+	ut::meta::Snapshot json_snapshot = ut::meta::Snapshot::Capture(json_object, "test_object", info);
+	json_stream >> load_json >> json_snapshot;
+
+	// validate binary object immutability after save/load action
+	bool check_ok = true;
+	if (!CheckSerializedObject(binary_object, is_mutable))
+	{
+		report += ut::String("FAIL: Objects don't match after binary serialization/deserialization.") + ut::CRet();
+		failed_test_counter.Increment();
+		check_ok = false;
+	}
 
 	// validate xml object immutability after save/load action
-	if (CheckSerializedObject(xml_object))
+	if (!CheckSerializedObject(xml_object, is_mutable))
 	{
-		report += "XML file was read successfully: objects match after serialization/deserialization. ";
-	}
-	else
-	{
-		report += "FAIL: Objects don't match after XML serialization/deserialization. ";
+		report += ut::String("FAIL: Objects don't match after XML serialization/deserialization.") + ut::CRet();
 		failed_test_counter.Increment();
+		check_ok = false;
 	}
 
 	// validate json object immutability after save/load action
-	if (CheckSerializedObject(json_object))
+	if (!CheckSerializedObject(json_object, is_mutable))
 	{
-		report += "JSON file was read successfully: objects match after serialization/deserialization. ";
-	}
-	else
-	{
-		report += "JSON: Objects don't match after XML serialization/deserialization. ";
+		report += ut::String("JSON: Objects don't match after XML serialization/deserialization. ") + ut::CRet();
 		failed_test_counter.Increment();
+		check_ok = false;
 	}
+
+	// success
+	return check_ok;
 }
 
 //----------------------------------------------------------------------------//
 SerializationSubClass::SerializationSubClass() : u16val(0), str("void")
 { }
 
-void SerializationSubClass::Serialize(ut::MetaStream& stream)
+void SerializationSubClass::Reflect(ut::meta::Snapshot& snapshot)
 {
-	stream << u16val;
-	stream << iarr;
-	stream << str;
+	snapshot << u16val;
+	snapshot << iarr;
+	snapshot << str;
 }
 
 //----------------------------------------------------------------------------//
 SerializationTest::SerializationTest(bool in_alternate) : alternate(in_alternate)
                                                         , ival(0)
                                                         , uval(0)
+                                                        , bool_val(false)
                                                         , fval(0.0f)
                                                         , str("void")
 {
@@ -223,30 +257,32 @@ SerializationTest::SerializationTest(bool in_alternate) : alternate(in_alternate
 	reflective_param = new ReflectiveA(-2, 2);
 }
 
-void SerializationTest::Serialize(ut::MetaStream& stream)
+void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 {
-	stream << ival;
-	stream << uval;
-	stream << str;
-	stream << arr;
-	stream << a;
-	stream << strarr;
-	stream << dyn_type_ptr;
-	stream << strarrarr;
-	stream << u16ptrarr;
+	snapshot << ival;
+	snapshot << uval;
+	snapshot << bool_val;
+	snapshot << str;
+	snapshot << arr;
+	snapshot << a;
+	snapshot << strarr;
+	snapshot << dyn_type_ptr;
+	snapshot << strarrarr;
+	snapshot << u16ptrarr;
 
 	// reflective dynamic parameter can be
 	// changed to the alternate one here
 	if (alternate)
 	{
-		stream << reflective_param_alt;
+		snapshot << reflective_param_alt;
 	}
 	else
 	{
-		stream << reflective_param;
+		snapshot << reflective_param;
 	}
 
-	stream << fval;
+	snapshot << void_param;
+	snapshot << fval;
 }
 
 //----------------------------------------------------------------------------//
@@ -258,9 +294,9 @@ const ut::DynamicType& TestBase::Identify() const
 	return ut::Identify(this);
 }
 
-void TestBase::Serialize(ut::MetaStream& stream)
+void TestBase::Reflect(ut::meta::Snapshot& snapshot)
 {
-	stream << fval;
+	snapshot << fval;
 }
 
 //----------------------------------------------------------------------------//
@@ -272,9 +308,9 @@ const ut::DynamicType& ReflectiveBase::Identify() const
 	return ut::Identify(this);
 }
 
-void ReflectiveBase::Register(ut::MetaRegistry& registry)
+void ReflectiveBase::Reflect(ut::meta::Snapshot& snapshot)
 {
-	registry.Add(base_str, "base_name");
+	snapshot.Add(base_str, "base_name");
 }
 
 //----------------------------------------------------------------------------//
@@ -286,9 +322,9 @@ const ut::DynamicType& ReflectiveBaseAlt::Identify() const
 	return ut::Identify(this);
 }
 
-void ReflectiveBaseAlt::Register(ut::MetaRegistry& registry)
+void ReflectiveBaseAlt::Reflect(ut::meta::Snapshot& snapshot)
 {
-	registry.Add(base_str, "base_name");
+	snapshot.Add(base_str, "base_name");
 }
 
 //----------------------------------------------------------------------------//
@@ -300,10 +336,10 @@ const ut::DynamicType& PolymorphicA::Identify() const
 	return ut::Identify(this);
 }
 
-void PolymorphicA::Serialize(ut::MetaStream& stream)
+void PolymorphicA::Reflect(ut::meta::Snapshot& snapshot)
 {
-	TestBase::Serialize(stream);
-	stream << ival << uval;
+	TestBase::Reflect(snapshot);
+	snapshot << ival << uval;
 }
 
 //----------------------------------------------------------------------------//
@@ -315,10 +351,10 @@ const ut::DynamicType& PolymorphicB::Identify() const
 	return ut::Identify(this);
 }
 
-void PolymorphicB::Serialize(ut::MetaStream& stream)
+void PolymorphicB::Reflect(ut::meta::Snapshot& snapshot)
 {
-	TestBase::Serialize(stream);
-	stream << str << uval;
+	TestBase::Reflect(snapshot);
+	snapshot << str << uval;
 }
 
 //----------------------------------------------------------------------------//
@@ -330,17 +366,18 @@ const ut::DynamicType& ReflectiveA::Identify() const
 	return ut::Identify(this);
 }
 
-void ReflectiveA::Register(ut::MetaRegistry& registry)
+void ReflectiveA::Reflect(ut::meta::Snapshot& snapshot)
 {
-	ReflectiveBase::Register(registry);
-	registry.Add(ival, "signed_int_parameter");
-	registry.Add(uval, "unsigned_int_parameter");
+	ReflectiveBase::Reflect(snapshot);
+	snapshot.Add(ival, "signed_int_parameter");
+	snapshot.Add(uval, "unsigned_int_parameter");
 }
 
 //----------------------------------------------------------------------------//
 ReflectiveB::ReflectiveB(const char* in_str,
                          ut::uint16 in_uval,
                          ut::int32 in_ival) : alt_str("alternative")
+                                            , ui16(13)
                                             , bstr(in_str)
                                             , uval(in_uval)
                                             , i_ptr(new ut::int32(in_ival))
@@ -351,18 +388,21 @@ const ut::DynamicType& ReflectiveB::Identify() const
 	return ut::Identify(this);
 }
 
-void ReflectiveB::Register(ut::MetaRegistry& registry)
+void ReflectiveB::Reflect(ut::meta::Snapshot& snapshot)
 {
-	ReflectiveBase::Register(registry);
+	ReflectiveBase::Reflect(snapshot);
 
 	// non-existent parameter
-	registry.Add(alt_str, "must_be_missing");
+	snapshot.Add(alt_str, "must_be_missing");
+
+	// this type won't match in alternative version
+	snapshot.Add(ui16, "type_mismatch");
 
 	// straight order
-	registry.Add(bstr, "b_string_parameter");
-	registry.Add(uval, "unsigned_int_parameter");
-	registry.Add(i_ptr, "int_ptr_parameter");
-	registry.Add(b_ptr_arr, "byte_ptr_array_parameter");
+	snapshot.Add(bstr, "b_string_parameter");
+	snapshot.Add(uval, "unsigned_int_parameter");
+	snapshot.Add(i_ptr, "int_ptr_parameter");
+	snapshot.Add(b_ptr_arr, "byte_ptr_array_parameter");
 }
 
 //----------------------------------------------------------------------------//
@@ -370,6 +410,7 @@ void ReflectiveB::Register(ut::MetaRegistry& registry)
 ReflectiveAltB::ReflectiveAltB(const char* in_str,
                                ut::uint16 in_uval,
                                ut::int32 in_ival) : bstr(in_str)
+                                                  , ui32(13)
                                                   , uval(in_uval)
                                                   , i_ptr(new ut::int32(in_ival))
 { }
@@ -379,18 +420,21 @@ const ut::DynamicType& ReflectiveAltB::Identify() const
 	return ut::Identify(this);
 }
 
-void ReflectiveAltB::Register(ut::MetaRegistry& registry)
+void ReflectiveAltB::Reflect(ut::meta::Snapshot& snapshot)
 {
-	ReflectiveBaseAlt::Register(registry);
+	ReflectiveBaseAlt::Reflect(snapshot);
 
 	// non-existent parameter
-	registry.Add(ival, "fictive_int_parameter");
+	snapshot.Add(ival, "fictive_int_parameter");
+
+	// this type won't match in alternative version
+	snapshot.Add(ui32, "type_mismatch");
 
 	// change order
-	registry.Add(uval, "unsigned_int_parameter");
-	registry.Add(bstr, "b_string_parameter");
-	registry.Add(b_ptr_arr, "byte_ptr_array_parameter");
-	registry.Add(i_ptr, "int_ptr_parameter");
+	snapshot.Add(uval, "unsigned_int_parameter");
+	snapshot.Add(bstr, "b_string_parameter");
+	snapshot.Add(b_ptr_arr, "byte_ptr_array_parameter");
+	snapshot.Add(i_ptr, "int_ptr_parameter");
 }
 
 //----------------------------------------------------------------------------//
@@ -400,6 +444,7 @@ void ChangeSerializedObject(SerializationTest& object)
 {
 	object.ival = -0x01234567;
 	object.uval = 0x0123456789ABCDEF;
+	object.bool_val = true;
 	object.fval = 123.321f;
 	object.str = "test_string";
 
@@ -448,10 +493,11 @@ void ChangeSerializedObject(SerializationTest& object)
 
 // Checks if serialized object was loaded with the correct values,
 // note that ChangeSerializedObject() must be called before saving an object
-bool CheckSerializedObject(const SerializationTest& object)
+bool CheckSerializedObject(const SerializationTest& object, bool alternate)
 {
 	if (object.ival != -0x01234567) return false;
 	if (object.uval != 0x0123456789ABCDEF) return false;
+	if (object.bool_val != true) return false;
 	if (object.fval > 123.321f + 0.0001f || object.fval < 123.321f - 0.0001f) return false;
 	if (object.str != "test_string") return false;
 
@@ -500,19 +546,29 @@ bool CheckSerializedObject(const SerializationTest& object)
 	if (dyn_ptr->fval < 1001.504f - 0.0001f || dyn_ptr->fval > 1001.504f + 0.0001f) return false;
 
 	// check reflective parameter
-	if (object.reflective_param_alt.Get() == nullptr) return false;
-	const ut::DynamicType& refl_type = object.reflective_param_alt->Identify();
-	const ut::String refl_type_name(refl_type.GetName());
-	if (refl_type_name != "reflective_B") return false;
-	ReflectiveAltB* refl_ptr = (ReflectiveAltB*)object.reflective_param_alt.Get();
-	if (refl_ptr->base_str != "changed") return false;
-	if (refl_ptr->uval != 42) return false;
-	if (refl_ptr->bstr != "reflective_b_str") return false;
-	if (*(refl_ptr->i_ptr.Get()) != 10) return false;
-	if (refl_ptr->b_ptr_arr.GetNum() != 3) return false;
-	if (*(refl_ptr->b_ptr_arr[0].Get()) != 128) return false;
-	if (*(refl_ptr->b_ptr_arr[1].Get()) != 64) return false;
-	if (*(refl_ptr->b_ptr_arr[2].Get()) != 255) return false;
+	if (alternate)
+	{
+		if (object.reflective_param_alt.Get() == nullptr) return false;
+		const ut::DynamicType& refl_type = object.reflective_param_alt->Identify();
+		const ut::String refl_type_name(refl_type.GetName());
+		if (refl_type_name != "reflective_B") return false;
+		ReflectiveAltB* refl_ptr = (ReflectiveAltB*)object.reflective_param_alt.Get();
+		if (refl_ptr->base_str != "changed") return false;
+		if (refl_ptr->uval != 42) return false;
+		if (refl_ptr->bstr != "reflective_b_str") return false;
+		if (*(refl_ptr->i_ptr.Get()) != 10) return false;
+		if (refl_ptr->b_ptr_arr.GetNum() != 3) return false;
+		if (*(refl_ptr->b_ptr_arr[0].Get()) != 128) return false;
+		if (*(refl_ptr->b_ptr_arr[1].Get()) != 64) return false;
+		if (*(refl_ptr->b_ptr_arr[2].Get()) != 255) return false;
+	}
+	else
+	{
+		if (object.reflective_param.Get() == nullptr) return false;
+		const ut::DynamicType& refl_type = object.reflective_param->Identify();
+		const ut::String refl_type_name(refl_type.GetName());
+		if (refl_type_name != "reflective_B") return false;
+	}
 
 	return true;
 }

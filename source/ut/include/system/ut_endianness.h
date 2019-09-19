@@ -28,27 +28,30 @@ order GetNative();
 //    @param address - destination address of the variable to be read to.
 //    @return - ut::Error if failed.
 template <typename T, order endianness>
-Optional<Error> Read(InputStream& stream, T* address)
+Optional<Error> Read(InputStream& stream, T* address, size_t count)
 {
 	// check if order is straight, note that this action is performed
 	// only once during runtime for performance reason
-	static bool endianness_match = endianness == GetNative();
+	static const bool endianness_match = endianness == GetNative();
 
 	// check if endianness is the same in stream buffer and memory, and if so - just read
 	// bytes in forward order (making only one call to stream::Read function)
 	if (endianness_match)
 	{
-		return stream.Read(address, sizeof(T), 1);
+		return stream.Read(address, sizeof(T), count);
 	}
 	else // otherwise bytes are read in reverse order one by one
 	{
-		byte* start = reinterpret_cast<byte*>(address);
-		for (byte i = sizeof(T); i--; )
+		for (size_t i = 0; i < count; i++)
 		{
-			Optional<Error> read_error = stream.Read(start + i, 1, 1);
-			if (read_error)
+			byte* start = reinterpret_cast<byte*>(address);
+			for (byte b = sizeof(T); b--; )
 			{
-				return read_error;
+				Optional<Error> read_error = stream.Read(start + b, 1, 1);
+				if (read_error)
+				{
+					return read_error;
+				}
 			}
 		}
 	}
@@ -65,7 +68,7 @@ Optional<Error> Read(InputStream& stream, T* address)
 //    @param address - source address of the variable to be written.
 //    @return - ut::Error if failed.
 template <typename T, order endianness>
-Optional<Error> Write(OutputStream& stream, const T* address)
+Optional<Error> Write(OutputStream& stream, const T* address, size_t count)
 {
 	// check if order is straight, note that this action is performed
 	// only once during runtime for performance reason
@@ -75,17 +78,20 @@ Optional<Error> Write(OutputStream& stream, const T* address)
 	// bytes in forward order (making only one call to stream::Write function)
 	if (endianness_match)
 	{
-		return stream.Write(address, sizeof(T), 1);
+		return stream.Write(address, sizeof(T), count);
 	}
 	else // otherwise bytes are written in reverse order one by one
 	{
-		const byte* start = reinterpret_cast<const byte*>(address);
-		for (byte i = sizeof(T); i--; )
+		for (size_t i = 0; i < count; i++)
 		{
-			Optional<Error> write_error = stream.Write(start + i, 1, 1);
-			if (write_error)
+			const byte* start = reinterpret_cast<const byte*>(address);
+			for (byte b = sizeof(T); b--; )
 			{
-				return write_error;
+				Optional<Error> write_error = stream.Write(start + b, 1, 1);
+				if (write_error)
+				{
+					return write_error;
+				}
 			}
 		}
 	}

@@ -3,45 +3,27 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "meta/ut_meta_registry.h"
+#include "common/ut_common.h"
+#include "text/ut_string.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
+START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
 // ut::Reflective is an abstract class to provide reflection of it's contents.
-// Classes inherited from ut::Reflective must implement Register(MetaRegistry&)
-// method to serialize(register) member parameters. This class allows
-// non-sequential (random) order of parameters for loading. Also invalid
-// parameters will be skipped during the loading instead of returning an error.
-class Reflective : public Archive
+// Classes inherited from ut::Reflective must implement Reflect(Snapshot&)
+// method to serialize(register) member parameters.
+class Reflective
 {
 public:
-	// Registers named parameters to the registry.
-	//    @param registry - register parameters here,
-	//                      just call registry.Add(parameter, "desired_name");
-	virtual void Register(MetaRegistry& registry) = 0;
+	// Registers parameters to the reflection tree.
+	virtual void Reflect(class Snapshot& snapshot) = 0;
 
-	// Writes serialized parameters to the stream.
-	//    @param stream - data will be written to this stream
-	//    @return - ut::Error if encountered an error
-	Optional<Error> Save(OutputStream& stream);
-
-	// Loads serialized parameters from the stream.
-	//    @param stream - data will be loaded from this stream
-	//    @return - ut::Error if encountered an error
-	Optional<Error> Load(InputStream& stream);
-
-	// Writes managed object data to the text node.
-	//    @param node - text node to contain the managed data
-	//    @return - ut::Error if encountered an error
-	Optional<Error> Save(Tree<text::Node>& node);
-
-	// Loads managed object data from the text node.
-	//    @param node - text node containing the managed data
-	//    @return - ut::Error if encountered an error
-	Optional<Error> Load(const Tree<text::Node>& node);
+	// String with the name of ut::meta::Reflective type
+	static const char* skTypeName;
 };
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(meta)
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

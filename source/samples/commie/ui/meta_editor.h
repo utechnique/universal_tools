@@ -141,9 +141,8 @@ private:
 	//    @param root - reference to the string containg parent folder name.
 	//    @param item - reference to the parent item.
 	//    @return - error if function execution fails.
-	ut::Optional<ut::Error> AddTreeNode(const ut::Tree<ut::text::Node>& node,
-	                                    const ut::String& root,
-	                                    ut::Tree<MetaEditorItem>& item);
+	ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> AddTreeNode(const ut::Tree<ut::text::Node>& node,
+	                                                                           const ut::String& root);
 
 	// pointer to the parent (containing) window
 	const Fl_Window* parent;
@@ -181,7 +180,8 @@ public:
 	                    const int left,
 	                    const int width,
 	                    const int height,
-	                    const int font_size);
+	                    const int font_size,
+	                    const bool active);
 
 	// Copy constructor, just copies a pointer to the widget.
 	MetaEditorTextField(const MetaEditorTextField& copy);
@@ -214,7 +214,8 @@ public:
 	//    @param size - width and height in pixels of the widget.
 	MetaEditorCheckbox(const ut::text::Node& node,
 	                   const int left,
-	                   const int size);
+	                   const int size,
+	                   const bool active);
 
 	// Copy constructor, just copies a pointer to the widget.
 	MetaEditorCheckbox(const MetaEditorCheckbox& copy);

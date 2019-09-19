@@ -154,7 +154,7 @@ String Document::GenerateTabs(uint32 num)
 // the child nodes and values (JSON for example), to save this type
 // of documents we need to wrap the value into another child node, and
 // this node must have the following name - ut::text::Document::skValueNodeName
-const String Document::skValueNodeName = "ut_value";
+const char* Document::skValueNodeName = "ut_value";
 
 //----------------------------------------------------------------------------//
 // Whitespace (space \n \r \t)

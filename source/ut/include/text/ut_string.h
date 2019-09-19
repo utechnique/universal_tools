@@ -600,6 +600,10 @@ typedef TString<char> String;
 typedef TString<wchar> WString;
 typedef TString<utf16char> UTF16String;
 
+// specialize type name function for strings
+template<> inline const char* TypeName<String>() { return "string"; }
+template<> inline const char* TypeName<WString>() { return "wstring"; }
+
 //----------------------------------------------------------------------------//
 // returns platform-specific carriage return sequense
 template<typename T>
@@ -661,27 +665,27 @@ TString<T1> StrConvert(const TString<T0> &src)
 //    @param t - custom value
 //    @return - text version of the @t value
 template <typename T>
-String Print(T t)
+String Print(const T& t)
 {
 	return String();
 }
 
 // Specializations of ut::Print<>()
-template<> String Print<bool>(bool);
-template<> String Print<int8>(int8);
-template<> String Print<byte>(byte);
-template<> String Print<int16>(int16);
-template<> String Print<uint16>(uint16);
-template<> String Print<int32>(int32);
-template<> String Print<uint32>(uint32);
-template<> String Print<int64>(int64);
-template<> String Print<uint64>(uint64);
-template<> String Print<float>(float);
-template<> String Print<double>(double);
-template<> String Print<long double>(long double);
-template<> String Print<void*>(void*);
-template<> String Print<const char*>(const char*);
-template<> String Print<const String &>(const String &);
+template<> String Print<bool>(const bool&);
+template<> String Print<int8>(const int8&);
+template<> String Print<byte>(const byte&);
+template<> String Print<int16>(const int16&);
+template<> String Print<uint16>(const uint16&);
+template<> String Print<int32>(const int32&);
+template<> String Print<uint32>(const uint32&);
+template<> String Print<int64>(const int64&);
+template<> String Print<uint64>(const uint64&);
+template<> String Print<float>(const float&);
+template<> String Print<double>(const double&);
+template<> String Print<long double>(const long double&);
+template<> String Print<void*>(void* const&);
+template<> String Print<const char*>(const char* const&);
+template<> String Print<String>(const String&);
 
 //----------------------------------------------------------------------------//
 // Converts a string to the native binary type
@@ -706,6 +710,7 @@ template<> uint64 Scan<uint64>(const String& str);
 template<> float Scan<float>(const String& str);
 template<> double Scan<double>(const String& str);
 template<> long double Scan<long double>(const String& str);
+template<> String Scan<String>(const String& str);
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

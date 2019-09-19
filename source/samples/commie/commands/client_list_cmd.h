@@ -23,7 +23,7 @@ public:
 	const ut::DynamicType& Identify() const;
 
 	// Serialization
-	void Serialize(ut::MetaStream& stream);
+	void Reflect(ut::meta::Snapshot& snapshot);
 
 	// Executes command if received by client.
 	//    @param connection - connection owning the command.

@@ -18,6 +18,7 @@ Node::Node(node::Type node_type) : is_attribute(false)
 Node::Node(const Node& copy) : name(copy.name)
                              , value(copy.value)
                              , value_type(copy.value_type)
+                             , encapsulation_name(copy.encapsulation_name)
                              , is_attribute(copy.is_attribute)
                              , is_array(copy.is_array)
                              , type(copy.type)
@@ -28,6 +29,7 @@ Node::Node(const Node& copy) : name(copy.name)
 Node::Node(Node && copy) : name(Move(copy.name))
                          , value(Move(copy.value))
                          , value_type(Move(copy.value_type))
+                         , encapsulation_name(Move(copy.encapsulation_name))
                          , is_attribute(Move(copy.is_attribute))
                          , is_array(copy.is_array)
                          , type(copy.type)
@@ -40,6 +42,7 @@ Node& Node::operator = (const Node& copy)
 	name = copy.name;
 	value = copy.value;
 	value_type = copy.value_type;
+	encapsulation_name = copy.encapsulation_name;
 	is_attribute = copy.is_attribute;
 	is_array = copy.is_array;
 	type = copy.type;
@@ -53,6 +56,7 @@ Node& Node::operator = (Node && copy)
 	name = Move(copy.name);
 	value = Move(copy.value);
 	value_type = Move(copy.value_type);
+	encapsulation_name = Move(copy.encapsulation_name);
 	is_attribute = copy.is_attribute;
 	is_array = copy.is_array;
 	type = copy.type;

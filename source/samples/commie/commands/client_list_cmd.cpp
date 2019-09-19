@@ -25,9 +25,9 @@ const ut::DynamicType& ClientListCmd::Identify() const
 }
 
 // Serialization
-void ClientListCmd::Serialize(ut::MetaStream& stream)
+void ClientListCmd::Reflect(ut::meta::Snapshot& snapshot)
 {
-	stream << list;
+	snapshot << list;
 }
 
 // Executes command if received by client.

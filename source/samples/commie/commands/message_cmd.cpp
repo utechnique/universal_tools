@@ -53,14 +53,14 @@ const ut::DynamicType& MessageCmd::Identify() const
 }
 
 // Serialization
-void MessageCmd::Serialize(ut::MetaStream& stream)
+void MessageCmd::Reflect(ut::meta::Snapshot& snapshot)
 {
-	stream << buffer;
-	stream << dst_address.ip;
-	stream << dst_address.port;
-	stream << is_encrypted;
-	stream << is_private;
-	stream << sender_name;
+	snapshot << buffer;
+	snapshot << dst_address.ip;
+	snapshot << dst_address.port;
+	snapshot << is_encrypted;
+	snapshot << is_private;
+	snapshot << sender_name;
 }
 
 // Executes command if received by client.

@@ -171,7 +171,8 @@ ut::Optional<ut::Error> Application::LoadCfg()
 	{
 		// deserialize cfg from the text document
 		ut::JsonDoc json_doc;
-		cfg_file >> json_doc >> cfg;
+		ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(cfg);
+		cfg_file >> json_doc >> cfg_snapshot;
 		cfg_file.Close();
 		ut::log << "Loaded config file " << skCfgFileName << "." << ut::cret;
 	}
@@ -186,7 +187,8 @@ ut::Optional<ut::Error> Application::LoadCfg()
 //    @return - error if failed
 ut::Optional<ut::Error> Application::UpdateCfg(ut::text::Document& doc)
 {
-	doc >> cfg;
+	ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(cfg);
+	doc >> cfg_snapshot;
 	return ut::Optional<ut::Error>();
 }
 
@@ -205,7 +207,8 @@ ut::Optional<ut::Error> Application::SaveCfgFile()
 	else
 	{
 		ut::JsonDoc json_doc;
-		cfg_file << (json_doc << cfg);
+		ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(cfg);
+		cfg_file << (json_doc << cfg_snapshot);
 		cfg_file.Close();
 		ut::log << "Cfg file was updated." << ut::cret;
 	}

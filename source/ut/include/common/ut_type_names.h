@@ -26,21 +26,22 @@ template<> inline const char* TypeName<uint64>()      { return "uint64";  }
 template<> inline const char* TypeName<float>()       { return "float";   }
 template<> inline const char* TypeName<double>()      { return "double";  }
 template<> inline const char* TypeName<long double>() { return "ldouble"; }
+template<> inline const char* TypeName<void>()        { return "void"; }
 
 // Returns true if provided type name is a name of the numeric type
 template<typename T> inline bool IsNumericType(const T* type_name)
 {
-	if (StrCmp<T>(type_name, TypeName<int32>())       == 0 ||
-		StrCmp<T>(type_name, TypeName<uint32>())      == 0 ||
-		StrCmp<T>(type_name, TypeName<float>())       == 0 ||
-		StrCmp<T>(type_name, TypeName<int16>())       == 0 ||
-		StrCmp<T>(type_name, TypeName<uint16>())      == 0 ||
-		StrCmp<T>(type_name, TypeName<int8>())        == 0 ||
-		StrCmp<T>(type_name, TypeName<uint8>())       == 0 ||
-		StrCmp<T>(type_name, TypeName<int64>())       == 0 ||
-		StrCmp<T>(type_name, TypeName<uint64>())      == 0 ||
-		StrCmp<T>(type_name, TypeName<double>())      == 0 ||
-		StrCmp<T>(type_name, TypeName<long double>()) == 0)
+	if (StrCmp<T>(type_name, TypeName<int32>())  ||
+		StrCmp<T>(type_name, TypeName<uint32>()) ||
+		StrCmp<T>(type_name, TypeName<float>())  ||
+		StrCmp<T>(type_name, TypeName<int16>())  ||
+		StrCmp<T>(type_name, TypeName<uint16>()) ||
+		StrCmp<T>(type_name, TypeName<int8>())   ||
+		StrCmp<T>(type_name, TypeName<uint8>())  ||
+		StrCmp<T>(type_name, TypeName<int64>())  ||
+		StrCmp<T>(type_name, TypeName<uint64>()) ||
+		StrCmp<T>(type_name, TypeName<double>()) ||
+		StrCmp<T>(type_name, TypeName<long double>()))
 	{
 		return true;
 	}

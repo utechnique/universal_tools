@@ -9,7 +9,7 @@ START_NAMESPACE(commie)
 //----------------------------------------------------------------------------//
 // commie::UiCfg is serializable part of commie::Configuration that is related
 // to user interface preferences.
-class UiCfg : public ut::Reflective
+class UiCfg : public ut::meta::Reflective
 {
 public:
 	// Constructor, default values are set here.
@@ -17,8 +17,8 @@ public:
 
 	// Registers named parameters to the intermediate serialization registry.
 	//    @param registry - register parameters here,
-	//                      just call registry.Add(parameter, "desired_name");
-	void Register(ut::MetaRegistry& registry);
+	//                      just call snapshot.Add(parameter, "desired_name");
+	void Reflect(ut::meta::Snapshot& snapshot);
 
 #if COMMIE_DESKTOP
 	ut::uint32 position_x; // left coordinate of the window
@@ -30,7 +30,7 @@ public:
 #endif // COMMIE_DESKTOP
 };
 
-class Configuration : public ut::Reflective
+class Configuration : public ut::meta::Reflective
 {
 public:
 	// Constructor, default values are set here.
@@ -38,8 +38,8 @@ public:
 
 	// Registers named parameters to the intermediate serialization registry.
 	//    @param registry - register parameters here,
-	//                      just call registry.Add(parameter, "desired_name");
-	void Register(ut::MetaRegistry& registry);
+	//                      just call snapshot.Add(parameter, "desired_name");
+	void Reflect(ut::meta::Snapshot& snapshot);
 
 	// Whether the node will be launched as a server.
 	bool server_mode;

@@ -107,13 +107,13 @@ template<> WString StrConvert<char, wchar, cp_utf8>(const char* src)
 
 //----------------------------------------------------------------------------//
 // 'bool' specialization of the template ut::Print<>() function
-template<> String Print<bool>(bool val)
+template<> String Print<bool>(const bool& val)
 {
 	return val ? String("true") : String("false");
 }
 
 // 'int8' specialization of the template ut::Print<>() function
-template<> String Print<int8>(int8 val)
+template<> String Print<int8>(const int8& val)
 {
 	String str;
 	str.Print("%hhi", val);
@@ -121,7 +121,7 @@ template<> String Print<int8>(int8 val)
 }
 
 // 'byte' specialization of the template ut::Print<>() function
-template<> String Print<byte>(byte val)
+template<> String Print<byte>(const byte& val)
 {
 	String str;
 	str.Print("%hhu", val);
@@ -129,7 +129,7 @@ template<> String Print<byte>(byte val)
 }
 
 // 'int16' specialization of the template ut::Print<>() function
-template<> String Print<int16>(int16 val)
+template<> String Print<int16>(const int16& val)
 {
 	String str;
 	str.Print("%hi", val);
@@ -137,7 +137,7 @@ template<> String Print<int16>(int16 val)
 }
 
 // 'uint16' specialization of the template ut::Print<>() function
-template<> String Print<uint16>(uint16 val)
+template<> String Print<uint16>(const uint16& val)
 {
 	String str;
 	str.Print("%hu", val);
@@ -145,7 +145,7 @@ template<> String Print<uint16>(uint16 val)
 }
 
 // 'int32' specialization of the template ut::Print<>() function
-template<> String Print<int32>(int32 val)
+template<> String Print<int32>(const int32& val)
 {
 	String str;
 	str.Print("%i", val);
@@ -153,7 +153,7 @@ template<> String Print<int32>(int32 val)
 }
 
 // 'uint32' specialization of the template ut::Print<>() function
-template<> String Print<uint32>(uint32 val)
+template<> String Print<uint32>(const uint32& val)
 {
 	String str;
 	str.Print("%u", val);
@@ -161,7 +161,7 @@ template<> String Print<uint32>(uint32 val)
 }
 
 // 'int64' specialization of the template ut::Print<>() function
-template<> String Print<int64>(int64 val)
+template<> String Print<int64>(const int64& val)
 {
 	String str;
 	str.Print("%lli", val);
@@ -169,7 +169,7 @@ template<> String Print<int64>(int64 val)
 }
 
 // 'uint64' specialization of the template ut::Print<>() function
-template<> String Print<uint64>(uint64 val)
+template<> String Print<uint64>(const uint64& val)
 {
 	String str;
 	str.Print("%llu", val);
@@ -177,7 +177,7 @@ template<> String Print<uint64>(uint64 val)
 }
 
 // 'float' specialization of the template ut::Print<>() function
-template<> String Print<float>(float val)
+template<> String Print<float>(const float& val)
 {
 	String str;
 	str.Print("%f", val);
@@ -185,7 +185,7 @@ template<> String Print<float>(float val)
 }
 
 // 'double' specialization of the template ut::Print<>() function
-template<> String Print<double>(double val)
+template<> String Print<double>(const double& val)
 {
 	String str;
 	str.Print("%lf", val);
@@ -193,7 +193,7 @@ template<> String Print<double>(double val)
 }
 
 // 'long double' specialization of the template ut::Print<>() function
-template<> String Print<long double>(long double val)
+template<> String Print<long double>(const long double& val)
 {
 	String str;
 	str.Print("%Lf", val);
@@ -201,7 +201,7 @@ template<> String Print<long double>(long double val)
 }
 
 // 'void*' specialization of the template ut::Print<>() function
-template<> String Print<void*>(void* val)
+template<> String Print<void*>(void* const& val)
 {
 	String str;
 	str.Print("0x%0x", val);
@@ -209,13 +209,13 @@ template<> String Print<void*>(void* val)
 }
 
 // 'const char*' specialization of the template ut::Print<>() function
-template<> String Print<const char*>(const char* str)
+template<> String Print<const char*>(const char* const& str)
 {
 	return String(str);
 }
 
 // 'ut::String' specialization of the template ut::Print<>() function
-template<> String Print<const String &>(const String& str)
+template<> String Print<String>(const String& str)
 {
 	return str;
 }
@@ -323,6 +323,12 @@ template<> long double Scan<long double>(const String& str)
 	long double val;
 	str.Scan("%lf", &val);
 	return val;
+}
+
+// 'ut::String' specialization of the template ut::Scan<>() function
+template<> String Scan<String>(const String& str)
+{
+	return str;
 }
 
 //----------------------------------------------------------------------------//

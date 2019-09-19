@@ -99,14 +99,23 @@ ut::Optional<ut::Error> MetaEditorItem::Create(Fl_Tree* tree,
 			is_boolean = node.data.value_type.Get() == ut::TypeName<bool>();
 		}
 
+		// disable attribute nodes
+		bool active = node.data.name != ut::meta::node_names::skType &&
+		              node.data.name != ut::meta::node_names::skCount &&
+		              node.data.name != ut::meta::node_names::skValueType &&
+		              node.data.name != ut::meta::node_names::skId &&
+		              node.data.name != ut::meta::node_names::skInfo &&
+		              node.data.name != ut::meta::node_names::skVersion &&
+		              node.data.name != ut::meta::node_names::skFlags;
+
 		// create input widget of the appropriate type
 		if (is_boolean)
 		{
-			input = new MetaEditorCheckbox(node.data, input_x, skItemHeight);
+			input = new MetaEditorCheckbox(node.data, input_x, skItemHeight, active);
 		}
 		else
 		{
-			input = new MetaEditorTextField(node.data, input_x, input_width, skItemHeight, skItemTextSize);
+			input = new MetaEditorTextField(node.data, input_x, input_width, skItemHeight, skItemTextSize, active);
 		}
 
 		// finish creating tile child widgets
@@ -238,18 +247,23 @@ ut::Optional<ut::Error> MetaEditor::Rebuild(const ut::text::Document& document)
 	for (size_t i = 0; i < document.nodes.GetNum(); i++)
 	{
 		// root has empty name
-		const ut::String root("");		
+		const ut::String root("");
 
 		// recursevly fill node tree
-		ut::Tree<MetaEditorItem> item;
-		ut::Optional<ut::Error> add_node_error = AddTreeNode(document.nodes[i], root, item);
-		if (add_node_error)
+		ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> add_node_result = AddTreeNode(document.nodes[i], root);
+		if (!add_node_result)
 		{
-			return ut::Error(add_node_error.Move());
+			return ut::Error(add_node_result.MoveAlt());
+		}
+
+		// skip if new tree is empty
+		if (!add_node_result.GetResult().HasValue())
+		{
+			continue;
 		}
 
 		// add item to the tree
-		if (!items.Add(item))
+		if (!items.Add(add_node_result.GetResult().Get()))
 		{
 			return ut::Error(ut::error::out_of_memory);
 		}
@@ -346,56 +360,59 @@ ut::Result<ut::Tree<ut::text::Node>, ut::Error> MetaEditor::SaveItem(const ut::T
 //    @param root - reference to the string containg parent folder name.
 //    @param item - reference to the parent item.
 //    @return - error if function execution fails.
-ut::Optional<ut::Error> MetaEditor::AddTreeNode(const ut::Tree<ut::text::Node>& node,
-                                                const ut::String& root,
-                                                ut::Tree<MetaEditorItem>& parent_item)
+ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> MetaEditor::AddTreeNode(const ut::Tree<ut::text::Node>& node,
+                                                                                       const ut::String& root)
 {
 	// add node itself
 	const ut::String path = root + "/" + node.data.name;
 	Fl_Tree_Item* tree_item = tree->add(path.GetAddress());
 	if (tree_item == nullptr)
 	{
-		return ut::Error(ut::error::fail);
+		return ut::MakeError(ut::error::fail);
 	}
 
-	// add npde name to the buffer
+	// add node name to the buffer
 	if (!name_buffer.Add(new ut::String(node.data.name)))
 	{
-		return ut::Error(ut::error::out_of_memory);
+		return ut::MakeError(ut::error::out_of_memory);
 	}
 
 	// create item
+	ut::Tree<MetaEditorItem> parent_item;
 	ut::Optional<ut::Error> create_item_error = parent_item.data.Create(tree.Get(),
 	                                                                    tree_item,
 	                                                                    node,
 	                                                                    name_buffer.GetLast());
 	if (create_item_error)
 	{
-		return ut::Error(create_item_error.Move());
+		return ut::MakeError(create_item_error.Move());
 	}
 
 	// add child nodes
 	for (size_t child = 0; child < node.GetNumChildren(); child++)
 	{
 		// create child item
-		ut::Tree<MetaEditorItem> child_item;
-		ut::Optional<ut::Error> add_node_error = AddTreeNode(node[child],
-		                                                     path.GetAddress(),
-		                                                     child_item);
-		if (add_node_error)
+		ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> add_node_error = AddTreeNode(node[child],
+		                                                                                            path.GetAddress());
+		if (!add_node_error)
 		{
-			return ut::Error(add_node_error.Move());
+			return ut::MakeError(add_node_error.MoveAlt());
+		}
+
+		if (!add_node_error.GetResult().HasValue())
+		{
+			continue;
 		}
 
 		// add child item to the parent tree
-		if (!parent_item.Add(child_item))
+		if (!parent_item.Add(add_node_error.GetResult().Get()))
 		{
-			return ut::Error(ut::error::out_of_memory);
+			return ut::MakeError(ut::error::out_of_memory);
 		}
 	}
 
 	// success
-	return ut::Optional<ut::Error>();
+	return ut::Optional< ut::Tree<MetaEditorItem> >(parent_item);
 }
 
 //----------------------------------------------------------------------------//
@@ -411,7 +428,8 @@ MetaEditorTextField::MetaEditorTextField(const ut::text::Node& node,
                                          const int left,
                                          const int width,
                                          const int height,
-                                         const int font_size)
+                                         const int font_size,
+                                         const bool active)
 {
 	// create input widget
 	widget = new Fl_Input(left, 0, width, height);
@@ -419,6 +437,12 @@ MetaEditorTextField::MetaEditorTextField(const ut::text::Node& node,
 	widget->textsize(font_size);
 	widget->show();
 	widget->value(node.value.Get());
+
+	// deactivate inactive widget
+	if (!active)
+	{
+		widget->deactivate();
+	}
 
 	// input type
 	if (node.value_type)
@@ -473,7 +497,8 @@ void MetaEditorTextField::Resize(int width) const
 //    @param size - width and height in pixels of the widget.
 MetaEditorCheckbox::MetaEditorCheckbox(const ut::text::Node& node,
                                        const int left,
-                                       const int size)
+                                       const int size,
+                                       const bool active)
 {
 	widget = new Fl_Check_Button(left, 0, size, size);
 	if (node.value)

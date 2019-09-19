@@ -18,7 +18,7 @@ order DetectEndianness()
 // Use this function to know endianness order of the current platform.
 order GetNative()
 {
-	static order endianness_order = DetectEndianness();
+	static const order endianness_order = DetectEndianness();
 	return endianness_order;
 }
 
