@@ -8,32 +8,51 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
+// Default deleter for a shared object. Just calls a delete operator.
+template <typename T>
+class DefaultSharedDeleter
+{
+public:
+	void operator()(T* ptr) const
+	{
+		delete ptr;
+	}
+};
+
+//----------------------------------------------------------------------------//
+// ut::SharedHolder is a base class for both thread-safe and thread-unsafe
+// variants of a reference controller. It takes ownership of the managed object
+// and is responsible for the deletion of this object.
+template <typename ObjectType>
+class SharedHolder
+{
+public:
+	// Constructor. Takes control of the managed object.
+	SharedHolder(ObjectType *in_object) : object(in_object)
+	{ }
+
+	// Destroys managed object.
+	virtual void DestroyObject() = 0;
+
+protected:
+	ObjectType *object;
+};
+
+//----------------------------------------------------------------------------//
 // ut::RefControllerBase is a base class for both thread-safe and thread-unsafe
 // variants of a reference controller. It owns count of both weak and strong
-// references and a pointer to the managed object.
-template <typename ObjectType>
+// references.
 class RefControllerBase : public NonCopyable
 {
 public:
 	// Constructor. Note that both strong (shared) and weak reference count
-	// is set to 1. Also controller takes control of the managed object.
-	RefControllerBase(ObjectType *in_object) : strong_count(1)
-	                                         , weak_count(1)
-	                                         , object(in_object)
+	// is set to 1.
+	RefControllerBase() : strong_count(1), weak_count(1)
 	{ }
-
-	// Destroys managed object.
-	void DestroyObject()
-	{
-		delete object;
-	}
 
 protected:
 	int32 strong_count;
 	int32 weak_count;
-
-private:
-	ObjectType *object;
 };
 
 //----------------------------------------------------------------------------//
@@ -45,9 +64,9 @@ class ReferenceController;
 
 // Thread-safe variant of a reference controller.
 template <typename ObjectType>
-class ReferenceController<ObjectType, thread_safety::on> : public RefControllerBase<ObjectType>
+class ReferenceController<ObjectType, thread_safety::on> : public SharedHolder<ObjectType>
+                                                         , public RefControllerBase
 {
-	typedef RefControllerBase<ObjectType> Base;
 public:
 	// SharedReferencer and WeakReferencer are made friends, so that
 	// self-deletion could be performed only from the reliable source.
@@ -56,7 +75,7 @@ public:
 
 	// Constructor. Note that both strong (shared) and weak reference count
 	// is set to 1. Also controller takes control of the managed object.
-	ReferenceController(ObjectType *in_object) : Base(in_object)
+	ReferenceController(ObjectType *in_object) : SharedHolder<ObjectType>(in_object)
 	{ }
 
 private:
@@ -109,7 +128,7 @@ private:
 		if (atomics::interlocked::Decrement(&this->strong_count) == 0)
 		{
 			// last shared reference was released!
-			Base::DestroyObject();
+			DestroyObject();
 
 			// No more shared referencers, so decrement the weak reference count by one.
 			// When the weak reference count reaches zero, this object will be deleted.
@@ -133,13 +152,16 @@ private:
 		// This reference count may be accessed by multiple threads
 		return atomics::interlocked::Read((int32 volatile*)&this->strong_count);
 	}
+
+	// Destroys managed object.
+	virtual void DestroyObject() = 0;
 };
 
 // Unsafe variant of a reference controller.
 template <typename ObjectType>
-class ReferenceController<ObjectType, thread_safety::off> : public RefControllerBase<ObjectType>
+class ReferenceController<ObjectType, thread_safety::off> : public SharedHolder<ObjectType>
+                                                          , public RefControllerBase
 {
-	typedef RefControllerBase<ObjectType> Base;
 public:
 	// SharedReferencer and WeakReferencer are made friends, so that
 	// self-deletion could be performed only from the reliable source.
@@ -148,7 +170,7 @@ public:
 
 	// Constructor. Note that both strong (shared) and weak reference count
 	// is set to 1. Also controller takes control of the managed object.
-	ReferenceController(ObjectType *in_object) : Base(in_object)
+	ReferenceController(ObjectType *in_object) : SharedHolder<ObjectType>(in_object)
 	{ }
 
 private:
@@ -184,7 +206,7 @@ private:
 		if (--this->strong_count == 0)
 		{
 			// Last shared reference was released!  Destroy the referenced object.
-			Base::DestroyObject();
+			DestroyObject();
 
 			// No more shared referencers, so decrement the weak reference count by one.
 			// When the weak reference count reaches zero, this object will be deleted.
@@ -208,6 +230,28 @@ private:
 		// This reference count may be accessed by multiple threads
 		return this->strong_count;
 	}
+
+	// Destroys managed object.
+	virtual void DestroyObject() = 0;
+};
+
+//----------------------------------------------------------------------------//
+// ut::RefControllerWithDeleter template class is derived from template class
+// ut::ReferenceController and overrides it's virtual DestroyObject() method
+// using a specified deleter.
+template <typename ObjType, thread_safety::Mode mode, typename Deleter = DefaultSharedDeleter<ObjType> >
+class RefControllerWithDeleter : public ReferenceController<ObjType, mode>
+                               , private Deleter
+{
+	typedef ReferenceController<ObjType, mode> Base;
+public:
+	RefControllerWithDeleter(ObjType* object) : Base(object)
+	{ }
+
+	void DestroyObject()
+	{
+		static_cast<Deleter&>(*this)(SharedHolder<ObjType>::object);
+	}
 };
 
 //----------------------------------------------------------------------------//
@@ -223,9 +267,14 @@ template <typename ObjectType, thread_safety::Mode thread_safety_mode>
 class SharedReferencer
 {
 	typedef ReferenceController<ObjectType, thread_safety_mode> Controller;
+
 	// WeakReferencer is a friend to get access to the controller object.
 	template <typename, thread_safety::Mode> friend class WeakReferencer;
 public:
+	// Default constructor
+	SharedReferencer() : controller(nullptr)
+	{ }
+
 	// Constructor, takes control over reference controller object.
 	// @controller supposed to be created using new() operator or to be nullptr.
 	SharedReferencer(Controller* in_controller) : controller(in_controller)
@@ -306,6 +355,10 @@ class WeakReferencer
 	// SharedReferencer is a friend to get access to the controller object.
 	template <typename, thread_safety::Mode> friend class SharedReferencer;
 public:
+	// Default constructor
+	WeakReferencer() : controller(nullptr)
+	{ }
+
 	// Constructor, takes control over reference controller object.
 	// @controller supposed to be created using new() operator or to be nullptr.
 	WeakReferencer(Controller* in_controller) : controller(in_controller)

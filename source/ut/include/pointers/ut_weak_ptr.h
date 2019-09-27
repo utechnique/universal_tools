@@ -15,7 +15,7 @@ template<typename ObjectType, thread_safety::Mode thread_safety_mode = thread_sa
 class WeakPtr
 {
 	// SharedPtr is a friend to get access to the reference controller.
-	template <typename, thread_safety::Mode> friend class SharedPtr;
+	template <typename, thread_safety::Mode, typename> friend class SharedPtr;
 public:
 	// Default constructor.
 	WeakPtr() : object(nullptr), referencer(nullptr)

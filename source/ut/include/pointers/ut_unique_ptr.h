@@ -21,10 +21,22 @@ struct PtrRefCast
 };
 
 //----------------------------------------------------------------------------//
+// Default deleter for unique smart pointer. Just calls a delete operator.
+template <typename T>
+class UniquePtrDefaultDeleter
+{
+public:
+	void operator()(T* ptr) const
+	{
+		delete ptr;
+	}
+};
+
+//----------------------------------------------------------------------------//
 // ut::UniquePtr is a smart pointer that owns and manages another object through
 // a pointer and disposes of that object when ut::UniquePtr goes out of scope
-template<typename T>
-class UniquePtr : public NonCopyable
+template<typename T, typename Deleter = UniquePtrDefaultDeleter<T>>
+class UniquePtr : public NonCopyable, private Deleter
 {
 typedef T ElementType;
 public:
@@ -55,7 +67,7 @@ public:
 	{
 		if (pointer != nullptr)
 		{
-			delete pointer;
+			GetDeleter()(pointer);
 		}
 	}
 
@@ -85,7 +97,7 @@ public:
 	//    @param ptr - new object's pointer, old one is to be deleted
 	UniquePtr& operator = (ElementType* ptr)
 	{
-		delete pointer;
+		GetDeleter()(pointer);
 		pointer = ptr;
 		return *this;
 	}
@@ -149,6 +161,13 @@ public:
 		return pointer != nullptr;
 	}
 
+	// Returns a reference to the deleter subobject.
+	//    @return - a reference to the deleter.
+	Deleter& GetDeleter()
+	{
+		return static_cast<Deleter&>(*this);
+	}
+
 	// Resets the managed object, sets @pointer to null
 	//    @return - old managed @pointer
 	ElementType* Discard()
@@ -165,7 +184,7 @@ public:
 	{
 		if (ptr != pointer)
 		{
-			delete pointer;
+			GetDeleter()(pointer);
 			pointer = ptr;
 		}
 	}
@@ -173,7 +192,7 @@ public:
 	// Deletes @pointer object and sets it to null
 	void Delete()
 	{
-		delete pointer;
+		GetDeleter()(pointer);
 		pointer = nullptr;
 	}
 
@@ -197,7 +216,7 @@ public:
 	{
 		if (__ref.ptr != pointer)
 		{
-			delete pointer;
+			GetDeleter()(pointer);
 			pointer = __ref.ptr;
 		}
 		return *this;

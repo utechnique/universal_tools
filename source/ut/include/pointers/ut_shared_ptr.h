@@ -24,16 +24,24 @@ template<class T, thread_safety::Mode> class WeakPtr;
 // owning the object they belong to.The stored pointer is the one accessed by
 // ut::SharedPtr::Get(), the dereference and the comparison operators.The
 // managed pointer is the one passed to the deleter when use count reaches zero.
-template<typename ObjectType, thread_safety::Mode thread_safety_mode = thread_safety::on>
+// Also ut::SharedPtr can be used with an incomplete type.
+template <typename ObjectType,
+          thread_safety::Mode thread_safety_mode = thread_safety::on,
+          typename Deleter = DefaultSharedDeleter<ObjectType> >
 class SharedPtr
 {
 	typedef ReferenceController<ObjectType, thread_safety_mode> Controller;
+
 	// WeakPtr is a friend to get access to the reference controller.
 	template <typename, thread_safety::Mode> friend class WeakPtr;
 public:
+	// Default constructor
+	SharedPtr() : object(nullptr), referencer()
+	{ }
+
 	// Constructor. Creates a new reference controller from the raw pointer.
-	SharedPtr(ObjectType* managed_object = nullptr) : object(managed_object)
-	                                                , referencer(new Controller(managed_object))
+	SharedPtr(ObjectType* managed_object) : object(managed_object)
+	                                      , referencer(CreateController(managed_object))
 	{ }
 
 	// Copy constructor. Copies referencer object. Reference count is increased by 1 here.
@@ -119,7 +127,7 @@ public:
 	void Reset(ObjectType* obj = nullptr)
 	{
 		DestructReferencer();
-		new(&referencer) SharedReferencer<ObjectType, thread_safety_mode>(new Controller(obj));
+		new(&referencer) SharedReferencer<ObjectType, thread_safety_mode>(CreateController(obj));
 		object = obj;
 	}
 
@@ -133,6 +141,13 @@ public:
 	}
 
 private:
+	// Creates reference controller with deleter.
+	//    @param obj_ptr - pointer to the managed object.
+	static inline Controller* CreateController(ObjectType* obj_ptr)
+	{
+		return new RefControllerWithDeleter<ObjectType, thread_safety_mode, Deleter>(obj_ptr);
+	}
+
 	// Constructs a shared pointer from a weak pointer, allowing you to access the object (if it
 	// hasn't expired yet.)  Remember, if there are no more shared references to the object, the
 	// shared pointer will not be valid. You should always check to make sure this shared

@@ -12,13 +12,14 @@ START_NAMESPACE(ut)
 START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
 // ut::Parameter<Ptr> is a template specialization for pointers.
-template<typename T>
-class Parameter< UniquePtr<T> > : public BaseParameter
+template<typename T, typename Deleter>
+class Parameter< UniquePtr<T, Deleter> > : public BaseParameter
 {
+	typedef UniquePtr<T, Deleter> UniquePtrType;
 public:
 	// Constructor
 	//    @param p - pointer to the managed string
-	Parameter(UniquePtr<T>* p) : BaseParameter(p)
+	Parameter(UniquePtrType* p) : BaseParameter(p)
 	{ }
 
 	// Returns the name of the managed type
@@ -31,7 +32,7 @@ public:
 	//    @param snapshot - reference to the reflection tree
 	void Reflect(Snapshot& snapshot)
 	{
-		UniquePtr<T>* p = static_cast<UniquePtr<T>*>(ptr);
+		UniquePtrType* p = static_cast<UniquePtrType*>(ptr);
 		if (p->Get())
 		{
 			snapshot << p->GetRef();
@@ -44,7 +45,7 @@ public:
 	Optional<Error> Save(Controller& controller)
 	{
 		// write value type name
-		const UniquePtr<T>& ptr_ref = *static_cast<UniquePtr<T>*>(ptr);
+		const UniquePtrType& ptr_ref = *static_cast<UniquePtrType*>(ptr);
 		String value_type_name = ptr_ref ? GetTypeNameVariant<T>() : String(TypeName<void>());
 		return controller.WriteAttribute(value_type_name, node_names::skValueType);
 	}
@@ -68,8 +69,8 @@ public:
 		}
 
 		// create new instance
-		UniquePtr<T>& ptr_ref = *static_cast<UniquePtr<T>*>(ptr);
-		Result<UniquePtr<T>, Error> create_result = CreateNewInstanceVariant<T>(read_type_result.GetResult());
+		UniquePtrType& ptr_ref = *static_cast<UniquePtrType*>(ptr);
+		Result<UniquePtrType, Error> create_result = CreateNewInstanceVariant<T>(read_type_result.GetResult());
 		if (create_result)
 		{
 			ptr_ref = Move(create_result.MoveResult());
@@ -142,8 +143,8 @@ private:
 	// If managed object is a custom (not derived from ut::Polymorphic)
 	// element - just check static type and create a new inctance
 	template<typename ElementType>
-	inline Result<UniquePtr<T>, Error> CreateNewInstanceVariant(const String& type_name,
-	                                                            SFINAE_IS_NOT_POLYMORPHIC)
+	inline Result<UniquePtrType, Error> CreateNewInstanceVariant(const String& type_name,
+	                                                             SFINAE_IS_NOT_POLYMORPHIC)
 	{
 		// check static type
 		String current_type_name = GetTypeNameVariant<T>();
@@ -153,7 +154,7 @@ private:
 		}
 
 		// create instance
-		UniquePtr<T> instance(new T);
+		UniquePtrType instance(new T);
 		return Move(instance);
 	}
 
@@ -161,8 +162,8 @@ private:
 	// we must load polymorphic name string, and create an
 	// object of the corresponding type.
 	template<typename ElementType>
-	inline Result<UniquePtr<T>, Error> CreateNewInstanceVariant(const String& type_name,
-	                                                            SFINAE_IS_POLYMORPHIC)
+	inline Result<UniquePtrType, Error> CreateNewInstanceVariant(const String& type_name,
+	                                                             SFINAE_IS_POLYMORPHIC)
 	{
 		// get dynamic type by name
 		Result<ConstRef<DynamicType>, Error> type_result = Factory<T>::GetType(type_name);
@@ -173,7 +174,7 @@ private:
 
 		// create a new object
 		const DynamicType& dyn_type = type_result.GetResult();
-		UniquePtr<T> instance(static_cast<T*>(dyn_type.CreateInstance()));
+		UniquePtrType instance(static_cast<T*>(dyn_type.CreateInstance()));
 		return Move(instance);
 	}
 
@@ -189,8 +190,8 @@ private:
 
 //----------------------------------------------------------------------------//
 // name of the ut::UniquePtr type
-template<typename T>
-const char* Parameter< UniquePtr<T> >::skTypeName = "unique_ptr";
+template<typename T, typename Deleter>
+const char* Parameter< UniquePtr<T, Deleter> >::skTypeName = "unique_ptr";
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(meta)
