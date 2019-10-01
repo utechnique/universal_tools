@@ -3,6 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "meta/ut_meta_controller.h"
 #include "meta/ut_meta_snapshot.h"
+#include "meta/ut_meta_linker.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
@@ -13,24 +14,6 @@ START_NAMESPACE(meta)
 Controller::Controller(const Info& info_copy) : info(info_copy)
                                               , mode(empty_mode)
 { }
-
-//----------------------------------------------------------------------------->
-// Copy constructor
-Controller::Controller(const Controller& copy) : info(copy.info)
-                                               , mode(copy.mode)
-                                               , io(copy.io)
-{ }
-
-//----------------------------------------------------------------------------->
-// Assignment operator
-Controller& Controller::operator = (const Controller& copy)
-{
-	info = copy.info;
-	mode = copy.mode;
-	io = copy.io;
-
-	return *this;
-}
 
 //----------------------------------------------------------------------------->
 // Extracts a custom entity value from the node.
@@ -51,7 +34,8 @@ Result<String, Error> Controller::ExtractTextNodeValue(const Tree<text::Node>& p
 	// check if value exists
 	if (!find_result.Get()->data.value)
 	{
-		return MakeError(Error(error::empty, "Text node has correct name, but has no value."));
+		// empty string
+		return String();
 	}
 
 	// success
@@ -61,19 +45,63 @@ Result<String, Error> Controller::ExtractTextNodeValue(const Tree<text::Node>& p
 //----------------------------------------------------------------------------->
 // Changes mode to binary input stream
 //    @param stream - reference to input stream to read data from
-void Controller::SetBinaryInputStream(InputStream& stream)
+Optional<Error> Controller::SetBinaryInputStream(InputStream& stream)
 {
+	// set mode and stream
 	mode = binary_input_mode;
 	io.binary_input = &stream;
+
+	// change cursor position
+	Result<stream::Cursor, Error> read_cursor = stream.GetCursor();
+	if (!read_cursor)
+	{
+		return read_cursor.MoveAlt();
+	}
+	cursor = read_cursor.GetResult();
+
+	// success
+	return Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
 // Changes mode to binary output stream
 //    @param stream - reference to output stream to write data to
-void Controller::SetBinaryOutputStream(OutputStream& stream)
+Optional<Error> Controller::SetBinaryOutputStream(OutputStream& stream)
 {
+	// set mode and stream
 	mode = binary_output_mode;
 	io.binary_output = &stream;
+
+	// change cursor position
+	Result<stream::Cursor, Error> read_cursor = stream.GetCursor();
+	if (!read_cursor)
+	{
+		return read_cursor.MoveAlt();
+	}
+	cursor = read_cursor.GetResult();
+
+	// success
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Changes mode to text input node
+//    @param node - reference to the text node to read data from
+Optional<Error> Controller::SetTextInputNode(const Tree<text::Node>& node)
+{
+	mode = text_input_mode;
+	io.text_input = &node;
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Changes mode to text output node
+//    @param node - reference to the text node to write data to
+Optional<Error> Controller::SetTextOutputNode(Tree<text::Node>& node)
+{
+	mode = text_output_mode;
+	io.text_output = &node;
+	return Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
@@ -91,21 +119,117 @@ Info Controller::GetInfo() const
 }
 
 //----------------------------------------------------------------------------->
-// Changes mode to text input node
-//    @param node - reference to the text node to read data from
-void Controller::SetTextInputNode(const Tree<text::Node>& node)
+// Returns @cursor value.
+stream::Cursor Controller::GetCursor() const
 {
-	mode = text_input_mode;
-	io.text_input = &node;
+	return cursor;
 }
 
 //----------------------------------------------------------------------------->
-// Changes mode to text output node
-//    @param node - reference to the text node to write data to
-void Controller::SetTextOutputNode(Tree<text::Node>& node)
+// Returns current cursor position of the input/output binary stream.
+// If controller is in text mode - returns @cursor value.
+// Note that this value can differ from Controller::GetCursor() function result.
+Result<stream::Cursor, Error> Controller::GetStreamCursor()
 {
-	mode = text_output_mode;
-	io.text_output = &node;
+	// set stream cursor if controller is in binary mode
+	switch (mode)
+	{
+		case binary_input_mode: return io.binary_input->GetCursor();
+		case binary_output_mode: return io.binary_output->GetCursor();
+	}
+
+	// return current @cursor position if in text mode
+	return cursor;
+}
+
+//----------------------------------------------------------------------------->
+// Assigns a provided value to the @cursor member variable.
+//    @param position - value of the cursor to be set.
+//    @param sync - boolean whether to sync binary stream afterwards or not.
+//    @return - error if failed.
+Optional<Error> Controller::SetCursor(stream::Cursor position, bool sync)
+{
+	// assign new cursor position
+	cursor = position;
+
+	// synchronize stream
+	return sync ? Sync() : Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Synchronizes binary stream with @cursor position.
+// Does nothing if in text mode.
+//    @return - error if failed.
+Optional<Error> Controller::Sync()
+{
+	// synchronize binary stream
+	if (mode == binary_input_mode)
+	{
+		return io.binary_input->MoveCursor(cursor);
+	}
+	else if (mode == binary_output_mode)
+	{
+		return io.binary_output->MoveCursor(cursor);
+	}
+
+	// success
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Creates a task for linker to write a correct id of the linked
+// object (that is defined as a pointer) into the value node.
+//    @param parameter - pointer to the parameter representing a link,
+//                       (raw pointer, shared/weak ptr, etc.).
+//    @param linked_address - adress of the linked object.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::WriteLink(const BaseParameter* parameter,
+                                      const void* linked_address)
+{
+	// check if linker is initialized
+	if (!linker)
+	{
+		return Error(error::fail, "Linker isn't initialized.");
+	}
+
+	// save state BEFORE writing a value, so that linker could overwrite it
+	Controller state = SaveState();
+
+	// write fake id as a value
+	Optional<Error> write_error = WriteValue<SizeType>(0);
+	if (write_error)
+	{
+		return write_error;
+	}
+
+	// create linker task to re-write correct id after linking
+	return linker->CreateWriteTask(parameter, Move(state), linked_address);
+}
+
+//----------------------------------------------------------------------------->
+// Creates a task for linker to read an id of the linked
+// object (that is defined as a pointer) from the value node,
+// and to link it with the provided parameter.
+//    @param parameter - pointer to the parameter representing a link,
+//                       (raw pointer, shared/weak ptr, etc.).
+//    @return - ut::Error if failed.
+Optional<Error> Controller::ReadLink(const BaseParameter* parameter)
+{
+	// check if linker is initialized
+	if (!linker)
+	{
+		return Error(error::fail, "Linker isn't initialized.");
+	}
+
+	// read id as a value
+	Result<SizeType, Error> read_id_result = ReadValue<SizeType>();
+	if (!read_id_result)
+	{
+		return read_id_result.MoveAlt();
+	}
+
+	// create linker task to link parameters after deserialization
+	return linker->CreateReadTask(parameter, read_id_result.GetResult());
 }
 
 //----------------------------------------------------------------------------->
@@ -122,7 +246,15 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 	// initialize current node
 	if (initialize)
 	{
-		Optional<Error> init_error = WriteInitializationData(node);
+		// initialize modules
+		Optional<Error> init_error = InitializeNode(node);
+		if (init_error)
+		{
+			return init_error;
+		}
+
+		// write initialization data (meta::Info)
+		init_error = WriteInitializationData(node);
 		if (init_error)
 		{
 			return init_error;
@@ -158,8 +290,8 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 		return optional_error;
 	}
 
-	// success
-	return optional_error;
+	// finalize current node
+	return initialize ? FinalizeNode(node) : Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
@@ -176,7 +308,16 @@ Optional<Error> Controller::ReadNode(Snapshot& node, bool initialize)
 	// initialize current node
 	if (initialize)
 	{
+		// read initialization data (meta::Info)
 		Optional<Error> init_error = ReadInitializationData(node);
+		if (init_error)
+		{
+			return init_error;
+		}
+
+		// initialize modules, note that this is done after meta
+		// information has been read and processed
+		init_error = InitializeNode(node);
 		if (init_error)
 		{
 			return init_error;
@@ -185,8 +326,7 @@ Optional<Error> Controller::ReadNode(Snapshot& node, bool initialize)
 
 	// read name, type, id, etc.
 	Optional<String> name, type;
-	Optional<SizeType> id;
-	Optional<Error> read_attributes_error = ReadUniformAttributes(node, name, type, id);
+	Optional<Error> read_attributes_error = ReadUniformAttributes(node, name, type);
 	if (read_attributes_error)
 	{
 		return read_attributes_error;
@@ -221,6 +361,46 @@ Optional<Error> Controller::ReadNode(Snapshot& node, bool initialize)
 	if (read_param_error)
 	{
 		return read_param_error;
+	}
+
+	// finalize current node
+	return initialize ? FinalizeNode(node) : Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Initializes intermediate modules (such as linker) before reading/writing a node.
+//    @param node - reference to the node to initialize.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::InitializeNode(Snapshot& node)
+{
+	// create linker
+	if (info.HasLinkageInformation())
+	{
+		linker = new Linker;
+	}
+
+	// success
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Finalizes intermediate modules (such as linker) after a node has been read/written.
+//    @param node - reference to the node to finalize.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::FinalizeNode(Snapshot& node)
+{
+	// process linkage info
+	if (info.HasLinkageInformation())
+	{
+		// execute linker tasks
+		Optional<Error> execute_error = linker->Execute();
+		if (execute_error)
+		{
+			return execute_error;
+		}
+
+		// linker isn't needed now
+		linker.Reset();
 	}
 
 	// success
@@ -287,11 +467,21 @@ Optional<Error> Controller::WriteUniformAttributes(Snapshot& node)
 		}
 	}
 
-	// write id
+	// write linkage information
 	if (info.HasLinkageInformation())
 	{
-		const SizeType id = node.data.id;
-		optional_error = WriteAttribute<SizeType>(id, node_names::skId, true);
+		// create link
+		size_t id = linker->GenerateId();
+		optional_error = linker->AddLink(node.data.parameter, id);
+		if (optional_error)
+		{
+			return optional_error;
+		}
+
+		// write id
+		optional_error = WriteAttribute<SizeType>(static_cast<SizeType>(id),
+		                                          node_names::skId,
+		                                          true);
 		if (optional_error)
 		{
 			return optional_error;
@@ -309,8 +499,7 @@ Optional<Error> Controller::WriteUniformAttributes(Snapshot& node)
 //    @return - ut::Error if failed.
 Optional<Error> Controller::ReadUniformAttributes(Snapshot& node,
                                                   Optional<String>& out_node_name,
-                                                  Optional<String>& out_type_name,
-                                                  Optional<SizeType>& out_id)
+                                                  Optional<String>& out_type_name)
 {
 	// read node name
 	Result<Optional<String>, Error> read_name_result = ReadNodeName();
@@ -331,15 +520,23 @@ Optional<Error> Controller::ReadUniformAttributes(Snapshot& node,
 		out_type_name = read_type_result.MoveResult();
 	}
 
-	// read id
+	// read linkage information
 	if (info.HasLinkageInformation())
 	{
+		// read id
 		Result<SizeType, Error> read_id_result = ReadAttribute<SizeType>(node_names::skId);
 		if (!read_id_result)
 		{
 			return read_id_result.MoveAlt();
 		}
-		out_id = read_id_result.MoveResult();
+
+		// create link
+		size_t id = static_cast<size_t>(read_id_result.GetResult());
+		Optional<Error> add_link_error = linker->AddLink(node.data.parameter, id);
+		if (add_link_error)
+		{
+			return add_link_error;
+		}
 	}
 
 	// success
@@ -405,14 +602,6 @@ Optional<Error> Controller::ReadParameter(Snapshot& node)
 //    @return - ut::Error if failed.
 Optional<Error> Controller::WriteChildNodes(Snapshot& node)
 {
-	// write a number of children in the provided node
-	const SizeType child_num = static_cast<SizeType>(node.GetNumChildren());
-	Optional<Error> child_num_error = WriteNumberOfChildNodes(child_num);
-	if (child_num_error)
-	{
-		return child_num_error;
-	}
-
 	// move one level down into the 'value' node
 	// this affects only a text variant, because binary nodes are written
 	// sequentially in a binary stream
@@ -425,14 +614,30 @@ Optional<Error> Controller::WriteChildNodes(Snapshot& node)
 		}
 	}
 
+	// write a number of children in the provided node
+	const SizeType child_num = static_cast<SizeType>(node.GetNumChildren());
+	Optional<Error> child_num_error = WriteNumberOfChildNodes(child_num);
+	if (child_num_error)
+	{
+		return child_num_error;
+	}
+
+	// allocate space for child nodes (only text mode is involved)
+	Result<size_t, Error> alloc_result = AllocateChildNodes(node.GetNumChildren());
+	if (!alloc_result)
+	{
+		return alloc_result.MoveAlt();
+	}
+
 	// save current state
 	Controller state = SaveState();
 
 	// iterate child nodes
+	const size_t offset = alloc_result.GetResult();
 	for (size_t i = 0; i < node.GetNumChildren(); i++)
 	{
 		// create a new node for serialiation
-		Optional<Error> dive_new_node_error = DiveIntoNewNode(i);
+		Optional<Error> dive_new_node_error = DiveIntoChildNode(i + offset);
 		if (dive_new_node_error)
 		{
 			return dive_new_node_error;
@@ -491,7 +696,7 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node)
 	for (size_t i = 0; i < child_num_result.GetResult(); i++)
 	{
 		// create a new child node
-		Optional<Error> dive_new_node_error = DiveIntoNewNode(i);
+		Optional<Error> dive_new_node_error = DiveIntoChildNode(i);
 		if (dive_new_node_error)
 		{
 			return dive_new_node_error;
@@ -587,8 +792,8 @@ Optional<Error> Controller::WriteNumberOfChildNodes(size_t count)
 	}
 	else if (mode == text_output_mode)
 	{
-		// nothing to do, text document retrieves a number of child
-		// nodes during a parsing process.
+		// text document retrieves a number of child nodes during a
+		// parsing process, so this information must be already known
 		return Optional<Error>();
 	}
 
@@ -627,6 +832,33 @@ Result<size_t, Error> Controller::ReadNumberOfChildNodes(const Snapshot& node)
 	}
 
 	return MakeError(Error(error::fail, "Invalid mode."));
+}
+
+//----------------------------------------------------------------------------->
+// Allocates space for text child nodes (leaves) so that
+// every child node had stable address.
+//    @param count - number of child nodes.
+//    @return - id of the first child, or error if something went wrong.
+Result<size_t, Error> Controller::AllocateChildNodes(size_t count)
+{
+	size_t id = 0;
+	if (mode == text_output_mode)
+	{
+		// get id of the first leaf
+		id = io.text_output->GetNumChildren();
+
+		// preallocate child nodes
+		for (size_t i = 0; i < count; i++)
+		{
+			if (!io.text_output->Add(text::Node()))
+			{
+				return MakeError(error::out_of_memory);
+			}
+		}
+	}
+
+	// success
+	return id;
 }
 
 //----------------------------------------------------------------------------->
@@ -898,7 +1130,7 @@ Optional<Error> Controller::DiveIntoNamedNode(const String& name)
 		{
 			// error description
 			String error_desc("Serialization error: Parameter with the name \"");
-			error_desc += parent.data.name + "\" has no value node.";
+			error_desc += parent.data.name + "\" has no \"" + name + "\" node.";
 
 			// print error description to log
 			info.log_signal(error_desc);
@@ -1006,12 +1238,11 @@ Optional<Error> Controller::ReadInfo()
 }
 
 //----------------------------------------------------------------------------->
-// Creates (or loads a child node) a new text node, and changes
+// Dives into a text node that is defined by an id, and changes
 // input/output source/target to this node.
-//    @parameter id - id of the child node to load, this id
-//                    is needed only for the input text variant
+//    @parameter id - id of the child node to dive in.
 //    @return - ut::Error if failed.
-Optional<Error> Controller::DiveIntoNewNode(size_t id)
+Optional<Error> Controller::DiveIntoChildNode(size_t id)
 {
 	// this function is sensible only for text variant
 	if (mode == text_output_mode)
@@ -1019,15 +1250,14 @@ Optional<Error> Controller::DiveIntoNewNode(size_t id)
 		// get reference to the parent node
 		Tree<text::Node>& parent = *io.text_output;
 
-		// create a new node
-		Tree<text::Node> new_node;
-		if (!parent.Add(Move(new_node)))
+		// check range
+		if (id >= parent.GetNumChildren())
 		{
-			return Error(error::out_of_memory);
+			return Error(error::out_of_bounds);
 		}
 
-		// set new input source
-		io.text_output = &parent.GetLastChild();
+		// set new output target
+		io.text_output = &parent[id];
 	}
 	else if (mode == text_input_mode)
 	{

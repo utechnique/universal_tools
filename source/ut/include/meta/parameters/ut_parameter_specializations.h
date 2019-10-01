@@ -1,28 +1,15 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "text/ut_document.h"
-#include "streams/ut_file.h"
+#pragma once
 //----------------------------------------------------------------------------//
-START_NAMESPACE(ut)
-START_NAMESPACE(text)
+//  This file is a set of all specialized versions of the ut::Parameter
+//  template class.
 //----------------------------------------------------------------------------//
-// Constructor, takes node type as an argument
-//    @param node_type - type of the node
-Node::Node(node::Type node_type) : is_attribute(false)
-                                 , is_array(false)
-                                 , type(node_type)
-{ }
+#include "meta/parameters/pointers/ut_raw_ptr_parameter.h"
+#include "meta/parameters/pointers/ut_unique_ptr_parameter.h"
+#include "meta/parameters/containers/ut_array_parameter.h"
 
-// Returns a type of the node
-node::Type Node::GetType() const
-{
-	return type;
-}
-
-//----------------------------------------------------------------------------//
-END_NAMESPACE(text)
-END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

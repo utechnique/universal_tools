@@ -96,7 +96,7 @@ ut::Optional<ut::Error> MetaEditorItem::Create(Fl_Tree* tree,
 		bool is_boolean = false;
 		if (node.data.value_type)
 		{
-			is_boolean = node.data.value_type.Get() == ut::TypeName<bool>();
+			is_boolean = node.data.value_type.Get() == ut::Type<bool>::Name();
 		}
 
 		// disable attribute nodes
@@ -447,20 +447,20 @@ MetaEditorTextField::MetaEditorTextField(const ut::text::Node& node,
 	// input type
 	if (node.value_type)
 	{
-		if (node.value_type.Get() == ut::TypeName<ut::int8>() ||
-			node.value_type.Get() == ut::TypeName<ut::uint8>() ||
-			node.value_type.Get() == ut::TypeName<ut::int16>() ||
-			node.value_type.Get() == ut::TypeName<ut::uint16>() ||
-			node.value_type.Get() == ut::TypeName<ut::int32>() ||
-			node.value_type.Get() == ut::TypeName<ut::uint32>() ||
-			node.value_type.Get() == ut::TypeName<ut::int64>() ||
-			node.value_type.Get() == ut::TypeName<ut::uint64>())
+		if (node.value_type.Get() == ut::Type<ut::int8>::Name() ||
+			node.value_type.Get() == ut::Type<ut::uint8>::Name() ||
+			node.value_type.Get() == ut::Type<ut::int16>::Name() ||
+			node.value_type.Get() == ut::Type<ut::uint16>::Name() ||
+			node.value_type.Get() == ut::Type<ut::int32>::Name() ||
+			node.value_type.Get() == ut::Type<ut::uint32>::Name() ||
+			node.value_type.Get() == ut::Type<ut::int64>::Name() ||
+			node.value_type.Get() == ut::Type<ut::uint64>::Name())
 		{
 			widget->type(FL_INT_INPUT);
 		}
-		else if (node.value_type.Get() == ut::TypeName<float>() ||
-			node.value_type.Get() == ut::TypeName<double>() ||
-			node.value_type.Get() == ut::TypeName<long double>())
+		else if (node.value_type.Get() == ut::Type<float>::Name() ||
+			node.value_type.Get() == ut::Type<double>::Name() ||
+			node.value_type.Get() == ut::Type<long double>::Name())
 		{
 			widget->type(FL_FLOAT_INPUT);
 		}

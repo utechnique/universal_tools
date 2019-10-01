@@ -17,6 +17,7 @@
 #include "encryption/ut_encryption.h"
 #include "meta/ut_meta.h"
 #include "events/ut_events.h"
+#include "management/ut_management.h"
 #include "net/ut_net.h"
 
 //----------------------------------------------------------------------------//

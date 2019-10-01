@@ -5,8 +5,6 @@
 //----------------------------------------------------------------------------//
 #include "meta/ut_meta_base_parameter.h"
 #include "meta/ut_meta_controller.h"
-#include "templates/ut_enable_if.h"
-#include "templates/ut_is_base_of.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
@@ -26,7 +24,7 @@ public:
 	// Returns the name of the managed type
 	String GetTypeName() const
 	{
-		return GetTypeNameVariant<T>();
+		return BaseParameter::DeduceTypeName<T>();
 	}
 
 	// Registers children into reflection tree.
@@ -62,22 +60,6 @@ private:
 	typename EnableIf<IsBaseOf<Reflective, ElementType>::value>::Type* sfinae = nullptr
 #define SFINAE_IS_NOT_REFLECTIVE \
 	typename EnableIf<!IsBaseOf<Reflective, ElementType>::value>::Type* sfinae = nullptr
-
-	// If managed object is a reflective node (derived from ut::meta::Reflective)
-	// then typename is "reflective" for all derived classes
-	template<typename ElementType>
-	inline static String GetTypeNameVariant(SFINAE_IS_REFLECTIVE)
-	{
-		return Reflective::skTypeName;
-	}
-
-	// If managed object is not a reflective node (not derived from ut::meta::Reflective)
-	// then type name is the name of the intrinsic type
-	template<typename ElementType>
-	inline static String GetTypeNameVariant(SFINAE_IS_NOT_REFLECTIVE)
-	{
-		return TypeName<T>();
-	}
 
 	// If managed object is a reflective node (derived from ut::meta::Reflective)
 	// then reflect all of it's contents

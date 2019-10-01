@@ -601,8 +601,8 @@ typedef TString<wchar> WString;
 typedef TString<utf16char> UTF16String;
 
 // specialize type name function for strings
-template<> inline const char* TypeName<String>() { return "string"; }
-template<> inline const char* TypeName<WString>() { return "wstring"; }
+template<> inline const char* Type<String>::Name() { return "string"; }
+template<> inline const char* Type<WString>::Name() { return "wstring"; }
 
 //----------------------------------------------------------------------------//
 // returns platform-specific carriage return sequense

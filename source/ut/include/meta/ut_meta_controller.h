@@ -9,12 +9,14 @@
 #include "text/ut_document.h"
 #include "meta/ut_meta_info.h"
 #include "meta/ut_meta_node.h"
+#include "pointers/ut_shared_ptr.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
 // Forward declarations.
 class Snapshot;
+class Linker;
 
 //----------------------------------------------------------------------------//
 // ut::meta::Controller is a class that helps to serialize/deserialize data.
@@ -54,12 +56,6 @@ public:
 	//                       used during serialization and deserialization
 	Controller(const Info& info_copy = Info::CreateComplete());
 
-	// Copy constructor
-	Controller(const Controller& copy);
-
-	// Assignment operator
-	Controller& operator = (const Controller& copy);
-
 	// Extracts a custom entity value from the node.
 	// Note that this information may be absent.
 	//    @param node_name - name of the child node containing desired value
@@ -69,25 +65,61 @@ public:
 
 	// Changes mode to binary input stream
 	//    @param stream - reference to input stream to read data from
-	void SetBinaryInputStream(InputStream& stream);
+	Optional<Error> SetBinaryInputStream(InputStream& stream);
 
 	// Changes mode to binary output stream
 	//    @param stream - reference to output stream to write data to
-	void SetBinaryOutputStream(OutputStream& stream);
+	Optional<Error> SetBinaryOutputStream(OutputStream& stream);
 
 	// Changes mode to text input node
 	//    @param node - reference to the text node to read data from
-	void SetTextInputNode(const Tree<text::Node>& node);
+	Optional<Error> SetTextInputNode(const Tree<text::Node>& node);
 
 	// Changes mode to text output node
 	//    @param node - reference to the text node to write data to
-	void SetTextOutputNode(Tree<text::Node>& node);
+	Optional<Error> SetTextOutputNode(Tree<text::Node>& node);
 
 	// Returns current mode
 	Mode GetMode() const;
 
 	// Returns serialization information
 	Info GetInfo() const;
+
+	// Returns @cursor value.
+	stream::Cursor GetCursor() const;
+
+	// Returns current cursor position of the input/output binary stream.
+	// If controller is in text mode - returns @cursor value.
+	// Note that this value can differ from Controller::GetCursor() function result.
+	Result<stream::Cursor, Error> GetStreamCursor();
+
+	// Assigns a provided value to the @cursor member variable.
+	//    @param position - value of the cursor to be set.
+	//    @param sync - boolean whether to sync binary stream afterwards or not.
+	//    @return - error if failed.
+	Optional<Error> SetCursor(stream::Cursor position, bool sync = false);
+
+	// Synchronizes binary stream with @cursor position.
+	// Does nothing if in text mode.
+	//    @return - error if failed.
+	Optional<Error> Sync();
+
+	// Creates a task for linker to write a correct id of the linked
+	// object (that is defined as a pointer) into the value node.
+	//    @param parameter - pointer to the parameter representing a link,
+	//                       (raw pointer, shared/weak ptr, etc.).
+	//    @param linked_address - adress of the linked object.
+	//    @return - ut::Error if failed.
+	Optional<Error> WriteLink(const BaseParameter* parameter,
+	                          const void* linked_address);
+
+	// Creates a task for linker to read an id of the linked
+	// object (that is defined as a pointer) from the value node,
+	// and to link it with the provided parameter.
+	//    @param parameter - pointer to the parameter representing a link,
+	//                       (raw pointer, shared/weak ptr, etc.).
+	//    @return - ut::Error if failed.
+	Optional<Error> ReadLink(const BaseParameter* parameter);
 
 	// Serializes a provided reflective node.
 	//    @param node - a reference to the ut::meta::Snapshot object to be
@@ -149,7 +181,7 @@ public:
 				attribute_node.data.is_attribute = is_attribute;
 
 				// set value type
-				attribute_node.data.value_type = String(TypeName<T>());
+				attribute_node.data.value_type = String(Type<T>::Name());
 
 				// add text node to the tree
 				if (!io.text_output->Add(Move(attribute_node)))
@@ -210,7 +242,7 @@ public:
 		if (mode == text_output_mode && !info.HasValueEncapsulation())
 		{
 			io.text_output->data.value = Print<T>(element);
-			io.text_output->data.value_type = String(TypeName<T>());
+			io.text_output->data.value_type = String(Type<T>::Name());
 			io.text_output->data.encapsulation_name = String(node_names::skValue);
 			return Optional<Error>();
 		}
@@ -227,8 +259,25 @@ public:
 	{
 		if (mode == text_input_mode && !info.HasValueEncapsulation())
 		{
+			// try to find a value in a separate "value" node (variant for json)
 			Result<String, Error> extraction_result = ExtractTextNodeValue(*io.text_input, node_names::skValue);
-			T element = Scan<T>(extraction_result ? extraction_result.GetResult() : io.text_output->data.value.Get());
+			
+			// extract element from string
+			T element;
+			if (extraction_result)// we have found "value" node - totally ok!
+			{
+				element = Scan<T>(extraction_result.GetResult());
+			}
+			else if(io.text_output->data.value) // there is no separate "value" node, it can be ok,
+			{                                   // if it'a a json document e.g.
+				element = Scan<T>(io.text_output->data.value.Get());
+			}
+			else // no "value" node and no value inside a current node..
+			{    // the only thing we can do - to parse an empty string
+				element = Scan<T>(String());
+			}
+
+			// final value
 			return element;
 		}
 		else
@@ -263,6 +312,16 @@ public:
 	}
 
 private:
+	// Initializes intermediate modules (such as linker) before reading/writing a node.
+	//    @param node - reference to the node to initialize.
+	//    @return - ut::Error if failed.
+	Optional<Error> InitializeNode(Snapshot& node);
+
+	// Finalizes intermediate modules (such as linker) after a node has been read/written.
+	//    @param node - reference to the node to finalize.
+	//    @return - ut::Error if failed.
+	Optional<Error> FinalizeNode(Snapshot& node);
+
 	// Writes ut::meta::Info data, shared objects and linkage data.
 	//    @param node - reference to the node to initialize.
 	//    @return - ut::Error if failed.
@@ -286,14 +345,11 @@ private:
 	//                            a name of the node will be read to.
 	//    @param out_type_name -  reference to the ut::Optional container where
 	//                            a type of the node will be read to.
-	//    @param out_id -  reference to the ut::Optional container where
-	//                     an id of the node will be read to.
 	//    @param node - reference to the node that is being deserialized.
 	//    @return - ut::Error if failed.
 	Optional<Error> ReadUniformAttributes(Snapshot& node,
 	                                      Optional<String>& out_node_name,
-	                                      Optional<String>& out_type_name,
-	                                      Optional<SizeType>& out_id);
+	                                      Optional<String>& out_type_name);
 
 	// Writes parameter and all child nodes of this parameter.
 	//    @param node - reference to the node that is being serialized.
@@ -334,6 +390,12 @@ private:
 	//    @param count - number of leaves to be read.
 	//    @return - ut::Error if failed.
 	Result<size_t, Error> ReadNumberOfChildNodes(const Snapshot& node);
+
+	// Allocates space for text child nodes (leaves) so that
+	// every child node had stable address.
+	//    @param count - number of child nodes.
+	//    @return - id of the first child, or error if something went wrong.
+	Result<size_t, Error> AllocateChildNodes(size_t count);
 
 	// Allocates space in the output binary stream for the size variable.
 	//    @return - position of the size variable in a stream, or
@@ -378,12 +440,11 @@ private:
 	//    @return - ut::Error if failed.
 	Optional<Error> DiveIntoNamedNode(const String& name);
 
-	// Creates (or loads a child node) a new text node, and changes
+	// Dives into a text node that is defined by an id, and changes
 	// input/output source/target to this node.
-	//    @parameter id - id of the child node to load, this id
-	//                    is needed only for the input text variant
+	//    @parameter id - id of the child node to dive in.
 	//    @return - ut::Error if failed.
-	Optional<Error> DiveIntoNewNode(size_t id);
+	Optional<Error> DiveIntoChildNode(size_t id);
 
 	// Writes serialization information about the current serialization node.
 	// Information is written to the special attribute node (it's name is 
@@ -409,14 +470,39 @@ private:
 	template <typename T>
 	Optional<Error> ReadBinary(T* address, size_t count)
 	{
+		// check mode
+		if (mode != binary_input_mode)
+		{
+			return Error(error::fail, "Invalid mode.");
+		}
+
+		// read elements using correct endianness order
+		Optional<Error> read_error;
 		if (info.GetEndianness() == endian::little)
 		{
-			return endian::Read<T, endian::little>(*io.binary_input, address, count);
+			read_error = endian::Read<T, endian::little>(*io.binary_input, address, count);
 		}
 		else
 		{
-			return endian::Read<T, endian::big>(*io.binary_input, address, count);
+			read_error = endian::Read<T, endian::big>(*io.binary_input, address, count);
 		}
+
+		// check read result
+		if (read_error)
+		{
+			return read_error;
+		}
+
+		// update cursor position
+		Result<stream::Cursor, Error> read_cursor = io.binary_input->GetCursor();
+		if (!read_cursor)
+		{
+			return read_cursor.MoveAlt();
+		}
+		cursor = read_cursor.GetResult();
+
+		// success
+		return Optional<Error>();
 	}
 
 	// Helper function to write custom value to the binary stream
@@ -426,14 +512,39 @@ private:
 	template <typename T>
 	Optional<Error> WriteBinary(const T* address, size_t count)
 	{
+		// check mode
+		if (mode != binary_output_mode)
+		{
+			return Error(error::fail, "Invalid mode.");
+		}
+
+		// write elements using correct endianness order
+		Optional<Error> write_error;
 		if (info.GetEndianness() == endian::little)
 		{
-			return endian::Write<T, endian::little>(*io.binary_output, address, count);
+			write_error = endian::Write<T, endian::little>(*io.binary_output, address, count);
 		}
 		else
 		{
-			return endian::Write<T, endian::big>(*io.binary_output, address, count);
+			write_error = endian::Write<T, endian::big>(*io.binary_output, address, count);
 		}
+
+		// check write result
+		if (write_error)
+		{
+			return write_error;
+		}
+
+		// update cursor position
+		Result<stream::Cursor, Error> read_cursor = io.binary_output->GetCursor();
+		if (!read_cursor)
+		{
+			return read_cursor.MoveAlt();
+		}
+		cursor = read_cursor.GetResult();
+
+		// success
+		return Optional<Error>();
 	}
 
 	// Overloaded function to read ut::String from the binary stream.
@@ -547,6 +658,13 @@ private:
 	// Union of pointers to possible input/output
 	// entities for serializtion/deserialization.
 	IO io;
+
+	// Stream cursor, it can differ from the cursor in actual
+	// input/output stream. Call Controller::Sync() to synchronize.
+	stream::Cursor cursor;
+
+	// Linker helps to read/write links (such as pointers or references).
+	SharedPtr<Linker> linker;
 };
 
 //----------------------------------------------------------------------------//

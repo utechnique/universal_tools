@@ -7,7 +7,9 @@
 #include "containers/ut_tree.h"
 #include "pointers/ut_shared_ptr.h"
 #include "text/ut_document.h"
-#include "meta/ut_meta.h"
+#include "meta/ut_meta_node.h"
+#include "meta/ut_meta_info.h"
+#include "meta/parameters/ut_parameter_specializations.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
@@ -31,11 +33,11 @@ public:
 	//    @return - ut::Snapshot object.
 	template <typename T>
 	static Snapshot Capture(T& object,
-	                        const String& name = "snapshot",
-	                        const Info& info = Info::CreateComplete())
+	                        String name = "snapshot",
+	                        Info info = Info::CreateComplete())
 	{
-		Snapshot snapshot(info);
-		Optional<Error> init_error = snapshot.Init<T>(object, name);
+		Snapshot snapshot(Move(info));
+		Optional<Error> init_error = snapshot.Init<T>(object, Move(name));
 		if (init_error)
 		{
 			throw init_error;
@@ -54,7 +56,7 @@ public:
 		name.Print("p%u", static_cast<uint32>(Base::child_nodes.GetNum()));
 
 		// add new parameter
-		Optional<Error> add_param_error = Add(ref, name);
+		Optional<Error> add_param_error = Add(ref, Move(name));
 		if (add_param_error)
 		{
 			throw add_param_error.Move();
@@ -68,13 +70,13 @@ public:
 	//    @param ref - reference to the object to be serialized
 	//    @param name - name of the parameter
 	template<typename T>
-	Optional<Error> Add(T& ref, const String& name)
+	Optional<Error> Add(T& ref, String name)
 	{
 		// create a new node
 		Snapshot snapshot(info);
 
 		// init child node
-		Optional<Error> init_error = snapshot.Init<T>(ref, name);
+		Optional<Error> init_error = snapshot.Init<T>(ref, Move(name));
 		if (init_error)
 		{
 			return init_error;
@@ -119,7 +121,7 @@ private:
 	// Private constructor
 	//    @param info_copy - copy of the serialization info, that will be
 	//                       used during serialization and deserialization
-	Snapshot(const Info& info_copy = Info::CreateComplete());
+	Snapshot(Info info_copy = Info::CreateComplete());
 
 	// Private constructor to create child nodes that share
 	// the same serialization info structure
@@ -132,14 +134,14 @@ private:
 	//    @param name - name of the @object.
 	//    @return - ut::Error if failed.
 	template <typename T>
-	Optional<Error> Init(T& object, const String& name)
+	Optional<Error> Init(T& object, String name)
 	{
 		// create one of the possible parameters - correct
 		// variant is deduced from the argument list
 		data.parameter = new Parameter<T>(&object);
 
 		// copy parameter name
-		data.name = name;
+		data.name = Move(name);
 
 		// generate id
 		data.id = 0;

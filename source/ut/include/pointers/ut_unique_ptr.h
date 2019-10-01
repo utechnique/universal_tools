@@ -539,6 +539,12 @@ template <typename T> struct LValRef< Array< UniquePtr<T> > > { typedef Array< U
 template <typename T> struct RValRef< Array< UniquePtr<T> > > { typedef Array< UniquePtr<T> >& Type; };
 #endif
 
+// Specialize type name function for unique ptr
+template <typename T> struct Type< UniquePtr<T> >
+{
+	static inline const char* Name() { return "unique_ptr"; }
+};
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

@@ -25,17 +25,27 @@ public:
 	// Returns the name of the managed type
 	String GetTypeName() const
 	{
-		return skTypeName;
+		return BaseParameter::DeduceTypeName< UniquePtr<T> >();
 	}
 
 	// Registers children into reflection tree.
 	//    @param snapshot - reference to the reflection tree
 	void Reflect(Snapshot& snapshot)
 	{
+		Reflect<Snapshot>(snapshot);
+	}
+
+	// Some versions of GCC compiler try to compile Reflect() method
+	// before instantiation (with a specific type). And meta::Snapshot
+	// can still be incomplete. So we have to wrap this method in a
+	// template function to cope with the issue.
+	template <typename SnapshotType>
+	inline void Reflect(SnapshotType& snapshot)
+	{
 		UniquePtrType* p = static_cast<UniquePtrType*>(ptr);
 		if (p->Get())
 		{
-			snapshot << p->GetRef();
+			snapshot.Add(p->GetRef(), "unique");
 		}
 	}
 
@@ -46,7 +56,7 @@ public:
 	{
 		// write value type name
 		const UniquePtrType& ptr_ref = *static_cast<UniquePtrType*>(ptr);
-		String value_type_name = ptr_ref ? GetTypeNameVariant<T>() : String(TypeName<void>());
+		String value_type_name = ptr_ref ? GetTypeNameVariant<T>() : String(Type<void>::Name());
 		return controller.WriteAttribute(value_type_name, node_names::skValueType);
 	}
 
@@ -63,7 +73,7 @@ public:
 		}
 
 		// check if serialized pointer is not null
-		if (read_type_result.GetResult() == TypeName<void>())
+		if (read_type_result.GetResult() == Type<void>::Name())
 		{
 			return Optional<Error>(); // exit, ok
 		}
@@ -85,15 +95,10 @@ public:
 	}
 
 private:
-	// SFINAE_IS_REFLECTIVE, SFINAE_IS_NOT_REFLECTIVE, SFINAE_IS_POLYMORPHIC and
-	// SFINAE_IS_NOT_POLYMORPHIC are temporarily defined here to make short SFINAE
-	// argument. MS Visual Studio 2008 and 2010 doesn't support template specialization
+	// SFINAE_IS_POLYMORPHIC and SFINAE_IS_NOT_POLYMORPHIC are temporarily defined here to make
+	// short SFINAE argument. MS Visual Studio 2008 and 2010 doesn't support template specialization
 	// inside template classes, so the only way to implement Save() and Load() methods both
 	// for polymorphic and non-polymorphic archive types - is to use SFINAE pattern (feature).
-#define SFINAE_IS_REFLECTIVE \
-	typename EnableIf<IsBaseOf<Reflective, ElementType>::value>::Type* sfinae = nullptr
-#define SFINAE_IS_NOT_REFLECTIVE \
-	typename EnableIf<!IsBaseOf<Reflective, ElementType>::value>::Type* sfinae = nullptr
 #define SFINAE_IS_POLYMORPHIC \
 	typename EnableIf<IsBaseOf<Polymorphic, ElementType>::value>::Type* sfinae = nullptr
 #define SFINAE_IS_NOT_POLYMORPHIC \
@@ -112,7 +117,7 @@ private:
 		}
 		else
 		{
-			return GetTrivialTypeNameVariant<ElementType>();
+			return BaseParameter::DeduceTypeName<T>();
 		}
 	}
 
@@ -121,23 +126,7 @@ private:
 	template<typename ElementType>
 	inline String GetTypeNameVariant(SFINAE_IS_NOT_POLYMORPHIC) const
 	{
-		return GetTrivialTypeNameVariant<T>();
-	}
-
-	// If managed object is a reflective node (derived from ut::meta::Reflective)
-	// then typename is "reflective" for all derived classes
-	template<typename ElementType>
-	inline static String GetTrivialTypeNameVariant(SFINAE_IS_REFLECTIVE)
-	{
-		return Reflective::skTypeName;
-	}
-
-	// If managed object is not a reflective node (not derived from ut::meta::Reflective)
-	// then type name is the name of the intrinsic type
-	template<typename ElementType>
-	inline static String GetTrivialTypeNameVariant(SFINAE_IS_NOT_REFLECTIVE)
-	{
-		return TypeName<T>();
+		return BaseParameter::DeduceTypeName<T>();
 	}
 
 	// If managed object is a custom (not derived from ut::Polymorphic)
@@ -179,19 +168,12 @@ private:
 	}
 
 	// undef macros here
-#undef SFINAE_IS_REFLECTIVE
-#undef SFINAE_IS_NOT_REFLECTIVE
 #undef SFINAE_IS_POLYMORPHIC
 #undef SFINAE_IS_NOT_POLYMORPHIC
 
 	// name of the ut::UniquePtr type
 	static const char* skTypeName;
 };
-
-//----------------------------------------------------------------------------//
-// name of the ut::UniquePtr type
-template<typename T, typename Deleter>
-const char* Parameter< UniquePtr<T, Deleter> >::skTypeName = "unique_ptr";
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(meta)

@@ -22,12 +22,22 @@ public:
 	// Returns the name of the managed type
 	String GetTypeName() const
 	{
-		return skTypeName;
+		return BaseParameter::DeduceTypeName< Array<T> >();
 	}
 
 	// Registers children into reflection tree.
 	//    @param snapshot - reference to the reflection tree
 	void Reflect(Snapshot& snapshot)
+	{
+		Reflect<Snapshot>(snapshot);
+	}
+
+	// Some versions of GCC compiler try to compile Reflect() method
+	// before instantiation (with a specific type). And meta::Snapshot
+	// can still be incomplete. So we have to wrap this method in a
+	// template function to cope with the issue.
+	template <typename SnapshotType>
+	inline void Reflect(SnapshotType& snapshot)
 	{
 		// get array reference from pointer
 		Array<T>& arr = *static_cast<Array<T>*>(ptr);
@@ -123,15 +133,7 @@ private:
 		const Parameter<T> parameter(static_cast<T*>(ptr));
 		return parameter.GetTypeName();
 	}
-
-	// name of the ut::Array type
-	static const char* skTypeName;
 };
-
-//----------------------------------------------------------------------------//
-// name of the ut::Array type
-template<typename T>
-const char* Parameter< Array<T> >::skTypeName = "array";
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(meta)

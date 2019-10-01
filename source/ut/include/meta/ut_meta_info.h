@@ -16,6 +16,7 @@ START_NAMESPACE(meta)
 class Info
 {
 	friend class Controller; // for access to @log_signal
+	friend class Linker; // for access to @log_signal
 public:
 	typedef uint32 Version;
 	typedef uint32 Flag;

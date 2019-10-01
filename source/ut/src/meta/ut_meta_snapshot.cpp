@@ -2,7 +2,7 @@
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "meta/ut_meta_snapshot.h"
-#include "dbg/ut_log.h"
+#include "meta/ut_meta_controller.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
@@ -15,8 +15,7 @@ static const bool skLogSerializationEvents = true;
 // Constructor
 //    @param info_copy - copy of the serialization info, that will be
 //                       used during serialization and deserialization
-Snapshot::Snapshot(const Info& info_copy) : Base()
-	                                      , info(new Info(info_copy))
+Snapshot::Snapshot(Info info_copy) : Base(), info(new Info(Move(info_copy)))
 { }
 
 //----------------------------------------------------------------------------->
@@ -25,8 +24,17 @@ Snapshot::Snapshot(const Info& info_copy) : Base()
 //    @return - optionally ut::Error if failed
 Optional<Error> Snapshot::Save(OutputStream& stream)
 {
+	// create a new controller using current information object
 	Controller controller(info.GetRef());
-	controller.SetBinaryOutputStream(stream);
+
+	// change mode of the controller
+	Optional<Error> mode_error = controller.SetBinaryOutputStream(stream);
+	if (mode_error)
+	{
+		return mode_error;
+	}
+
+	// write self via controller
 	return controller.WriteNode(*this);
 }
 
@@ -36,8 +44,17 @@ Optional<Error> Snapshot::Save(OutputStream& stream)
 //    @return - optionally ut::Error if failed
 Optional<Error> Snapshot::Load(InputStream& stream)
 {
+	// create a new controller using current information object
 	Controller controller(info.GetRef());
-	controller.SetBinaryInputStream(stream);
+
+	// change mode of the controller
+	Optional<Error> mode_error = controller.SetBinaryInputStream(stream);
+	if (mode_error)
+	{
+		return mode_error;
+	}
+
+	// read self via controller
 	return controller.ReadNode(*this);
 }
 
@@ -47,8 +64,17 @@ Optional<Error> Snapshot::Load(InputStream& stream)
 //    @return - optionally ut::Error if failed
 Optional<Error> Snapshot::Save(Tree<text::Node>& text_node)
 {
+	// create a new controller using current information object
 	Controller controller(info.GetRef());
-	controller.SetTextOutputNode(text_node);
+
+	// change mode of the controller
+	Optional<Error> mode_error = controller.SetTextOutputNode(text_node);
+	if (mode_error)
+	{
+		return mode_error;
+	}
+
+	// write self via controller
 	return controller.WriteNode(*this);
 }
 
@@ -58,9 +84,17 @@ Optional<Error> Snapshot::Save(Tree<text::Node>& text_node)
 //    @return - optionally ut::Error if failed
 Optional<Error> Snapshot::Load(const Tree<text::Node>& text_node)
 {
-	// create text controller
+	// create a new controller using current information object
 	Controller controller(info.GetRef());
-	controller.SetTextInputNode(text_node);
+
+	// change mode of the controller
+	Optional<Error> mode_error = controller.SetTextInputNode(text_node);
+	if (mode_error)
+	{
+		return mode_error;
+	}
+
+	// read self via controller
 	return controller.ReadNode(*this);
 }
 

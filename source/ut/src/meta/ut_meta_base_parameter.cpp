@@ -34,11 +34,28 @@ Optional<Error> BaseParameter::Load(Controller& controller)
 	return Optional<Error>();
 }
 
+// Links internal value with provided parameter.
+// Every parameter calling Controller::WriteLink() and
+// Controller::ReadLink() must override this function so that
+// linker could operate with it.
+//    @param parameter - parameter to link with.
+//    @return - ut::Error if encountered an error
+Optional<Error> BaseParameter::Link(BaseParameter& parameter)
+{
+	return Error(error::not_supported);
+}
+
 // Returns 'true' if current parameter is a container
 // for multiple uniform objects.
 bool BaseParameter::IsArray() const
 {
 	return false;
+}
+
+// Returns an address of the managed object.
+void* BaseParameter::GetAddress()
+{
+	return ptr;
 }
 
 //----------------------------------------------------------------------------//

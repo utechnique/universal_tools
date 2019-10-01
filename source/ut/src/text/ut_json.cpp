@@ -139,19 +139,19 @@ Optional<Error> JsonDoc::ParseValue(text::Reader& cursor, Tree<text::Node>& node
 	else if (cursor.CheckLength(4) && cursor.Compare("true", false)) // true?
 	{
 		cursor += 4;
-		node.data.value_type = String(TypeName<bool>());
+		node.data.value_type = String(Type<bool>::Name());
 		node.data.value = String("true");
 	}
 	else if (cursor.CheckLength(5) && cursor.Compare("false", false)) // false?
 	{
 		cursor += 5;
-		node.data.value_type = String(TypeName<bool>());
+		node.data.value_type = String(Type<bool>::Name());
 		node.data.value = String("false");
 	}
 	else if (cursor.CheckLength(4) && cursor.Compare("null", false)) // null?
 	{
 		cursor += 4;
-		node.data.value_type = String(TypeName<int>());
+		node.data.value_type = String(Type<int>::Name());
 		node.data.value = String("null");
 	}
 	else if (cursor == L'-' || (cursor[0] >= L'0' && cursor[0] <= L'9')) // number?
@@ -162,7 +162,7 @@ Optional<Error> JsonDoc::ParseValue(text::Reader& cursor, Tree<text::Node>& node
 			return number_result.MoveAlt();
 		}
 
-		node.data.value_type = String(TypeName<int>());
+		node.data.value_type = String(Type<int>::Name());
 		node.data.value = number_result.MoveResult();
 	}
 	else if (cursor == '{') // object?
@@ -693,7 +693,7 @@ Optional<Error> JsonDoc::WriteNode(OutputStream& stream,
 		if (node.data.value_type)
 		{
 			is_numeric = IsNumericType<char>(node.data.value_type.Get());
-			is_bool = node.data.value_type.Get() == TypeName<bool>();
+			is_bool = node.data.value_type.Get() == Type<bool>::Name();
 		}
 
 		if (!is_numeric && !is_bool)

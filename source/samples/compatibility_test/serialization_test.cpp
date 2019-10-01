@@ -88,11 +88,11 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 
 	// create and change the object
 	bool is_mutable = info.HasTypeInformation() && info.HasBinaryNames();
-	SerializationTest test_obj(false);
+	SerializationTest test_obj(false, in_info.HasLinkageInformation());
 	ChangeSerializedObject(test_obj);
 	ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(test_obj, "test_object", info);
 
-	// you can save serialized object to .xml file here
+	// you can save serialized object to .xml, .json or .bin file here
 	bool save_to_file = false;
 	if (save_to_file)
 	{
@@ -107,13 +107,23 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 		if (open_xml_error)
 		{
 			report += "Saving xml file: failed. ";
-			report += open_xml_error.Get().GetDesc();
+			report += open_xml_error.Get().GetDesc() + ut::CRet();
 			failed_test_counter.Increment();
 		}
 		else
 		{
 			ut::XmlDoc xml_doc;
-			xml_file << (xml_doc << snapshot);
+			try
+			{
+				xml_file << (xml_doc << snapshot);
+			}
+			catch (const ut::Error& error)
+			{
+				report += "Saving xml file: failed. ";
+				report += error.GetDesc() + ut::CRet();
+				failed_test_counter.Increment();
+				return false;
+			}
 		}
 		xml_file.Close();
 
@@ -121,13 +131,23 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 		if (open_json_error)
 		{
 			report += "Saving json file: failed. ";
-			report += open_json_error.Get().GetDesc();
+			report += open_json_error.Get().GetDesc() + ut::CRet();
 			failed_test_counter.Increment();
 		}
 		else
 		{
 			ut::JsonDoc json_doc;
-			json_file << (json_doc << snapshot);
+			try
+			{
+				json_file << (json_doc << snapshot);
+			}
+			catch (const ut::Error& error)
+			{
+				report += "Saving json file: failed. ";
+				report += error.GetDesc() + ut::CRet();
+				failed_test_counter.Increment();
+				return false;
+			}
 		}
 		json_file.Close();
 
@@ -135,12 +155,20 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 		if (open_binary_error)
 		{
 			report += "Saving binary file: failed. ";
-			report += open_binary_error.Get().GetDesc();
+			report += open_binary_error.Get().GetDesc() + ut::CRet();
 			failed_test_counter.Increment();
+			return false;
 		}
 		else
 		{
-			snapshot.Save(binary_file);
+			ut::Optional<ut::Error> save_error = snapshot.Save(binary_file);
+			if (save_error)
+			{
+				report += "Saving binary file: failed. ";
+				report += save_error.Get().GetDesc() + ut::CRet();
+				failed_test_counter.Increment();
+				return false;
+			}
 		}
 		binary_file.Close();
 	}
@@ -160,41 +188,81 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 	// xml serialization
 	ut::BinaryStream xml_stream;
 	ut::XmlDoc save_xml;
-	xml_stream << (save_xml << snapshot);
+	try
+	{
+		xml_stream << (save_xml << snapshot);
+	}
+	catch (const ut::Error& error)
+	{
+		report += "Saving xml file: failed. ";
+		report += error.GetDesc() + ut::CRet();
+		failed_test_counter.Increment();
+		return false;
+	}
 	xml_stream.MoveCursor(0);
 
 	// json serialization
 	ut::BinaryStream json_stream;
 	ut::JsonDoc save_json;
-	json_stream << (save_json << snapshot);
+	try
+	{
+		json_stream << (save_json << snapshot);
+	}
+	catch (const ut::Error& error)
+	{
+		report += "Saving json file: failed. ";
+		report += error.GetDesc() + ut::CRet();
+		failed_test_counter.Increment();
+		return false;
+	}
 	json_stream.MoveCursor(0);
 
 	// load another object from the stream, it must be
 	// the same as the original one
-	SerializationTest binary_object(is_mutable);
-	ut::meta::Snapshot binary_snapshot = ut::meta::Snapshot::Capture(binary_object, "test_object", info);
+	SerializationTest binary_object(is_mutable, in_info.HasLinkageInformation());
+	ut::meta::Snapshot binary_snapshot = ut::meta::Snapshot::Capture(binary_object, "test_object");
 	ut::Optional<ut::Error> load_error = binary_snapshot.Load(binary_stream);
 	if (load_error)
 	{
 		report += ut::String("Failed to load binary object:") + ut::CRet();
-		report += load_error.Get().GetDesc();
+		report += load_error.Get().GetDesc() + ut::CRet();
 		failed_test_counter.Increment();
 		return false;
 	}
 
-	SerializationTest xml_object(is_mutable);
-	ut::meta::Snapshot xml_snapshot = ut::meta::Snapshot::Capture(xml_object, "test_object", info);
+	SerializationTest xml_object(is_mutable, in_info.HasLinkageInformation());
+	ut::meta::Snapshot xml_snapshot = ut::meta::Snapshot::Capture(xml_object, "test_object");
 	ut::XmlDoc load_xml;
-	xml_stream >> load_xml >> xml_snapshot;
+	try
+	{
+		xml_stream >> load_xml >> xml_snapshot;
+	}
+	catch (const ut::Error& error)
+	{
+		report += "Loading xml file: failed. ";
+		report += error.GetDesc() + ut::CRet();
+		failed_test_counter.Increment();
+		return false;
+	}
 
-	SerializationTest json_object(is_mutable);
+	SerializationTest json_object(is_mutable, in_info.HasLinkageInformation());
 	ut::JsonDoc load_json;
-	ut::meta::Snapshot json_snapshot = ut::meta::Snapshot::Capture(json_object, "test_object", info);
-	json_stream >> load_json >> json_snapshot;
+	ut::meta::Snapshot json_snapshot = ut::meta::Snapshot::Capture(json_object, "test_object");
+	try
+	{
+		json_stream >> load_json >> json_snapshot;
+	}
+	catch (const ut::Error& error)
+	{
+		report += "Loading json file: failed. ";
+		report += error.GetDesc() + ut::CRet();
+		failed_test_counter.Increment();
+		return false;
+	}
 
 	// validate binary object immutability after save/load action
 	bool check_ok = true;
-	if (!CheckSerializedObject(binary_object, is_mutable))
+	if (!CheckSerializedObject(binary_object, is_mutable, in_info.HasLinkageInformation()))
 	{
 		report += ut::String("FAIL: Objects don't match after binary serialization/deserialization.") + ut::CRet();
 		failed_test_counter.Increment();
@@ -202,7 +270,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 	}
 
 	// validate xml object immutability after save/load action
-	if (!CheckSerializedObject(xml_object, is_mutable))
+	if (!CheckSerializedObject(xml_object, is_mutable, in_info.HasLinkageInformation()))
 	{
 		report += ut::String("FAIL: Objects don't match after XML serialization/deserialization.") + ut::CRet();
 		failed_test_counter.Increment();
@@ -210,7 +278,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 	}
 
 	// validate json object immutability after save/load action
-	if (!CheckSerializedObject(json_object, is_mutable))
+	if (!CheckSerializedObject(json_object, is_mutable, in_info.HasLinkageInformation()))
 	{
 		report += ut::String("JSON: Objects don't match after XML serialization/deserialization. ") + ut::CRet();
 		failed_test_counter.Increment();
@@ -233,12 +301,18 @@ void SerializationSubClass::Reflect(ut::meta::Snapshot& snapshot)
 }
 
 //----------------------------------------------------------------------------//
-SerializationTest::SerializationTest(bool in_alternate) : alternate(in_alternate)
-                                                        , ival(0)
-                                                        , uval(0)
-                                                        , bool_val(false)
-                                                        , fval(0.0f)
-                                                        , str("void")
+SerializationTest::SerializationTest(bool in_alternate,
+                                     bool in_can_have_links) : alternate(in_alternate)
+                                                             , can_have_links(in_can_have_links)
+                                                             , ival(0)
+                                                             , ival_ptr(&ival)
+                                                             , ival_const_ptr(&ival)
+                                                             , void_ptr(nullptr)
+                                                             , int16_unique(new ut::int16(1))
+                                                             , uval(0)
+                                                             , bool_val(false)
+                                                             , fval(0.0f)
+                                                             , str("void")
 {
 	// string array
 	ut::Array<ut::String> arr0;
@@ -250,16 +324,42 @@ SerializationTest::SerializationTest(bool in_alternate) : alternate(in_alternate
 	strarrarr.Add(arr0);
 	strarrarr.Add(arr1);
 
+	// string pointer
+	str_ptr = &strarrarr[0][0];
+	str_ptr_ptr = &str_ptr;
+
+	// pointer to the value contained in unique pointer
+	i16_ptr = int16_unique.Get();
+
 	// initialize dynamic object
 	dyn_type_ptr = new PolymorphicA(-1, 1);
 
-	// initialize reflective parameter
+	// initialize reflective parameters
 	reflective_param = new ReflectiveA(-2, 2);
+	reflect_unique_ptr = new ReflectiveA(0, 0);
+
+	// pointers to compicated types
+	refl_ptr = reflect_unique_ptr.Get();
+	refl_ptr_ptr = &refl_ptr;
+	refl_A_ptr = static_cast<ReflectiveA*>(reflect_unique_ptr.Get());
 }
 
 void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 {
 	snapshot << ival;
+	if (can_have_links)
+	{
+		snapshot << ival_ptr;
+		snapshot << ival_const_ptr;
+		snapshot << void_ptr;
+		snapshot << str_ptr_ptr;
+		snapshot << str_ptr;
+		snapshot << i16_ptr;
+		snapshot << refl_ptr;
+		snapshot << refl_ptr_ptr;
+		snapshot << refl_A_ptr;
+	}
+	snapshot << int16_unique;
 	snapshot << uval;
 	snapshot << bool_val;
 	snapshot << str;
@@ -269,6 +369,7 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << dyn_type_ptr;
 	snapshot << strarrarr;
 	snapshot << u16ptrarr;
+	snapshot << reflect_unique_ptr;
 
 	// reflective dynamic parameter can be
 	// changed to the alternate one here
@@ -476,6 +577,9 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.strarrarr.Add(arr0);
 	object.strarrarr.Add(arr1);
 
+	// string pointer
+	object.str_ptr = &object.strarrarr[0][0];
+
 	// change dynamic object
 	object.dyn_type_ptr = new PolymorphicB("test_b", 500);
 	object.dyn_type_ptr->fval = 1001.504f;
@@ -493,7 +597,7 @@ void ChangeSerializedObject(SerializationTest& object)
 
 // Checks if serialized object was loaded with the correct values,
 // note that ChangeSerializedObject() must be called before saving an object
-bool CheckSerializedObject(const SerializationTest& object, bool alternate)
+bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool linkage)
 {
 	if (object.ival != -0x01234567) return false;
 	if (object.uval != 0x0123456789ABCDEF) return false;
@@ -568,6 +672,23 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate)
 		const ut::DynamicType& refl_type = object.reflective_param->Identify();
 		const ut::String refl_type_name(refl_type.GetName());
 		if (refl_type_name != "reflective_B") return false;
+	}
+
+	// links
+	if (linkage)
+	{
+		if (object.ival_ptr == nullptr) return false;
+		if (object.ival_const_ptr == nullptr) return false;
+		if (*object.ival_ptr != object.ival) return false;
+		if (*object.ival_const_ptr != object.ival) return false;
+		if (object.void_ptr != nullptr) return false;
+		if (object.str_ptr != &object.strarrarr[0][0]) return false;
+		if (object.str_ptr_ptr != &object.str_ptr) return false;
+		if (object.i16_ptr != object.int16_unique.Get()) return false;
+		if (*object.i16_ptr != 1) return false;
+		if (object.refl_ptr != object.reflect_unique_ptr.Get()) return false;
+		if (object.refl_ptr_ptr != &object.refl_ptr) return false;
+		if (object.refl_A_ptr != object.reflect_unique_ptr.Get()) return false;
 	}
 
 	return true;

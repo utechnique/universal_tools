@@ -39,22 +39,6 @@ public:
 	//    @param node_type - type of the node
 	Node(node::Type node_type = node::general);
 
-	// Copy constructor
-	Node(const Node& copy);
-
-	// Move constructor
-#if CPP_STANDARD >= 2011
-	Node(Node && copy);
-#endif
-
-	// Assignment operator
-	Node& operator = (const Node& copy);
-
-	// Move operator
-#if CPP_STANDARD >= 2011
-	Node& operator = (Node && copy);
-#endif
-
 	// Returns a type of the node
 	node::Type GetType() const;
 
