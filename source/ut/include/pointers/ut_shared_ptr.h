@@ -248,6 +248,13 @@ inline bool operator <= (const SharedPtr<T1>& left, const SharedPtr<T2>& right)
 	{ return nullptr <= right.Get(); }
 #endif // CPP_STANDARD >= 2011
 
+// Specialize type name function for shared ptr
+template <typename T, thread_safety::Mode mode, typename Deleter>
+struct Type< SharedPtr<T, mode, Deleter> >
+{
+	static inline const char* Name() { return "shared_ptr"; }
+};
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

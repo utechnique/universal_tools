@@ -246,6 +246,12 @@ void Info::ConnectLogSignalSlot(const Function<void(const ut::String&)>& slot)
 	log_signal.Connect(slot);
 }
 
+// Calls log slots with the provided message.
+void Info::LogMessage(const String& msg)
+{
+	log_signal(msg);
+}
+
 //----------------------------------------------------------------------------->
 // Checks if all flags are compatible, and if any conflict occurs - fixes it.
 void Info::VerifyFlags()

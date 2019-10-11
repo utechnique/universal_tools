@@ -67,6 +67,8 @@ namespace node_names
 	static const char* skInfo = "info";
 	static const char* skVersion = "version";
 	static const char* skFlags = "flags";
+	static const char* skShared = "shared";
+	static const char* skSharedObjects = "shared_objects";
 }
 
 //----------------------------------------------------------------------------//

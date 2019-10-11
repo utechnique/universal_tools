@@ -3,16 +3,29 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-//  This file is a set of all header files related to meta data structures
+#include "common/ut_common.h"
+#include "meta/linkage/ut_meta_shared_holder.h"
 //----------------------------------------------------------------------------//
-#include "meta/ut_reflective.h"
-#include "meta/ut_meta_base_parameter.h"
-#include "meta/ut_polymorphic.h"
-#include "meta/ut_meta_node.h"
-#include "meta/ut_meta_info.h"
-#include "meta/ut_meta_controller.h"
-#include "meta/ut_meta_snapshot.h"
+START_NAMESPACE(ut)
+START_NAMESPACE(meta)
+//----------------------------------------------------------------------------//
+// Holds shared pointer to the shared object and address of this object.
+struct OutputSharedCacheElement
+{
+	SharedPtr<SharedPtrHolderBase> ptr;
+	const void* address;
+};
 
+// Holds shared pointer to the shared object and id of this object.
+struct InputSharedCacheElement
+{
+	SharedPtr<SharedPtrHolderBase> ptr;
+	size_t id;
+};
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(meta)
+END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

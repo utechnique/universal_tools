@@ -144,6 +144,33 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class SharedTestLevel2 : public ut::meta::Reflective
+{
+public:
+	SharedTestLevel2();
+	void Reflect(ut::meta::Snapshot& snapshot);
+	ut::SharedPtr<ut::int32> i32_shared;
+};
+
+//----------------------------------------------------------------------------//
+class SharedTestLevel1 : public ut::meta::Reflective
+{
+public:
+	SharedTestLevel1();
+	void Reflect(ut::meta::Snapshot& snapshot);
+	ut::SharedPtr<SharedTestLevel2> shared_obj;
+};
+
+//----------------------------------------------------------------------------//
+class SharedTestLevel0 : public ut::meta::Reflective
+{
+public:
+	SharedTestLevel0();
+	void Reflect(ut::meta::Snapshot& snapshot);
+	ut::SharedPtr<SharedTestLevel1> shared_obj;
+};
+
+//----------------------------------------------------------------------------//
 class SerializationTest : public ut::meta::Reflective
 {
 public:
@@ -159,16 +186,24 @@ public:
 	ut::Array<SerializationSubClass> arr;
 
 	ut::int32 ival;
+	ut::int32 ival2;
 	ut::int32* ival_ptr;
 	ut::int32* void_ptr;
 	const ut::int32* ival_const_ptr;
 	ut::String* str_ptr;
 	ut::String** str_ptr_ptr;
 	ut::UniquePtr<ut::int16> int16_unique;
+	ut::UniquePtr<ut::int16> int16_unique_void;
 	ut::int16* i16_ptr;
 	ReflectiveBase* refl_ptr;
 	ReflectiveBase** refl_ptr_ptr;
 	ReflectiveA* refl_A_ptr;
+	ut::SharedPtr<ut::int32> ival_shared_ptr_0;
+	ut::SharedPtr<ut::int32> ival_shared_ptr_1;
+	ut::SharedPtr<ut::int32> ival_shared_ptr_2;
+	ut::SharedPtr<ReflectiveBase> refl_shared_ptr;
+	ut::SharedPtr<ReflectiveBase> refl_shared_void_ptr;
+	ut::SharedPtr<SharedTestLevel0> refl_shared_level_ptr;
 	ut::uint64 uval;
 	bool bool_val;
 	ut::String str;
@@ -180,7 +215,8 @@ public:
 	ut::UniquePtr<ReflectiveBaseAlt> reflective_param_alt;
 	ut::UniquePtr<ReflectiveBase> void_param;
 	ut::UniquePtr<ReflectiveBase> reflect_unique_ptr;
-	float      fval;
+	ut::UniquePtr<ReflectiveBase> reflect_unique_ptr2;
+	float fval;
 };
 
 //----------------------------------------------------------------------------//

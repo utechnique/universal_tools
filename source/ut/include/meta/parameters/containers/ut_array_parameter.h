@@ -29,16 +29,6 @@ public:
 	//    @param snapshot - reference to the reflection tree
 	void Reflect(Snapshot& snapshot)
 	{
-		Reflect<Snapshot>(snapshot);
-	}
-
-	// Some versions of GCC compiler try to compile Reflect() method
-	// before instantiation (with a specific type). And meta::Snapshot
-	// can still be incomplete. So we have to wrap this method in a
-	// template function to cope with the issue.
-	template <typename SnapshotType>
-	inline void Reflect(SnapshotType& snapshot)
-	{
 		// get array reference from pointer
 		Array<T>& arr = *static_cast<Array<T>*>(ptr);
 

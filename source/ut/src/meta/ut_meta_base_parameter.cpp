@@ -34,13 +34,13 @@ Optional<Error> BaseParameter::Load(Controller& controller)
 	return Optional<Error>();
 }
 
-// Links internal value with provided parameter.
+// Links internal value with provided object (that is specified by address).
 // Every parameter calling Controller::WriteLink() and
 // Controller::ReadLink() must override this function so that
 // linker could operate with it.
-//    @param parameter - parameter to link with.
+//    @param address - address of the object to link with.
 //    @return - ut::Error if encountered an error
-Optional<Error> BaseParameter::Link(BaseParameter& parameter)
+Optional<Error> BaseParameter::Link(void* address)
 {
 	return Error(error::not_supported);
 }

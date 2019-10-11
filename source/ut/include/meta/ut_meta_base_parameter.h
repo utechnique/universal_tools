@@ -46,13 +46,13 @@ public:
 	//    @return - ut::Error if encountered an error
 	virtual Optional<Error> Load(Controller& controller);
 
-	// Links internal value with provided parameter.
+	// Links internal value with provided object (that is specified by address).
 	// Every parameter calling Controller::WriteLink() and
 	// Controller::ReadLink() must override this function so that
 	// linker could operate with it.
-	//    @param parameter - parameter to link with.
+	//    @param address - address of the object to link with.
 	//    @return - ut::Error if encountered an error
-	virtual Optional<Error> Link(BaseParameter& parameter);
+	virtual Optional<Error> Link(void* address);
 
 	// Returns 'true' if current parameter is a container
 	// for multiple uniform objects.

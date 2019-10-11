@@ -42,13 +42,13 @@ SerializationVariantsTask::SerializationVariantsTask() : TestTask("Serialization
 	serialization_info.EnableTypeInformation(false);
 	info_variants.Add(PairType("no type information", serialization_info));
 
-	// no linkage information
-	serialization_info.EnableLinkageInformation(false);
-	info_variants.Add(PairType("no linkage information", serialization_info));
-
 	// no name information
 	serialization_info.EnableBinaryNames(false);
 	info_variants.Add(PairType("no name information", serialization_info));
+
+	// no linkage information
+	serialization_info.EnableLinkageInformation(false);
+	info_variants.Add(PairType("no linkage information", serialization_info));
 
 	// no value encapsulation
 	serialization_info.EnableValueEncapsulation(false);
@@ -280,7 +280,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 	// validate json object immutability after save/load action
 	if (!CheckSerializedObject(json_object, is_mutable, in_info.HasLinkageInformation()))
 	{
-		report += ut::String("JSON: Objects don't match after XML serialization/deserialization. ") + ut::CRet();
+		report += ut::String("FAIL: Objects don't match after JSON serialization/deserialization. ") + ut::CRet();
 		failed_test_counter.Increment();
 		check_ok = false;
 	}
@@ -305,10 +305,12 @@ SerializationTest::SerializationTest(bool in_alternate,
                                      bool in_can_have_links) : alternate(in_alternate)
                                                              , can_have_links(in_can_have_links)
                                                              , ival(0)
+                                                             , ival2(2)
                                                              , ival_ptr(&ival)
                                                              , ival_const_ptr(&ival)
                                                              , void_ptr(nullptr)
                                                              , int16_unique(new ut::int16(1))
+                                                             , int16_unique_void(new ut::int16(2))
                                                              , uval(0)
                                                              , bool_val(false)
                                                              , fval(0.0f)
@@ -337,16 +339,25 @@ SerializationTest::SerializationTest(bool in_alternate,
 	// initialize reflective parameters
 	reflective_param = new ReflectiveA(-2, 2);
 	reflect_unique_ptr = new ReflectiveA(0, 0);
+	reflect_unique_ptr2 = new ReflectiveA(0, 2);
 
 	// pointers to compicated types
 	refl_ptr = reflect_unique_ptr.Get();
 	refl_ptr_ptr = &refl_ptr;
 	refl_A_ptr = static_cast<ReflectiveA*>(reflect_unique_ptr.Get());
+
+	// shared pointers
+	ival_shared_ptr_0 = new ut::int32(2);
+	ival_shared_ptr_1 = ival_shared_ptr_0;
+	ival_shared_ptr_2 = new ut::int32(102);
+	refl_shared_ptr = new ReflectiveA(0, 3);
+	refl_shared_void_ptr = new ReflectiveA(1, 1);
 }
 
 void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 {
 	snapshot << ival;
+	snapshot << ival2;
 	if (can_have_links)
 	{
 		snapshot << ival_ptr;
@@ -358,8 +369,15 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 		snapshot << refl_ptr;
 		snapshot << refl_ptr_ptr;
 		snapshot << refl_A_ptr;
+		snapshot << ival_shared_ptr_0;
+		snapshot << ival_shared_ptr_1;
+		snapshot << ival_shared_ptr_2;
+		snapshot << refl_shared_ptr;
+		snapshot << refl_shared_void_ptr;
+		snapshot << refl_shared_level_ptr;
 	}
 	snapshot << int16_unique;
+	snapshot << int16_unique_void;
 	snapshot << uval;
 	snapshot << bool_val;
 	snapshot << str;
@@ -370,6 +388,7 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << strarrarr;
 	snapshot << u16ptrarr;
 	snapshot << reflect_unique_ptr;
+	snapshot << reflect_unique_ptr2;
 
 	// reflective dynamic parameter can be
 	// changed to the alternate one here
@@ -539,6 +558,33 @@ void ReflectiveAltB::Reflect(ut::meta::Snapshot& snapshot)
 }
 
 //----------------------------------------------------------------------------//
+SharedTestLevel2::SharedTestLevel2() : i32_shared(new ut::int32(3))
+{ }
+
+void SharedTestLevel2::Reflect(ut::meta::Snapshot& snapshot)
+{
+	snapshot.Add(i32_shared, "level2_int");
+}
+
+//----------------------------------------------------------------------------//
+SharedTestLevel1::SharedTestLevel1() : shared_obj(new SharedTestLevel2)
+{ }
+
+void SharedTestLevel1::Reflect(ut::meta::Snapshot& snapshot)
+{
+	snapshot.Add(shared_obj, "level1_obj");
+}
+
+//----------------------------------------------------------------------------//
+SharedTestLevel0::SharedTestLevel0() : shared_obj(new SharedTestLevel1)
+{ }
+
+void SharedTestLevel0::Reflect(ut::meta::Snapshot& snapshot)
+{
+	snapshot.Add(shared_obj, "level0_obj");
+}
+
+//----------------------------------------------------------------------------//
 // Changes serialized object to validate it further
 // (if loading will fail - parameters would have default values against changed ones)
 void ChangeSerializedObject(SerializationTest& object)
@@ -593,6 +639,18 @@ void ChangeSerializedObject(SerializationTest& object)
 	b_ptr->b_ptr_arr.Add(new ut::byte(64));
 	b_ptr->b_ptr_arr.Add(new ut::byte(255));
 
+	// change pointers
+	object.int16_unique_void.Delete();
+	object.ival_const_ptr = &object.ival2;
+	object.refl_ptr = object.reflect_unique_ptr2.Get();
+
+	// change shared pointers
+	object.ival_shared_ptr_0 = new ut::int32(4);
+	object.ival_shared_ptr_1 = object.ival_shared_ptr_0;
+	object.ival_shared_ptr_2 = new ut::int32(101);
+	object.refl_shared_ptr = new ReflectiveB("reflective_b_str", 1, 1);
+	object.refl_shared_void_ptr.Reset();
+	object.refl_shared_level_ptr = new SharedTestLevel0;
 }
 
 // Checks if serialized object was loaded with the correct values,
@@ -680,15 +738,26 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 		if (object.ival_ptr == nullptr) return false;
 		if (object.ival_const_ptr == nullptr) return false;
 		if (*object.ival_ptr != object.ival) return false;
-		if (*object.ival_const_ptr != object.ival) return false;
+		if (*object.ival_const_ptr != object.ival2) return false;
 		if (object.void_ptr != nullptr) return false;
 		if (object.str_ptr != &object.strarrarr[0][0]) return false;
 		if (object.str_ptr_ptr != &object.str_ptr) return false;
 		if (object.i16_ptr != object.int16_unique.Get()) return false;
 		if (*object.i16_ptr != 1) return false;
-		if (object.refl_ptr != object.reflect_unique_ptr.Get()) return false;
+		if (object.refl_ptr != object.reflect_unique_ptr2.Get()) return false;
 		if (object.refl_ptr_ptr != &object.refl_ptr) return false;
 		if (object.refl_A_ptr != object.reflect_unique_ptr.Get()) return false;
+		if (object.int16_unique_void.Get() != nullptr) return false;
+
+		// shared
+		if (object.ival_shared_ptr_0.GetRef() != 4) return false;
+		if (object.ival_shared_ptr_1.GetRef() != 4) return false;
+		if (object.ival_shared_ptr_2.GetRef() != 101) return false;
+		if (object.refl_shared_void_ptr.Get() != nullptr) return false;
+		if (object.refl_shared_ptr.Get() == nullptr) return false;
+		const ut::DynamicType& refl_type = object.refl_shared_ptr->Identify();
+		const ut::String refl_type_name(refl_type.GetName());
+		if (refl_type_name != "reflective_B") return false;
 	}
 
 	return true;

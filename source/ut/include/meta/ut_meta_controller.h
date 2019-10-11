@@ -9,6 +9,7 @@
 #include "text/ut_document.h"
 #include "meta/ut_meta_info.h"
 #include "meta/ut_meta_node.h"
+#include "meta/linkage/ut_meta_link_cache.h"
 #include "pointers/ut_shared_ptr.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
@@ -28,6 +29,9 @@ class Linker;
 class Controller
 {
 public:
+	// type for size information (number of parameters, parameter size, etc.)
+	typedef uint32 SizeType;
+
 	// Enumeration of possible modes, all modes are mutually exclusive
 	enum Mode
 	{
@@ -48,8 +52,13 @@ public:
 		Tree<text::Node>* text_output;
 	};
 
-	// type for size information (number of parameters, parameter size, etc.)
-	typedef uint32 SizeType;
+	// Contains attributes that are mandatory for all parameters.
+	struct Uniform
+	{
+		Optional<String> name;
+		Optional<String> type;
+		Optional<SizeType> id;
+	};
 
 	// Constructor
 	//    @param info_copy - copy of the serialization info, that will be
@@ -104,6 +113,11 @@ public:
 	//    @return - error if failed.
 	Optional<Error> Sync();
 
+	// Synchronizes @cursor position with binary stream.
+	// Does nothing if in text mode.
+	//    @return - error if failed.
+	Optional<Error> SyncWithStream();
+
 	// Creates a task for linker to write a correct id of the linked
 	// object (that is defined as a pointer) into the value node.
 	//    @param parameter - pointer to the parameter representing a link,
@@ -121,6 +135,16 @@ public:
 	//    @return - ut::Error if failed.
 	Optional<Error> ReadLink(const BaseParameter* parameter);
 
+	// Creates a task for linker to read an id of the linked
+	// shared object from the value node, and to link it with
+	// the provided parameter.
+	//    @param parameter - pointer to the parameter representing a link,
+	//                       (shared ptr).
+	//    @param ptr - shared pointer to the holder of the SharedPtr object.
+	//    @return - ut::Error if failed.
+	Optional<Error> ReadSharedLink(const BaseParameter* parameter,
+	                               const SharedPtr<class SharedPtrHolderBase>& ptr);
+
 	// Serializes a provided reflective node.
 	//    @param node - a reference to the ut::meta::Snapshot object to be
 	//                  serialized, it can be created by calling
@@ -134,12 +158,26 @@ public:
 	// Deserializes a provided reflective node.
 	//    @param node - a reference to the ut::meta::Snapshot object to be
 	//                  deserialized, it can be created by calling
-	//                  ut::meta::Snapshot::Capture() function.
+	//                  ut::meta::Snapshot::Capture() function;
+	//                  this parameter can be empty if @skip_loading is 'true'.
 	//    @param initialize - this boolean indicates if node will be initialized
 	//                        with special 'header' information: serialization
 	//                        info, shared objects, etc.
+	//    @param skip_loading - this boolean indicates if node's body must be skipped
+	//                          and only uniform data is to be read, @node parameter
+	//                          can be empty in this case.
+	//    @return - ut::meta::Controller::Uniform object describing a node
+	//              or ut::Error if failed.
+	Result<Uniform, Error> ReadNode(Optional< Ref<Snapshot> > node,
+	                                bool initialize = true,
+	                                bool skip_loading = false);
+
+	// Adds unique shared parameter.
+	//    @param ptr - shared pointer to the holder of the SharedPtr object.
+	//    @param address - address of the shared object.
 	//    @return - ut::Error if failed.
-	Optional<Error> ReadNode(Snapshot& node, bool initialize = true);
+	Optional<Error> WriteSharedObject(const SharedPtr<class SharedPtrHolderBase>& ptr,
+	                                  const void* address);
 
 	// Writes attribute, "attribute" here means something that is not representing
 	// value directly, but helps to create this value
@@ -340,16 +378,8 @@ private:
 
 	// Reads attributes that are mandatory for all parameters,
 	// like name, type, id, etc.
-	//    @param node - reference to the node that is being deserialized.
-	//    @param out_node_name -  reference to the ut::Optional container where
-	//                            a name of the node will be read to.
-	//    @param out_type_name -  reference to the ut::Optional container where
-	//                            a type of the node will be read to.
-	//    @param node - reference to the node that is being deserialized.
-	//    @return - ut::Error if failed.
-	Optional<Error> ReadUniformAttributes(Snapshot& node,
-	                                      Optional<String>& out_node_name,
-	                                      Optional<String>& out_type_name);
+	//    @return - meta::Controller::Uniform object ot ut::Error if failed.
+	Result<Uniform, Error> ReadUniformAttributes();
 
 	// Writes parameter and all child nodes of this parameter.
 	//    @param node - reference to the node that is being serialized.
@@ -456,6 +486,34 @@ private:
 	// and applies correct settings to the controller.
 	//    @return - ut::Error if failed.
 	Optional<Error> ReadInfo();
+
+	// Writes shared objects, these objects have no owner,
+	// so must be written separately.
+	//    @return - ut::Error if failed.
+	Optional<Error> WriteSharedObjects();
+
+	// Reads shared objects, these objects have no owner,
+	// so must be read separately.
+	//    @return - ut::Error if failed.
+	Optional<Error> ReadSharedObjects();
+
+	// Searches for the shared parameter in the registry using provided name,
+	// then tries to load this parameter.
+	//    @param registry - reference to the array of shared cache elements,
+	//                      that are waiting to be deserialized.
+	//    @param name - name of the serialized shared object.
+	//    @param scope_state - state preceding reading of any shared parameter.
+	//    @return - ut::Error if failed.
+	Optional<Error> LoadSharedObject(Array<InputSharedCacheElement>& registry,
+	                                 const String& name,
+	                                 const Controller& scope_state);
+
+	// Uses provided id to generate a name of the shared parameter. Calling the
+	// same function to generate names both for serialization and deserialization
+	// you ensure that parameters would be loaded correctly.
+	//    @param id - id of shared parameter.
+	//    @return - string containing a generated name.
+	String GenerateSharedObjectName(size_t id);
 
 	// Returns a current state.
 	Controller SaveState();

@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "meta/ut_meta_base_parameter.h"
 #include "meta/ut_meta_controller.h"
+#include "meta/ut_meta_snapshot.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)

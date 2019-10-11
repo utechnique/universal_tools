@@ -15,8 +15,6 @@ START_NAMESPACE(meta)
 // deserialization. It describes a format of the serialized entity.
 class Info
 {
-	friend class Controller; // for access to @log_signal
-	friend class Linker; // for access to @log_signal
 public:
 	typedef uint32 Version;
 	typedef uint32 Flag;
@@ -109,6 +107,9 @@ public:
 	// some extraordinary serialization event occurs.
 	void ConnectLogSignalSlot(const Function<void(const ut::String& event_description)>& slot);
 	
+	// Calls log slots with the provided message.
+	void LogMessage(const String& msg);
+
 private:
 
 	// Signal when some extraordinary serialization event occurs.

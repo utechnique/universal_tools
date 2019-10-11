@@ -67,26 +67,13 @@ public:
 		return controller.ReadLink(this);
 	}
 
-	// Links pointer with provided parameter.
-	// Every parameter calling Controller::WriteLink() and
-	// Controller::ReadLink() must override this function so that
-	// linker could operate with it.
-	//    @param parameter - parameter to link with.
+	// Links pointer with provided object (that is specified by address).
+	//    @param address - pointer to the object to link with.
 	//    @return - ut::Error if encountered an error
-	Optional<Error> Link(BaseParameter& parameter)
+	Optional<Error> Link(void* address)
 	{
-		// check types
-		String value_type_name = BaseParameter::DeduceTypeName<T>();
-		if (value_type_name != parameter.GetTypeName())
-		{
-			String error_desc = "Pointer value type is \"";
-			error_desc += value_type_name + "\" and linked type is \"";
-			error_desc += parameter.GetTypeName() + "\".";
-			return Error(error::types_not_match, error_desc);
-		}
-
 		// set pointer value
-		*static_cast<const T**>(ptr) = static_cast<const T*>(parameter.GetAddress());
+		*static_cast<const T**>(ptr) = static_cast<const T*>(address);
 
 		// success
 		return Optional<Error>();

@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
+#include "pointers/ut_unique_ptr.h"
 #include "meta/ut_meta_parameter.h"
 #include "meta/ut_polymorphic.h"
 #include "meta/ut_meta_node.h"
@@ -31,16 +32,6 @@ public:
 	// Registers children into reflection tree.
 	//    @param snapshot - reference to the reflection tree
 	void Reflect(Snapshot& snapshot)
-	{
-		Reflect<Snapshot>(snapshot);
-	}
-
-	// Some versions of GCC compiler try to compile Reflect() method
-	// before instantiation (with a specific type). And meta::Snapshot
-	// can still be incomplete. So we have to wrap this method in a
-	// template function to cope with the issue.
-	template <typename SnapshotType>
-	inline void Reflect(SnapshotType& snapshot)
 	{
 		UniquePtrType* p = static_cast<UniquePtrType*>(ptr);
 		if (p->Get())
@@ -72,14 +63,17 @@ public:
 			return read_type_result.MoveAlt();
 		}
 
+		// get a reference to the unique pointer object
+		UniquePtrType& ptr_ref = *static_cast<UniquePtrType*>(ptr);
+
 		// check if serialized pointer is not null
 		if (read_type_result.GetResult() == Type<void>::Name())
 		{
+			ptr_ref.Delete(); // reset current value
 			return Optional<Error>(); // exit, ok
 		}
 
 		// create new instance
-		UniquePtrType& ptr_ref = *static_cast<UniquePtrType*>(ptr);
 		Result<UniquePtrType, Error> create_result = CreateNewInstanceVariant<T>(read_type_result.GetResult());
 		if (create_result)
 		{
@@ -97,8 +91,8 @@ public:
 private:
 	// SFINAE_IS_POLYMORPHIC and SFINAE_IS_NOT_POLYMORPHIC are temporarily defined here to make
 	// short SFINAE argument. MS Visual Studio 2008 and 2010 doesn't support template specialization
-	// inside template classes, so the only way to implement Save() and Load() methods both
-	// for polymorphic and non-polymorphic archive types - is to use SFINAE pattern (feature).
+	// inside template classes, so the only way to deduce correct type name of the managed value - is
+	// to use SFINAE pattern (feature).
 #define SFINAE_IS_POLYMORPHIC \
 	typename EnableIf<IsBaseOf<Polymorphic, ElementType>::value>::Type* sfinae = nullptr
 #define SFINAE_IS_NOT_POLYMORPHIC \
@@ -117,7 +111,7 @@ private:
 		}
 		else
 		{
-			return BaseParameter::DeduceTypeName<T>();
+			return Type<void>::Name();
 		}
 	}
 

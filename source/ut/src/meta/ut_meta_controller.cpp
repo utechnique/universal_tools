@@ -1,9 +1,9 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
+#include "meta/linkage/ut_meta_linker.h"
 #include "meta/ut_meta_controller.h"
 #include "meta/ut_meta_snapshot.h"
-#include "meta/ut_meta_linker.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
@@ -177,6 +177,36 @@ Optional<Error> Controller::Sync()
 }
 
 //----------------------------------------------------------------------------->
+// Synchronizes @cursor position with binary stream.
+// Does nothing if in text mode.
+//    @return - error if failed.
+Optional<Error> Controller::SyncWithStream()
+{
+	// synchronize binary stream
+	if (mode == binary_input_mode)
+	{
+		Result<stream::Cursor, Error> stream_cursor = io.binary_input->GetCursor();
+		if (!stream_cursor)
+		{
+			return stream_cursor.MoveAlt();
+		}
+		cursor = stream_cursor.GetResult();
+	}
+	else if (mode == binary_output_mode)
+	{
+		Result<stream::Cursor, Error> stream_cursor = io.binary_output->GetCursor();
+		if (!stream_cursor)
+		{
+			return stream_cursor.MoveAlt();
+		}
+		cursor = stream_cursor.GetResult();
+	}
+
+	// success
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
 // Creates a task for linker to write a correct id of the linked
 // object (that is defined as a pointer) into the value node.
 //    @param parameter - pointer to the parameter representing a link,
@@ -203,7 +233,8 @@ Optional<Error> Controller::WriteLink(const BaseParameter* parameter,
 	}
 
 	// create linker task to re-write correct id after linking
-	return linker->CreateWriteTask(parameter, Move(state), linked_address);
+	UniquePtr<LinkTask> write_task(new WriteLinkTask(Move(state), linked_address));
+	return linker->AddTask(Move(write_task));
 }
 
 //----------------------------------------------------------------------------->
@@ -229,7 +260,44 @@ Optional<Error> Controller::ReadLink(const BaseParameter* parameter)
 	}
 
 	// create linker task to link parameters after deserialization
-	return linker->CreateReadTask(parameter, read_id_result.GetResult());
+	UniquePtr<LinkTask> read_task(new ReadLinkTask(parameter, read_id_result.GetResult()));
+	return linker->AddTask(Move(read_task));
+}
+
+//----------------------------------------------------------------------------->
+// Creates a task for linker to read an id of the linked
+// shared object from the value node, and to link it with
+// the provided parameter.
+//    @param parameter - pointer to the parameter representing a link,
+//                       (shared ptr).
+//    @param ptr - shared pointer to the holder of the SharedPtr object.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::ReadSharedLink(const BaseParameter* parameter,
+                                           const SharedPtr<SharedPtrHolderBase>& ptr)
+{
+	// check if linker is initialized
+	if (!linker)
+	{
+		return Error(error::fail, "Linker isn't initialized.");
+	}
+
+	// read id as a value
+	Result<SizeType, Error> read_id_result = ReadValue<SizeType>();
+	if (!read_id_result)
+	{
+		return read_id_result.MoveAlt();
+	}
+
+	// let the linker know about the existance of the linked shared object
+	Optional<Error> cache_error = linker->RegisterInputSharedObject(ptr, read_id_result.GetResult());
+	if (cache_error)
+	{
+		return cache_error;
+	}
+
+	// create linker task to link parameters after deserialization
+	UniquePtr<LinkTask> read_task(new ReadSharedPtrLinkTask(parameter, read_id_result.GetResult()));
+	return linker->AddTask(Move(read_task));
 }
 
 //----------------------------------------------------------------------------->
@@ -261,6 +329,9 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 		}
 	}
 
+	// save state
+	Controller state = SaveState();
+
 	// write name, type, id, etc.
 	Optional<Error> optional_error = WriteUniformAttributes(node);
 	if (optional_error)
@@ -290,6 +361,10 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 		return optional_error;
 	}
 
+	// get back to the current node
+	LoadState(state); // here @cursor becomes '0' again
+	SyncWithStream(); // here @cursor is synchronized with current stream position
+
 	// finalize current node
 	return initialize ? FinalizeNode(node) : Optional<Error>();
 }
@@ -298,61 +373,114 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 // Deserializes a provided reflective node.
 //    @param node - a reference to the ut::meta::Snapshot object to be
 //                  deserialized, it can be created by calling
-//                  ut::meta::Snapshot::Capture() function.
+//                  ut::meta::Snapshot::Capture() function;
+//                  this parameter can be empty if @skip_loading is 'true'.
 //    @param initialize - this boolean indicates if node will be initialized
 //                        with special 'header' information: serialization
-//                        info, shared objects, etc.
-//    @return - ut::Error if failed.
-Optional<Error> Controller::ReadNode(Snapshot& node, bool initialize)
+//                        info, shared objects, etc; if this parameter is 'true' -
+//                        then @skip_loading parameter must be 'false'
+//    @param skip_loading - this boolean indicates if node's body must be skipped
+//                          and only uniform data is to be read, @node parameter
+//                          can be empty in this case.
+//    @return - ut::meta::Controller::Uniform object describing a node
+//              or ut::Error if failed.
+Result<Controller::Uniform, Error> Controller::ReadNode(Optional< Ref<Snapshot> > node,
+                                                        bool initialize,
+                                                        bool skip_loading)
 {
+	// validate parameters
+	if (!node && !skip_loading)
+	{
+		return MakeError(Error(error::invalid_arg, "Node can't be null."));
+	}
+	else if (initialize && skip_loading)
+	{
+		return MakeError(Error(error::invalid_arg, "Initializing and skipping simultaneously is forbidden."));
+	}
+
 	// initialize current node
 	if (initialize)
 	{
 		// read initialization data (meta::Info)
-		Optional<Error> init_error = ReadInitializationData(node);
+		Optional<Error> init_error = ReadInitializationData(node.Get());
 		if (init_error)
 		{
-			return init_error;
+			return MakeError(init_error.Move());
 		}
 
 		// initialize modules, note that this is done after meta
 		// information has been read and processed
-		init_error = InitializeNode(node);
+		init_error = InitializeNode(node.Get());
 		if (init_error)
 		{
-			return init_error;
+			return MakeError(init_error.Move());
 		}
 	}
 
+	// save state
+	Controller state = SaveState();
+
 	// read name, type, id, etc.
-	Optional<String> name, type;
-	Optional<Error> read_attributes_error = ReadUniformAttributes(node, name, type);
-	if (read_attributes_error)
+	Result<Controller::Uniform, Error> uniforms_result = ReadUniformAttributes();
+	if (!uniforms_result)
 	{
-		return read_attributes_error;
+		return MakeError(uniforms_result.MoveAlt());
 	}
+	Controller::Uniform uniforms(uniforms_result.MoveResult());
 
 	// read size - this affects only a binary variant
 	Result<stream::Cursor, Error> read_size_result = ReadParameterSize();
 	if (!read_size_result)
 	{
-		return read_size_result.MoveAlt();
+		return MakeError(read_size_result.MoveAlt());
+	}
+
+	// skip this node in case we are forbidden to move further
+	if (skip_loading)
+	{
+		Optional<Error> skip_error = SkipParameter(read_size_result.GetResult());
+		if (skip_error)
+		{
+			return MakeError(skip_error.Move());
+		}
+		return uniforms;
 	}
 
 	// search for a node with a name that matches previously deserialized name
-	Result<Ref<Snapshot>, Error> sibling = FindSiblingNode(node, name);
-	if (!sibling)
+	Result<Ref<Snapshot>, Error> sibling = FindSiblingNode(node.Get(), uniforms.name);
+	if (!sibling) // not fatal, skipping..
 	{
-		return SkipParameter(read_size_result.GetResult()); // not fatal, skipping..
+		Optional<Error> skip_error = SkipParameter(read_size_result.GetResult());
+		if (skip_error)
+		{
+			return MakeError(skip_error.Move());
+		}
+		return uniforms;
 	}
 
 	// check types
-	if (type)
+	if (uniforms.type)
 	{
-		Optional<Error> type_check_error = CheckType(sibling.GetResult(), type.Get());
-		if (type_check_error)
+		Optional<Error> type_check_error = CheckType(sibling.GetResult(), uniforms.type.Get());
+		if (type_check_error) // not fatal, skipping..
 		{
-			return SkipParameter(read_size_result.GetResult()); // not fatal, skipping..
+			Optional<Error> skip_error = SkipParameter(read_size_result.GetResult());
+			if (skip_error)
+			{
+				return MakeError(skip_error.Move());
+			}
+			return uniforms;
+		}
+	}
+
+	// create link
+	if (uniforms.id)
+	{
+		size_t id = static_cast<size_t>(uniforms.id.Get());
+		Optional<Error> add_link_error = linker->AddLink(node.Get()->data.parameter, id);
+		if (add_link_error)
+		{
+			return MakeError(add_link_error.Move());
 		}
 	}
 
@@ -360,11 +488,42 @@ Optional<Error> Controller::ReadNode(Snapshot& node, bool initialize)
 	Optional<Error> read_param_error = ReadParameter(sibling.GetResult());
 	if (read_param_error)
 	{
-		return read_param_error;
+		return MakeError(read_param_error.Move());
 	}
 
+	// get back to the current node
+	LoadState(state);
+
 	// finalize current node
-	return initialize ? FinalizeNode(node) : Optional<Error>();
+	if (initialize)
+	{
+		Optional<Error> finalize_error = FinalizeNode(node.Get());
+		if (finalize_error)
+		{
+			return MakeError(finalize_error.Move());
+		}
+	}
+
+	// success
+	return uniforms;
+}
+
+//----------------------------------------------------------------------------->
+// Adds unique shared parameter.
+//    @param ptr - shared pointer to the holder of the SharedPtr object.
+//    @param address - address of the shared object.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::WriteSharedObject(const SharedPtr<SharedPtrHolderBase>& ptr,
+                                              const void* address)
+{
+	// check if linker exists
+	if (!linker)
+	{
+		return Error(error::fail, "Linker isn't initialized.");
+	}
+
+	// register object
+	return linker->CacheOutputSharedObject(ptr, address);
 }
 
 //----------------------------------------------------------------------------->
@@ -392,8 +551,16 @@ Optional<Error> Controller::FinalizeNode(Snapshot& node)
 	// process linkage info
 	if (info.HasLinkageInformation())
 	{
+		// write/read shared objects before executing linker tasks
+		bool output_mode = mode == binary_output_mode || mode == text_output_mode;
+		const Optional<Error> shared_error = output_mode ? WriteSharedObjects() : ReadSharedObjects();
+		if(shared_error)
+		{
+			return shared_error;
+		}
+
 		// execute linker tasks
-		Optional<Error> execute_error = linker->Execute();
+		const Optional<Error> execute_error = linker->Execute();
 		if (execute_error)
 		{
 			return execute_error;
@@ -495,19 +662,19 @@ Optional<Error> Controller::WriteUniformAttributes(Snapshot& node)
 //----------------------------------------------------------------------------->
 // Reads attributes that are mandatory for all parameters,
 // like name, type, id, etc.
-//    @param node - reference to the node that is being deserialized.
-//    @return - ut::Error if failed.
-Optional<Error> Controller::ReadUniformAttributes(Snapshot& node,
-                                                  Optional<String>& out_node_name,
-                                                  Optional<String>& out_type_name)
+//    @return - meta::Controller::Uniform object ot ut::Error if failed.
+Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 {
+	// result of the function
+	Uniform out;
+
 	// read node name
 	Result<Optional<String>, Error> read_name_result = ReadNodeName();
 	if (!read_name_result)
 	{
-		return read_name_result.MoveAlt();
+		return MakeError(read_name_result.MoveAlt());
 	}
-	out_node_name = read_name_result.MoveResult();
+	out.name = read_name_result.MoveResult();
 
 	// read type
 	if (info.HasTypeInformation())
@@ -515,9 +682,9 @@ Optional<Error> Controller::ReadUniformAttributes(Snapshot& node,
 		Result<String, Error> read_type_result = ReadAttribute<String>(node_names::skType);
 		if (!read_type_result)
 		{
-			return read_type_result.MoveAlt();
+			return MakeError(read_type_result.MoveAlt());
 		}
-		out_type_name = read_type_result.MoveResult();
+		out.type = read_type_result.MoveResult();
 	}
 
 	// read linkage information
@@ -527,20 +694,13 @@ Optional<Error> Controller::ReadUniformAttributes(Snapshot& node,
 		Result<SizeType, Error> read_id_result = ReadAttribute<SizeType>(node_names::skId);
 		if (!read_id_result)
 		{
-			return read_id_result.MoveAlt();
+			return MakeError(read_id_result.MoveAlt());
 		}
-
-		// create link
-		size_t id = static_cast<size_t>(read_id_result.GetResult());
-		Optional<Error> add_link_error = linker->AddLink(node.data.parameter, id);
-		if (add_link_error)
-		{
-			return add_link_error;
-		}
+		out.id = read_id_result.MoveResult();
 	}
 
 	// success
-	return Optional<Error>();
+	return out;
 }
 
 //----------------------------------------------------------------------------->
@@ -708,10 +868,10 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node)
 		size_t node_id = i >= node.GetNumChildren() ? node.GetNumChildren() - 1 : i;
 
 		// read child node
-		Optional<Error> load_child_error = ReadNode(node[i], false);
-		if (load_child_error)
+		Result<Controller::Uniform, Error> read_result = ReadNode(Ref<Snapshot>(node[i]), false);
+		if (!read_result)
 		{
-			return load_child_error;
+			return read_result.MoveAlt();
 		}
 
 		// get back to the current node
@@ -1016,7 +1176,7 @@ Result<Ref<Snapshot>, Error> Controller::FindSiblingNode(Snapshot& node, const O
 	{
 		String error_desc = "Serialization error: Parameter with the name \"";
 		error_desc += name.Get() + "\" wasn't found in the registry and was skipped.";
-		info.log_signal(error_desc);
+		info.LogMessage(error_desc);
 	}
 
 	// nothing was found
@@ -1040,7 +1200,7 @@ Optional<Error> Controller::CheckType(const Snapshot& node, const String& serial
 		error_desc += serialized_type;
 
 		// print error description to log
-		info.log_signal(error_desc);
+		info.LogMessage(error_desc);
 
 		// exit with an error
 		return Error(error::types_not_match, error_desc);
@@ -1069,7 +1229,7 @@ Optional<Error> Controller::SkipParameter(stream::Cursor next)
 	}
 
 	// skip this parameter
-	return io.binary_input->MoveCursor(next);
+	return SetCursor(next, true);
 }
 
 //----------------------------------------------------------------------------->
@@ -1079,7 +1239,7 @@ bool Controller::SkipIsPossible() const
 	// Skipping is sensible only if we can check type or name, in other words - only 
 	// if we can detect that serialized parameter doesn't match a current one
 	return mode == text_input_mode || mode == text_output_mode ||
-	       info.HasBinaryNames() || info.HasTypeInformation();
+	       info.HasBinaryNames() || info.HasTypeInformation() || info.HasLinkageInformation();
 }
 
 //----------------------------------------------------------------------------->
@@ -1133,7 +1293,7 @@ Optional<Error> Controller::DiveIntoNamedNode(const String& name)
 			error_desc += parent.data.name + "\" has no \"" + name + "\" node.";
 
 			// print error description to log
-			info.log_signal(error_desc);
+			info.LogMessage(error_desc);
 
 			// exit with error
 			return Error(error::not_found, error_desc);
@@ -1235,6 +1395,259 @@ Optional<Error> Controller::ReadInfo()
 
 	// success
 	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Writes shared objects, these objects have no owner
+// (and thus must be written separately).
+//    @return - ut::Error if failed.
+Optional<Error> Controller::WriteSharedObjects()
+{
+	// save state
+	Controller state = SaveState();
+
+	// create 'shared_objects' node
+	Optional<Error> optional_error = DiveIntoNamedNode(node_names::skSharedObjects);
+	if (optional_error)
+	{
+		return optional_error;
+	}
+
+	// save position of the 'count' variable
+	Result<stream::Cursor, Error> count_cursor = GetCursor();
+	if (!count_cursor)
+	{
+		return count_cursor.MoveAlt();
+	}
+
+	// write number of parameters, whis value will be rewritten
+	SizeType count = 0;
+	optional_error = WriteAttribute(count, node_names::skCount, true);
+	if (optional_error)
+	{
+		return optional_error;
+	}
+
+	// save state
+	Controller local_state = SaveState();
+
+	// cycle repeats untill all circular links are cached and serialized 
+	while (true)
+	{
+		// grab shared objects ready for serialization from linker
+		Array<OutputSharedCacheElement> shared_objects = linker->MoveOutputSharedCache();
+		if (shared_objects.GetNum() == 0)
+		{
+			break;
+		}
+
+		// write parameters
+		for (size_t i = 0; i < shared_objects.GetNum(); i++)
+		{
+			// generate correct node name
+			const String node_name = GenerateSharedObjectName(count);
+			optional_error = DiveIntoNamedNode(node_name);
+			if (optional_error)
+			{
+				return optional_error;
+			}
+
+			// save shared parameter
+			// note that this step can provoke linker to cache new shared links,
+			// that's why we have 'while (true)' loop untill all new links are gone
+			optional_error = shared_objects[i].ptr->Save(*this, node_name);
+			if (optional_error)
+			{
+				return optional_error;
+			}
+
+			// accumulate count value
+			count++;
+
+			// get back to the parent node
+			LoadState(local_state);
+		}
+	}
+
+	// save cursor position (where all shared parameters are already written)
+	Result<stream::Cursor, Error> current_cursor = GetCursor();
+	if (!current_cursor)
+	{
+		return current_cursor.MoveAlt();
+	}
+
+	// write final number of parameters
+	SetCursor(count_cursor.GetResult(), true);
+	optional_error = WriteAttribute(count, node_names::skCount, true);
+	if (optional_error)
+	{
+		return optional_error;
+	}
+
+	// set cursor back (where all shared parameters are already written)
+	SetCursor(current_cursor.GetResult(), true);
+
+	// get back to the upper most node
+	LoadState(state);
+
+	// success
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Reads shared objects, these objects have no owner,
+// so must be read separately.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::ReadSharedObjects()
+{
+	// save state
+	Controller state = SaveState();
+
+	// dive into the 'shared_objects' node
+	Optional<Error> optional_error = DiveIntoNamedNode(node_names::skSharedObjects);
+	if (optional_error)
+	{
+		return optional_error;
+	}
+
+	// read number of parameters
+	Result<Info::Version, Error> count = ReadAttribute<SizeType>(node_names::skCount);
+	if (!count)
+	{
+		return count.MoveAlt();
+	}
+
+	// save state
+	Controller local_state = SaveState();
+
+	// grab a portion of newly registered shared parameters
+	Array<InputSharedCacheElement> registry = linker->MovePreliminarySharedCache();
+
+	// read all shared objects
+	for (size_t i = 0; i < count.GetResult(); i++)
+	{
+		// generate correct node name
+		const String node_name = GenerateSharedObjectName(i);
+		optional_error = DiveIntoNamedNode(node_name);
+		if (optional_error)
+		{
+			return optional_error;
+		}
+
+		// load shared object
+		Optional<Error> load_error = LoadSharedObject(registry, node_name, local_state);
+		if (load_error)
+		{
+			return load_error;
+		}
+	}
+
+	// get back to the parent node
+	LoadState(state);
+
+	// success
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Searches for the shared parameter in the registry using provided name,
+// then tries to load this parameter.
+//    @param registry - reference to the array of shared cache elements,
+//                      that are waiting to be deserialized.
+//    @param name - name of the serialized shared object.
+//    @param scope_state - state preceding reading of any shared parameter.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::LoadSharedObject(Array<InputSharedCacheElement>& registry,
+                                             const String& name,
+                                             const Controller& scope_state)
+{
+	// read information (name, type, id) and nothing else
+	Controller node_state = SaveState();
+	Result<Uniform, Error> uniform = ReadNode(Optional< Ref<Snapshot> >(),
+	                                          false, true);
+	if (!uniform)
+	{
+		return uniform.MoveAlt();
+	}
+
+	// id must be present
+	if (!uniform.GetResult().id)
+	{
+		String error_desc = "Shared object has no \"id\" value.";
+		info.LogMessage(error_desc);
+		return Error(error::fail, error_desc);
+	}
+
+	// iterate all registry entries to find id match
+	for (size_t i = registry.GetNum(); i-- > 0;)
+	{
+		// check if id matches
+		if (registry[i].id != static_cast<size_t>(uniform.GetResult().id.Get()))
+		{
+			continue;
+		}
+
+		// get back to the state where node is not read yet
+		LoadState(node_state);
+		Sync(); // stream cursor is farther after reading uniforms, must be adjusted
+
+		// load shared object
+		Optional<Error> load_error = registry[i].ptr->Load(*this, name);
+		if (load_error)
+		{
+			return load_error;
+		}
+
+		// add deserialized parameter to the cache
+		Optional<Error> cache_error = linker->CacheInputSharedObject(registry[i].ptr,
+			                                                         registry[i].id);
+		if (cache_error)
+		{
+			return cache_error;
+		}
+
+		// remove enty from the registry - it's already loaded and ready to be linked with
+		registry.Remove(i);
+
+		// new preliminary links can occur while loading a shared object, thus it's essential
+		// to add these new entries to the current registry so that further shared objects
+		// (that are deeper than 1 level in linking hierarchy) could be deserialized
+		Array<InputSharedCacheElement> new_registry_entries = linker->MovePreliminarySharedCache();
+		for (size_t j = 0; j < new_registry_entries.GetNum(); j++)
+		{
+			registry.Add(Move(new_registry_entries[j]));
+		}
+
+		// exit the loop
+		break;
+	}
+
+	// save current binary stream position
+	Result<stream::Cursor, Error> stream_pos = GetStreamCursor();
+	if (!stream_pos)
+	{
+		return stream_pos.MoveAlt();
+	}
+
+	// load state that precedes reading of any shared parameter
+	LoadState(scope_state);
+
+	// synchronize stream postion with controller's one
+	SetCursor(stream_pos.GetResult());
+
+	// success
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Uses provided id to generate a name of the shared parameter. Calling the
+// same function to generate names both for serialization and deserialization
+// you ensure that parameters would be loaded correctly.
+//    @param id - id of shared parameter.
+//    @return - string containing a generated name.
+String Controller::GenerateSharedObjectName(size_t id)
+{
+	return String("sh") + Print<SizeType>(static_cast<SizeType>(id));
 }
 
 //----------------------------------------------------------------------------->

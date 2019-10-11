@@ -192,7 +192,10 @@ public:
 	// Deletes @pointer object and sets it to null
 	void Delete()
 	{
-		GetDeleter()(pointer);
+		if (pointer != nullptr)
+		{
+			GetDeleter()(pointer);
+		}
 		pointer = nullptr;
 	}
 
@@ -540,7 +543,7 @@ template <typename T> struct RValRef< Array< UniquePtr<T> > > { typedef Array< U
 #endif
 
 // Specialize type name function for unique ptr
-template <typename T> struct Type< UniquePtr<T> >
+template <typename T, typename Deleter> struct Type< UniquePtr<T, Deleter> >
 {
 	static inline const char* Name() { return "unique_ptr"; }
 };

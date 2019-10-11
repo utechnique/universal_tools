@@ -19,6 +19,13 @@ Snapshot::Snapshot(Info info_copy) : Base(), info(new Info(Move(info_copy)))
 { }
 
 //----------------------------------------------------------------------------->
+// Renames the snapshot.
+void Snapshot::Rename(String new_name)
+{
+	data.name = Move(new_name);
+}
+
+//----------------------------------------------------------------------------->
 // Saves full tree to a binary stream.
 //    @param stream - reference to the output stream to serialize a tree to
 //    @return - optionally ut::Error if failed
@@ -55,7 +62,14 @@ Optional<Error> Snapshot::Load(InputStream& stream)
 	}
 
 	// read self via controller
-	return controller.ReadNode(*this);
+	Result<Controller::Uniform, Error> read_result = controller.ReadNode(Ref<Snapshot>(*this));
+	if (!read_result)
+	{
+		return read_result.MoveAlt();
+	}
+
+	// success
+	return Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
@@ -95,7 +109,14 @@ Optional<Error> Snapshot::Load(const Tree<text::Node>& text_node)
 	}
 
 	// read self via controller
-	return controller.ReadNode(*this);
+	Result<Controller::Uniform, Error> read_result = controller.ReadNode(Ref<Snapshot>(*this));
+	if (!read_result)
+	{
+		return read_result.MoveAlt();
+	}
+	
+	// success
+	return Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
