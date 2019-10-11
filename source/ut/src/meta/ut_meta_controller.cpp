@@ -301,6 +301,33 @@ Optional<Error> Controller::ReadSharedLink(const BaseParameter* parameter,
 }
 
 //----------------------------------------------------------------------------->
+// Creates a task for linker to read an id of the linked
+// shared object from the value node, and to link it with
+// the provided parameter.
+//    @param parameter - pointer to the parameter representing a link,
+//                       (weak ptr).
+//    @return - ut::Error if failed.
+Optional<Error> Controller::ReadWeakLink(const BaseParameter* parameter)
+{
+	// check if linker is initialized
+	if (!linker)
+	{
+		return Error(error::fail, "Linker isn't initialized.");
+	}
+
+	// read id as a value
+	Result<SizeType, Error> read_id_result = ReadValue<SizeType>();
+	if (!read_id_result)
+	{
+		return read_id_result.MoveAlt();
+	}
+
+	// create linker task to link parameters after deserialization
+	UniquePtr<LinkTask> read_task(new ReadSharedPtrLinkTask(parameter, read_id_result.GetResult()));
+	return linker->AddTask(Move(read_task));
+}
+
+//----------------------------------------------------------------------------->
 // Serializes a provided reflective node.
 //    @param node - a reference to the ut::meta::Snapshot object to be
 //                  serialized, it can be created by calling

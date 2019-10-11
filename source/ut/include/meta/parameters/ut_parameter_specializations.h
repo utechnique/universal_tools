@@ -9,6 +9,7 @@
 #include "meta/parameters/pointers/ut_raw_ptr_parameter.h"
 #include "meta/parameters/pointers/ut_unique_ptr_parameter.h"
 #include "meta/parameters/pointers/ut_shared_ptr_parameter.h"
+#include "meta/parameters/pointers/ut_weak_ptr_parameter.h"
 #include "meta/parameters/containers/ut_array_parameter.h"
 
 //----------------------------------------------------------------------------//

@@ -352,6 +352,8 @@ SerializationTest::SerializationTest(bool in_alternate,
 	ival_shared_ptr_2 = new ut::int32(102);
 	refl_shared_ptr = new ReflectiveA(0, 3);
 	refl_shared_void_ptr = new ReflectiveA(1, 1);
+	ival_weak_ptr_0 = ival_shared_ptr_0;
+	void_weak_ptr_0 = ival_shared_ptr_0;
 }
 
 void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
@@ -375,6 +377,9 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 		snapshot << refl_shared_ptr;
 		snapshot << refl_shared_void_ptr;
 		snapshot << refl_shared_level_ptr;
+		snapshot << ival_weak_ptr_0;
+		snapshot << deep_weak_ptr_0;
+		snapshot << void_weak_ptr_0;
 	}
 	snapshot << int16_unique;
 	snapshot << int16_unique_void;
@@ -651,6 +656,12 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.refl_shared_ptr = new ReflectiveB("reflective_b_str", 1, 1);
 	object.refl_shared_void_ptr.Reset();
 	object.refl_shared_level_ptr = new SharedTestLevel0;
+	object.refl_shared_level_ptr->shared_obj->shared_obj->i32_shared.GetRef() = 114;
+
+	// weak pointers
+	object.ival_weak_ptr_0 = object.ival_shared_ptr_2;
+	object.deep_weak_ptr_0 = object.refl_shared_level_ptr->shared_obj->shared_obj->i32_shared;
+	object.void_weak_ptr_0.Reset();
 }
 
 // Checks if serialized object was loaded with the correct values,
@@ -758,6 +769,65 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 		const ut::DynamicType& refl_type = object.refl_shared_ptr->Identify();
 		const ut::String refl_type_name(refl_type.GetName());
 		if (refl_type_name != "reflective_B") return false;
+		if (object.refl_shared_level_ptr)
+		{
+			if (object.refl_shared_level_ptr->shared_obj)
+			{
+				if (object.refl_shared_level_ptr->shared_obj->shared_obj)
+				{
+					if (object.refl_shared_level_ptr->shared_obj->shared_obj->i32_shared)
+					{
+						if (object.refl_shared_level_ptr->shared_obj->shared_obj->i32_shared.GetRef() != 114) return false;
+					}
+					else
+					{
+						return false;
+					}
+				}
+				else
+				{
+					return false;
+				}
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+
+
+		// weak
+		if (object.ival_weak_ptr_0.IsValid())
+		{
+			ut::SharedPtr<ut::int32> pinned = object.ival_weak_ptr_0.Pin();
+			if (pinned.Get() != object.ival_shared_ptr_2.Get())
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+
+		if (object.deep_weak_ptr_0.IsValid())
+		{
+			ut::SharedPtr<ut::int32> pinned = object.deep_weak_ptr_0.Pin();
+			if (pinned.GetRef() != 114)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	
+		if (object.void_weak_ptr_0.IsValid()) return false;
 	}
 
 	return true;

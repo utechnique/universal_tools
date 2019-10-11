@@ -145,6 +145,14 @@ public:
 	Optional<Error> ReadSharedLink(const BaseParameter* parameter,
 	                               const SharedPtr<class SharedPtrHolderBase>& ptr);
 
+	// Creates a task for linker to read an id of the linked
+	// shared object from the value node, and to link it with
+	// the provided parameter.
+	//    @param parameter - pointer to the parameter representing a link,
+	//                       (weak ptr).
+	//    @return - ut::Error if failed.
+	Optional<Error> ReadWeakLink(const BaseParameter* parameter);
+
 	// Serializes a provided reflective node.
 	//    @param node - a reference to the ut::meta::Snapshot object to be
 	//                  serialized, it can be created by calling

@@ -204,6 +204,9 @@ public:
 	ut::SharedPtr<ReflectiveBase> refl_shared_ptr;
 	ut::SharedPtr<ReflectiveBase> refl_shared_void_ptr;
 	ut::SharedPtr<SharedTestLevel0> refl_shared_level_ptr;
+	ut::WeakPtr<ut::int32> ival_weak_ptr_0;
+	ut::WeakPtr<ut::int32> deep_weak_ptr_0;
+	ut::WeakPtr<ut::int32> void_weak_ptr_0;
 	ut::uint64 uval;
 	bool bool_val;
 	ut::String str;

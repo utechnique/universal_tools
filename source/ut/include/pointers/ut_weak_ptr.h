@@ -90,6 +90,20 @@ public:
 		object = copy.object;
 	}
 
+	// Decrements reference count, destructs referencer object and releases managed pointer
+	void Reset()
+	{
+		DestructReferencer();
+		new(&referencer) WeakReferencer<ObjectType, thread_safety_mode>(nullptr);
+		object = nullptr;
+	}
+
+	// Bool conversion operator
+	operator bool() const
+	{
+		return object != nullptr;
+	}
+
 private:
 	// Calls destructor of the referencer object. Reference count is decremented here.
 	void DestructReferencer()
@@ -104,6 +118,13 @@ private:
 	// WeakReferencer<> class is a convenient wrapper, that uses reference controller
 	// to increment reference count on construction and decrement this count on destruction.
 	WeakReferencer<ObjectType, thread_safety_mode> referencer;
+};
+
+// Specialize type name function for weak ptr
+template <typename T, thread_safety::Mode mode>
+struct Type< WeakPtr<T, mode> >
+{
+	static inline const char* Name() { return "weak_ptr"; }
 };
 
 //----------------------------------------------------------------------------//
