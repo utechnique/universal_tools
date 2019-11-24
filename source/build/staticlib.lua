@@ -22,6 +22,17 @@ function utStaticLibProj(options)
     defines { options.def or {} }
     characterset(options.charset or "Default")
     files { options.srcfiles or {} }
+	
+	 -- bind fltk
+    if ANDROID == false then
+        if options.bindfltk or false then
+            USES_FLTK = true
+            dependson "fltk"
+            includedirs { FLTK_INCLUDE_DIR }
+            defines { FLTK_DEF }
+        end
+    end
+	
     if SUPPORTS_NATVIS then
         files { options.visualizers or {} }
     end
