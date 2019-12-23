@@ -66,7 +66,7 @@ Optional<Error> ReceiveCommand::Execute(Connection& connection)
 //----------------------------------------------------------------------------//
 // Constructor
 //    @param command - unique pointer to the command to be sent.
-SendCommand::SendCommand(RValRef< UniquePtr<Command> >::Type command) : cmd(Move(command))
+SendCommand::SendCommand(UniquePtr<Command> command) : cmd(Move(command))
 { }
 
 // Sends serialized command and calls ut::net::Command::sent signal.
@@ -113,7 +113,7 @@ Optional<Error> SendCommand::Execute(Connection& connection)
 // Constructor
 //    @param idle_cmd_ptr - unique pointer to the command to be sent in case
 //                          if connection stack is empty.
-SendCommandFromStack::SendCommandFromStack(RValRef< UniquePtr<Command> >::Type idle_cmd_ptr) : idle_cmd(Move(idle_cmd_ptr))
+SendCommandFromStack::SendCommandFromStack(UniquePtr<Command> idle_cmd_ptr) : idle_cmd(Move(idle_cmd_ptr))
 { }
 
 // Picks command from connection stack, than serializes it and sends to the
@@ -167,7 +167,7 @@ Optional<Error> SendCommandFromStack::Execute(Connection& connection)
 //----------------------------------------------------------------------------//
 // Constructor.
 //    @param looped_actions - array of actions to be looped.
-Loop::Loop(RValRef< Array< UniquePtr<Action> > >::Type looped_actions) : actions(looped_actions)
+Loop::Loop(Array< UniquePtr<Action> > looped_actions) : actions(Move(looped_actions))
 { }
 
 // Executes sequentially every action from the @actions array in a loop.

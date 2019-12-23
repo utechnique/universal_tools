@@ -82,7 +82,7 @@ Client::Client(const ut::net::HostAddress& address,
 { }
 
 // Creates connection with specific communication protocol.
-ut::UniquePtr<ut::net::Connection> Client::CreateConnection(ut::RValRef<ut::net::SocketPtr>::Type socket)
+ut::UniquePtr<ut::net::Connection> Client::CreateConnection(ut::UniquePtr<ut::net::Socket> socket)
 {
 	// action sequence
 	ut::Array< ut::UniquePtr<ut::net::Action> > actions;

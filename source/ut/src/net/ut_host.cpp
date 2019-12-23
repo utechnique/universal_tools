@@ -41,7 +41,7 @@ Optional<Error> Host::ShutDown()
 //    @param address - address of the destination. Ignore this parameter if
 //                     you want to send command to all available connections.
 //    @return - error if function failed.
-Optional<Error> Host::SendCommand(RValRef< UniquePtr<Command> >::Type command,
+Optional<Error> Host::SendCommand(UniquePtr<Command> command,
                                   const HostAddress& address)
 {
 	// lock connections

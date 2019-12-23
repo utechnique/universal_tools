@@ -11,8 +11,8 @@ class ConnectionJob : public Job
 {
 public:
 	ConnectionJob(Connection& in_connection,
-	              RValRef< Array< UniquePtr<Action> > >::Type in_actions) : connection(in_connection)
-	                                                                      , actions(in_actions)
+	              Array< UniquePtr<Action> > in_actions) : connection(in_connection)
+	                                                     , actions(Move(in_actions))
 	{}
 
 	void Execute()
@@ -51,10 +51,10 @@ private:
 //    @param actions - array of the actions to customize
 //                     communication protocol
 Connection::Connection(class Host& owner,
-                       RValRef< UniquePtr<Socket> >::Type in_socket,
-                       RValRef< Array< UniquePtr<Action> > >::Type in_actions) : host(owner)
-                                                                               , socket(Move(in_socket))
-                                                                               , active(true)
+                       UniquePtr<Socket> in_socket,
+                       Array< UniquePtr<Action> > in_actions) : host(owner)
+                                                              , socket(Move(in_socket))
+                                                              , active(true)
 {
 	// get host address from socket
 	UniquePtr<Socket>& locked_socked = socket.Lock();
@@ -161,7 +161,7 @@ void Connection::UnlockSocket()
 // command will be moved.
 //    @param command - unique pointer to the command to be added.
 //    @return - error if function failed.
-Optional<Error> Connection::AddCommand(RValRef< UniquePtr<Command> >::Type command)
+Optional<Error> Connection::AddCommand(UniquePtr<Command> command)
 {
 	// lock commands
 	ScopeSyncLock< Array< UniquePtr<Command> > > locked_commands(commands);

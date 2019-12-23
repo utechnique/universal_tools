@@ -42,7 +42,7 @@ public:
 	       const ClientInitializationData& in_initialization_data);
 
 	// Creates connection with specific communication protocol.
-	ut::UniquePtr<ut::net::Connection> CreateConnection(ut::RValRef<ut::net::SocketPtr>::Type socket);
+	ut::UniquePtr<ut::net::Connection> CreateConnection(ut::UniquePtr<ut::net::Socket> socket);
 
 	// Returns a reference to the UI object.
 	UI& GetUI();

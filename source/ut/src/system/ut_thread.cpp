@@ -108,10 +108,10 @@ void Job::Exit()
 // Constructor, starts a new thread with ut::Job::Execute() function
 //    @param job - job object, whose Execute() function will be
 //                 called asynchronously in separate thread
-Thread::Thread(RValRef<JobPtr>::Type job_ptr) : job(Move(job_ptr))
-                                              , handle(0)
-                                              , id(0)
-                                              , active(false)
+Thread::Thread(UniquePtr<Job> job_ptr) : job(Move(job_ptr))
+                                       , handle(0)
+                                       , id(0)
+                                       , active(false)
 {
 	Optional<Error> launch_error = Start();
 	if (launch_error)

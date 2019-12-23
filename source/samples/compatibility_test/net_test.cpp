@@ -78,8 +78,8 @@ ClientServerCommTask::ClientServerCommTask() : TestTask("Client-server communica
 void ClientServerCommTask::Execute()
 {
 	report += "performing client-server communication via localhost:";
-	ut::JobPtr client_job(new ClientTestJob(*this));
-	ut::JobPtr server_job(new ServerTestJob(*this));
+	ut::UniquePtr<ut::Job> client_job(new ClientTestJob(*this));
+	ut::UniquePtr<ut::Job> server_job(new ServerTestJob(*this));
 	ut::ThreadPtr client_thread(new ut::Thread(Move(client_job)));
 	ut::ThreadPtr server_thread(new ut::Thread(Move(server_job)));
 
@@ -241,10 +241,10 @@ void ServerTestJob::Execute()
 			}
 			else
 			{
-				ut::Result<ut::net::SocketPtr, ut::Error> accept_result = socket->Accept();
+				ut::Result<ut::UniquePtr<ut::net::Socket>, ut::Error> accept_result = socket->Accept();
 				if (accept_result)
 				{
-					ut::net::SocketPtr client_socket(accept_result.MoveResult());
+					ut::UniquePtr<ut::net::Socket> client_socket(accept_result.MoveResult());
 					report += "    server socket accepted client\n";
 
 					// recv int value

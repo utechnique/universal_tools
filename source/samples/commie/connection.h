@@ -18,8 +18,8 @@ public:
 	//    @param in_actions - array of network actions describing communication
 	//                        protocol.
 	Connection(ut::net::Host& owner,
-	           ut::RValRef< ut::UniquePtr<ut::net::Socket> >::Type in_socket,
-	           ut::RValRef< ut::Array< ut::UniquePtr<ut::net::Action> > >::Type in_actions);
+	          ut::UniquePtr<ut::net::Socket> in_socket,
+	          ut::Array< ut::UniquePtr<ut::net::Action> > in_actions);
 
 	// Returns a name of the client that is associated with current connection.
 	// Usefull only for the server node.

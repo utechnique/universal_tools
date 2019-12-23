@@ -563,7 +563,7 @@ Console::Data::Data(Console* owner) : output_locked(false)
 	// Java code will be responsible for grabbing and displaying this buffer.
 #if !UT_NO_NATIVE_CONSOLE
 	// launch input thread
-	JobPtr input_job(new ConsoleInputJob(owner));
+	UniquePtr<Job> input_job(new ConsoleInputJob(owner));
 	input_thread = new Thread(Move(input_job));
 #endif
 }

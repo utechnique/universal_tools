@@ -55,7 +55,7 @@ public:
 	ClientTestJob(ClientServerCommTask& owner);
 	void Execute();
 private:
-	ut::net::SocketPtr socket;
+	ut::UniquePtr<ut::net::Socket> socket;
 	ClientServerCommTask& owner;
 };
 
@@ -66,7 +66,7 @@ public:
 	ServerTestJob(ClientServerCommTask& owner);
 	void Execute();
 private:
-	ut::net::SocketPtr socket;
+	ut::UniquePtr<ut::net::Socket> socket;
 	ClientServerCommTask& owner;
 };
 

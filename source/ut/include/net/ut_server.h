@@ -25,7 +25,7 @@ public:
 	// child class.
 	//    @param socket - socket of the connection to be created.
 	//    @return - unique pointer to the new connection.
-	virtual UniquePtr<Connection> CreateConnection(RValRef<SocketPtr>::Type socket) = 0;
+	virtual UniquePtr<Connection> CreateConnection(UniquePtr<Socket> socket) = 0;
 
 	// Listens for the new clients. If client was accepted - creates new connection.
 	//    @return - error if failed.

@@ -58,7 +58,7 @@ Optional<Error> Server::Run()
 		}
 		else
 		{
-			Result<SocketPtr, Error> accept_result = socket->Accept();
+			Result<UniquePtr<Socket>, Error> accept_result = socket->Accept();
 			if (accept_result)
 			{
 				// signalize that new client has been accepted

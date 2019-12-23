@@ -11,8 +11,8 @@ START_NAMESPACE(commie)
 //    @param in_actions - array of network actions describing communication
 //                        protocol.
 Connection::Connection(ut::net::Host& owner,
-                       ut::RValRef< ut::UniquePtr<ut::net::Socket> >::Type in_socket,
-                       ut::RValRef< ut::Array< ut::UniquePtr<ut::net::Action> > >::Type in_actions)
+                       ut::UniquePtr<ut::net::Socket> in_socket,
+                       ut::Array< ut::UniquePtr<ut::net::Action> > in_actions)
 	: ut::net::Connection(owner, ut::Move(in_socket), ut::Move(in_actions))
 {
 

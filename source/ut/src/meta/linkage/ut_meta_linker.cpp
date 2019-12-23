@@ -46,7 +46,7 @@ Optional<Error> Linker::AddLink(const SharedPtr<BaseParameter>& parameter, size_
 // Linker::Execute() method.
 //    @param task - unique pointer to the task.
 //    @return - ut::Error if failed.
-Optional<Error> Linker::AddTask(RValRef< UniquePtr<LinkTask> >::Type task)
+Optional<Error> Linker::AddTask(UniquePtr<LinkTask> task)
 {
 	if (!tasks.Add(Move(task)))
 	{

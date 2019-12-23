@@ -221,7 +221,7 @@ ut::Optional<ut::Error> Application::SaveCfgFile()
 // Sends provided network command.
 //    @param command - r-value reference to the unique network command.
 //    @return - error if failed.
-ut::Optional<ut::Error> Application::SendCommand(ut::RValRef< ut::UniquePtr<ut::net::Command> >::Type command)
+ut::Optional<ut::Error> Application::SendCommand(ut::UniquePtr<ut::net::Command> command)
 {
 	return host->SendCommand(Move(command));
 }

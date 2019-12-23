@@ -41,7 +41,7 @@ public:
 	// Linker::Execute() method.
 	//    @param task - unique pointer to the task.
 	//    @return - ut::Error if failed.
-	Optional<Error> AddTask(RValRef< UniquePtr<LinkTask> >::Type task);
+	Optional<Error> AddTask(UniquePtr<LinkTask> task);
 
 	// Executes all tasks. Must be called after all parameters have been cached.
 	//    @return - ut::Error if failed.

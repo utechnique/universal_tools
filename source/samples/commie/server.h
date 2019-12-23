@@ -19,7 +19,7 @@ public:
 	       const ut::String& authorization_password);
 
 	// Creates connection with specific communication protocol.
-	ut::UniquePtr<ut::net::Connection> CreateConnection(ut::RValRef<ut::net::SocketPtr>::Type socket);
+	ut::UniquePtr<ut::net::Connection> CreateConnection(ut::UniquePtr<ut::net::Socket> socket);
 
 	// Returns authorization password.
 	ut::String GetPassword() const;

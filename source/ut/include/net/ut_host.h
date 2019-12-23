@@ -28,7 +28,7 @@ public:
 	// Creates a new connection using provided socket.
 	//    @param socket - socket of the connection to be created.
 	//    @return - unique pointer to the new connection.
-	virtual UniquePtr<Connection> CreateConnection(RValRef<SocketPtr>::Type socket) = 0;
+	virtual UniquePtr<Connection> CreateConnection(UniquePtr<Socket> socket) = 0;
 
 	// Starts network routine (specific for the inherited node type).
 	//    @return - error if something failed.
@@ -43,7 +43,7 @@ public:
 	//    @param address - address of the destination. Ignore this parameter if
 	//                     you want to send command to all available connections.
 	//    @return - error if function failed.
-	Optional<Error> SendCommand(RValRef< UniquePtr<Command> >::Type command,
+	Optional<Error> SendCommand(UniquePtr<Command> command,
 	                            const HostAddress& address = HostAddress());
 
 	// Executes provided command.

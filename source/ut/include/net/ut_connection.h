@@ -24,8 +24,8 @@ public:
 	//    @param actions - array of the actions to customize
 	//                     communication protocol
 	Connection(class Host& host,
-	           RValRef< UniquePtr<Socket> >::Type socket,
-	           RValRef< Array< UniquePtr<Action> > >::Type actions);
+	           UniquePtr<Socket> socket,
+	           Array< UniquePtr<Action> > actions);
 
 	// Destructor, shuts socket down and closes connection thread.
 	~Connection();
@@ -44,7 +44,7 @@ public:
 	// command will be moved.
 	//    @param command - unique pointer to the command to be added.
 	//    @return - error if function failed.
-	Optional<Error> AddCommand(RValRef< UniquePtr<Command> >::Type command);
+	Optional<Error> AddCommand(UniquePtr<Command> command);
 
 	// Adds a new command to the end of the stack. Provided
 	// command will be copied.

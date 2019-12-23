@@ -57,7 +57,7 @@ class SendCommand : public Action
 public:
 	// Constructor
 	//    @param command - unique pointer to the command to be sent.
-	SendCommand(RValRef< UniquePtr<Command> >::Type command);
+	SendCommand(UniquePtr<Command> command);
 
 	// Sends serialized command and calls ut::net::Command::sent signal.
 	//    @param connection - connection executing current action.
@@ -79,7 +79,7 @@ public:
 	// Constructor
 	//    @param idle_cmd_ptr - unique pointer to the command to be sent in case
 	//                          if connection stack is empty.
-	SendCommandFromStack(RValRef< UniquePtr<Command> >::Type idle_cmd_ptr);
+	SendCommandFromStack(UniquePtr<Command> idle_cmd_ptr);
 
 	// Picks command from connection stack, than serializes it and sends to the
 	// receiver, also calls ut::net::Command::sent signal.
@@ -101,7 +101,7 @@ class Loop : public Action
 public:
 	// Constructor.
 	//    @param looped_actions - array of actions to be looped.
-	Loop(RValRef< Array< UniquePtr<Action> > >::Type looped_actions);
+	Loop(Array< UniquePtr<Action> > looped_actions);
 
 	// Executes sequentially every action from the @actions array in a loop.
 	//    @param connection - connection executing current action.

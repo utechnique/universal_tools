@@ -65,9 +65,6 @@ protected:
 	Synchronized<bool> exit_request;
 };
 
-// Shorter type name for UniquePtr<Job>
-typedef UniquePtr<Job> JobPtr;
-
 //----------------------------------------------------------------------------//
 // ut::Thread represents a single thread of execution. Threads allow multiple
 // functions to execute concurrently. Threads begin execution immediately upon
@@ -80,7 +77,7 @@ public:
 	// Constructor, starts a new thread with ut::Job::Execute() function
 	//    @param job - job object, whose Execute() function will be
 	//                 called asynchronously in separate thread
-	Thread(RValRef<JobPtr>::Type job);
+	Thread(UniquePtr<Job> job);
 
 	// Destructor, sends exit request to the @job, and wait it's completion,
 	// then thread object is destroyed. Use Kill() if you don't want to
@@ -105,7 +102,7 @@ private:
 	static THREAD_PROCEDURE Entry(Job* job_ptr);
 
 	// Job to be executed
-	JobPtr job;
+	UniquePtr<Job> job;
 
 	// Thread handle, used only in windows
 	ThreadHandle handle;

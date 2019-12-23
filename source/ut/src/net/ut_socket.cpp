@@ -241,7 +241,7 @@ Result<UniquePtr<Socket>, Error> Socket::Accept() const
 	{
 		return MakeError(error::fail);
 	}
-	SocketPtr sock_ptr(new Socket(client_socket, &client_addr_in));
+	UniquePtr<Socket> sock_ptr(new Socket(client_socket, &client_addr_in));
 	return Move(sock_ptr);
 #elif UT_UNIX
 	sockaddr_in client_addr_in;
@@ -251,7 +251,7 @@ Result<UniquePtr<Socket>, Error> Socket::Accept() const
 	{
 		return MakeError(Error(ConvertErrno(errno)));
 	}
-	SocketPtr sock_ptr(new Socket(client_socket, &client_addr_in));
+	UniquePtr<Socket> sock_ptr(new Socket(client_socket, &client_addr_in));
 	return Move(sock_ptr);
 #else
 	#error ut::Socket::Accept() is not implemented

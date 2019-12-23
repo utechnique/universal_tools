@@ -43,7 +43,7 @@ public:
 	// Sends provided network command.
 	//    @param command - r-value reference to the unique network command.
 	//    @return - error if failed.
-	ut::Optional<ut::Error> SendCommand(ut::RValRef< ut::UniquePtr<ut::net::Command> >::Type command);
+	ut::Optional<ut::Error> SendCommand(ut::UniquePtr<ut::net::Command> command);
 
 private:
 	// Binds signals that are related to UI.

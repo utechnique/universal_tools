@@ -15,7 +15,7 @@ ThreadLauncherTask::ThreadLauncherTask() : TestTask("Thread Launcher") {}
 
 void ThreadLauncherTask::Execute()
 {
-	ut::JobPtr job(new TestJob(*this, 0));
+	ut::UniquePtr<ut::Job> job(new TestJob(*this, 0));
 	ut::Thread test_thread(Move(job));
 	ut::Sleep(600);
 	test_thread.Exit();
@@ -27,7 +27,7 @@ void ThreadLauncherTask::Execute()
 
 	ut::UniquePtr<ut::Thread> thread2;
 
-	ut::JobPtr job2(new TestJob(*this, 1));
+	ut::UniquePtr<ut::Job> job2(new TestJob(*this, 1));
 	thread2 = new ut::Thread(Move(job2));
 }
 

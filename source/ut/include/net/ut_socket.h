@@ -14,11 +14,11 @@ START_NAMESPACE(ut)
 START_NAMESPACE(net)
 //----------------------------------------------------------------------------//
 // class ut::Socket is a high-level wrapper for native os sockets. It's highly
-// recommended to prefer SocketPtr rather than Socket, as it's a bit tricky to
-// perform copying on sockets. For example, imagine ut::Socket opens new socket
-// with the same address as the source's one while copying, but if source
-// started listening or something - this behaviour would be lost in new socket.
-// Thus copying is forbidden. Use unique sockets and avoid copying.
+// recommended to prefer UniquePtr<Socket> rather than Socket, as it's a bit 
+// tricky to perform copying on sockets. For example, imagine ut::Socket opens
+// new socket with the same address as the source's one while copying, but if 
+// source started listening or something - this behaviour would be lost in new 
+// socket. Thus copying is forbidden. Use unique sockets and avoid copying.
 class Socket : public NonCopyable
 {
 public:
@@ -195,9 +195,6 @@ private:
 	// socket libraries will be loaded only if there is a real need of them.
 	static const SocketSystem& skSystem;
 };
-
-// Shorter type name of the UniquePtr<class Socket>
-typedef UniquePtr<class Socket> SocketPtr;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(net)
