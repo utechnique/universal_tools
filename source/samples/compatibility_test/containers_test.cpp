@@ -287,6 +287,12 @@ void AVLTreeTask::Execute()
 	// try to remove a leaf by key
 	tree.Remove(32);
 
+	// then insert some new values
+	tree.Insert(26, "__26");
+	tree.Insert(33, "__33");
+	tree.Insert(26, "__26_1");
+	tree.Insert(26, "__26_2");
+
 	// try to find a specific value by key
 	report += "searching element by key \'3\'(should be \'__3\'): ";
 	ut::Result<ut::Ref<ut::String>, ut::Error> find_result = tree.Find(3);
@@ -308,6 +314,25 @@ void AVLTreeTask::Execute()
 	{
 		report += ut::String("failed to find element:\n") + find_result.GetAlt().GetDesc();
 		failed_test_counter.Increment();
+		return;
+	}
+
+	// iterate avl container forward
+	report += ut::CRet() + "iterating forward: ";
+	ut::AVLTree<int, ut::String>::ConstIterator riterator;
+	for (riterator = tree.Begin(ut::iterator::first); riterator != tree.End(ut::iterator::last); ++riterator)
+	{
+		const ut::AVLTree<int, ut::String>::Node& node = *riterator;
+		report += node.value;
+	}
+
+	// iterate avl container backward
+	report += ut::CRet() + "iterating backward: ";
+	ut::AVLTree<int, ut::String>::Iterator literator;
+	for (literator = tree.Begin(ut::iterator::last); literator != tree.End(ut::iterator::first); --literator)
+	{
+		ut::AVLTree<int, ut::String>::Node& node = *literator;
+		report += node.value;
 	}
 }
 

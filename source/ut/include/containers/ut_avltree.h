@@ -27,20 +27,10 @@ public:
 	// and pointers to all adjacent nodes.
 	class Node
 	{
+		friend AVLTree<Key, Value>;
 	public:
-		// key-value pair
+		// value is the only public member
 		Value value;
-		Key key;
-		
-		// balance of the node
-		int8 balance;
-
-		// parent
-		Node* parent;
-
-		// childs
-		Node* left;
-		Node* right;
 
 		// Constructor, key and value are copied
 		Node(KeyLRef k,
@@ -94,9 +84,292 @@ public:
 			delete left;
 			delete right;
 		}
+
+	private:
+		// Returns constant pointer to the most left leaf node
+		const Node* GetDeepestLeftChild() const
+		{
+			return left != nullptr ? left->GetDeepestLeftChild() : this;
+		}
+
+		// Returns constant pointer to the most right leaf node
+		const Node* GetDeepestRightChild() const
+		{
+			return right != nullptr ? right->GetDeepestRightChild() : this;
+		}
+
+		// Returns pointer to the most left leaf node
+		Node* GetDeepestLeftChild()
+		{
+			return left != nullptr ? left->GetDeepestLeftChild() : this;
+		}
+
+		// Returns pointer to the most right leaf node
+		Node* GetDeepestRightChild()
+		{
+			return right != nullptr ? right->GetDeepestRightChild() : this;
+		}
+
+		// Returns pointer to the first parent that points to the current chain from the left side
+		Optional<Node*> GetFirstLeftParent() const
+		{
+			if (parent != nullptr)
+			{
+				return parent->left == this ? parent : parent->GetFirstLeftParent();
+			}
+			return Optional<Node*>();
+		}
+
+		// Returns pointer to the first parent that points to the current chain from the right side
+		Optional<Node*> GetFirstRightParent() const
+		{
+			if (parent != nullptr)
+			{
+				return parent->right == this ? parent : parent->GetFirstRightParent();
+			}
+			return Optional<Node*>();
+		}
+
+		// Returns the next sibling node in the parent tree
+		//    @return - pointer to the sibling node or error if failed
+		Optional<Node*> GetNextSibling() const
+		{
+			if (right != nullptr)
+			{
+				return right->GetDeepestLeftChild();
+			}
+			else if (parent != nullptr)
+			{
+				if (parent->left == this)
+				{
+					return parent;
+				}
+				else if (parent->right == this)
+				{
+					return parent->GetFirstLeftParent();
+				}
+			}
+
+			return Optional<Node*>();
+		}
+
+		// Returns the previous sibling node in the parent tree
+		//    @return - pointer to the sibling node or error if failed
+		Optional<Node*> GetPreviousSibling() const
+		{
+			if (left != nullptr)
+			{
+				return left->GetDeepestRightChild();
+			}
+			else if (parent != nullptr)
+			{
+				if (parent->right == this)
+				{
+					return parent;
+				}
+				else if (parent->left == this)
+				{
+					return parent->GetFirstRightParent();
+				}
+			}
+
+			return Optional<Node*>();
+		}
+		
+		// key of any type that supports comparison operators
+		Key key;
+
+		// balance of the node
+		int8 balance;
+
+		// parent
+		Node* parent;
+
+		// childs
+		Node* left;
+		Node* right;
 	};
 
+private:
+	// ut::AVLTree<>::IteratorTemplate is a template class for all avl tree iterators.
+	// ut::AVLTree<>::Iterator is implemented as IteratorTemplate<Node> and
+	// ut::AVLTree<>::ConstIterator is derived from IteratorTemplate<const Node>
+	// to implement conversion from non-const (ut::AVLTree<>::ConstIterator)
+	// iterator type.
+	template<typename IteratorNodeType>
+	class IteratorTemplate
+	{
+		friend AVLTree<Key, Value>;
+		friend Node;
+	public:
+		// Default constructor
+		IteratorTemplate() : node(nullptr)
+		{ }
+
+		// Constructor
+		//    @param p - initialize iterator with this pointer
+		IteratorTemplate(IteratorNodeType* ptr) : node(ptr)
+		{ }
+
+		// Copy constructor
+		IteratorTemplate(const IteratorTemplate& copy) : node(copy.node)
+		{ }
+
+		// Assignment operator
+		IteratorTemplate& operator = (const IteratorTemplate& copy)
+		{
+			node = copy.node;
+			return *this;
+		}
+
+		// Returns constant reference of the managed object
+		IteratorNodeType& operator*() const
+		{
+			return (*node);
+		}
+
+		// Inheritance operator, provides access to the owned object.
+		// Return value can't be changed, it must be constant.
+		IteratorNodeType* operator->() const
+		{
+			return node;
+		}
+
+		// Increment operator
+		IteratorTemplate& operator++()
+		{
+			// node value 'nullptr' means the end of a tree
+			if (node == nullptr)
+			{
+				return *this;
+			}
+
+			// move right
+			Optional<Node*> sibling = node->GetNextSibling();
+			if (sibling)
+			{
+				node = sibling.Get();
+			}
+			else
+			{
+				node = nullptr;
+			}
+
+			return *this;
+		}
+
+		// Post increment operator
+		IteratorTemplate operator++(int)
+		{
+			IteratorTemplate tmp = *this;
+			++(*this);
+			return tmp;
+		}
+
+		// Decrement operator
+		IteratorTemplate& operator--()
+		{
+			// node value 'nullptr' means the end of a tree
+			if (node == nullptr)
+			{
+				return *this;
+			}
+
+			// move left
+			Optional<Node*> sibling = node->GetPreviousSibling();
+			if (sibling)
+			{
+				node = sibling.Get();
+			}
+			else
+			{
+				node = nullptr;
+			}
+
+			return *this;
+		}
+
+		// Post decrement operator
+		IteratorTemplate operator--(int)
+		{
+			IteratorTemplate tmp = *this;
+			node--;
+			return tmp;
+		}
+
+		// Comparison operator 'equal to'
+		bool operator == (const IteratorTemplate& right) const
+		{
+			return node == right.node;
+		}
+
+		// Comparison operator 'not equal to'
+		bool operator != (const IteratorTemplate& right) const
+		{
+			return node != right.node;
+		}
+
+	protected:
+		// managed object
+		IteratorNodeType* node;
+	};
+	
 public:
+	// ut::AVLTree<>::Iterator is a bidirectional iterator
+	// to iterate over the whole tree container.
+	typedef IteratorTemplate<Node> Iterator;
+
+	// ut::AVLTree<>::ConstIterator is a bidirectional constant iterator
+	// to iterate over the whole tree container.
+	class ConstIterator : public IteratorTemplate<const Node>
+	{
+		// Base iterator type
+		typedef IteratorTemplate<const Node> Base;
+	public:
+		// Default constructor
+		ConstIterator() : Base(nullptr)
+		{ }
+
+		// Constructor
+		//    @param p - initialize iterator with this pointer
+		ConstIterator(const Node* ptr) : Base(ptr)
+		{ }
+
+		// Copy constructor
+		ConstIterator(const ConstIterator& copy) : Base(copy)
+		{ }
+
+		// Copy constructor
+		ConstIterator(const Iterator& copy) : Base(copy)
+		{ }
+
+		// Assignment operator
+		ConstIterator& operator = (const ConstIterator& copy)
+		{
+			Base::node = copy.node;
+			return *this;
+		}
+
+		// Assignment operator (for non-const argument)
+		ConstIterator& operator = (const Iterator& copy)
+		{
+			Base::node = &(*copy.node);
+			return *this;
+		}
+
+		// Comparison operator 'equal to' for non-const argument
+		bool operator == (const Iterator& right) const
+		{
+			return Base::node == &(*right.node);
+		}
+
+		// Comparison operator 'not equal to' for non-const argument
+		bool operator != (const Iterator& right) const
+		{
+			return Base::node != &(*right.node);
+		}
+	};
+
 	// Constructor
 	AVLTree() : root(nullptr)
 	{}
@@ -271,6 +544,44 @@ public:
 			// delete unreferenced node
 			delete n;
 		}
+	}
+
+	// Returns constant read / write iterator that points to the first element
+	ConstIterator Begin(iterator::Position position = iterator::first) const
+	{
+		if (root != nullptr)
+		{
+			return ConstIterator(position == iterator::first ? root->GetDeepestLeftChild() : root->GetDeepestRightChild());
+		}
+		else
+		{
+			return ConstIterator(nullptr);
+		}
+	}
+
+	// Returns constant read / write iterator that points to the last element
+	ConstIterator End(iterator::Position position = iterator::last) const
+	{
+		return ConstIterator(nullptr);
+	}
+
+	// Returns constant read / write iterator that points to the first element
+	Iterator Begin(iterator::Position position = iterator::first)
+	{
+		if (root != nullptr)
+		{
+			return Iterator(position == iterator::first ? root->GetDeepestLeftChild() : root->GetDeepestRightChild());
+		}
+		else
+		{
+			return Iterator(nullptr);
+		}
+	}
+
+	// Returns constant read / write iterator that points to the last element
+	Iterator End(iterator::Position position = iterator::last)
+	{
+		return Iterator(nullptr);
 	}
 
 private:
