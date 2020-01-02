@@ -8,7 +8,8 @@
 #include "containers/ut_avltree.h"
 #include "containers/ut_pair.h"
 #include "containers/ut_singleton.h"
-#include "pointers/ut_unique_ptr.h"
+#include "pointers/ut_shared_ptr.h"
+#include "system/ut_lock.h"
 #include "templates/ut_enable_if.h"
 #include "templates/ut_is_default_constructible.h"
 #include "templates/ut_is_copy_constructible.h"
@@ -44,6 +45,12 @@ public:
 
 	// Copies an object of the derived type.
 	virtual Polymorphic* CloneObject(const Polymorphic& copy) const = 0;
+
+	// Returns full identifier of the dynamic type.
+	const Id& GetId() const
+	{
+		return id;
+	}
 
 	// Gets dynamic type name.
 	const String& GetName() const
@@ -152,6 +159,15 @@ inline static String GetPolymorphicName()
 	return PolymorphicType<T>::id.first;
 }
 
+// Returns reference to the mutex that is represented as Meyers' singleton
+// to protect polymorphic registration system (so that only one type could
+// be registered at a time).
+static Mutex& GetPolymorphicFactoryMutex()
+{
+	static Mutex mutex;
+	return mutex;
+}
+
 // ut::Factory is a template class to implement factory pattern for the
 // dynamic types. Every serializable polymorphic type has it's own factory.
 // Derived types can be registered with this factory, so that they could
@@ -160,18 +176,50 @@ inline static String GetPolymorphicName()
 template<typename Base>
 class Factory
 {
+	// All factories have mutual access to each other.
+	template<typename> friend class Factory;
+
 public:
-	// Registers dynami type @Derived, see ut::PolymorphicType for examples.
+	// Registers dynamic type @Derived, see ut::PolymorphicType for examples.
 	//    @param name - desired name for the specified type.
 	//    @return - identifier of the registered type.
-	template <typename Derivered>
+	template <typename Derived>
 	static DynamicType::Id Register(const String& name)
 	{
-		DynamicType* type = new PolymorphicType<Derivered>;
-		UniquePtr<DynamicType> ptr(type);
-		bool result = GetMap().Insert(name, Move(ptr));
-		UT_ASSERT(result);
-		return DynamicType::Id(name, *type);
+		// protect function with a mutex, so that only
+		// one type could be registered at a time
+		ScopeLock lock(GetPolymorphicFactoryMutex());
+
+		// check if type is already registered
+		Result<Ref<DynamicTypePtr>, Error> result = GetMap().Find(name);
+
+		// if type is registered - just return it's id
+		if (result)
+		{
+			DynamicTypePtr& dyn_type = result.GetResult();
+			return dyn_type->GetId();
+		}
+		else // otherwise - register a new one
+		{
+			// create shared pointer to the new polymorphic type
+			DynamicType* type = new PolymorphicType<Derived>;
+			DynamicTypePtr ptr(type);
+
+			// register type in current factory
+			Register(name, ptr);
+
+			// register type in it's own factory
+			Factory<Derived>::Register(name, ptr);
+
+			// import children of the registered type
+			Import<Derived>();
+
+			// add callback to the factory of the registered type
+			Factory<Derived>::GetCallbacks().Add(Factory<Base>::Register);
+
+			// construct complete id object and return it
+			return DynamicType::Id(name, *type);
+		}
 	}
 
 	// Searches for the specified type by name.
@@ -179,28 +227,76 @@ public:
 	//    @return - dynamic type if it was found, or error otherwise
 	static Result<ConstRef<DynamicType>, Error> GetType(const String& name)
 	{
-		Result< Ref<UniquePtr<DynamicType> >, Error> result = GetMap().Find(name);
+		Result<Ref<DynamicTypePtr>, Error> result = GetMap().Find(name);
 		if (!result)
 		{
 			return MakeError(result.GetAlt());
 		}
-		UniquePtr<DynamicType>& dyn_type = result.GetResult();
+		DynamicTypePtr& dyn_type = result.GetResult();
 		return ConstRef<DynamicType>(dyn_type.GetRef());
 	}
 
 private:
-	// Declare a separate type for the map, otherwise
-	// Singleton<Map> will be the same for all factory types.
-	template <typename T0, typename T1, typename T2>
-	class MyTree : public AVLTree<T0, T1>
-	{ };
+	// There is only one instance per dynamic type, and it's shared between
+	// different factories. Thread safety is disabled for this shared pointer
+	// because only one type can be registered simultaneously.
+	typedef SharedPtr<DynamicType, thread_safety::off> DynamicTypePtr;
 
-	// Type names and managing objects are stored in the special map, so that
+	// Every type must be registered in all factories that are parents of the
+	// current one. That is done by calling a registration callback of the
+	// parent factory after own registration is done.
+	typedef void(*RegisterCallback)(const String&, const DynamicTypePtr& ptr);
+
+	// AVL tree is used as a container for the (type/name) map as it
+	// provides good search performance.
+	typedef AVLTree<String, DynamicTypePtr> Map;
+
+	// Adds provided type to the map and asks parents to register this type too.
+	static void Register(const String& name, const DynamicTypePtr& ptr)
+	{
+		Result<Ref<DynamicTypePtr>, Error> result = GetMap().Find(name);
+		if (!result)
+		{
+			// add shared pointer to the own map at first
+			bool result = GetMap().Insert(name, ptr);
+			UT_ASSERT(result);
+
+			// then let parent factories register this type too
+			Array<RegisterCallback>& callbacks = GetCallbacks();
+			for (size_t i = 0; i < callbacks.GetNum(); i++)
+			{
+				callbacks[i](name, ptr);
+			}
+		}
+	}
+
+	// Imports all types that are already registered in @Derived factory.
+	template <typename Derived>
+	static void Import()
+	{
+		// note that Register() function below registers a type into all parent factories too
+		Map& map = Factory<Derived>::GetMap();
+		Map::ConstIterator it;
+		for (it = map.Begin(iterator::first); it != map.End(iterator::last); ++it)
+		{
+			const Map::Node& node = *it;
+			Register(node.GetKey(), node.value);
+		}
+	}
+
+	// Type names and type proxies are stored in a special map, so that
 	// appropriate type could be found by name in relatively small time.
-	typedef MyTree<String, UniquePtr<DynamicType>, Base> Map;
 	static Map& GetMap()
 	{
-		return Singleton<Map>::Instance();
+		static Map map;
+		return map;
+	}
+
+	// Registration callbacks of the parent factories.
+	static Array<RegisterCallback>& GetCallbacks()
+	{
+		static Array<RegisterCallback> callbacks;
+		return callbacks;
 	}
 };
 

@@ -85,6 +85,12 @@ public:
 			delete right;
 		}
 
+		// Returns a copy of the key member
+		Key GetKey() const
+		{
+			return key;
+		}
+
 	private:
 		// Returns constant pointer to the most left leaf node
 		const Node* GetDeepestLeftChild() const
@@ -355,6 +361,18 @@ public:
 		{
 			Base::node = &(*copy.node);
 			return *this;
+		}
+
+		// Comparison operator 'equal to' for const argument
+		bool operator == (const ConstIterator& right) const
+		{
+			return Base::node == &(*right.node);
+		}
+
+		// Comparison operator 'not equal to' for const argument
+		bool operator != (const ConstIterator& right) const
+		{
+			return Base::node != &(*right.node);
 		}
 
 		// Comparison operator 'equal to' for non-const argument

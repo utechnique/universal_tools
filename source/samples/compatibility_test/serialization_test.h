@@ -100,6 +100,39 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class PolymorphicC : public PolymorphicB
+{
+public:
+	PolymorphicC(const char* in_str = "");
+	const ut::DynamicType& Identify() const;
+	void Reflect(ut::meta::Snapshot& snapshot);
+
+	ut::String str_c;
+};
+
+//----------------------------------------------------------------------------//
+class PolymorphicD : public PolymorphicC
+{
+public:
+	PolymorphicD(ut::int16 in_ival16 = 0);
+	const ut::DynamicType& Identify() const;
+	void Reflect(ut::meta::Snapshot& snapshot);
+
+	ut::int16 ival16_d;
+};
+
+//----------------------------------------------------------------------------//
+class PolymorphicE : public PolymorphicD
+{
+public:
+	PolymorphicE(const char* in_str = "");
+	const ut::DynamicType& Identify() const;
+	void Reflect(ut::meta::Snapshot& snapshot);
+
+	ut::String str_e;
+};
+
+//----------------------------------------------------------------------------//
 class ReflectiveA : public ReflectiveBase
 {
 public:
@@ -212,6 +245,11 @@ public:
 	ut::String str;
 	ut::Array<ut::String> strarr;
 	ut::UniquePtr<TestBase> dyn_type_ptr;
+	ut::UniquePtr<TestBase> dyn_ptr_c;
+	ut::UniquePtr<TestBase> dyn_ptr_e;
+	ut::UniquePtr<PolymorphicC> dyn_ptr_cc;
+	ut::UniquePtr<PolymorphicC> dyn_ptr_cd;
+	ut::UniquePtr<PolymorphicC> dyn_ptr_ce;
 	ut::Array< ut::Array<ut::String> > strarrarr;
 	ut::Array< ut::UniquePtr<ut::uint16> > u16ptrarr;
 	ut::UniquePtr<ReflectiveBase> reflective_param;

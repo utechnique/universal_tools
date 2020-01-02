@@ -7,6 +7,9 @@
 UT_REGISTER_TYPE(TestBase, TestBase, "test_base")
 UT_REGISTER_TYPE(TestBase, PolymorphicA, "test_derived_A")
 UT_REGISTER_TYPE(TestBase, PolymorphicB, "test_derived_B")
+UT_REGISTER_TYPE(PolymorphicC, PolymorphicD, "test_derived_D")
+UT_REGISTER_TYPE(PolymorphicD, PolymorphicE, "test_derived_E")
+UT_REGISTER_TYPE(PolymorphicB, PolymorphicC, "test_derived_C")
 
 // polymorphic reflective types
 UT_REGISTER_TYPE(ReflectiveBase, ReflectiveBase, "reflective_base")
@@ -335,6 +338,11 @@ SerializationTest::SerializationTest(bool in_alternate,
 
 	// initialize dynamic object
 	dyn_type_ptr = new PolymorphicA(-1, 1);
+	dyn_ptr_c = new PolymorphicA(2, 0);
+	dyn_ptr_e = new PolymorphicA(3, 1);
+	dyn_ptr_cc = new PolymorphicE("e_obj");
+	dyn_ptr_cd = new PolymorphicC("c_obj");
+	dyn_ptr_ce = new PolymorphicC("c_obj");
 
 	// initialize reflective parameters
 	reflective_param = new ReflectiveA(-2, 2);
@@ -390,6 +398,11 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << a;
 	snapshot << strarr;
 	snapshot << dyn_type_ptr;
+	snapshot << dyn_ptr_c;
+	snapshot << dyn_ptr_e;
+	snapshot << dyn_ptr_cc;
+	snapshot << dyn_ptr_cd;
+	snapshot << dyn_ptr_ce;
 	snapshot << strarrarr;
 	snapshot << u16ptrarr;
 	snapshot << reflect_unique_ptr;
@@ -480,6 +493,51 @@ void PolymorphicB::Reflect(ut::meta::Snapshot& snapshot)
 {
 	TestBase::Reflect(snapshot);
 	snapshot << str << uval;
+}
+
+//----------------------------------------------------------------------------//
+PolymorphicC::PolymorphicC(const char* in_str) : str_c(in_str)
+{ }
+
+const ut::DynamicType& PolymorphicC::Identify() const
+{
+	return ut::Identify(this);
+}
+
+void PolymorphicC::Reflect(ut::meta::Snapshot& snapshot)
+{
+	TestBase::Reflect(snapshot);
+	snapshot << str_c;
+}
+
+//----------------------------------------------------------------------------//
+PolymorphicD::PolymorphicD(ut::int16 in_ival16) : ival16_d(in_ival16)
+{ }
+
+const ut::DynamicType& PolymorphicD::Identify() const
+{
+	return ut::Identify(this);
+}
+
+void PolymorphicD::Reflect(ut::meta::Snapshot& snapshot)
+{
+	TestBase::Reflect(snapshot);
+	snapshot << ival16_d;
+}
+
+//----------------------------------------------------------------------------//
+PolymorphicE::PolymorphicE(const char* in_str) : str_e(in_str)
+{ }
+
+const ut::DynamicType& PolymorphicE::Identify() const
+{
+	return ut::Identify(this);
+}
+
+void PolymorphicE::Reflect(ut::meta::Snapshot& snapshot)
+{
+	TestBase::Reflect(snapshot);
+	snapshot << str_e;
 }
 
 //----------------------------------------------------------------------------//
@@ -631,9 +689,14 @@ void ChangeSerializedObject(SerializationTest& object)
 	// string pointer
 	object.str_ptr = &object.strarrarr[0][0];
 
-	// change dynamic object
+	// change dynamic objects
 	object.dyn_type_ptr = new PolymorphicB("test_b", 500);
 	object.dyn_type_ptr->fval = 1001.504f;
+	object.dyn_ptr_c = new PolymorphicC("c_obj");
+	object.dyn_ptr_e = new PolymorphicE("e_obj");
+	object.dyn_ptr_cc = new PolymorphicC("c_obj");
+	object.dyn_ptr_cd = new PolymorphicD(10);
+	object.dyn_ptr_ce = new PolymorphicE("e_obj");
 
 	// change reflective parameter
 	object.reflective_param = new ReflectiveB("reflective_b_str", 42, 10);
@@ -708,7 +771,7 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	if (object.strarrarr[1][0] != "10") return false;
 	if (object.strarrarr[1][1] != "11") return false;
 	
-	// check dynamic type
+	// check dynamic type B
 	if (object.dyn_type_ptr.Get() == nullptr) return false;
 	const ut::DynamicType& dyn_type = object.dyn_type_ptr->Identify();
 	const ut::String dynamic_type_name(dyn_type.GetName());
@@ -717,6 +780,46 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	if (dyn_ptr->str != "test_b") return false;
 	if (dyn_ptr->uval != 500) return false;
 	if (dyn_ptr->fval < 1001.504f - 0.0001f || dyn_ptr->fval > 1001.504f + 0.0001f) return false;
+
+	// check dynamic type C
+	if (object.dyn_ptr_c.Get() == nullptr) return false;
+	const ut::DynamicType& dyn_type_c = object.dyn_ptr_c->Identify();
+	const ut::String dynamic_type_name_c(dyn_type_c.GetName());
+	if (dynamic_type_name_c != "test_derived_C") return false;
+	PolymorphicC* dyn_ptr_c = (PolymorphicC*)object.dyn_ptr_c.Get();
+	if (dyn_ptr_c->str_c != "c_obj") return false;
+	
+	// check dynamic type E
+	if (object.dyn_ptr_e.Get() == nullptr) return false;
+	const ut::DynamicType& dyn_type_e = object.dyn_ptr_e->Identify();
+	const ut::String dynamic_type_name_e(dyn_type_e.GetName());
+	if (dynamic_type_name_e != "test_derived_E") return false;
+	PolymorphicE* dyn_ptr_e = (PolymorphicE*)object.dyn_ptr_e.Get();
+	if (dyn_ptr_e->str_e != "e_obj") return false;
+
+	// check dynamic type CC
+	if (object.dyn_ptr_cc.Get() == nullptr) return false;
+	const ut::DynamicType& dyn_type_cc = object.dyn_ptr_cc->Identify();
+	const ut::String dynamic_type_name_cc(dyn_type_cc.GetName());
+	if (dynamic_type_name_cc != "test_derived_C") return false;
+	PolymorphicC* dyn_ptr_cc = (PolymorphicC*)object.dyn_ptr_cc.Get();
+	if (dyn_ptr_cc->str_c != "c_obj") return false;
+
+	// check dynamic type CD
+	if (object.dyn_ptr_cd.Get() == nullptr) return false;
+	const ut::DynamicType& dyn_type_cd = object.dyn_ptr_cd->Identify();
+	const ut::String dynamic_type_name_cd(dyn_type_cd.GetName());
+	if (dynamic_type_name_cd != "test_derived_D") return false;
+	PolymorphicD* dyn_ptr_cd = (PolymorphicD*)object.dyn_ptr_cd.Get();
+	if (dyn_ptr_cd->ival16_d != 10) return false;
+
+	// check dynamic type CE
+	if (object.dyn_ptr_ce.Get() == nullptr) return false;
+	const ut::DynamicType& dyn_type_ce = object.dyn_ptr_ce->Identify();
+	const ut::String dynamic_type_name_ce(dyn_type_ce.GetName());
+	if (dynamic_type_name_ce != "test_derived_E") return false;
+	PolymorphicE* dyn_ptr_ce = (PolymorphicE*)object.dyn_ptr_ce.Get();
+	if (dyn_ptr_ce->str_e != "e_obj") return false;
 
 	// check reflective parameter
 	if (alternate)
