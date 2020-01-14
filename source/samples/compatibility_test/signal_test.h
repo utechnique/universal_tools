@@ -7,57 +7,41 @@
 #include "test_task.h"
 #include "test_unit.h"
 //----------------------------------------------------------------------------//
-class ContainersTestUnit : public TestUnit
+class SignalTestUnit : public TestUnit
 {
 public:
-	ContainersTestUnit();
+	SignalTestUnit();
 };
 
 //----------------------------------------------------------------------------//
-class ArrayOpsTask : public TestTask
+class Slot0Task : public TestTask
 {
 public:
-	ArrayOpsTask();
+	Slot0Task();
 	void Execute();
 };
 
 //----------------------------------------------------------------------------//
-class MapTask : public TestTask
+class Slot1Task : public TestTask
 {
 public:
-	MapTask();
+	Slot1Task();
 	void Execute();
 };
 
 //----------------------------------------------------------------------------//
-class TreeTask : public TestTask
+class Slot2Task : public TestTask
 {
 public:
-	TreeTask();
+	Slot2Task();
 	void Execute();
 };
 
 //----------------------------------------------------------------------------//
-class AVLTreeTask : public TestTask
+class Slot3Task : public TestTask
 {
 public:
-	AVLTreeTask();
-	void Execute();
-};
-
-//----------------------------------------------------------------------------//
-class SharedPtrTask : public TestTask
-{
-public:
-	SharedPtrTask();
-	void Execute();
-};
-
-//----------------------------------------------------------------------------//
-class ContainerTask : public TestTask
-{
-public:
-	ContainerTask();
+	Slot3Task();
 	void Execute();
 };
 

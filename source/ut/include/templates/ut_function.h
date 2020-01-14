@@ -43,6 +43,79 @@ protected:
 };
 
 //----------------------------------------------------------------------------//
+#if CPP_STANDARD >= 2011
+//----------------------------------------------------------------------------//
+// Specialization of the ut::Invoker template class, where
+// return type and arguments are separated from the signature.
+template <typename R, typename... Arguments>
+class Invoker<R(*)(Arguments...)>
+{
+protected:
+	typedef R(*FunctionPtr)(Arguments...);
+	FunctionPtr function;
+
+public:
+	Invoker(FunctionPtr ptr = nullptr) : function(ptr) {}
+
+	virtual R Invoke(Arguments... arguments) const
+	{
+		return function(arguments...);
+	}
+
+	virtual Invoker* MakeCopy() const
+	{
+		return new Invoker(*this);
+	}
+};
+
+// Specialization of the ut::MemberInvoker template class, where
+// return type, owner class type and arguments are separated from the signature.
+template <typename C, typename R, typename... Arguments>
+class MemberInvoker<R(C::*)(Arguments...)> : public Invoker<R(*)(Arguments...)>
+{
+	typedef Invoker<R(*)(Arguments...)> Base;
+	typedef R(C::*MemberFunctionPtr)(Arguments...);
+public:
+	MemberInvoker(MemberFunctionPtr ptr, C* object) : member(ptr)
+	                                                , owner(object)
+	{}
+
+	R Invoke(Arguments... arguments) const
+	{
+		return (owner->*member)(arguments...);
+	}
+
+	Base* MakeCopy() const
+	{
+		return new MemberInvoker(*this);
+	}
+
+private:
+	MemberFunctionPtr member;
+	C* owner;
+};
+
+// Specialization of the ut::FunctionTemplate template class, where
+// return type and arguments are separated from the signature.
+template <typename R, typename... Arguments>
+class FunctionTemplate<R(*)(Arguments...)> : public FunctionBase<R(*)(Arguments...)>
+{
+	typedef R(*FunctionPtr)(Arguments...);
+	typedef FunctionBase<R(*)(Arguments...)> Base;
+	FunctionPtr function;
+public:
+	FunctionTemplate(const Invoker<FunctionPtr>& invoker) : Base(invoker)
+	{}
+
+	R operator ()(Arguments... arguments) const
+	{
+		return Base::invoker->Invoke(arguments...);
+	}
+};
+
+//----------------------------------------------------------------------------//
+#else // CPP_STANDARD >= 2011
+//----------------------------------------------------------------------------//
 // Some macros to declare all specialized versions of function container
 // templates using UT_PP_ENUM() macro. Here in comments 'j' is an Id of a
 // template specialization.
@@ -73,11 +146,10 @@ protected:
 // class Invoker<R(*)(T0, T1, ... Tn)>
 // {
 // protected:
-//     R(*FunctionPtr)(T0, T1, ... Tn);
+//     typedef R(*FunctionPtr)(T0, T1, ... Tn);
 //     FunctionPtr function;
 // public:
 //     Invoker(FunctionPtr ptr = nullptr) : function(ptr) {}
-//     Invoker(const Invoker & copy) : function(copy.function) {}
 //     virtual R Invoke(T0 t0, T1 t1, ... Tn tn) const
 //     {
 //         return function(t0, t1, ... tn);
@@ -97,7 +169,6 @@ protected:														\
 	FunctionPtr function;										\
 public:															\
 	Invoker(FunctionPtr ptr = nullptr) : function(ptr) {}		\
-	Invoker(const Invoker & copy) : function(copy.function) {}	\
 	virtual R Invoke(UT_FUNCTION_FULL_ARG_LIST(id)) const		\
 	{															\
 		return function(UT_FUNCTION_ARG_NAME_LIST(id));			\
@@ -121,8 +192,6 @@ public:															\
 // public:
 //     MemberInvoker(MemberFunctionPtr ptr, C* object) : member(ptr)
 //                                                     , owner(object) {}
-//     MemberInvoker(const MemberInvoker & copy) : member(copy.member)
-//                                               , owner(copy.owner) {}
 //     R Invoke(T0 t0, T1 t1, ... Tn tn) const
 //     {
 //         return (owner->*member)(t0, t1, ... tn);
@@ -143,8 +212,6 @@ class MemberInvoker<R(C::*)(UT_FUNCTION_ARG_LIST(id))>					\
 public:																	\
 	MemberInvoker(MemberFunctionPtr ptr, C* object) : member(ptr)		\
 	                                                , owner(object) {}	\
-	MemberInvoker(const MemberInvoker & copy) : member(copy.member)		\
-	                                          , owner(copy.owner) {}	\
 	R Invoke(UT_FUNCTION_FULL_ARG_LIST(id)) const						\
 	{																	\
 		return (owner->*member)(UT_FUNCTION_ARG_NAME_LIST(id));			\
@@ -162,13 +229,13 @@ private:																\
 //
 // template <typename R, typename T0, typename T1, ... typename Tn>
 // class FunctionTemplate<R(*)(T0, T1, ... Tn)>
+//     : public FunctionBase<R(*)(T0, T1, ... Tn)>
 // {
 //     typedef R(*FunctionPtr)(T0, T1, ... Tn);
 //     typedef FunctionBase<R(*)(T0, T1, ... Tn)> Base;
 //     FunctionPtr function;
 // public:
 //     FunctionTemplate(const Invoker<FunctionPtr>& invoker) : Base(invoker){}
-//     FunctionTemplate(const FunctionTemplate& copy) : Base(copy){}
 //     R operator ()(T0 t0, T1 t1, ... Tn tn) const
 //     {
 //         return Base::invoker->Invoke(t0, t1, ... tn);
@@ -185,7 +252,6 @@ class FunctionTemplate<R(*)(UT_FUNCTION_ARG_LIST(id))>						\
 	FunctionPtr function;													\
 public:																		\
 	FunctionTemplate(const Invoker<FunctionPtr>& invoker) : Base(invoker){}	\
-	FunctionTemplate(const FunctionTemplate& copy) : Base(copy){}			\
 	R operator ()(UT_FUNCTION_FULL_ARG_LIST(id)) const						\
 	{																		\
 		return Base::invoker->Invoke(UT_FUNCTION_ARG_NAME_LIST(id));		\
@@ -194,10 +260,12 @@ public:																		\
 
 //----------------------------------------------------------------------------//
 // Implementation code for all template specializations.
-UT_PP_ENUM(UT_FUNCTION_TRAITS_MAX_ARITY, UT_FUNCTION_INVOKER_SPECIALIZATION)
-UT_PP_ENUM(UT_FUNCTION_TRAITS_MAX_ARITY, UT_MEMBER_FUNCTION_INVOKER_SPECIALIZATION)
-UT_PP_ENUM(UT_FUNCTION_TRAITS_MAX_ARITY, UT_MEMBER_FUNCTION_TEMPLATE_SPECIALIZATION)
+UT_PP_ENUM(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_INVOKER_SPECIALIZATION)
+UT_PP_ENUM(UT_FUNCTION_MAX_ARITY, UT_MEMBER_FUNCTION_INVOKER_SPECIALIZATION)
+UT_PP_ENUM(UT_FUNCTION_MAX_ARITY, UT_MEMBER_FUNCTION_TEMPLATE_SPECIALIZATION)
 
+//----------------------------------------------------------------------------//
+#endif // CPP_STANDARD >= 2011
 //----------------------------------------------------------------------------//
 // ut::Function is a template class to encapsulate different variations of the
 // function implementation (such as member-function and/or simple function) in
@@ -209,13 +277,10 @@ class Function : public FunctionTemplate<typename AddPointer<FunctionSignature>:
 	typedef FunctionTemplate<Pointer> Base;
 public:
 	Function(const Invoker<Pointer>& invoker) : Base(invoker)
-	{ }
+	{}
 
 	Function(Pointer ptr = nullptr) : Base(Invoker<Pointer>(ptr))
-	{ }
-
-	Function(const Function& copy) : Base(copy)
-	{ }
+	{}
 };
 
 //----------------------------------------------------------------------------//

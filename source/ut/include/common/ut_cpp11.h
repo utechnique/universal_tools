@@ -59,15 +59,16 @@ FORCEINLINE constexpr T&& Forward(typename RemoveReference<T>::Type&& ref)
 // nullptr
 #define nullptr NULL
 
+// RemoveReference<type> will remove any references from a type.
+template <typename T> struct RemoveReference { typedef T Type; };
+template <typename T> struct RemoveReference<T& > { typedef T Type; };
+
 // R-Value reference type
 template <typename T> struct RValRef { typedef const T& Type; };
 
 // L-Value reference type
 template <typename T> struct LValRef { typedef const T& Type; };
-
-// RemoveReference<type> will remove any references from a type.
-template <typename T> struct RemoveReference { typedef T Type; };
-template <typename T> struct RemoveReference<T& > { typedef T Type; };
+template <typename T> struct LValRef<T&> { typedef T& Type; };
 
 // Casts a reference to an rvalue reference.
 template <typename T>

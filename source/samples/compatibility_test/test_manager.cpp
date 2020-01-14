@@ -6,6 +6,7 @@
 #include "string_test.h"
 #include "file_test.h"
 #include "thread_test.h"
+#include "signal_test.h"
 #include "net_test.h"
 #include "serialization_test.h"
 #include "text_format_test.h"
@@ -21,6 +22,7 @@ TestManager::TestManager()
 	units.Add(new FileTestUnit);
 #endif
 	units.Add(new ThreadTestUnit);
+	units.Add(new SignalTestUnit);
 	units.Add(new NetTestUnit);
 	units.Add(new TextFormatUnit);
 	units.Add(new EncryptionTestUnit);

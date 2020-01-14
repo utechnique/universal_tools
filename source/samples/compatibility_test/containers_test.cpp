@@ -10,6 +10,7 @@ ContainersTestUnit::ContainersTestUnit() : TestUnit("CONTAINERS")
 	tasks.Add(new TreeTask);
 	tasks.Add(new AVLTreeTask);
 	tasks.Add(new SharedPtrTask);
+	tasks.Add(new ContainerTask);
 }
 
 //----------------------------------------------------------------------------//
@@ -385,6 +386,63 @@ void SharedPtrTask::Execute()
 	}
 
 	report += "reached the end. Ok!";
+}
+
+//----------------------------------------------------------------------------//
+
+ContainerTask::ContainerTask() : TestTask("Container template")
+{ }
+
+void ContainerTask::Execute()
+{
+	char b = 3;
+	ut::Array<ut::byte> arr;
+	arr.Add(0);
+	arr.Add(1);
+	arr.Add(2);
+
+	ut::UniquePtr<int> uniq_ptr(new int(10));
+	ut::SharedPtr<ut::uint> sh_ptr(new ut::uint(12));
+
+	ut::Container<int, char&, ut::UniquePtr<int>, ut::SharedPtr<ut::uint>, ut::Array<ut::byte> > c(0, b, Move(uniq_ptr), sh_ptr, Move(arr));
+
+	if (c.Get<0>() != 0)
+	{
+		report += "Fail(0)";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	c.Get<1>() = 11;
+	if (b != 11)
+	{
+		report += "Fail(1)";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	if (c.Get<2>().GetRef() != 10)
+	{
+		report += "Fail(2)";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	if (c.Get<3>().GetRef() != 12)
+	{
+		report += "Fail(3)";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	if (c.Get<4>().GetNum() != 3 || c.Get<4>()[0] != 0 || c.Get<4>()[1] != 1 || c.Get<4>()[2] != 2)
+	{
+		report += "Fail(4)";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	report += "success";
 }
 
 //----------------------------------------------------------------------------//

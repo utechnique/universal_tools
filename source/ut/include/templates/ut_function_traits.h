@@ -5,8 +5,54 @@
 //----------------------------------------------------------------------------//
 #include "ut_compile_time.h"
 #include "ut_pointer_traits.h"
+#include "preprocessor/ut_enum.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
+//----------------------------------------------------------------------------//
+#if CPP_STANDARD >= 2011
+//----------------------------------------------------------------------------//
+// This struct has specializations according to the provided return type and
+// number of arguments (arity) of the function signature.
+template<typename... Signature> struct FunctionTraitsHelper;
+
+// Helper function to get type of the argument in the function signature
+// knowing it's index `arg_id`
+namespace function_traits_helper
+{
+	template<int arg_id, typename Argument, typename... Tail>
+	struct ArgumentExtractor
+	{
+		typedef typename ArgumentExtractor<arg_id - 1, Tail...>::Type Type;
+	};
+
+	template<typename Argument, typename... Tail>
+	struct ArgumentExtractor<0, Argument, Tail...>
+	{
+		typedef Argument Type;
+	};
+}
+
+// Specialization of the ut::FunctionTraitsHelper template, where
+// signature of the function is divided into return-type and variadic
+// list of arguments.
+template<typename R, typename... Args>
+struct FunctionTraitsHelper<R(*)(Args...)>
+{
+	typedef R ReturnType;
+
+	template<int arg_id>
+	using Argument = function_traits_helper::ArgumentExtractor<arg_id, Args...>;
+};
+
+// Specialization for the case when argument list is empty.
+template<typename R>
+struct FunctionTraitsHelper<R(*)(void)>
+{
+	typedef R ReturnType;
+};
+
+//----------------------------------------------------------------------------//
+#else //CPP_STANDARD >= 2011
 //----------------------------------------------------------------------------//
 // This implementation is inspired by function_traits template in boost library.
 
@@ -14,7 +60,33 @@ START_NAMESPACE(ut)
 // Defines the maximum number of function arguments, when it's still possible
 // to get it's traits (such as return type, arguments type and arity) at compile
 // time. In other words - it's maximum arity of the ut::FunctionTraits<>.
-#define UT_FUNCTION_TRAITS_MAX_ARITY 10
+#define UT_FUNCTION_MAX_ARITY 10
+
+// 1: , Tj
+#define UT_FUNCTION_TRAITS_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) T##id
+// 2: , typename Tj
+#define UT_FUNCTION_TRAITS_FULL_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) typename T##id 
+// 3: , typename Tj = void
+#define UT_FUNCTION_TRAITS_VOID_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) typename T##id = void
+// 4: Argument extractor
+#define UT_FUNCTION_TRAITS_EXTRACTOR_SPECIALIZATION(id)                                          \
+	template < UT_PP_ENUM_IN(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_TRAITS_FULL_TYPENAME_ITERATOR) > \
+	struct ArgumentExtractor< id,                                                                \
+		UT_PP_ENUM_IN(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_TRAITS_TYPENAME_ITERATOR)               \
+	>                                                                                            \
+	{                                                                                            \
+		typedef T##id Type;                                                                      \
+	};
+
+//----------------------------------------------------------------------------//
+// Helper structure to extract argument type from the signature by it's id.
+namespace function_traits_helper
+{
+	template<int arg_id, UT_PP_ENUM(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_TRAITS_VOID_TYPENAME_ITERATOR)>
+	struct ArgumentExtractor { typedef void* ArgType; };
+
+	UT_PP_ENUM(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_TRAITS_EXTRACTOR_SPECIALIZATION)
+}
 
 //----------------------------------------------------------------------------//
 // This struct has specializations according to the provided return type and
@@ -22,175 +94,47 @@ START_NAMESPACE(ut)
 template<typename Function> struct FunctionTraitsHelper;
 
 //----------------------------------------------------------------------------//
-// No arguments.
-template<typename R>
-struct FunctionTraitsHelper<R(*)(void)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 0);
-	typedef R ReturnType;
+// Macro for declaring specialized versions of the ut::FunctionTraitsHelper
+// template.
+// Every specialized version contains different number of arguments.
+// Pseudocode sample without preprocessor macros:
+//
+// template <typename R, typename T0, typename T1, ... typename Tj >
+// struct FunctionTraitsHelper<R(*)(T0, T1, ... Tj)>
+// {
+//     typedef R ReturnType;
+//     template <int arg_id> struct Argument
+//     {
+//         typedef typename function_traits_helper::ArgumentExtractor<j, T0, ... Tj>::Type Type;
+//     }
+// };
+#define UT_FUNCTION_TRAIT_SPECIALIZATION(id)                                                   \
+template <                                                                                     \
+	typename R UT_PP_COMMA_IF(id) UT_PP_ENUM_IN(id, UT_FUNCTION_TRAITS_FULL_TYPENAME_ITERATOR) \
+>                                                                                              \
+struct FunctionTraitsHelper<R(*)( UT_PP_ENUM_IN(id, UT_FUNCTION_TRAITS_TYPENAME_ITERATOR) )>   \
+{                                                                                              \
+	typedef R ReturnType;                                                                      \
+	template <int arg_id> struct Argument                                                      \
+	{                                                                                          \
+		typedef typename function_traits_helper::ArgumentExtractor<                            \
+			arg_id UT_PP_COMMA_IF(id) UT_PP_ENUM_IN(id, UT_FUNCTION_TRAITS_TYPENAME_ITERATOR)  \
+		>::Type Type;                                                                          \
+	};                                                                                         \
 };
+
+// All specialized variations are declared here.
+UT_PP_ENUM(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_TRAIT_SPECIALIZATION)
 
 //----------------------------------------------------------------------------//
-// 1 argument.
-template<typename R, typename T1>
-struct FunctionTraitsHelper<R(*)(T1)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 1);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T1 argument_type;
-};
-
-//----------------------------------------------------------------------------//
-// 2 arguments.
-template<typename R, typename T1, typename T2>
-struct FunctionTraitsHelper<R(*)(T1, T2)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 2);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T2 Arg2Type;
-};
-
-//----------------------------------------------------------------------------//
-// 3 arguments.
-template<typename R, typename T1, typename T2, typename T3>
-struct FunctionTraitsHelper<R(*)(T1, T2, T3)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 3);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T2 Arg2Type;
-	typedef T3 Arg3Type;
-};
-
-//----------------------------------------------------------------------------//
-// 4 arguments.
-template<typename R, typename T1, typename T2, typename T3, typename T4>
-struct FunctionTraitsHelper<R(*)(T1, T2, T3, T4)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 4);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T2 Arg2Type;
-	typedef T3 Arg3Type;
-	typedef T4 Arg4Type;
-};
-
-//----------------------------------------------------------------------------//
-// 5 arguments.
-template<typename R, typename T1, typename T2, typename T3, typename T4,
-	typename T5>
-	struct FunctionTraitsHelper<R(*)(T1, T2, T3, T4, T5)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 5);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T2 Arg2Type;
-	typedef T3 Arg3Type;
-	typedef T4 Arg4Type;
-	typedef T5 Arg5Type;
-};
-
-//----------------------------------------------------------------------------//
-// 6 arguments.
-template<typename R, typename T1, typename T2, typename T3, typename T4,
-	typename T5, typename T6>
-	struct FunctionTraitsHelper<R(*)(T1, T2, T3, T4, T5, T6)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 6);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T2 Arg2Type;
-	typedef T3 Arg3Type;
-	typedef T4 Arg4Type;
-	typedef T5 Arg5Type;
-	typedef T6 Arg6Type;
-};
-
-//----------------------------------------------------------------------------//
-// 7 arguments.
-template<typename R, typename T1, typename T2, typename T3, typename T4,
-	typename T5, typename T6, typename T7>
-	struct FunctionTraitsHelper<R(*)(T1, T2, T3, T4, T5, T6, T7)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 7);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T2 Arg2Type;
-	typedef T3 Arg3Type;
-	typedef T4 Arg4Type;
-	typedef T5 Arg5Type;
-	typedef T6 Arg6Type;
-	typedef T7 Arg7Type;
-};
-
-//----------------------------------------------------------------------------//
-// 8 arguments.
-template<typename R, typename T1, typename T2, typename T3, typename T4,
-	typename T5, typename T6, typename T7, typename T8>
-	struct FunctionTraitsHelper<R(*)(T1, T2, T3, T4, T5, T6, T7, T8)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 8);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T2 Arg2Type;
-	typedef T3 Arg3Type;
-	typedef T4 Arg4Type;
-	typedef T5 Arg5Type;
-	typedef T6 Arg6Type;
-	typedef T7 Arg7Type;
-	typedef T8 Arg8Type;
-};
-
-//----------------------------------------------------------------------------//
-// 9 arguments.
-template<typename R, typename T1, typename T2, typename T3, typename T4,
-	typename T5, typename T6, typename T7, typename T8, typename T9>
-	struct FunctionTraitsHelper<R(*)(T1, T2, T3, T4, T5, T6, T7, T8, T9)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 9);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T2 Arg2Type;
-	typedef T3 Arg3Type;
-	typedef T4 Arg4Type;
-	typedef T5 Arg5Type;
-	typedef T6 Arg6Type;
-	typedef T7 Arg7Type;
-	typedef T8 Arg8Type;
-	typedef T9 Arg9Type;
-};
-
-//----------------------------------------------------------------------------//
-// 10 arguments.
-template<typename R, typename T1, typename T2, typename T3, typename T4,
-	typename T5, typename T6, typename T7, typename T8, typename T9,
-	typename T10>
-	struct FunctionTraitsHelper<R(*)(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)>
-{
-	UT_INCLASS_STATIC_CONSTANT(unsigned, arity = 10);
-	typedef R ReturnType;
-	typedef T1 Arg1Type;
-	typedef T2 Arg2Type;
-	typedef T3 Arg3Type;
-	typedef T4 Arg4Type;
-	typedef T5 Arg5Type;
-	typedef T6 Arg6Type;
-	typedef T7 Arg7Type;
-	typedef T8 Arg8Type;
-	typedef T9 Arg9Type;
-	typedef T10 Arg10Type;
-};
-
+#endif //CPP_STANDARD >= 2011
 //----------------------------------------------------------------------------//
 // Use ut::FunctionTraits to define number of arguments (arity), return type
 // and type of the every argument of the provided function signature.
 // Example:
-// int a = FunctionTraits<int(float,bool)>::arity; // 'a' has value '2'
-// FunctionTraits<int(float,bool)>::ReturnType r;  // 'r' has type 'int'
-// FunctionTraits<int(float,bool)>::Arg1Type arg1; // 'arg1' has type 'float'
-// FunctionTraits<int(float,bool)>::Arg2Type arg2; // 'arg2' has type 'bool'
+// FunctionTraits<int(float,bool)>::ReturnType r;           // int
+// FunctionTraits<int(float,bool)>::Argument<0>::Type arg1; // float
+// FunctionTraits<int(float,bool)>::Argument<1>::Type arg2; // bool
 template<typename Function>
 struct FunctionTraits : public FunctionTraitsHelper<typename AddPointer<Function>::Type>
 { };
