@@ -442,6 +442,17 @@ void ContainerTask::Execute()
 		return;
 	}
 
+	// compility check
+	c.Get<int>() = 2;
+	c.Get<char&>() = b;
+	c.Get< ut::Array<ut::byte> >() = ut::Array<ut::byte>();
+	char& c_test = c.Get<char&>();
+	c_test = c.Get<1>();
+	const ut::Container<int, char&, ut::UniquePtr<int>, ut::SharedPtr<ut::uint>, ut::Array<ut::byte> >& rc = c;
+	int i_test = rc.Get<0>();
+	const char& cc_test = rc.Get<1>();
+	const int& ri_test = rc.Get<int>();
+
 	report += "success";
 }
 

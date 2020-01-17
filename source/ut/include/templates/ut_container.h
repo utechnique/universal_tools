@@ -28,43 +28,60 @@ template<int leaf_id> struct ContainerImpl<leaf_id> {};
 
 // Obtains a reference to i-th item in a container
 template<int leaf_id, typename HeadItem, typename... TailItems>
-HeadItem& Get(ContainerImpl<leaf_id, HeadItem, TailItems...>& container)
+inline HeadItem& Get(ContainerImpl<leaf_id, HeadItem, TailItems...>& container)
 {
 	// Fully qualified name for the member, to find the right one 
 	// (they are all called `value`).
 	return container.ContainerLeaf<leaf_id, HeadItem>::value;
 }
 
-// Helper function to get type of the value inside a container
-// knowing it's index `leaf_id`
+// Helper structures to get a type or id of the value inside a container
+// knowing it's index `leaf_id` or type `Desired`
 namespace container_helper
 {
 	template<int leaf_id, typename HeadItem, typename... TailItems>
-	struct Dive
+	struct TypeExtractor
 	{
-		typedef typename Dive<leaf_id - 1, TailItems...>::Type Type;
+		typedef typename TypeExtractor<leaf_id - 1, TailItems...>::Type Type;
 	};
 
 	template<typename HeadItem, typename... TailItems>
-	struct Dive<0, HeadItem, TailItems...>
+	struct TypeExtractor<0, HeadItem, TailItems...>
 	{
 		typedef HeadItem Type;
+	};
+
+	template<int leaf_id, typename Desired, typename HeadItem, typename... TailItems>
+	struct IdExtractor
+	{
+		enum { id = IdExtractor<leaf_id + 1, Desired, TailItems...>::id };
+	};
+
+	template<int leaf_id, typename Desired, typename... TailItems>
+	struct IdExtractor<leaf_id, Desired, Desired, TailItems...>
+	{
+		enum { id = leaf_id };
 	};
 }
 
 // Recursive specialization for the container template
 template<int i, typename HeadItem, typename... TailItems>
 struct ContainerImpl<i, HeadItem, TailItems...> : public ContainerLeaf<i, HeadItem>,
-                                                  public ContainerImpl<i + 1, TailItems...>
+	public ContainerImpl<i + 1, TailItems...>
 {
 	// Helper alias template to conveniently get type
 	// of the value in a specified leaf
 	template<int leaf_id>
-	using LeafType = typename container_helper::Dive<leaf_id, HeadItem, TailItems...>::Type;
+	using LeafType = typename container_helper::TypeExtractor<leaf_id, HeadItem, TailItems...>::Type;
+
+	// Helper function to get id of the value with the specified type
+	// at compile time
+	template<typename ValueType>
+	static constexpr int GetLeafId() { return container_helper::IdExtractor<0, ValueType, HeadItem, TailItems...>::id;  }
 
 	// Constructor, all items must be passed here
 	ContainerImpl(HeadItem head, TailItems... tail) : ContainerLeaf<i, HeadItem>(Forward<HeadItem>(head))
-	                                                , ContainerImpl<i + 1, TailItems...>(Forward<TailItems>(tail) ...)
+		, ContainerImpl<i + 1, TailItems...>(Forward<TailItems>(tail) ...)
 	{ }
 
 	// Returns reference to the value inside a leaf
@@ -74,11 +91,25 @@ struct ContainerImpl<i, HeadItem, TailItems...> : public ContainerLeaf<i, HeadIt
 		return this->ContainerLeaf<value_id, LeafType<value_id> >::value;
 	}
 
-	// Returns const reference to the value inside a leaf
+	// Returns const reference to the value inside a leaf, that is specified by `value_id`
 	template <int value_id>
 	const LeafType<value_id>& Get() const
 	{
 		return this->ContainerLeaf<value_id, LeafType<value_id> >::value;
+	}
+
+	// Returns reference to the first occurence of the `ValueType` item
+	template <typename ValueType>
+	LeafType<GetLeafId<ValueType>()>& Get()
+	{
+		return Get<GetLeafId<ValueType>()>();
+	}
+
+	// Returns const reference to the first occurence of the `ValueType` item
+	template <typename ValueType>
+	const LeafType<GetLeafId<ValueType>()>& Get() const
+	{
+		return Get<GetLeafId<ValueType>()>();
 	}
 };
 
@@ -98,21 +129,30 @@ using Container = ContainerImpl<0, Items...>;
 // template using UT_PP_ENUM() macro. Here in comments 'j' is an Id.
 // 1: , Tj
 #define UT_CONTAINER_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) T##id
-// 2: , typename Tj
-#define UT_CONTAINER_FULL_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) typename T##id 
-// 3: , typename Tj = void
+// 2: , Tj (except first one)
+#define UT_CONTAINER_TYPENAME_ITERATOR_SKIP_I(id) \
+	UT_PP_IF(id, UT_CONTAINER_TYPENAME_ITERATOR, UT_PP_EMPTY_I)(id)
+// 3: , typename Tj
+#define UT_CONTAINER_FULL_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) typename T##id
+// 4: , typename Tj (except first one)
+#define UT_CONTAINER_FULL_TYPENAME_ITERATOR_SKIP_I(id) \
+	UT_PP_IF(id, UT_CONTAINER_FULL_TYPENAME_ITERATOR, UT_PP_EMPTY_I)(id)
+// 5: , typename Tj = void
 #define UT_CONTAINER_FULL_VOID_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) typename T##id = void
-// 4: , Tj ij
+// 6: , Tj ij
 #define UT_CONTAINER_INPUT_ARG_ITERATOR(id) UT_PP_COMMA_IF(id) T##id i##id
-// 5: , vn(ij)
+// 7: , vn(ij)
 #define UT_CONTAINER_INPUT_ARG_INIT_ITERATOR(id) UT_PP_COMMA_IF(id) v##id(Forward<T##id>(i##id))
-// 6: Tj vj;
+// 8: Tj vj;
 #define UT_CONTAINER_DECLARE_TYPEDEF(id) typedef T##id Type##id;
-// 7: typedef Tj Typej;
+// 9: typedef Tj Typej;
 #define UT_CONTAINER_DECLARE_VAR(id) T##id v##id;
-// 8: Value extractor
+// 10: 0, ValueType, T0, T1, ... Tj
+#define UT_CONTAINER_EXT_ARGS(id) \
+	0, ValueType UT_PP_COMMA_IF(id) UT_PP_ENUM_IN(id, UT_CONTAINER_TYPENAME_ITERATOR)
+// 11: Value extractor
 #define UT_CONTAINER_DECLARE_EXTRACTOR(id)                                             \
-	template <typename CT> struct Extractor<id, CT>                                    \
+	template <typename CT> struct TypeExtractor<id, CT>                                \
 	{                                                                                  \
 		typedef typename RemoveReference<typename CT::Type##id>::Type& Ref;            \
 		typedef const typename RemoveReference<typename CT::Type##id>::Type& ConstRef; \
@@ -136,11 +176,45 @@ template<UT_PP_ENUM(UT_CONTAINER_MAX, UT_CONTAINER_FULL_VOID_TYPENAME_ITERATOR)>
 struct Container {};
 
 //----------------------------------------------------------------------------//
-// Declare extractor helper template.
+// Helper structures to get a type or id of the value inside a container
+// knowing it's index `leaf_id` or type `Desired`
 namespace container_helper
 {
-	template <int value_id, typename ContainerType> struct Extractor {};
+	template <int value_id, typename ContainerType> struct TypeExtractor {};
 	UT_PP_ENUM(UT_CONTAINER_MAX, UT_CONTAINER_DECLARE_EXTRACTOR)
+
+	template<
+		int leaf_id,
+		typename Desired,
+		UT_PP_ENUM(UT_CONTAINER_MAX, UT_CONTAINER_FULL_VOID_TYPENAME_ITERATOR)
+	>
+	struct IdExtractor
+	{
+		enum
+		{
+			id = IdExtractor<
+			         leaf_id + 1,
+			         Desired
+			         UT_PP_ENUM(UT_CONTAINER_MAX, UT_CONTAINER_TYPENAME_ITERATOR_SKIP_I),
+			         void
+			     >::id
+		};
+	};
+
+	template<
+		int leaf_id,
+		typename Desired
+		UT_PP_ENUM(UT_CONTAINER_MAX, UT_CONTAINER_FULL_TYPENAME_ITERATOR_SKIP_I)
+	>
+	struct IdExtractor<
+		leaf_id,
+		Desired,
+		Desired
+		UT_PP_ENUM(UT_CONTAINER_MAX, UT_CONTAINER_TYPENAME_ITERATOR_SKIP_I)
+	>
+	{
+		enum { id = leaf_id };
+	};
 }
 
 //----------------------------------------------------------------------------//
@@ -170,27 +244,48 @@ namespace container_helper
 //     ...
 //     Tj vj;
 // };
-#define UT_CONTAINER_SPECIALIZATION(id)                                         \
-template <UT_PP_ENUM_IN(id, UT_CONTAINER_FULL_TYPENAME_ITERATOR)>               \
-struct Container<UT_PP_ENUM_IN(id, UT_CONTAINER_TYPENAME_ITERATOR)>             \
-{                                                                               \
-	Container(                                                                  \
-		UT_PP_ENUM_IN(id, UT_CONTAINER_INPUT_ARG_ITERATOR)                      \
-	) UT_PP_COLON_IF(id)                                                        \
-		UT_PP_ENUM_IN(id, UT_CONTAINER_INPUT_ARG_INIT_ITERATOR)                 \
-	{}                                                                          \
-                                                                                \
-	UT_PP_ENUM_IN(id, UT_CONTAINER_DECLARE_TYPEDEF)                             \
-	                                                                            \
-	template <int v_id>                                                         \
-	typename container_helper::Extractor<v_id, Container>::Ref Get()            \
-	{ return container_helper::Extractor<v_id, Container>::Apply(this); }       \
-	                                                                            \
-	template <int v_id>                                                         \
-	typename container_helper::Extractor<v_id, Container>::ConstRef Get() const \
-	{ return container_helper::Extractor<v_id, Container>::Apply(this); }       \
-	                                                                            \
-	UT_PP_ENUM_IN(id, UT_CONTAINER_DECLARE_VAR)                                 \
+#define UT_CONTAINER_SPECIALIZATION(items_count)                                             \
+template <UT_PP_ENUM_IN(items_count, UT_CONTAINER_FULL_TYPENAME_ITERATOR)>                   \
+struct Container<UT_PP_ENUM_IN(items_count, UT_CONTAINER_TYPENAME_ITERATOR)>                 \
+{                                                                                            \
+	Container(                                                                               \
+		UT_PP_ENUM_IN(items_count, UT_CONTAINER_INPUT_ARG_ITERATOR)                          \
+	) UT_PP_COLON_IF(items_count)                                                            \
+		UT_PP_ENUM_IN(items_count, UT_CONTAINER_INPUT_ARG_INIT_ITERATOR)                     \
+	{}                                                                                       \
+                                                                                             \
+	UT_PP_ENUM_IN(items_count, UT_CONTAINER_DECLARE_TYPEDEF)                                 \
+	                                                                                         \
+	template <int v_id>                                                                      \
+	typename container_helper::TypeExtractor<v_id, Container>::Ref Get()                     \
+	{ return container_helper::TypeExtractor<v_id, Container>::Apply(this); }                \
+	                                                                                         \
+	template <int v_id>                                                                      \
+	typename container_helper::TypeExtractor<v_id, Container>::ConstRef Get() const          \
+	{ return container_helper::TypeExtractor<v_id, Container>::Apply(this); }                \
+	                                                                                         \
+	                                                                                         \
+	template <typename ValueType>                                                            \
+	typename container_helper::TypeExtractor<                                                \
+		container_helper::IdExtractor<UT_CONTAINER_EXT_ARGS(items_count)>::id, Container     \
+	>::Ref Get()                                                                             \
+	{                                                                                        \
+		return container_helper::TypeExtractor<                                              \
+			container_helper::IdExtractor<UT_CONTAINER_EXT_ARGS(items_count)>::id, Container \
+		>::Apply(this);                                                                      \
+	}                                                                                        \
+	                                                                                         \
+	template <typename ValueType>                                                            \
+	typename container_helper::TypeExtractor<                                                \
+		container_helper::IdExtractor<UT_CONTAINER_EXT_ARGS(items_count)>::id, Container     \
+	>::ConstRef Get() const                                                                  \
+	{                                                                                        \
+		return container_helper::TypeExtractor<                                              \
+			container_helper::IdExtractor<UT_CONTAINER_EXT_ARGS(items_count)>::id, Container \
+		>::Apply(this);                                                                      \
+	}                                                                                        \
+	                                                                                         \
+	UT_PP_ENUM_IN(items_count, UT_CONTAINER_DECLARE_VAR)                                     \
 };
 
 //----------------------------------------------------------------------------//

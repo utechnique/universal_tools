@@ -8,15 +8,22 @@
 #include "ut_dec.h"
 #include "ut_if.h"
 //----------------------------------------------------------------------------//
+// Emprty macro
+#define UT_PP_EMPTY()
+#define UT_PP_EMPTY_I(__m0)
+#define UT_PP_EMPTY_II(__m0, __m1)
+#define UT_PP_EMPTY_III(__m0, __m1, __m2)
+#define UT_PP_EMPTY_IV(__m0, __m1, __m2, __m3)
+#define UT_PP_EMPTY_V(__m0, __m1, __m2, __m3, __m4)
+
 // Use UT_PP_COMMA_IF macro for the first entry in the UT_PP_ENUM() enumeration.
 #define UT_PP_COMMA() ,
-#define UT_PP_EMPTY()
+
 #define UT_PP_COMMA_IF(cond) UT_PP_COMMA_IF_I(cond)
 #define UT_PP_COMMA_IF_I(cond) UT_PP_IF(cond, UT_PP_COMMA, UT_PP_EMPTY)()
 
 // colon
 #define UT_PP_COLON() :
-#define UT_PP_EMPTY()
 #define UT_PP_COLON_IF(cond) UT_PP_COLON_IF_I(cond)
 #define UT_PP_COLON_IF_I(cond) UT_PP_IF(cond, UT_PP_COLON, UT_PP_EMPTY)()
 
