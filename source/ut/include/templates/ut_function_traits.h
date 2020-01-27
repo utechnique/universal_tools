@@ -70,13 +70,13 @@ struct FunctionTraitsHelper<R(*)(void)>
 #define UT_FUNCTION_TRAITS_VOID_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) typename T##id = void
 // 4: Argument extractor
 #define UT_FUNCTION_TRAITS_EXTRACTOR_SPECIALIZATION(id)                                          \
-	template < UT_PP_ENUM_IN(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_TRAITS_FULL_TYPENAME_ITERATOR) > \
-	struct ArgumentExtractor< id,                                                                \
-		UT_PP_ENUM_IN(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_TRAITS_TYPENAME_ITERATOR)               \
-	>                                                                                            \
-	{                                                                                            \
-		typedef T##id Type;                                                                      \
-	};
+    template < UT_PP_ENUM_IN(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_TRAITS_FULL_TYPENAME_ITERATOR) > \
+    struct ArgumentExtractor< id,                                                                \
+        UT_PP_ENUM_IN(UT_FUNCTION_MAX_ARITY, UT_FUNCTION_TRAITS_TYPENAME_ITERATOR)               \
+    >                                                                                            \
+    {                                                                                            \
+        typedef T##id Type;                                                                      \
+    };
 
 //----------------------------------------------------------------------------//
 // Helper structure to extract argument type from the signature by it's id.
@@ -110,17 +110,17 @@ template<typename Function> struct FunctionTraitsHelper;
 // };
 #define UT_FUNCTION_TRAIT_SPECIALIZATION(id)                                                   \
 template <                                                                                     \
-	typename R UT_PP_COMMA_IF(id) UT_PP_ENUM_IN(id, UT_FUNCTION_TRAITS_FULL_TYPENAME_ITERATOR) \
+    typename R UT_PP_COMMA_IF(id) UT_PP_ENUM_IN(id, UT_FUNCTION_TRAITS_FULL_TYPENAME_ITERATOR) \
 >                                                                                              \
 struct FunctionTraitsHelper<R(*)( UT_PP_ENUM_IN(id, UT_FUNCTION_TRAITS_TYPENAME_ITERATOR) )>   \
 {                                                                                              \
-	typedef R ReturnType;                                                                      \
-	template <int arg_id> struct Argument                                                      \
-	{                                                                                          \
-		typedef typename function_traits_helper::ArgumentExtractor<                            \
-			arg_id UT_PP_COMMA_IF(id) UT_PP_ENUM_IN(id, UT_FUNCTION_TRAITS_TYPENAME_ITERATOR)  \
-		>::Type Type;                                                                          \
-	};                                                                                         \
+    typedef R ReturnType;                                                                      \
+    template <int arg_id> struct Argument                                                      \
+    {                                                                                          \
+        typedef typename function_traits_helper::ArgumentExtractor<                            \
+            arg_id UT_PP_COMMA_IF(id) UT_PP_ENUM_IN(id, UT_FUNCTION_TRAITS_TYPENAME_ITERATOR)  \
+        >::Type Type;                                                                          \
+    };                                                                                         \
 };
 
 // All specialized variations are declared here.

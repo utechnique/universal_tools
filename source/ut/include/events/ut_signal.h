@@ -278,23 +278,23 @@ public:
 #define UT_SIGNAL_SPECIALIZATION(id)                                                \
 template<typename Combiner, UT_SIGNAL_TEMPLATE_TYPE_LIST(id)>                       \
 class SignalTemplate<Combiner, UT_SIGNAL_SIGNATURE(id)>                             \
-	: public SignalBase<UT_SIGNAL_SIGNATURE(id), Combiner>                          \
+    : public SignalBase<UT_SIGNAL_SIGNATURE(id), Combiner>                          \
 {                                                                                   \
-	typedef SignalBase<UT_SIGNAL_SIGNATURE(id), Combiner> Base;                     \
-	Container<UT_SIGNAL_CONTAINER_TYPE(id)>* bf;                                    \
+    typedef SignalBase<UT_SIGNAL_SIGNATURE(id), Combiner> Base;                     \
+    Container<UT_SIGNAL_CONTAINER_TYPE(id)>* bf;                                    \
 public:                                                                             \
-	Result<R, Error> operator()(UT_SIGNAL_FULL_ARG_LIST(id))                        \
-	{                                                                               \
-		Container<UT_SIGNAL_CONTAINER_TYPE(id)>	arguments =                         \
-			Container<UT_SIGNAL_CONTAINER_TYPE(id)>(UT_SIGNAL_ARG_NAMES_LIST(id));  \
-		bf = &arguments;                                                            \
-		return Base::Call(&SignalTemplate::Callback);                               \
-	}                                                                               \
+    Result<R, Error> operator()(UT_SIGNAL_FULL_ARG_LIST(id))                        \
+    {                                                                               \
+        Container<UT_SIGNAL_CONTAINER_TYPE(id)>	arguments =                         \
+            Container<UT_SIGNAL_CONTAINER_TYPE(id)>(UT_SIGNAL_ARG_NAMES_LIST(id));  \
+        bf = &arguments;                                                            \
+        return Base::Call(&SignalTemplate::Callback);                               \
+    }                                                                               \
 private:                                                                            \
-	R Callback(const Function<R(UT_SIGNAL_ARGUMENTS_LIST(id))>& callback) const     \
-	{                                                                               \
-		return callback(UT_SIGNAL_COPIED_ARGUMENTS_LIST(id));                       \
-	}                                                                               \
+    R Callback(const Function<R(UT_SIGNAL_ARGUMENTS_LIST(id))>& callback) const     \
+    {                                                                               \
+        return callback(UT_SIGNAL_COPIED_ARGUMENTS_LIST(id));                       \
+    }                                                                               \
 };
 
 //----------------------------------------------------------------------------//

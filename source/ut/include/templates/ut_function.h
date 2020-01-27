@@ -160,23 +160,23 @@ public:
 //     }
 // };
 //
-#define UT_FUNCTION_INVOKER_SPECIALIZATION(id)					\
-template<UT_FUNCTION_TEMPLATE_TYPE_LIST(id)>					\
-class Invoker<R(*)(UT_FUNCTION_ARG_LIST(id))>					\
-{																\
-protected:														\
-	typedef R(*FunctionPtr)(UT_FUNCTION_ARG_LIST(id));			\
-	FunctionPtr function;										\
-public:															\
-	Invoker(FunctionPtr ptr = nullptr) : function(ptr) {}		\
-	virtual R Invoke(UT_FUNCTION_FULL_ARG_LIST(id)) const		\
-	{															\
-		return function(UT_FUNCTION_ARG_NAME_LIST(id));			\
-	}															\
-	virtual Invoker* MakeCopy() const							\
-	{															\
-		return new Invoker(*this);								\
-	}															\
+#define UT_FUNCTION_INVOKER_SPECIALIZATION(id)              \
+template<UT_FUNCTION_TEMPLATE_TYPE_LIST(id)>                \
+class Invoker<R(*)(UT_FUNCTION_ARG_LIST(id))>               \
+{                                                           \
+protected:                                                  \
+    typedef R(*FunctionPtr)(UT_FUNCTION_ARG_LIST(id));      \
+    FunctionPtr function;                                   \
+public:                                                     \
+    Invoker(FunctionPtr ptr = nullptr) : function(ptr) {}   \
+    virtual R Invoke(UT_FUNCTION_FULL_ARG_LIST(id)) const   \
+    {                                                       \
+        return function(UT_FUNCTION_ARG_NAME_LIST(id));     \
+    }                                                       \
+    virtual Invoker* MakeCopy() const                       \
+    {                                                       \
+        return new Invoker(*this);                          \
+    }                                                       \
 };
 
 //----------------------------------------------------------------------------//
@@ -202,24 +202,24 @@ public:															\
 //     C* owner;
 // };
 //
-#define UT_MEMBER_FUNCTION_INVOKER_SPECIALIZATION(id)					\
-template<typename C, UT_FUNCTION_TEMPLATE_TYPE_LIST(id)>				\
-class MemberInvoker<R(C::*)(UT_FUNCTION_ARG_LIST(id))>					\
-	: public Invoker<R(*)(UT_FUNCTION_ARG_LIST(id))>					\
-{																		\
-	typedef Invoker<R(*)(UT_FUNCTION_ARG_LIST(id))> Base;				\
-	typedef R(C::*MemberFunctionPtr)(UT_FUNCTION_ARG_LIST(id));			\
-public:																	\
-	MemberInvoker(MemberFunctionPtr ptr, C* object) : member(ptr)		\
-	                                                , owner(object) {}	\
-	R Invoke(UT_FUNCTION_FULL_ARG_LIST(id)) const						\
-	{																	\
-		return (owner->*member)(UT_FUNCTION_ARG_NAME_LIST(id));			\
-	}																	\
-	Base* MakeCopy() const { return new MemberInvoker(*this); }			\
-private:																\
-	MemberFunctionPtr member;											\
-	C* owner;															\
+#define UT_MEMBER_FUNCTION_INVOKER_SPECIALIZATION(id)                   \
+template<typename C, UT_FUNCTION_TEMPLATE_TYPE_LIST(id)>                \
+class MemberInvoker<R(C::*)(UT_FUNCTION_ARG_LIST(id))>                  \
+    : public Invoker<R(*)(UT_FUNCTION_ARG_LIST(id))>                    \
+{                                                                       \
+    typedef Invoker<R(*)(UT_FUNCTION_ARG_LIST(id))> Base;               \
+    typedef R(C::*MemberFunctionPtr)(UT_FUNCTION_ARG_LIST(id));         \
+public:                                                                 \
+    MemberInvoker(MemberFunctionPtr ptr, C* object) : member(ptr)       \
+                                                    , owner(object) {}  \
+    R Invoke(UT_FUNCTION_FULL_ARG_LIST(id)) const                       \
+    {                                                                   \
+        return (owner->*member)(UT_FUNCTION_ARG_NAME_LIST(id));         \
+    }                                                                   \
+    Base* MakeCopy() const { return new MemberInvoker(*this); }         \
+private:                                                                \
+    MemberFunctionPtr member;                                           \
+    C* owner;                                                           \
 };
 
 //----------------------------------------------------------------------------//
@@ -242,20 +242,20 @@ private:																\
 //     }
 // };
 //
-#define UT_MEMBER_FUNCTION_TEMPLATE_SPECIALIZATION(id)						\
-template<UT_FUNCTION_TEMPLATE_TYPE_LIST(id)>								\
-class FunctionTemplate<R(*)(UT_FUNCTION_ARG_LIST(id))>						\
-	: public FunctionBase<R(*)(UT_FUNCTION_ARG_LIST(id))>					\
-{																			\
-	typedef R(*FunctionPtr)(UT_FUNCTION_ARG_LIST(id));						\
-	typedef FunctionBase<R(*)(UT_FUNCTION_ARG_LIST(id))> Base;				\
-	FunctionPtr function;													\
-public:																		\
-	FunctionTemplate(const Invoker<FunctionPtr>& invoker) : Base(invoker){}	\
-	R operator ()(UT_FUNCTION_FULL_ARG_LIST(id)) const						\
-	{																		\
-		return Base::invoker->Invoke(UT_FUNCTION_ARG_NAME_LIST(id));		\
-	}																		\
+#define UT_MEMBER_FUNCTION_TEMPLATE_SPECIALIZATION(id)                      \
+template<UT_FUNCTION_TEMPLATE_TYPE_LIST(id)>                                \
+class FunctionTemplate<R(*)(UT_FUNCTION_ARG_LIST(id))>                      \
+    : public FunctionBase<R(*)(UT_FUNCTION_ARG_LIST(id))>                   \
+{                                                                           \
+    typedef R(*FunctionPtr)(UT_FUNCTION_ARG_LIST(id));                      \
+    typedef FunctionBase<R(*)(UT_FUNCTION_ARG_LIST(id))> Base;              \
+    FunctionPtr function;                                                   \
+public:                                                                     \
+    FunctionTemplate(const Invoker<FunctionPtr>& invoker) : Base(invoker){} \
+    R operator ()(UT_FUNCTION_FULL_ARG_LIST(id)) const                      \
+    {                                                                       \
+        return Base::invoker->Invoke(UT_FUNCTION_ARG_NAME_LIST(id));        \
+    }                                                                       \
 };
 
 //----------------------------------------------------------------------------//
