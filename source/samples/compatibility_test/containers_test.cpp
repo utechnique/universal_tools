@@ -389,6 +389,7 @@ void SharedPtrTask::Execute()
 }
 
 //----------------------------------------------------------------------------//
+typedef ut::Container<int, char&, ut::UniquePtr<int>, ut::SharedPtr<ut::uint>, ut::Array<ut::byte> > TestContainer;
 
 ContainerTask::ContainerTask() : TestTask("Container template")
 { }
@@ -404,7 +405,17 @@ void ContainerTask::Execute()
 	ut::UniquePtr<int> uniq_ptr(new int(10));
 	ut::SharedPtr<ut::uint> sh_ptr(new ut::uint(12));
 
-	ut::Container<int, char&, ut::UniquePtr<int>, ut::SharedPtr<ut::uint>, ut::Array<ut::byte> > c(0, b, Move(uniq_ptr), sh_ptr, Move(arr));
+	TestContainer c(0, b, Move(uniq_ptr), sh_ptr, Move(arr));
+
+	TestContainer::Item<2>::Type test_unique_ptr(new int(1));
+
+	const int n = TestContainer::size;
+	if (n != 5)
+	{
+		report += "Fail(count)";
+		failed_test_counter.Increment();
+		return;
+	}
 
 	if (c.Get<0>() != 0)
 	{
@@ -448,7 +459,7 @@ void ContainerTask::Execute()
 	c.Get< ut::Array<ut::byte> >() = ut::Array<ut::byte>();
 	char& c_test = c.Get<char&>();
 	c_test = c.Get<1>();
-	const ut::Container<int, char&, ut::UniquePtr<int>, ut::SharedPtr<ut::uint>, ut::Array<ut::byte> >& rc = c;
+	const TestContainer& rc = c;
 	int i_test = rc.Get<0>();
 	const char& cc_test = rc.Get<1>();
 	const int& ri_test = rc.Get<int>();
