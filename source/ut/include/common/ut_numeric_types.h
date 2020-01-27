@@ -34,8 +34,13 @@ typedef uint32 uint;
 
 //----------------------------------------------------------------------------//
 // Pointers
+#if UT_PLATFORM_64BITS
 typedef uint64 uptr;
 typedef int64 iptr;
+#elif UT_PLATFORM_32BITS
+typedef uint32 uptr;
+typedef int32 iptr;
+#endif
 
 //----------------------------------------------------------------------------//
 // Words and byte

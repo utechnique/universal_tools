@@ -14,6 +14,14 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class SerializationBaseTestTask : public TestTask
+{
+public:
+	SerializationBaseTestTask();
+	void Execute();
+};
+
+//----------------------------------------------------------------------------//
 class SerializationVariantsTask : public TestTask
 {
 public:

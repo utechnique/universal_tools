@@ -26,7 +26,50 @@ UT_REGISTER_TYPE(ReflectiveBaseAlt, ReflectiveAltB, "reflective_B")
 //----------------------------------------------------------------------------//
 SerializationTestUnit::SerializationTestUnit() : TestUnit("SERIALIZATION")
 {
+	tasks.Add(new SerializationBaseTestTask);
 	tasks.Add(new SerializationVariantsTask);
+}
+
+//----------------------------------------------------------------------------//
+SerializationBaseTestTask::SerializationBaseTestTask() : TestTask("Base test")
+{ }
+
+void SerializationBaseTestTask::Execute()
+{
+	ut::DynamicType::Handle handles[5] = {
+		ut::GetPolymorphicHandle<PolymorphicA>(),
+		ut::GetPolymorphicHandle<PolymorphicB>(),
+		ut::GetPolymorphicHandle<PolymorphicC>(),
+		ut::GetPolymorphicHandle<PolymorphicD>(),
+		ut::GetPolymorphicHandle<PolymorphicE>()
+	};
+
+	report += "Handles: ";
+	for (size_t i = 0; i < 5; i++)
+	{
+		for (size_t j = 0; j < 5; j++)
+		{
+			if (i == j)
+			{
+				continue;
+			}
+
+			if (handles[i] == handles[j])
+			{
+				report += "Error! handles are not unique: ";
+				report += ut::Print(i) + " and " + ut::Print(j);
+				failed_test_counter.Increment();
+				return;
+			}
+		}
+
+		ut::uint64 hn = static_cast<ut::uint64>(handles[i]);
+		ut::String h_str;
+		h_str.Print("0x%llx", hn);
+		report += h_str + " ";
+	}
+
+	report += "Success ";
 }
 
 //----------------------------------------------------------------------------//

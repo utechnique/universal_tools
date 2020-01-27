@@ -71,7 +71,7 @@ public:
 	}
 
 	// Returns a reference to the managed object
-	const T& Get()
+	const T& Get() const
 	{
 		return *ptr;
 	}

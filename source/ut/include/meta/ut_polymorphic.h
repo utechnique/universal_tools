@@ -35,6 +35,8 @@ public:
 	// and singleton object of it's manager.
 	typedef Pair< String, ConstRef<DynamicType> > Id;
 
+	typedef uptr Handle;
+
 	// Constructor, @Id has to be known at this stage,
 	// use ut::Factory<>::Register() to get @Id.
 	DynamicType(const Id& type_id) : id(type_id)
@@ -157,6 +159,12 @@ template<typename T>
 inline static String GetPolymorphicName()
 {
 	return PolymorphicType<T>::id.first;
+}
+
+template<typename T>
+inline static DynamicType::Handle GetPolymorphicHandle()
+{
+	return reinterpret_cast<DynamicType::Handle>(&PolymorphicType<T>::id.second.Get());
 }
 
 // Returns reference to the mutex that is represented as Meyers' singleton
