@@ -117,7 +117,7 @@ public:
 	// Searches for a child node with a specific name.
 	//    @param node_name - name of the node to search for.
 	//    @return - reference to the node, or error if not found.
-	Optional< Ref<Snapshot> > FindChildByName(const String& node_name);
+	Optional<Snapshot&> FindChildByName(const String& node_name);
 
 private:
 	// Private constructor

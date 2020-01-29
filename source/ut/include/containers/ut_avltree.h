@@ -399,18 +399,18 @@ public:
 	}
 
 	// Searches for the provided key
-	Optional< Ref<Value> > Find(const Key& key)
+	Optional<Value&> Find(const Key& key)
 	{
 		// error if tree is empty
 		if (root == nullptr)
 		{
-			return Optional< Ref<Value> >();
+			return Optional<Value&>();
 		}
 
 		// check if root matches the key, otherwise - start to iterate child nodes
 		if (root->key == key)
 		{
-			return Ref<Value>(root->value);
+			return root->value;
 		}
 		else
 		{
@@ -423,13 +423,13 @@ public:
 				// if we finished at nullptr leaf - there is no such key
 				if (n == nullptr)
 				{
-					return Optional< Ref<Value> >();
+					return Optional<Value&>();
 				}
 				else
 				{
 					if (n->key == key)
 					{
-						return Ref<Value>(n->value);
+						return n->value;
 					}
 					else
 					{

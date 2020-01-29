@@ -93,16 +93,16 @@ public:
 	// Finds an element with key equivalent to @key
 	//    @param key - const reference to the key value
 	//    @return - reference to the value, if it was found
-	Optional< Ref<Value> > Find(const Key& key)
+	Optional<Value&> Find(const Key& key)
 	{
 		for (size_t i = 0; i < Base::num; i++)
 		{
 			if (Base::arr[i].first == key)
 			{
-				return Ref<Value>(Base::arr[i].second);
+				return Base::arr[i].second;
 			}
 		}
-		return Optional< Ref<Value> >();
+		return Optional<Value&>();
 	}
 
 	// Removes an element with key equivalent to @key from the map

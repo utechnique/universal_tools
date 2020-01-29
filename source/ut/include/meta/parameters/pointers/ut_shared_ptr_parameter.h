@@ -107,7 +107,7 @@ public:
 		Snapshot snapshot = Snapshot::Capture(ptr.GetRef(), name, controller.GetInfo());
 
 		// deserialize captured node
-		Result<Controller::Uniform, Error> read_result = controller.ReadNode(Ref<Snapshot>(snapshot),
+		Result<Controller::Uniform, Error> read_result = controller.ReadNode(snapshot,
 		                                                                     false, false);
 		if (!read_result)
 		{
@@ -144,7 +144,7 @@ private:
 	                                                             SFINAE_IS_POLYMORPHIC)
 	{
 		// get dynamic type by name
-		Result<ConstRef<DynamicType>, Error> type_result = Factory<T>::GetType(new_type_name);
+		Result<const DynamicType&, Error> type_result = Factory<T>::GetType(new_type_name);
 		if (!type_result)
 		{
 			return MakeError(type_result.MoveAlt());

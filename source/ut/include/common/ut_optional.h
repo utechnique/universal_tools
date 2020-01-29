@@ -102,8 +102,16 @@ public:
 		return has_value == b;
 	}
 
-	// Use this function to get value (if present)
+	// Use this function to get reference to the value (if present)
 	//    @return - @value reference
+	T& Get()
+	{
+		UT_ASSERT(value != nullptr);
+		return *value;
+	}
+
+	// Use this function to get const reference to the value (if present)
+	//    @return - @value const reference
 	CONSTEXPR const T& Get() const
 	{
 		UT_ASSERT(value != nullptr);
@@ -112,7 +120,6 @@ public:
 
 	// Use this function to move value (if present)
 	//    @return - @value r-value reference
-
 	typename ut::RValRef<T>::Type Move()
 	{
 		UT_ASSERT(value != nullptr);
@@ -131,6 +138,43 @@ public:
 private:
 	T* value;
 	bool has_value;
+};
+
+//----------------------------------------------------------------------------//
+// Specialization for reference types.
+template<typename T>
+class Optional<T&> : public Optional<T*>
+{
+	typedef Optional<T*> Base;
+public:
+	// Default constructor, @has_value is set to 'false'.
+	Optional() : Base()
+	{}
+
+	// This constructor copies @t into @value, and sets @has_value to 'true'
+	CONSTEXPR Optional(T& t) : Base(&t)
+	{}
+
+	// Use this function to get reference to the value (if present)
+	//    @return - @value reference
+	T& Get()
+	{
+		return *Base::Get();
+	}
+
+	// Use this function to get const reference to the value (if present)
+	//    @return - @value const reference
+	CONSTEXPR const T& Get() const
+	{
+		return *Base::Get();
+	}
+
+	// Use this function to move value (if present)
+	//    @return - @value r-value reference
+	typename ut::RValRef<T>::Type Move()
+	{
+		return ut::Move(*Base::Get());
+	}
 };
 
 //----------------------------------------------------------------------------//

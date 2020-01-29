@@ -33,7 +33,7 @@ class DynamicType : public NonCopyable
 public:
 	// Every dynamic type is identified by it's name
 	// and singleton object of it's manager.
-	typedef Pair< String, ConstRef<DynamicType> > Id;
+	typedef Pair<String, const DynamicType&> Id;
 
 	typedef uptr Handle;
 
@@ -164,7 +164,7 @@ inline static String GetPolymorphicName()
 template<typename T>
 inline static DynamicType::Handle GetPolymorphicHandle()
 {
-	return reinterpret_cast<DynamicType::Handle>(&PolymorphicType<T>::id.second.Get());
+	return reinterpret_cast<DynamicType::Handle>(&PolymorphicType<T>::id.second);
 }
 
 // Returns reference to the mutex that is represented as Meyers' singleton
@@ -199,7 +199,7 @@ public:
 		ScopeLock lock(GetPolymorphicFactoryMutex());
 
 		// check if type is already registered
-		Optional< Ref<DynamicTypePtr> > result = GetMap().Find(name);
+		Optional<DynamicTypePtr&> result = GetMap().Find(name);
 
 		// if type is registered - just return it's id
 		if (result)
@@ -233,15 +233,15 @@ public:
 	// Searches for the specified type by name.
 	//    @param name - name of the type to be found.
 	//    @return - dynamic type if it was found, or error otherwise
-	static Result<ConstRef<DynamicType>, Error> GetType(const String& name)
+	static Result<const DynamicType&, Error> GetType(const String& name)
 	{
-		Optional< Ref<DynamicTypePtr> > result = GetMap().Find(name);
+		Optional<DynamicTypePtr&> result = GetMap().Find(name);
 		if (!result)
 		{
 			return MakeError(error::not_found);
 		}
 		DynamicTypePtr& dyn_type = result.Get();
-		return ConstRef<DynamicType>(dyn_type.GetRef());
+		return dyn_type.GetRef();
 	}
 
 private:
@@ -262,7 +262,7 @@ private:
 	// Adds provided type to the map and asks parents to register this type too.
 	static void Register(const String& name, const DynamicTypePtr& ptr)
 	{
-		Optional< Ref<DynamicTypePtr> > result = GetMap().Find(name);
+		Optional<DynamicTypePtr&> result = GetMap().Find(name);
 		if (!result)
 		{
 			// add shared pointer to the own map at first

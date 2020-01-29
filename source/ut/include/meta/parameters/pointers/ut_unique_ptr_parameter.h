@@ -149,7 +149,7 @@ private:
 	                                                             SFINAE_IS_POLYMORPHIC)
 	{
 		// get dynamic type by name
-		Result<ConstRef<DynamicType>, Error> type_result = Factory<T>::GetType(type_name);
+		Result<const DynamicType&, Error> type_result = Factory<T>::GetType(type_name);
 		if (!type_result)
 		{
 			return MakeError(type_result.MoveAlt());

@@ -237,61 +237,61 @@ Optional<Error> Linker::WriteLinkId(Controller state, size_t id) const
 // Searches for a cached link using a pointer to the desired parameter.
 //    @param parameter - address of the parameter to be found in cache.
 //    @return - reference to the cached link.
-Optional< Ref<Link> > Linker::FindLinkByParameter(const BaseParameter* parameter)
+Optional<Link&> Linker::FindLinkByParameter(const BaseParameter* parameter)
 {
 	for (size_t i = 0; i < links.GetNum(); i++)
 	{
 		if (links[i]->parameter.Get() == parameter)
 		{
-			return Ref<Link>(links[i].GetRef());
+			return links[i].GetRef();
 		}
 	}
 
 	// nothing was found
-	return Optional< Ref<Link> >();
+	return Optional<Link&>();
 }
 
 //----------------------------------------------------------------------------->
 // Searches for a cached link using a pointer to the managed object.
 //    @param address - address of the object that is managed by desired parameter.
 //    @return - reference to the cached link.
-Optional< Ref<Link> > Linker::FindLinkByAddress(const void* address)
+Optional<Link&> Linker::FindLinkByAddress(const void* address)
 {
 	for (size_t i = 0; i < links.GetNum(); i++)
 	{
 		if (links[i]->parameter->GetAddress() == address)
 		{
-			return Ref<Link>(links[i].GetRef());
+			return links[i].GetRef();
 		}
 	}
 
 	// nothing was found
-	return Optional< Ref<Link> >();
+	return Optional<Link&>();
 }
 
 //----------------------------------------------------------------------------->
 // Searches for a cached link using it's identifier.
 //    @param id - id of the desired parameter.
 //    @return - reference to the cached link.
-Optional< Ref<Link> > Linker::FindLinkById(size_t id)
+Optional<Link&> Linker::FindLinkById(size_t id)
 {
 	for (size_t i = 0; i < links.GetNum(); i++)
 	{
 		if (links[i]->id == id)
 		{
-			return Ref<Link>(links[i].GetRef());
+			return links[i].GetRef();
 		}
 	}
 
 	// nothing was found
-	return Optional< Ref<Link> >();
+	return Optional<Link&>();
 }
 
 //----------------------------------------------------------------------------->
 // Searches for a cached shared link using it's identifier.
 //    @param id - id of the desired parameter.
 //    @return - reference to the cached element.
-Optional< Ref<InputSharedCacheElement> > Linker::FindSharedLinkById(size_t id)
+Optional<InputSharedCacheElement&> Linker::FindSharedLinkById(size_t id)
 {
 	// find linked parameter by id
 	for (size_t i = 0; i < input_shared_cache.GetNum(); i++)
@@ -299,12 +299,12 @@ Optional< Ref<InputSharedCacheElement> > Linker::FindSharedLinkById(size_t id)
 		// check if identifiers match
 		if (input_shared_cache[i].id == id)
 		{
-			return Ref<InputSharedCacheElement>(input_shared_cache[i]);
+			return input_shared_cache[i];
 		}
 	}
 
 	// nothing was found
-	return Optional< Ref<InputSharedCacheElement> >();
+	return Optional<InputSharedCacheElement&>();
 }
 
 //----------------------------------------------------------------------------//

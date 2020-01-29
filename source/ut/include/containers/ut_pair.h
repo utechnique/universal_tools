@@ -71,6 +71,114 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+// Specialization for the case when the first type is a reference.
+template <typename T1, typename T2>
+class Pair<T1&, T2>
+{
+public:
+	// Constructor, both arguments are references
+	Pair(T1& t1, const T2& t2) : first(t1), second(t2)
+	{ }
+
+#if CPP_STANDARD >= 2011
+	// Constructor, second argument is r-value reference
+	Pair(T1& t1, T2 && t2) : first(t1), second(Move(t2))
+	{ }
+#endif
+
+	// Copy constructor
+	Pair(const Pair& copy) : first(copy.first), second(copy.second)
+	{ }
+
+	// Move constructor
+#if CPP_STANDARD >= 2011
+	Pair(Pair && copy) : first(copy.first), second(Move(copy.second))
+	{ }
+#endif
+
+	// managed objects
+	T1& first;
+	T2 second;
+
+private:
+	// Assignment operator is prohibited.
+	Pair& operator = (const Pair& copy) PROHIBITED;
+
+	// Move operator is prohibited.
+#if CPP_STANDARD >= 2011
+	Pair& operator = (Pair && copy) PROHIBITED;
+#endif
+};
+
+//----------------------------------------------------------------------------//
+// Specialization for the case when the second type is a reference.
+template <typename T1, typename T2>
+class Pair<T1, T2&>
+{
+public:
+	// Constructor, both arguments are references
+	Pair(const T1& t1, T2& t2) : first(t1), second(t2)
+	{ }
+
+#if CPP_STANDARD >= 2011
+	// Constructor, first argument is r-value reference
+	Pair(T1&& t1, T2& t2) : first(Move(t1)), second(t2)
+	{ }
+#endif
+
+	// Copy constructor
+	Pair(const Pair& copy) : first(copy.first), second(copy.second)
+	{ }
+
+	// Move constructor
+#if CPP_STANDARD >= 2011
+	Pair(Pair && copy) : first(Move(copy.first)), second(copy.second)
+	{ }
+#endif
+
+	// managed objects
+	T1 first;
+	T2& second;
+
+private:
+	// Assignment operator is prohibited.
+	Pair& operator = (const Pair& copy) PROHIBITED;
+
+	// Move operator is prohibited.
+#if CPP_STANDARD >= 2011
+	Pair& operator = (Pair && copy) PROHIBITED;
+#endif
+};
+
+//----------------------------------------------------------------------------//
+// Specialization for the case when both types are references.
+template <typename T1, typename T2>
+class Pair<T1&, T2&>
+{
+public:
+	// Constructor, both arguments are references
+	Pair(T1& t1, T2& t2) : first(t1), second(t2)
+	{ }
+
+	// Copy constructor
+	Pair(const Pair& copy) : first(copy.first), second(copy.second)
+	{ }
+
+	// managed objects
+	T1& first;
+	T2& second;
+
+private:
+	// Assignment operator is prohibited.
+	Pair& operator = (const Pair& copy) PROHIBITED;
+
+	// Move operator is prohibited.
+#if CPP_STANDARD >= 2011
+	Pair& operator = (Pair && copy) PROHIBITED;
+#endif
+};
+
+//----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

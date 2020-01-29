@@ -40,7 +40,7 @@ CONSTEXPR Alternate<T> MakeAlt(const T& x)
 template<typename T>
 constexpr Alternate<T> MakeAlt(T && x)
 {
-	return{ Move(x) };
+	return { Move(x) };
 }
 #endif // CPP_STANDARD >= 2011
 
@@ -107,6 +107,7 @@ public:
 	// Copy constructor for cpp11 and higher, uses placement new internally.
 	// 'constexpr' specifier is used with visual studio only
 	// because gcc expects constructor to be empty for 'constexpr'.
+#if CPP_STANDARD < 2011
 	WIN_CONSTEXPR Result(const Result& copy) : has_result(copy.has_result)
 	{
 		if (has_result)
@@ -126,6 +127,7 @@ public:
 			#endif
 		}
 	}
+#endif
 
 	// Move constructor uses placement new and ut::Move() internally.
 	// 'constexpr' specifier is used with visual studio only
@@ -312,6 +314,43 @@ public:
 	typename RValRef<AlternateType>::Type MoveAlt()
 	{
 		return Base::Move();
+	}
+};
+
+//----------------------------------------------------------------------------//
+// Specialization for the case when 'Result' type is a reference type.
+template<class R, class A>
+class Result<R&, A> : public Result<R*, A>
+{
+	typedef R ResultType;
+	typedef A AlternateType;
+	typedef Result<ResultType*, AlternateType> Base;
+public:
+	// This constructor constructs binds result reference
+	CONSTEXPR Result(ResultType& result_ref) : Base(&result_ref)
+	{}
+
+	// This constructor constructs @A value
+	CONSTEXPR Result(const Alternate<AlternateType>& e) : Base(e)
+	{}
+
+#if CPP_STANDARD >= 2011
+	CONSTEXPR Result(Alternate<AlternateType>&& e) : Base(Move(e))
+	{}
+#endif
+
+	// Use this function to get @R value (if present)
+	//    @return - @result reference
+	CONSTEXPR ResultType& GetResult() const
+	{
+		return *Base::GetResult();
+	}
+
+	// Use this function to move @R value (if present)
+	//    @return - @result r-value reference
+	typename RValRef<ResultType>::Type MoveResult()
+	{
+		return Move(*Base::MoveResult());
 	}
 };
 

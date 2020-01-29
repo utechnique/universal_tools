@@ -411,7 +411,7 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 //                          can be empty in this case.
 //    @return - ut::meta::Controller::Uniform object describing a node
 //              or ut::Error if failed.
-Result<Controller::Uniform, Error> Controller::ReadNode(Optional< Ref<Snapshot> > node,
+Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node,
                                                         bool initialize,
                                                         bool skip_loading)
 {
@@ -474,7 +474,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional< Ref<Snapshot> 
 	}
 
 	// search for a node with a name that matches previously deserialized name
-	Optional< Ref<Snapshot> > sibling = FindSiblingNode(node.Get(), uniforms.name);
+	Optional<Snapshot&> sibling = FindSiblingNode(node.Get(), uniforms.name);
 	if (!sibling) // not fatal, skipping..
 	{
 		Optional<Error> skip_error = SkipParameter(read_size_result.GetResult());
@@ -504,7 +504,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional< Ref<Snapshot> 
 	if (uniforms.id)
 	{
 		size_t id = static_cast<size_t>(uniforms.id.Get());
-		Optional<Error> add_link_error = linker->AddLink(node.Get()->data.parameter, id);
+		Optional<Error> add_link_error = linker->AddLink(node.Get().data.parameter, id);
 		if (add_link_error)
 		{
 			return MakeError(add_link_error.Move());
@@ -895,7 +895,7 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node)
 		size_t node_id = i >= node.GetNumChildren() ? node.GetNumChildren() - 1 : i;
 
 		// read child node
-		Result<Controller::Uniform, Error> read_result = ReadNode(Ref<Snapshot>(node[i]), false);
+		Result<Controller::Uniform, Error> read_result = ReadNode(node[i], false);
 		if (!read_result)
 		{
 			return read_result.MoveAlt();
@@ -1172,29 +1172,29 @@ Result<stream::Cursor, Error> Controller::ReadParameterSize()
 //    @param node - reference to a node to check.
 //    @param name - desired node name.
 //    @return - a reference to the desired node, or ut::Error if failed.
-Optional< Ref<Snapshot> > Controller::FindSiblingNode(Snapshot& node, const Optional<String>& name)
+Optional<Snapshot&> Controller::FindSiblingNode(Snapshot& node, const Optional<String>& name)
 {
 	// if there is no name - we can't look for the sibling node by name:
 	// the only possible candidate is the current node
 	if (!name)
 	{
-		return Ref<Snapshot>(node);
+		return node;
 	}
 
 	// check name of the provided node
 	if (node.data.name == name.Get())
 	{
-		return Ref<Snapshot>(node);
+		return node;
 	}
 
 	// check siblings of the node
-	Snapshot* parent = node.GetParent();
+	Optional<Snapshot&> parent = node.GetParent();
 	if (parent)
 	{
-		Optional< Ref<Snapshot> > find_result = parent->FindChildByName(name.Get());
+		Optional<Snapshot&> find_result = parent.Get().FindChildByName(name.Get());
 		if (find_result)
 		{
-			return find_result.Move();
+			return find_result;
 		}
 	}
 
@@ -1207,7 +1207,7 @@ Optional< Ref<Snapshot> > Controller::FindSiblingNode(Snapshot& node, const Opti
 	}
 
 	// nothing was found
-	return Optional< Ref<Snapshot> >();
+	return Optional<Snapshot&>();
 }
 
 //----------------------------------------------------------------------------->
@@ -1590,7 +1590,7 @@ Optional<Error> Controller::LoadSharedObject(Array<InputSharedCacheElement>& reg
 {
 	// read information (name, type, id) and nothing else
 	Controller node_state = SaveState();
-	Result<Uniform, Error> uniform = ReadNode(Optional< Ref<Snapshot> >(),
+	Result<Uniform, Error> uniform = ReadNode(Optional<Snapshot&>(),
 	                                          false, true);
 	if (!uniform)
 	{

@@ -23,7 +23,7 @@ WriteLinkTask::WriteLinkTask(Controller in_state,
 Optional<Error> WriteLinkTask::Execute(Linker& linker)
 {
 	// search for the linked parameter
-	Optional< Ref<Link> > dst_link = linker.FindLinkByAddress(linked_address);
+	Optional<Link&> dst_link = linker.FindLinkByAddress(linked_address);
 	if (!dst_link)
 	{
 		// add log event
@@ -36,7 +36,7 @@ Optional<Error> WriteLinkTask::Execute(Linker& linker)
 	}
 
 	// write id
-	return linker.WriteLinkId(state, dst_link.Get()->id);
+	return linker.WriteLinkId(state, dst_link.Get().id);
 }
 
 //----------------------------------------------------------------------------//
@@ -55,7 +55,7 @@ ReadLinkTask::ReadLinkTask(const BaseParameter* in_parameter,
 Optional<Error> ReadLinkTask::Execute(Linker& linker)
 {
 	// search for the parameter that is being linked
-	Optional< Ref<Link> > src_result = linker.FindLinkByParameter(parameter);
+	Optional<Link&> src_result = linker.FindLinkByParameter(parameter);
 	if (!src_result)
 	{
 		// add log event
@@ -67,12 +67,12 @@ Optional<Error> ReadLinkTask::Execute(Linker& linker)
 	}
 
 	// search for the linked parameter
-	Optional< Ref<Link> > dst_result = linker.FindLinkById(destination_id);
+	Optional<Link&> dst_result = linker.FindLinkById(destination_id);
 	if (!dst_result)
 	{
 		// add log event
 		String error_desc = "Couldn't find linked parameter with id \"";
-		error_desc += Print(src_result.Get()->id) + "\" by id: " + Print(destination_id);
+		error_desc += Print(src_result.Get().id) + "\" by id: " + Print(destination_id);
 
 		// exit
 		return Error(error::not_found, error_desc);
@@ -99,7 +99,7 @@ ReadSharedPtrLinkTask::ReadSharedPtrLinkTask(const BaseParameter* in_parameter,
 Optional<Error> ReadSharedPtrLinkTask::Execute(Linker& linker)
 {
 	// search for the parameter that is being linked
-	Optional< Ref<Link> > src_result = linker.FindLinkByParameter(parameter);
+	Optional<Link&> src_result = linker.FindLinkByParameter(parameter);
 	if (!src_result)
 	{
 		// add log event
@@ -111,12 +111,12 @@ Optional<Error> ReadSharedPtrLinkTask::Execute(Linker& linker)
 	}
 
 	// search for the linked parameter
-	Optional< Ref<InputSharedCacheElement> > find_result = linker.FindSharedLinkById(destination_id);
+	Optional<InputSharedCacheElement&> find_result = linker.FindSharedLinkById(destination_id);
 	if (!find_result)
 	{
 		// add log event
 		String error_desc = "Couldn't find shared linked parameter with id \"";
-		error_desc += Print(src_result.Get()->id) + "\" by id: " + Print(destination_id);
+		error_desc += Print(src_result.Get().id) + "\" by id: " + Print(destination_id);
 
 		// exit
 		return Error(error::not_found, error_desc);

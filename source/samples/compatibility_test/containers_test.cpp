@@ -11,6 +11,9 @@ ContainersTestUnit::ContainersTestUnit() : TestUnit("CONTAINERS")
 	tasks.Add(new AVLTreeTask);
 	tasks.Add(new SharedPtrTask);
 	tasks.Add(new ContainerTask);
+	tasks.Add(new OptionalTask);
+	tasks.Add(new ResultTask);
+	tasks.Add(new PairTask);
 }
 
 //----------------------------------------------------------------------------//
@@ -101,7 +104,7 @@ void MapTask::Execute()
 
 	// try to find one specific value by key
 	report += "searching element by key \'55\'(should be \'__55\'): ";
-	ut::Optional< ut::Ref<ut::String> > find_result = map.Find(55);
+	ut::Optional<ut::String&> find_result = map.Find(55);
 	if (find_result)
 	{
 		// get the value
@@ -125,7 +128,7 @@ void MapTask::Execute()
 
 	// another way to find specific value by key
 	report += ". Searching element by key \'4\'(should not be found): ";
-	ut::Optional< ut::Ref<ut::String> > find_result2 = map.Find(4);
+	ut::Optional<ut::String&> find_result2 = map.Find(4);
 	if (find_result2)
 	{
 		report += "somehow it was found. Fail.";
@@ -296,7 +299,7 @@ void AVLTreeTask::Execute()
 
 	// try to find a specific value by key
 	report += "searching element by key \'3\'(should be \'__3\'): ";
-	ut::Optional< ut::Ref<ut::String> > find_result = tree.Find(3);
+	ut::Optional<ut::String&> find_result = tree.Find(3);
 	if (find_result)
 	{
 		ut::String& str = find_result.Get();
@@ -463,6 +466,136 @@ void ContainerTask::Execute()
 	int i_test = rc.Get<0>();
 	const char& cc_test = rc.Get<1>();
 	const int& ri_test = rc.Get<int>();
+
+	report += "success";
+}
+
+//----------------------------------------------------------------------------//
+OptionalTask::OptionalTask() : TestTask("ut::Optional")
+{ }
+
+void OptionalTask::Execute()
+{
+	ut::String test_str("test");
+
+	ut::Optional<ut::String&> opt_str(test_str);
+
+	if (opt_str.Get() != test_str)
+	{
+		report += "fail! references don't match.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// move constructor
+	ut::String test_str1(opt_str.Move());
+	if (test_str1 != "test")
+	{
+		report += "fail! while copying to string.";
+		failed_test_counter.Increment();
+		return;
+	}
+	else
+	{
+#if CPP_STANDARD >= 2011
+		if (test_str.GetNum() > 0)
+		{
+			report += "fail! string was copied instead of being moved.";
+			failed_test_counter.Increment();
+			return;
+		}
+#endif
+	}
+
+	// move assignment
+	test_str = "modified_str";
+	ut::Optional<ut::String&> opt_str1(test_str1);
+	opt_str = ut::Move(opt_str1);
+	if (opt_str.Get() != "test")
+	{
+		report += "fail! ut::optional wasn't moved properly.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// assignment
+	opt_str = ut::Optional<ut::String&>(test_str);
+	if (opt_str.Get() != "modified_str")
+	{
+		report += "fail! ut::optional must rebind reference on assignment.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// const
+	const ut::Optional<const ut::String&> opt_str_const(test_str1);
+	const ut::String& const_test = opt_str_const.Get();
+
+	report += "success";
+}
+
+//----------------------------------------------------------------------------//
+ResultTask::ResultTask() : TestTask("ut::Result")
+{ }
+
+void ResultTask::Execute()
+{
+	ut::String test_str = "test";
+	const ut::String& test_const_str = "const";
+
+	ut::Result<ut::String&, int> test_result(test_str);
+	if (test_result.GetResult() != test_str)
+	{
+		report += "fail! references don't match.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	ut::String test_move_str;
+	test_move_str = test_result.MoveResult();
+#if CPP_STANDARD >= 2011
+	if (test_str.GetNum() != 0)
+	{
+		report += "fail! string was copied instead of being moved.";
+		failed_test_counter.Increment();
+		return;
+	}
+#endif
+
+	ut::Result<const ut::String&, int> const_result(test_const_str);
+	ut::String test_copy_str = const_result.GetResult();
+
+	ut::Result<const ut::String&, int> const_result_alt(ut::MakeAlt<int>(10));
+
+	report += "success";
+}
+
+//----------------------------------------------------------------------------//
+PairTask::PairTask() : TestTask("ut::Pair")
+{ }
+
+void PairTask::Execute()
+{
+	ut::String test_str_0 = "test";
+	ut::String test_str_1 = "test";
+	const ut::String& test_const_str = "const";
+
+	ut::Pair<ut::String&, ut::String> pair_0(test_str_0, "pair");
+	ut::Pair<ut::String&, ut::String> pair_1(Move(pair_0));
+
+#if CPP_STANDARD >= 2011
+	if (pair_0.second.GetNum() != 0)
+	{
+		report += "fail! string was copied instead of being moved.";
+		failed_test_counter.Increment();
+		return;
+	}
+#endif
+
+	ut::Pair<int, const ut::String&> const_pair(24, test_const_str);
+	
+	ut::String test_str = "test";
+	ut::Pair<ut::String&, const ut::String&> ref_pair(test_str, test_const_str);
 
 	report += "success";
 }

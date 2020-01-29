@@ -432,15 +432,15 @@ public:
 	}
 
 	// Returns the parent node
-	const NodeType* GetParent() const
+	Optional<const NodeType&> GetParent() const
 	{
-		return parent;
+		return parent != nullptr ? *parent : Optional<const NodeType&>();
 	}
 
 	// Returns the parent node
-	NodeType* GetParent()
+	Optional<NodeType&> GetParent()
 	{
-		return parent;
+		return parent != nullptr ? *parent : Optional<NodeType&>();
 	}
 
 	// Returns the last one-level child node

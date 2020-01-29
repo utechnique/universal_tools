@@ -176,7 +176,7 @@ public:
 	//                          can be empty in this case.
 	//    @return - ut::meta::Controller::Uniform object describing a node
 	//              or ut::Error if failed.
-	Result<Uniform, Error> ReadNode(Optional< Ref<Snapshot> > node,
+	Result<Uniform, Error> ReadNode(Optional<Snapshot&> node,
 	                                bool initialize = true,
 	                                bool skip_loading = false);
 
@@ -455,7 +455,7 @@ private:
 	//    @param node - reference to a node to check.
 	//    @param name - desired node name.
 	//    @return - a reference to the desired node or ut::Error if failed.
-	Optional< Ref<Snapshot> > FindSiblingNode(Snapshot& node, const Optional<String>& name);
+	Optional<Snapshot&> FindSiblingNode(Snapshot& node, const Optional<String>& name);
 
 	// Checks if provided type names match.
 	//    @parameter node - reference to the node that contains parameter type.

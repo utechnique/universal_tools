@@ -89,22 +89,22 @@ public:
 	// Searches for a cached link using a pointer to the desired parameter.
 	//    @param parameter - address of the parameter to be found in cache.
 	//    @return - reference to the cached link.
-	Optional< Ref<Link> > FindLinkByParameter(const BaseParameter* parameter);
+	Optional<Link&> FindLinkByParameter(const BaseParameter* parameter);
 
 	// Searches for a cached link using a pointer to the managed object.
 	//    @param address - address of the object that is managed by desired parameter.
 	//    @return - reference to the cached link.
-	Optional< Ref<Link> > FindLinkByAddress(const void* address);
+	Optional<Link&> FindLinkByAddress(const void* address);
 
 	// Searches for a cached link using it's identifier.
 	//    @param id - id of the desired parameter.
 	//    @return - reference to the cached link.
-	Optional< Ref<Link> > FindLinkById(size_t id);
+	Optional<Link&> FindLinkById(size_t id);
 
 	// Searches for a cached shared link using it's identifier.
 	//    @param id - id of the desired parameter.
 	//    @return - reference to the cached element.
-	Optional< Ref<InputSharedCacheElement> > FindSharedLinkById(size_t id);
+	Optional<InputSharedCacheElement&> FindSharedLinkById(size_t id);
 
 private:
 	// Helps to generate unique identifiers, holds the last generated id.

@@ -62,7 +62,7 @@ Optional<Error> Snapshot::Load(InputStream& stream)
 	}
 
 	// read self via controller
-	Result<Controller::Uniform, Error> read_result = controller.ReadNode(Ref<Snapshot>(*this));
+	Result<Controller::Uniform, Error> read_result = controller.ReadNode(*this);
 	if (!read_result)
 	{
 		return read_result.MoveAlt();
@@ -109,7 +109,7 @@ Optional<Error> Snapshot::Load(const Tree<text::Node>& text_node)
 	}
 
 	// read self via controller
-	Result<Controller::Uniform, Error> read_result = controller.ReadNode(Ref<Snapshot>(*this));
+	Result<Controller::Uniform, Error> read_result = controller.ReadNode(*this);
 	if (!read_result)
 	{
 		return read_result.MoveAlt();
@@ -123,16 +123,16 @@ Optional<Error> Snapshot::Load(const Tree<text::Node>& text_node)
 // Searches for a child node with a specific name.
 //    @param node_name - name of the node to search for.
 //    @return - reference to the node, or error if not found.
-Optional< Ref<Snapshot> > Snapshot::FindChildByName(const String& node_name)
+Optional<Snapshot&> Snapshot::FindChildByName(const String& node_name)
 {
 	for (size_t i = 0; i < Base::GetNumChildren(); i++)
 	{
 		if (node_name == Base::child_nodes[i].data.name)
 		{
-			return Ref<Snapshot>(Base::child_nodes[i]);
+			return Base::child_nodes[i];
 		}
 	}
-	return Optional< Ref<Snapshot> >();
+	return Optional<Snapshot&>();
 }
 
 //----------------------------------------------------------------------------->
