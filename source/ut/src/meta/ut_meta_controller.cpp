@@ -474,7 +474,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional< Ref<Snapshot> 
 	}
 
 	// search for a node with a name that matches previously deserialized name
-	Result<Ref<Snapshot>, Error> sibling = FindSiblingNode(node.Get(), uniforms.name);
+	Optional< Ref<Snapshot> > sibling = FindSiblingNode(node.Get(), uniforms.name);
 	if (!sibling) // not fatal, skipping..
 	{
 		Optional<Error> skip_error = SkipParameter(read_size_result.GetResult());
@@ -488,7 +488,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional< Ref<Snapshot> 
 	// check types
 	if (uniforms.type)
 	{
-		Optional<Error> type_check_error = CheckType(sibling.GetResult(), uniforms.type.Get());
+		Optional<Error> type_check_error = CheckType(sibling.Get(), uniforms.type.Get());
 		if (type_check_error) // not fatal, skipping..
 		{
 			Optional<Error> skip_error = SkipParameter(read_size_result.GetResult());
@@ -512,7 +512,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional< Ref<Snapshot> 
 	}
 
 	// read parameter
-	Optional<Error> read_param_error = ReadParameter(sibling.GetResult());
+	Optional<Error> read_param_error = ReadParameter(sibling.Get());
 	if (read_param_error)
 	{
 		return MakeError(read_param_error.Move());
@@ -1172,7 +1172,7 @@ Result<stream::Cursor, Error> Controller::ReadParameterSize()
 //    @param node - reference to a node to check.
 //    @param name - desired node name.
 //    @return - a reference to the desired node, or ut::Error if failed.
-Result<Ref<Snapshot>, Error> Controller::FindSiblingNode(Snapshot& node, const Optional<String>& name)
+Optional< Ref<Snapshot> > Controller::FindSiblingNode(Snapshot& node, const Optional<String>& name)
 {
 	// if there is no name - we can't look for the sibling node by name:
 	// the only possible candidate is the current node
@@ -1207,7 +1207,7 @@ Result<Ref<Snapshot>, Error> Controller::FindSiblingNode(Snapshot& node, const O
 	}
 
 	// nothing was found
-	return MakeError(error::not_found);
+	return Optional< Ref<Snapshot> >();
 }
 
 //----------------------------------------------------------------------------->

@@ -199,12 +199,12 @@ public:
 		ScopeLock lock(GetPolymorphicFactoryMutex());
 
 		// check if type is already registered
-		Result<Ref<DynamicTypePtr>, Error> result = GetMap().Find(name);
+		Optional< Ref<DynamicTypePtr> > result = GetMap().Find(name);
 
 		// if type is registered - just return it's id
 		if (result)
 		{
-			DynamicTypePtr& dyn_type = result.GetResult();
+			DynamicTypePtr& dyn_type = result.Get();
 			return dyn_type->GetId();
 		}
 		else // otherwise - register a new one
@@ -235,12 +235,12 @@ public:
 	//    @return - dynamic type if it was found, or error otherwise
 	static Result<ConstRef<DynamicType>, Error> GetType(const String& name)
 	{
-		Result<Ref<DynamicTypePtr>, Error> result = GetMap().Find(name);
+		Optional< Ref<DynamicTypePtr> > result = GetMap().Find(name);
 		if (!result)
 		{
-			return MakeError(result.GetAlt());
+			return MakeError(error::not_found);
 		}
-		DynamicTypePtr& dyn_type = result.GetResult();
+		DynamicTypePtr& dyn_type = result.Get();
 		return ConstRef<DynamicType>(dyn_type.GetRef());
 	}
 
@@ -262,7 +262,7 @@ private:
 	// Adds provided type to the map and asks parents to register this type too.
 	static void Register(const String& name, const DynamicTypePtr& ptr)
 	{
-		Result<Ref<DynamicTypePtr>, Error> result = GetMap().Find(name);
+		Optional< Ref<DynamicTypePtr> > result = GetMap().Find(name);
 		if (!result)
 		{
 			// add shared pointer to the own map at first

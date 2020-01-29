@@ -101,11 +101,11 @@ void MapTask::Execute()
 
 	// try to find one specific value by key
 	report += "searching element by key \'55\'(should be \'__55\'): ";
-	ut::Result<ut::Ref<ut::String>, ut::Error> find_result = map.Find(55);
+	ut::Optional< ut::Ref<ut::String> > find_result = map.Find(55);
 	if (find_result)
 	{
 		// get the value
-		ut::String& str = find_result.GetResult();
+		ut::String& str = find_result.Get();
 		report += str;
 		if (str == "__55")
 		{
@@ -119,13 +119,13 @@ void MapTask::Execute()
 	}
 	else
 	{
-		report += ut::String("failed to find element:\n") + find_result.GetAlt().GetDesc();
+		report += ut::String("failed to find element\n");
 		failed_test_counter.Increment();
 	}
 
 	// another way to find specific value by key
 	report += ". Searching element by key \'4\'(should not be found): ";
-	ut::Result<ut::Ref<ut::String>, ut::Error> find_result2 = map.Find(4);
+	ut::Optional< ut::Ref<ut::String> > find_result2 = map.Find(4);
 	if (find_result2)
 	{
 		report += "somehow it was found. Fail.";
@@ -296,10 +296,10 @@ void AVLTreeTask::Execute()
 
 	// try to find a specific value by key
 	report += "searching element by key \'3\'(should be \'__3\'): ";
-	ut::Result<ut::Ref<ut::String>, ut::Error> find_result = tree.Find(3);
+	ut::Optional< ut::Ref<ut::String> > find_result = tree.Find(3);
 	if (find_result)
 	{
-		ut::String& str = find_result.GetResult();
+		ut::String& str = find_result.Get();
 		report += str;
 		if (str == "__3")
 		{
@@ -313,7 +313,7 @@ void AVLTreeTask::Execute()
 	}
 	else
 	{
-		report += ut::String("failed to find element:\n") + find_result.GetAlt().GetDesc();
+		report += ut::String("failed to find element\n");
 		failed_test_counter.Increment();
 		return;
 	}

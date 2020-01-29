@@ -92,8 +92,8 @@ public:
 
 	// Finds an element with key equivalent to @key
 	//    @param key - const reference to the key value
-	//    @return - reference to the value, or ut::Error
-	Result<Ref<Value>, Error> Find(const Key& key)
+	//    @return - reference to the value, if it was found
+	Optional< Ref<Value> > Find(const Key& key)
 	{
 		for (size_t i = 0; i < Base::num; i++)
 		{
@@ -102,7 +102,7 @@ public:
 				return Ref<Value>(Base::arr[i].second);
 			}
 		}
-		return MakeError(error::not_found);
+		return Optional< Ref<Value> >();
 	}
 
 	// Removes an element with key equivalent to @key from the map

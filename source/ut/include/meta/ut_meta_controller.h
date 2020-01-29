@@ -455,7 +455,7 @@ private:
 	//    @param node - reference to a node to check.
 	//    @param name - desired node name.
 	//    @return - a reference to the desired node or ut::Error if failed.
-	Result<Ref<Snapshot>, Error> FindSiblingNode(Snapshot& node, const Optional<String>& name);
+	Optional< Ref<Snapshot> > FindSiblingNode(Snapshot& node, const Optional<String>& name);
 
 	// Checks if provided type names match.
 	//    @parameter node - reference to the node that contains parameter type.
