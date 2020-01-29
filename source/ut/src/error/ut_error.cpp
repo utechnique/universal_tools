@@ -53,30 +53,6 @@ Error::Error(error::Code error_code,
 #endif
 
 //----------------------------------------------------------------------------->
-// Copy constructor
-Error::Error(const Error& copy) : code(copy.code)
-#if UT_ERROR_DESCRIPTION
-                                , description(copy.description)
-#endif
-#if UT_ERROR_BACKTRACE
-                                , callstack(copy.callstack)
-#endif
-{ }
-
-//----------------------------------------------------------------------------->
-// Move constructor
-#if CPP_STANDARD >= 2011
-Error::Error(Error && copy) : code(copy.code)
-#if UT_ERROR_DESCRIPTION
-                            , description(Move(copy.description))
-#endif
-#if UT_ERROR_BACKTRACE
-                            , callstack(Move(copy.callstack))
-#endif
-{ }
-#endif
-
-//----------------------------------------------------------------------------->
 // Returns error code
 //    @return - error code, see ut::error::Code enumeration
 error::Code Error::GetCode() const

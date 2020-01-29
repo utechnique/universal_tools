@@ -37,14 +37,6 @@ public:
 	Error(error::Code error_code, String && error_desc);
 #endif
 
-	// Copy constructor
-	Error(const Error& copy);
-
-	// Move constructor
-#if CPP_STANDARD >= 2011
-	Error(Error && copy);
-#endif
-
 	// Returns error code
 	//    @return - error code, see ut::error::Code enumeration
 	error::Code GetCode() const;
@@ -54,19 +46,11 @@ public:
 	const String GetDesc() const;
 
 private:
-	// Assignment operator is prohibited
-	Error& operator = (const Error& copy) PROHIBITED;
-
-	// Move operator is prohibited
-#if CPP_STANDARD >= 2011
-	Error& operator = (Error && copy) PROHIBITED;
-#endif
-
 	// Returns a string with a callstack (every call has a separate line)
 	void GetCallstack();
 
 	// error code
-	const error::Code code;
+	error::Code code;
 
 #if UT_ERROR_DESCRIPTION
 	// full description of the error (can be empty)

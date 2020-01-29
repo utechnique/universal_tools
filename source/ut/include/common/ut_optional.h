@@ -16,77 +16,107 @@ START_NAMESPACE(ut)
 template<typename T>
 class Optional
 {
+	typedef T ValueType;
 public:
 	// Default constructor, @has_value is set to 'false'.
 	// Use void constructor to return empty ut::Optional object.
 	// Example: 'return ut::Optional<ut::Error>();'
-	Optional() : value(nullptr), has_value(false)
+	Optional() : has_value(false)
 	{}
+
+	// This constructor copies @v into @value, and sets @has_value to 'true'
+#if CPP_STANDARD >= 2011
+	CONSTEXPR Optional(const ValueType& v) : value(v), has_value(true)
+	{}
+#else
+	Optional(const ValueType& v) : has_value(true)
+	{
+		new (union_buffer)ValueType(v);
+	}
+#endif
+
+	// This constructor moves @v into @value, and sets @has_value to 'true'
+#if CPP_STANDARD >= 2011
+	CONSTEXPR Optional(ValueType && v) : value(ut::Move(v)), has_value(true)
+	{}
+#endif
 
 	// Copy constructor
-	CONSTEXPR Optional(const Optional& copy) : value(copy.has_value ? new T(*copy.value) : nullptr)
-	                                         , has_value(copy.has_value)
-	{}
-
-	// This constructor copies @t into @value, and sets @has_value to 'true'
-	CONSTEXPR Optional(const T& t) : value(new T(t))
-	                               , has_value(true)
-	{}
-
-#if CPP_STANDARD >= 2011
-	// Move constructor
-	Optional(Optional && copy) : value(copy.value)
-	                           , has_value(copy.has_value)
+	Optional(const Optional& copy) : has_value(copy.has_value)
 	{
-		copy.value = nullptr;
-		copy.has_value = false;
+		if (has_value)
+		{
+#if CPP_STANDARD >= 2011
+			new (&value)ValueType(copy.value);
+#else
+		
+			new (union_buffer)ValueType(copy.Get());
+#endif
+		}
 	}
 
-	// Move constructor (value is set)
-	CONSTEXPR Optional(T && t) : value(new T(ut::Move(t)))
-	                           , has_value(true)
-	{}
+	// Move constructor
+#if CPP_STANDARD >= 2011
+	Optional(Optional && copy) : has_value(copy.has_value)
+	{
+		if (has_value)
+		{
+			new (&value)ValueType(ut::Move(copy.value));
+		}
+	}
 #endif
 
 	// Assignment operator
 	Optional& operator = (const Optional& copy)
 	{
-		Destruct();
-		value = copy.has_value ? new T(*copy.value) : nullptr;
+		if (has_value && copy.has_value) // both objects are already constructed
+		{
+#if CPP_STANDARD >= 2011
+			value = copy.value;
+#else
+			Get() = copy.Get();
+#endif
+		}
+		else if (copy.has_value) // managed object is uninitialized,
+		{                        // but copy is already constructed
+#if CPP_STANDARD >= 2011
+			new (&value)ValueType(copy.value);
+#else
+			new (union_buffer)ValueType(copy.Get());
+#endif
+		}
+		else if(has_value) // other object is empty, but managed
+		{                  // object is already initialized
+			Destruct();
+		}
+
 		has_value = copy.has_value;
+
 		return *this;
 	}
 
 	// Assignment (move) operator
 #if CPP_STANDARD >= 2011
-	Optional& operator = (Optional && copy)
+	Optional& operator = (Optional && other)
 	{
-		Destruct();
-		value = copy.value;
-		has_value = copy.has_value;
-		copy.value = nullptr;
-		copy.has_value = false;
+		if (has_value && other.has_value) // both objects are already constructed
+		{
+			value = ut::Move(other.value);
+		}
+		else if (other.has_value) // managed object is uninitialized,
+		{                         // but other object is already constructed
+			new (&value)ValueType(ut::Move(other.value));
+		}
+		else if(has_value) // other object is empty, but managed
+		{                  // object is already initialized
+			Destruct();
+		}
+
+		has_value = other.has_value;
+
 		return *this;
 	}
 #endif // CPP_STANDARD >= 2011
-
-	// Destructor
-	~Optional()
-	{
-		Destruct();
-	}
-
-	// Destructs @value pointer if value is set
-	// Also resets @has_value member to false
-	void Destruct()
-	{
-		if (value)
-		{
-			delete value;
-		}
-		value = nullptr;
-		has_value = false;
-	}
 
 	// Function to check if object contains something
 	//    @return - 'true' if object owns a value
@@ -104,29 +134,39 @@ public:
 
 	// Use this function to get reference to the value (if present)
 	//    @return - @value reference
-	T& Get()
+	ValueType& Get()
 	{
-		UT_ASSERT(value != nullptr);
-		return *value;
+		UT_ASSERT(has_value);
+#if CPP_STANDARD >= 2011
+		return value;
+#else
+		return *reinterpret_cast<ValueType*>(union_buffer);
+#endif
 	}
 
 	// Use this function to get const reference to the value (if present)
 	//    @return - @value const reference
-	CONSTEXPR const T& Get() const
+	CONSTEXPR const ValueType& Get() const
 	{
-		UT_ASSERT(value != nullptr);
-		return *value;
+		UT_ASSERT(has_value);
+#if CPP_STANDARD >= 2011
+		return value;
+#else
+		return *reinterpret_cast<const ValueType*>(union_buffer);
+#endif
 	}
 
 	// Use this function to move value (if present)
 	//    @return - @value r-value reference
-	typename ut::RValRef<T>::Type Move()
+	typename ut::RValRef<ValueType>::Type Move()
 	{
-		UT_ASSERT(value != nullptr);
-#if CPP_STANDARD >= 2011
+		UT_ASSERT(has_value);
 		has_value = false;
+#if CPP_STANDARD >= 2011
+		return ut::Move(value);
+#else
+		return Get();
 #endif
-		return ut::Move(*value);
 	}
 
 	// Bool conversion operator
@@ -135,8 +175,37 @@ public:
 		return has_value;
 	}
 
+	// Destructor
+	~Optional()
+	{
+		if (has_value)
+		{
+			Destruct();
+		}
+	}
+
 private:
-	T* value;
+	// Destructs @value pointer if value is set
+	// Also resets @has_value member to false
+	inline void Destruct()
+	{
+#if CPP_STANDARD >= 2011
+		value.~ValueType();
+#else
+		Get().~ValueType();
+#endif
+		has_value = false;
+	}
+
+#if CPP_STANDARD >= 2011
+	union
+	{
+		ValueType value;
+	};
+#else
+	// C98 unions don't support members with non-default copy constructor
+	byte union_buffer[sizeof(ValueType)];
+#endif
 	bool has_value;
 };
 
