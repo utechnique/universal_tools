@@ -9,6 +9,7 @@
 #include "text/ut_document.h"
 #include "meta/ut_meta_node.h"
 #include "meta/ut_meta_info.h"
+#include "templates/ut_function.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
@@ -119,6 +120,22 @@ public:
 	//    @return - reference to the node, or error if not found.
 	Optional<Snapshot&> FindChildByName(const String& node_name);
 
+	// Assigns a callback that will be called right before saving.
+	//    @param callback - function to be called.
+	void SetPreSaveCallback(const Function<void()>& callback);
+
+	// Assigns a callback that will be called after saving is done.
+	//    @param callback - function to be called.
+	void SetPostSaveCallback(const Function<void()>& callback);
+
+	// Assigns a callback that will be called right before loading.
+	//    @param callback - function to be called.
+	void SetPreLoadCallback(const Function<void()>& callback);
+
+	// Assigns a callback that will be called after loading is done.
+	//    @param callback - function to be called.
+	void SetPostLoadCallback(const Function<void()>& callback);
+
 private:
 	// Private constructor
 	//    @param info_copy - copy of the serialization info, that will be
@@ -131,6 +148,11 @@ private:
 	//                      info structure, that is shared among all tree branches
 	Snapshot(const InfoSharedPtr& info_ptr);
 
+	// Recursively calls desired callback function.
+	//    @param callback_ptr - pointer to the member object
+	//                          representing a callback function
+	void InvokeCallback(Function<void()> Snapshot::* callback);
+
 	// Builds a full reflection tree from a provided object.
 	//    @param object - reference to the object to be reflected.
 	//    @param name - name of the @object.
@@ -140,6 +162,10 @@ private:
 	// Serialization info contains information how to 
 	// serialize/deserialize managed object.
 	InfoSharedPtr info;
+
+	// Callback functions that are called before/after saving/loading actions.
+	Function<void()> presave, postsave;
+	Function<void()> preload, postload;
 };
 
 //----------------------------------------------------------------------------//

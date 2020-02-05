@@ -25,21 +25,28 @@ template <typename Signature> class FunctionTemplate;
 // ut::FunctionBase is a base (parent) class for all ut::FunctionTemplate
 // specializations, it contains unique pointer to the invoker object, performs
 // copying and initialization of the invoker object (look for ut::Invoker).
-template<typename T>
+template<typename Signature>
 class FunctionBase
 {
 public:
 	// Constructor, creates a copy of the provided invoker object.
-	FunctionBase(const Invoker<T>& in_invoker) : invoker(in_invoker.MakeCopy())
+	FunctionBase(const Invoker<Signature>& in_invoker) : invoker(in_invoker.MakeCopy())
 	{ }
 
 	// Copy constructor, copies invoker object from the source.
 	FunctionBase(const FunctionBase& copy) : invoker(copy.invoker->MakeCopy())
 	{ }
 
+	// Assignment operator, copies invoker object from the source.
+	FunctionBase& operator = (const FunctionBase& copy)
+	{
+		invoker = copy.invoker->MakeCopy();
+		return *this;
+	}
+
 protected:
 	// Invoker performs correct call of the managed function.
-	UniquePtr< Invoker<T> > invoker;
+	UniquePtr< Invoker<Signature> > invoker;
 };
 
 //----------------------------------------------------------------------------//
@@ -66,6 +73,11 @@ public:
 	{
 		return new Invoker(*this);
 	}
+
+	virtual bool IsValid() const
+	{
+		return function != nullptr;
+	}
 };
 
 // Specialization of the ut::MemberInvoker template class, where
@@ -88,6 +100,11 @@ public:
 	Base* MakeCopy() const
 	{
 		return new MemberInvoker(*this);
+	}
+
+	bool IsValid() const
+	{
+		return owner != nullptr;
 	}
 
 private:
@@ -158,6 +175,10 @@ public:
 //     {
 //         return new Invoker(*this);
 //     }
+//     virtual bool IsValid() const
+//     {
+//         return function != nullptr;
+//     }
 // };
 //
 #define UT_FUNCTION_INVOKER_SPECIALIZATION(id)              \
@@ -176,6 +197,10 @@ public:                                                     \
     virtual Invoker* MakeCopy() const                       \
     {                                                       \
         return new Invoker(*this);                          \
+    }                                                       \
+    virtual bool IsValid() const                            \
+    {                                                       \
+        return function != nullptr;                         \
     }                                                       \
 };
 
@@ -197,6 +222,10 @@ public:                                                     \
 //         return (owner->*member)(t0, t1, ... tn);
 //     }
 //     Base* MakeCopy() const { return new MemberInvoker(*this); }
+//     virtual bool IsValid() const
+//     {
+//         return owner != nullptr;
+//     }
 // private:
 //     MemberFunctionPtr member;
 //     C* owner;
@@ -217,6 +246,10 @@ public:                                                                 \
         return (owner->*member)(UT_FUNCTION_ARG_NAME_LIST(id));         \
     }                                                                   \
     Base* MakeCopy() const { return new MemberInvoker(*this); }         \
+    virtual bool IsValid() const                                        \
+    {                                                                   \
+        return owner != nullptr;                                        \
+    }                                                                   \
 private:                                                                \
     MemberFunctionPtr member;                                           \
     C* owner;                                                           \
@@ -281,6 +314,11 @@ public:
 
 	Function(Pointer ptr = nullptr) : Base(Invoker<Pointer>(ptr))
 	{}
+
+	bool IsValid() const
+	{
+		return this->invoker->IsValid();
+	}
 };
 
 //----------------------------------------------------------------------------//

@@ -338,6 +338,121 @@ void AVLTreeTask::Execute()
 		ut::AVLTree<int, ut::String>::Node& node = *literator;
 		report += node.value;
 	}
+
+	// copy test
+	report += ut::CRet() + "copy constructor: ";
+	ut::AVLTree<int, ut::String> tree_copy0(tree);
+	ut::Optional<ut::String&> copy0_find_result = tree_copy0.Find(3);
+	if (copy0_find_result)
+	{
+		ut::String& str = copy0_find_result.Get();
+		if (str == "__3")
+		{
+			report += ". Success";
+		}
+		else
+		{
+			report += ". Fail";
+			failed_test_counter.Increment();
+		}
+	}
+	else
+	{
+		report += ut::String("failed to find element\n");
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// copy assignment test
+	report += ut::CRet() + "copy assignment: ";
+	ut::AVLTree<int, ut::String> tree_copy1;
+	tree_copy1 = tree;
+	ut::Optional<ut::String&> copy1_find_result = tree_copy1.Find(3);
+	if (copy1_find_result)
+	{
+		ut::String& str = copy1_find_result.Get();
+		if (str == "__3")
+		{
+			report += ". Success";
+		}
+		else
+		{
+			report += ". Fail";
+			failed_test_counter.Increment();
+		}
+	}
+	else
+	{
+		report += ut::String("failed to find element\n");
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// move constructor test
+#if CPP_STANDARD >= 2011
+	report += ut::CRet() + "move constructor: ";
+	ut::AVLTree<int, ut::String> tree_move(ut::Move(tree));
+	ut::Optional<ut::String&> move0_find_result = tree_move.Find(3);
+	if (move0_find_result)
+	{
+		ut::String& str = move0_find_result.Get();
+		if (str == "__3")
+		{
+			if (tree.Find(3))
+			{
+				report += ". Failed, value was copied, but not moved.";
+			}
+			else
+			{
+				report += ". Success";
+			}
+		}
+		else
+		{
+			report += ". Fail";
+			failed_test_counter.Increment();
+		}
+	}
+	else
+	{
+		report += ut::String("failed to find element\n");
+		failed_test_counter.Increment();
+		return;
+	}
+#endif // CPP_STANDARD >= 2011
+
+	// move assignment test
+#if CPP_STANDARD >= 2011
+	report += ut::CRet() + "move assignment: ";
+	tree = ut::Move(tree_copy0);
+	ut::Optional<ut::String&> move1_find_result = tree.Find(3);
+	if (move1_find_result)
+	{
+		ut::String& str = move1_find_result.Get();
+		if (str == "__3")
+		{
+			if (tree_copy0.Find(3))
+			{
+				report += ". Failed, value was copied, but not moved.";
+			}
+			else
+			{
+				report += ". Success";
+			}
+		}
+		else
+		{
+			report += ". Fail";
+			failed_test_counter.Increment();
+		}
+	}
+	else
+	{
+		report += ut::String("failed to find element\n");
+		failed_test_counter.Increment();
+		return;
+	}
+#endif // CPP_STANDARD >= 2011
 }
 
 //----------------------------------------------------------------------------//

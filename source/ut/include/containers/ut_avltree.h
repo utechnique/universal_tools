@@ -9,6 +9,10 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
+// Forward declaration of ut::meta::Parameter template class.
+namespace meta { template<typename> class Parameter; }
+
+//----------------------------------------------------------------------------//
 // ut::AVLTree is a binary search tree. Every node has a key and a value
 // call ut::AVLTree::Insert() to add element, ut::AVLTree::Remove() to remove
 // element and ut::AVLTree::Find() to get element by key. @Key type must
@@ -16,6 +20,8 @@ START_NAMESPACE(ut)
 template <typename Key, typename Value>
 class AVLTree
 {
+	// ut::meta::Parameter must be a friend so that ut::AVLTree could be serializable.
+	template <typename> friend class meta::Parameter;
 public:
 	// L-Value reference types must be defined to provide ut::UniquePtr<>
 	// compatibility for cpp dialects lower then C++11.
@@ -27,6 +33,11 @@ public:
 	// and pointers to all adjacent nodes.
 	class Node
 	{
+		// ut::meta::Parameter must be a friend so that
+		// ut::AVLTree::Node could be serializable.
+		template <typename> friend class meta::Parameter;
+
+		// ut::AVLTree must be a friend in order to be able to operate with nodes.
 		friend AVLTree<Key, Value>;
 	public:
 		// value is the only public member
@@ -89,6 +100,24 @@ public:
 		Key GetKey() const
 		{
 			return key;
+		}
+
+		// Returns current balance value
+		int8 GetBalance() const
+		{
+			return balance;
+		}
+
+		// Returns pointer to the left leaf
+		const Node* GetLeft() const
+		{
+			return left;
+		}
+
+		// Returns pointer to the right leaf
+		const Node* GetRight() const
+		{
+			return right;
 		}
 
 	private:
@@ -392,52 +421,58 @@ public:
 	AVLTree() : root(nullptr)
 	{}
 
+	// Copy constructor
+	AVLTree(const AVLTree& copy) : root(nullptr)
+	{
+		Copy(copy);
+	}
+
+	// Move constructor
+#if CPP_STANDARD >= 2011
+	AVLTree(AVLTree&& right) : root(right.root)
+	{
+		right.root = nullptr;
+	}
+#endif
+
+	// Assignment operator
+	AVLTree& operator = (const AVLTree& copy)
+	{
+		Copy(copy);
+		return *this;
+	}
+
+	// Move operator
+#if CPP_STANDARD >= 2011
+	AVLTree& operator = (AVLTree&& right)
+	{
+		delete root;
+		root = right.root;
+		right.root = nullptr;
+		return *this;
+	}
+#endif
+
 	// Destructor, deletes all nodes
 	~AVLTree()
 	{
 		delete root;
 	}
 
-	// Searches for the provided key
+	// Searches for a value by key.
+	//    @param key - desired key
+	//    @return - reference to the value if found
 	Optional<Value&> Find(const Key& key)
 	{
-		// error if tree is empty
-		if (root == nullptr)
-		{
-			return Optional<Value&>();
-		}
+		return FindValue<Value&>(key);
+	}
 
-		// check if root matches the key, otherwise - start to iterate child nodes
-		if (root->key == key)
-		{
-			return root->value;
-		}
-		else
-		{
-			// intermediate variables for the loop
-			Node* n = key > root->key ? root->right : root->left;
-
-			// iterate nodes
-			while (true)
-			{
-				// if we finished at nullptr leaf - there is no such key
-				if (n == nullptr)
-				{
-					return Optional<Value&>();
-				}
-				else
-				{
-					if (n->key == key)
-					{
-						return n->value;
-					}
-					else
-					{
-						n = key > n->key ? n->right : n->left;
-					}
-				}
-			}
-		}
+	// Searches for a value by key, value can't be changed.
+	//    @param key - desired key
+	//    @return - const reference to the value if found
+	Optional<const Value&> Find(const Key& key) const
+	{
+		return FindValue<const Value&>(key);
 	}
 
 	// Inserts new key-value pair to the map
@@ -564,6 +599,13 @@ public:
 		}
 	}
 
+	// Destructs all nodes
+	void Empty()
+	{
+		delete root;
+		root = nullptr;
+	}
+
 	// Returns constant read / write iterator that points to the first element
 	ConstIterator Begin(iterator::Position position = iterator::first) const
 	{
@@ -603,6 +645,41 @@ public:
 	}
 
 private:
+	// Copies provided node with all it's leaves.
+	//    @param node - reference to the destination node pointer
+	//    @param copy - const pointer to the node to be copied
+	//    @param parent - pointer to the parent node to be linked with
+	static void CopyNode(Node*& node, const Node* copy, Node* parent)
+	{
+		// skip if copy doesn't exist
+		if (copy == nullptr)
+		{
+			node = nullptr;
+			return;
+		}
+
+		// create a copy
+		node = new Node(copy->key, copy->value, parent);
+
+		// set balance - it stays immutable after copying
+		node->balance = copy->balance;
+
+		// do the same as above with both leaves (left and right)
+		CopyNode(node->left, copy->left, node);
+		CopyNode(node->right, copy->right, node);
+	}
+
+	// Copies provided tree, previous data is destructed.
+	//    @param copy - const reference to the tree to be copied
+	void Copy(const AVLTree& copy)
+	{
+		// delete existing tree
+		delete root;
+
+		// recursively copy and link all nodes
+		CopyNode(root, copy.root, nullptr);
+	}
+
 	// Inserts new key-value pair to the tree
 	//    @param key - r-value refenrence to the key
 	//    @param value - r-value refenrence to the value
@@ -668,6 +745,52 @@ private:
 
 		// node was successfully inserted
 		return true;
+	}
+
+	// Searches for a value by key.
+	// @ReturnType can be either ut::AVLTree::Value& or const ut::AVLTree::Value&.
+	//    @param key - desired key
+	//    @return - @ReturnType if key was found
+	template<typename ReturnType>
+	Optional<ReturnType> FindValue(const Key& key) const
+	{
+		// error if tree is empty
+		if (root == nullptr)
+		{
+			return Optional<ReturnType>();
+		}
+
+		// check if root matches the key, otherwise - start to iterate child nodes
+		if (root->key == key)
+		{
+			return root->value;
+		}
+		else
+		{
+			// intermediate variables for the loop
+			Node* n = key > root->key ? root->right : root->left;
+
+			// iterate nodes
+			while (true)
+			{
+				// if we finished at nullptr leaf - there is no such key
+				if (n == nullptr)
+				{
+					return Optional<ReturnType>();
+				}
+				else
+				{
+					if (n->key == key)
+					{
+						return n->value;
+					}
+					else
+					{
+						n = key > n->key ? n->right : n->left;
+					}
+				}
+			}
+		}
 	}
 
 	// 'Left Left' rotation
@@ -848,7 +971,13 @@ private:
 
 	// root node, null by default
 	Node* root;
+};
 
+//----------------------------------------------------------------------------//
+// Specialize type name function for avltree
+template<typename Key, typename Value> struct Type< AVLTree<Key, Value> >
+{
+	static inline const char* Name() { return "avltree"; }
 };
 
 //----------------------------------------------------------------------------//

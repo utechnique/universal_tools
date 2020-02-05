@@ -50,7 +50,7 @@ public:
 		// write value type name
 		if (controller.GetInfo().HasTypeInformation())
 		{
-			String value_type_name = GetValueTypeName();
+			String value_type_name = BaseParameter::DeduceTypeName<T>();
 			Optional<Error> write_value_type_error = controller.WriteAttribute(value_type_name, node_names::skValueType);
 			if (write_value_type_error)
 			{
@@ -88,7 +88,7 @@ public:
 			}
 
 			// check types
-			String current_type_name = GetValueTypeName();
+			String current_type_name = BaseParameter::DeduceTypeName<T>();
 			if (current_type_name != read_type_result.GetResult())
 			{
 				return Error(error::types_not_match);
@@ -113,15 +113,6 @@ public:
 	bool IsArray() const
 	{
 		return true;
-	}
-
-private:
-
-	// Returns a name of the contained value type
-	String GetValueTypeName() const
-	{
-		const Parameter<T> parameter(static_cast<T*>(ptr));
-		return parameter.GetTypeName();
 	}
 };
 

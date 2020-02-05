@@ -260,6 +260,7 @@ public:
 	ut::UniquePtr<PolymorphicC> dyn_ptr_ce;
 	ut::Array< ut::Array<ut::String> > strarrarr;
 	ut::Array< ut::UniquePtr<ut::uint16> > u16ptrarr;
+	ut::AVLTree<int, ut::String> avltree;
 	ut::UniquePtr<ReflectiveBase> reflective_param;
 	ut::UniquePtr<ReflectiveBaseAlt> reflective_param_alt;
 	ut::UniquePtr<ReflectiveBase> void_param;

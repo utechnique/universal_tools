@@ -448,6 +448,7 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << dyn_ptr_ce;
 	snapshot << strarrarr;
 	snapshot << u16ptrarr;
+	snapshot << avltree;
 	snapshot << reflect_unique_ptr;
 	snapshot << reflect_unique_ptr2;
 
@@ -718,6 +719,13 @@ void ChangeSerializedObject(SerializationTest& object)
 		object.arr[i].str = "subcarr";
 	}
 
+	// avltree
+	object.avltree.Insert(1, "__1");
+	object.avltree.Insert(55, "__55");
+	object.avltree.Insert(4, "__4");
+	object.avltree.Insert(3, "__3");
+	object.avltree.Insert(5, "__5");
+
 	// array of string arrays
 	object.strarrarr.Empty();
 	ut::Array<ut::String> arr0;
@@ -814,6 +822,21 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	if (object.strarrarr[1][0] != "10") return false;
 	if (object.strarrarr[1][1] != "11") return false;
 	
+	// avltree
+	ut::Optional<const ut::String&> avl_find_result = object.avltree.Find(3);
+	if (avl_find_result)
+	{
+		const ut::String& str = avl_find_result.Get();
+		if (str != "__3")
+		{
+			return false;
+		}
+	}
+	else
+	{
+		return false;
+	}
+
 	// check dynamic type B
 	if (object.dyn_type_ptr.Get() == nullptr) return false;
 	const ut::DynamicType& dyn_type = object.dyn_type_ptr->Identify();

@@ -104,16 +104,15 @@ public:
 	}
 #endif
 
-	// Copy constructor for cpp11 and higher, uses placement new internally.
+	// Copy constructor, uses placement new internally.
 	// 'constexpr' specifier is used with visual studio only
 	// because gcc expects constructor to be empty for 'constexpr'.
-#if CPP_STANDARD < 2011
 	WIN_CONSTEXPR Result(const Result& copy) : has_result(copy.has_result)
 	{
 		if (has_result)
 		{
 			#if CPP_STANDARD >= 2011
-				new (&result)ResultType(Move(copy.result));
+				new (&result)ResultType(copy.result);
 			#else
 				new (union_buffer)ResultType(*((R*)copy.union_buffer));
 			#endif
@@ -121,28 +120,81 @@ public:
 		else
 		{
 			#if CPP_STANDARD >= 2011
-				new (&alt)AlternateType(Move(copy.alt));
+				new (&alt)AlternateType(copy.alt);
 			#else
 				new (union_buffer)AlternateType(*((A*)copy.union_buffer));
 			#endif
 		}
 	}
-#endif
 
 	// Move constructor uses placement new and ut::Move() internally.
 	// 'constexpr' specifier is used with visual studio only
 	// because gcc expects constructor to be empty for 'constexpr'.
 #if CPP_STANDARD >= 2011
-	WIN_CONSTEXPR Result(Result && copy) : has_result(copy.has_result)
+	WIN_CONSTEXPR Result(Result&& right) : has_result(right.has_result)
 	{
 		if (has_result)
 		{
-			new (&result)ResultType(Move(copy.result));
+			new (&result)ResultType(Move(right.result));
 		}
 		else
 		{
-			new (&alt)AlternateType(Move(copy.alt));
+			new (&alt)AlternateType(Move(right.alt));
 		}
+	}
+#endif
+
+	// Assignment operator
+	Result& operator = (const Result& copy)
+	{
+		// destroy existing object
+		Destruct();
+
+		// copy status variable
+		has_result = copy.has_result;
+
+		// construct new object using copy constructor
+		if (has_result)
+		{
+			#if CPP_STANDARD >= 2011
+				new (&result)ResultType(copy.result);
+			#else
+				new (union_buffer)ResultType(*((R*)copy.union_buffer));
+			#endif
+		}
+		else
+		{
+			#if CPP_STANDARD >= 2011
+				new (&alt)AlternateType(copy.alt);
+			#else
+				new (union_buffer)AlternateType(*((A*)copy.union_buffer));
+			#endif
+		}
+
+		return *this;
+	}
+
+	// Move operator
+#if CPP_STANDARD >= 2011
+	Result& operator = (Result&& right)
+	{
+		// destroy existing object
+		Destruct();
+
+		// copy status variable
+		has_result = right.has_result;
+
+		// construct new object using move constructor
+		if (has_result)
+		{
+			new (&result)ResultType(Move(right.result));
+		}
+		else
+		{
+			new (&alt)AlternateType(Move(right.alt));
+		}
+
+		return *this;
 	}
 #endif
 
@@ -151,24 +203,7 @@ public:
 	// because custom buffer is used instead of 'union' for older dialects.
 	~Result()
 	{
-		if (has_result)
-		{
-			#if CPP_STANDARD >= 2011
-				result.~ResultType();
-			#else
-				ResultType* result = (ResultType*)union_buffer;
-				result->~ResultType();
-			#endif
-		}
-		else
-		{
-			#if CPP_STANDARD >= 2011
-				alt.~AlternateType();
-			#else
-				AlternateType* alt = (AlternateType*)union_buffer;
-				alt->~AlternateType();
-			#endif
-		}
+		Destruct();
 	}
 
 	// Function to check if object contains @R or @A
@@ -238,6 +273,29 @@ public:
 	}
 
 private:
+	// Destructs managed object
+	inline void Destruct()
+	{
+		if (has_result)
+		{
+			#if CPP_STANDARD >= 2011
+				result.~ResultType();
+			#else
+				ResultType* result = (ResultType*)union_buffer;
+				result->~ResultType();
+			#endif
+		}
+		else
+		{
+			#if CPP_STANDARD >= 2011
+				alt.~AlternateType();
+			#else
+				AlternateType* alt = (AlternateType*)union_buffer;
+				alt->~AlternateType();
+			#endif
+		}
+	}
+
 #if CPP_STANDARD >= 2011
 	union
 	{

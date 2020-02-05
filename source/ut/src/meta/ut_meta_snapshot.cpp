@@ -41,8 +41,21 @@ Optional<Error> Snapshot::Save(OutputStream& stream)
 		return mode_error;
 	}
 
+	// call pre-save callback functions
+	InvokeCallback(&Snapshot::presave);
+
 	// write self via controller
-	return controller.WriteNode(*this);
+	Optional<Error> write_error = controller.WriteNode(*this);
+	if (write_error)
+	{
+		return write_error;
+	}
+
+	// call post-save callback functions
+	InvokeCallback(&Snapshot::postsave);
+
+	// success
+	return Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
@@ -60,6 +73,9 @@ Optional<Error> Snapshot::Load(InputStream& stream)
 	{
 		return mode_error;
 	}
+	
+	// call pre-load callback functions
+	InvokeCallback(&Snapshot::preload);
 
 	// read self via controller
 	Result<Controller::Uniform, Error> read_result = controller.ReadNode(*this);
@@ -67,6 +83,9 @@ Optional<Error> Snapshot::Load(InputStream& stream)
 	{
 		return read_result.MoveAlt();
 	}
+
+	// call post-load callback functions
+	InvokeCallback(&Snapshot::postload);
 
 	// success
 	return Optional<Error>();
@@ -88,8 +107,21 @@ Optional<Error> Snapshot::Save(Tree<text::Node>& text_node)
 		return mode_error;
 	}
 
+	// call pre-save callback functions
+	InvokeCallback(&Snapshot::presave);
+
 	// write self via controller
-	return controller.WriteNode(*this);
+	Optional<Error> write_error = controller.WriteNode(*this);
+	if (write_error)
+	{
+		return write_error;
+	}
+
+	// call pre-save callback functions
+	InvokeCallback(&Snapshot::postsave);
+
+	// success
+	return Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
@@ -108,6 +140,9 @@ Optional<Error> Snapshot::Load(const Tree<text::Node>& text_node)
 		return mode_error;
 	}
 
+	// call pre-load callback functions
+	InvokeCallback(&Snapshot::preload);
+
 	// read self via controller
 	Result<Controller::Uniform, Error> read_result = controller.ReadNode(*this);
 	if (!read_result)
@@ -115,6 +150,9 @@ Optional<Error> Snapshot::Load(const Tree<text::Node>& text_node)
 		return read_result.MoveAlt();
 	}
 	
+	// call post-load callback functions
+	InvokeCallback(&Snapshot::postload);
+
 	// success
 	return Optional<Error>();
 }
@@ -136,12 +174,69 @@ Optional<Snapshot&> Snapshot::FindChildByName(const String& node_name)
 }
 
 //----------------------------------------------------------------------------->
+// Assigns a callback that will be called right before saving.
+//    @param callback - function to be called.
+void Snapshot::SetPreSaveCallback(const Function<void()>& callback)
+{
+	presave = callback;
+}
+
+//----------------------------------------------------------------------------->
+// Assigns a callback that will be called after saving is done.
+//    @param callback - function to be called.
+void Snapshot::SetPostSaveCallback(const Function<void()>& callback)
+{
+	postsave = callback;
+}
+
+//----------------------------------------------------------------------------->
+// Assigns a callback that will be called right before loading.
+//    @param callback - function to be called.
+void Snapshot::SetPreLoadCallback(const Function<void()>& callback)
+{
+	preload = callback;
+}
+
+//----------------------------------------------------------------------------->
+// Assigns a callback that will be called after loading is done.
+//    @param callback - function to be called.
+void Snapshot::SetPostLoadCallback(const Function<void()>& callback)
+{
+	postload = callback;
+}
+
+//----------------------------------------------------------------------------->
 // Private constructor to create child nodes that share
 // the same serialization info structure
 //    @param info_ptr - reference to the shared pointer with the serialization
 //                      info structure, that is shared among all tree branches
 Snapshot::Snapshot(const InfoSharedPtr& info_ptr) : Base(), info(info_ptr)
 { }
+
+//----------------------------------------------------------------------------->
+// Recursively calls desired callback.
+//    @param callback_ptr - pointer to the member representing
+//                          serialization event callback
+void Snapshot::InvokeCallback(Function<void()> Snapshot::* callback_ptr)
+{
+	// recursively iterate all child nodes
+	const size_t child_count = child_nodes.GetNum();
+	for (size_t i = 0; i < child_count; i++)
+	{
+		Function<void()>& child_callback = child_nodes[i].*callback_ptr;
+		if (child_callback.IsValid())
+		{
+			child_callback();
+		}
+	}
+
+	// only then call own callback
+	Function<void()>& callback = this->*callback_ptr;
+	if (callback.IsValid())
+	{
+		callback();
+	}
+}
 
 //----------------------------------------------------------------------------//
 // Stream manipulator to save an archive as a text data using ut::text::Document
