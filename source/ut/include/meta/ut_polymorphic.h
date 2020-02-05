@@ -60,6 +60,12 @@ public:
 		return id.first;
 	}
 
+	// Gets dynamic type handle.
+	Handle GetHandle() const
+	{
+		return reinterpret_cast<DynamicType::Handle>(&id.second);
+	}
+
 private:
 	// Identifier of the dynamic type.
 	const Id& id;
