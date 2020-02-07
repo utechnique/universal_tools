@@ -531,72 +531,7 @@ public:
 	//    @param key - key of the node to be deleted
 	void Remove(const Key& key)
 	{
-		// exit if tree is empty
-		if (root == nullptr)
-		{
-			return;
-		}
-
-		// intermediate variables for the 'while' loop
-		Node* n = root, *parent = root, *node_to_delete = nullptr, *child = root;
-
-		// search for the node to delete
-		while (child != nullptr)
-		{
-			// set a node from the previous cycle as a parent node
-			parent = n;
-
-			// new node is a child of the previous one
-			n = child;
-
-			// get a child of the node for the next cycle
-			child = key >= n->key ? n->right : n->left;
-
-			// if keys match - we found the node to delete
-			if (key == n->key)
-			{
-				node_to_delete = n;
-			}
-		}
-
-		// if such node was found - we should rebalance the tree
-		if (node_to_delete != nullptr)
-		{
-			// set key
-			node_to_delete->key = n->key;
-
-			// set child
-			child = n->left != nullptr ? n->left : n->right;
-
-			// check if desired node is a root node
-			if (root->key == key)
-			{
-				// process case when the root is a node to be removed
-				root = child;
-			}
-			else
-			{
-				// link parent with child
-				if (parent->left == n)
-				{
-					parent->left = child;
-				}
-				else
-				{
-					parent->right = child;
-				}
-				
-				// rebalance the tree
-				Rebalance(parent);
-			}
-
-			// remove all links from the node
-			n->left = nullptr;
-			n->right = nullptr;
-
-			// delete unreferenced node
-			delete n;
-		}
+		root = DeleteNode(root, key);
 	}
 
 	// Destructs all nodes
@@ -718,7 +653,7 @@ private:
 
 				// if key is less than node @n then we go the left node,
 				// otherwise - to the right one
-				bool left_side = n->key > key;
+				const bool left_side = n->key > key;
 				n = left_side ? n->left : n->right;
 
 				// if node @n exists - proceed to the next loop iteration untill reaching empty node
@@ -735,7 +670,7 @@ private:
 					}
 
 					// rebalance tree chunk starting from the @parent node
-					Rebalance(parent);
+					RebalanceTree(parent);
 
 					// break the loop
 					break;
@@ -791,6 +726,95 @@ private:
 				}
 			}
 		}
+	}
+
+	// Returns the node with minimum key value found in that tree.
+	// Note that the entire tree does not need to be searched.
+	//    @param node - pointer to the root of the tree to search in
+	//    @return - pointer to the node with minimum key value
+	Node* GetMinValueNode(Node* node)
+	{
+		// loop down to find the leftmost leaf
+		Node* current = node;
+		while (current->left != nullptr)
+		{
+			current = current->left;
+		}
+		return current;
+	}
+
+	// Recursive function to delete a node with given key from subtree with given root.
+	// It returns root of the modified subtree.  
+	//    @param parent - current root of subtree
+	//    @param key - key of the node to be deleted
+	//    @return - pointer to the  root of the modified subtree
+	Node* DeleteNode(Node* parent, const Key& key)
+	{
+		// validate argument
+		if (parent == nullptr)
+		{
+			return parent;
+		}
+
+		// if the key to be deleted is smaller than the
+		// parent's key, then it lies in left subtree
+		if (key < parent->key)
+		{
+			parent->left = DeleteNode(parent->left, key);
+		}
+		else if (key > parent->key) // If the key to be deleted is greater than the
+		{                           // parent's key, then it lies in right subtree
+			parent->right = DeleteNode(parent->right, key);
+		}
+		else // if key is same as parent's key, then this is the node to be deleted
+		{
+			// node with only one child or no child  
+			if ((parent->left == nullptr) || (parent->right == nullptr))
+			{
+				Node *temp = parent->left ? parent->left : parent->right;
+
+				// no child case  
+				if (temp == nullptr)
+				{
+					temp = parent;
+					parent = nullptr;
+				}
+				else // one child case
+				{
+					// copy the contents of the non-empty child
+					parent->key = temp->key;
+					parent->value = temp->value;
+					parent->balance = temp->balance;
+					parent->left = temp->left;
+					parent->right = temp->right;
+				}
+
+				// unlinked node can be deleted now
+				delete temp;
+			}
+			else
+			{
+				// node with two children: get the inorder  
+				// successor (smallest in the right subtree)  
+				Node* temp = GetMinValueNode(parent->right);
+
+				// copy the inorder successor's data to this node  
+				parent->key = temp->key;
+				parent->value = temp->value;
+
+				// delete the inorder successor  
+				parent->right = DeleteNode(parent->right, temp->key);
+			}
+		}
+
+		// if the tree had only one node then return  
+		if (parent == nullptr)
+		{
+			return parent;
+		}
+
+		// rebalance node
+		return RebalanceNode(parent);
 	}
 
 	// 'Left Left' rotation
@@ -897,41 +921,52 @@ private:
 		return RotateLeft(n);
 	}
 
-	// Rebalances the tree starting from the specified node
-	//    @param n - lowest node to rebalance from
-	void Rebalance(Node* n)
+	// Rebalances desired node
+	//    @param n - node to rebalance
+	//    @return - root of the rebalanced tree
+	Node* RebalanceNode(Node* n)
 	{
 		// update balance for the current node
 		UpdateBalance(n);
 
 		// choose appropriate rotation according to the balance value
-		if (n->balance == -2)
+		if (n->balance < -1)
 		{
 			if (GetHeight(n->left->left) >= GetHeight(n->left->right))
 			{
-				n = RotateRight(n);
+				return RotateRight(n);
 			}
 			else
 			{
-				n = RotateLeftThenRight(n);
+				return RotateLeftThenRight(n);
 			}
 		}
-		else if (n->balance == 2)
+		else if (n->balance > 1)
 		{
 			if (GetHeight(n->right->right) >= GetHeight(n->right->left))
 			{
-				n = RotateLeft(n);
+				return RotateLeft(n);
 			}
 			else
 			{
-				n = RotateRightThenLeft(n);
+				return RotateRightThenLeft(n);
 			}
 		}
+
+		return n;
+	}
+
+	// Rebalances the tree starting from the specified node
+	//    @param n - lowest node to rebalance from
+	void RebalanceTree(Node* n)
+	{
+		// rebalance current node
+		n = RebalanceNode(n);
 
 		// we are going higher recursively
 		if (n->parent != nullptr)
 		{
-			Rebalance(n->parent);
+			RebalanceTree(n->parent);
 		}
 		else
 		{

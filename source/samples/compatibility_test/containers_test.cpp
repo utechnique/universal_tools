@@ -280,31 +280,46 @@ void AVLTreeTask::Execute()
 	tree.Insert(24, "__24");
 	tree.Insert(2,  "__2");
 	tree.Insert(32, "__32");
+	tree.Insert(10, "__10");
+	tree.Insert(15, "__15");
 	tree.Insert(1,  "__1");
 	tree.Insert(55, "__55");
 	tree.Insert(4,  "__4");
+	tree.Insert(127, "__127");
 	tree.Insert(3,  "__3");
 	tree.Insert(5,  "__5");
 	tree.Insert(43, "__43");
 	tree.Insert(60, "__60");
+	tree.Insert(18, "__18");
+	tree.Insert(22, "__22");
+	tree.Insert(49, "__49");
+	tree.Insert(29, "__29");
+	tree.Insert(27, "__27");
+	tree.Insert(25, "__25");
 
 	// try to remove a leaf by key
 	tree.Remove(32);
+	tree.Remove(127);
+	tree.Remove(3);
+	tree.Remove(5);
+	tree.Remove(24);
 
 	// then insert some new values
 	tree.Insert(26, "__26");
 	tree.Insert(33, "__33");
+	tree.Insert(128, "__128");
+	tree.Insert(129, "__129");
 	tree.Insert(26, "__26_1");
 	tree.Insert(26, "__26_2");
 
 	// try to find a specific value by key
 	report += "searching element by key \'3\'(should be \'__3\'): ";
-	ut::Optional<ut::String&> find_result = tree.Find(3);
+	ut::Optional<ut::String&> find_result = tree.Find(128);
 	if (find_result)
 	{
 		ut::String& str = find_result.Get();
 		report += str;
-		if (str == "__3")
+		if (str == "__128")
 		{
 			report += ". Success";
 		}
@@ -321,32 +336,77 @@ void AVLTreeTask::Execute()
 		return;
 	}
 
+	// check if deleted nodes were deleted
+	/*
+	report += "check deleted nodes: ";
+	find_result = tree.Find(32);
+	if (find_result)
+	{
+		report += ut::String("Error! node wasn't deleted properly");
+		failed_test_counter.Increment();
+		return;
+	}
+	else
+	{
+		report += "Success";
+	}
+	*/
+
 	// iterate avl container forward
 	report += ut::CRet() + "iterating forward: ";
 	ut::AVLTree<int, ut::String>::ConstIterator riterator;
+	int previous_key = 0;
 	for (riterator = tree.Begin(ut::iterator::first); riterator != tree.End(ut::iterator::last); ++riterator)
 	{
 		const ut::AVLTree<int, ut::String>::Node& node = *riterator;
 		report += node.value;
+
+		// check balance
+		ut::int8 balance = node.GetBalance();
+		if (balance < -1 || balance > 1)
+		{
+			report += ut::String(" Error, invalid balance!\n");
+			failed_test_counter.Increment();
+			return;
+		}
+
+		int key = node.GetKey();
+		if (previous_key > key)
+		{
+			report += ut::String(" Error, invalid order!\n");
+			failed_test_counter.Increment();
+			return;
+		}
+		previous_key = key;
 	}
 
 	// iterate avl container backward
 	report += ut::CRet() + "iterating backward: ";
 	ut::AVLTree<int, ut::String>::Iterator literator;
+	previous_key = 100000;
 	for (literator = tree.Begin(ut::iterator::last); literator != tree.End(ut::iterator::first); --literator)
 	{
 		ut::AVLTree<int, ut::String>::Node& node = *literator;
 		report += node.value;
+
+		int key = node.GetKey();
+		if (previous_key < key)
+		{
+			report += ut::String(" Error, invalid order!\n");
+			failed_test_counter.Increment();
+			return;
+		}
+		previous_key = key;
 	}
 
 	// copy test
 	report += ut::CRet() + "copy constructor: ";
 	ut::AVLTree<int, ut::String> tree_copy0(tree);
-	ut::Optional<ut::String&> copy0_find_result = tree_copy0.Find(3);
+	ut::Optional<ut::String&> copy0_find_result = tree_copy0.Find(128);
 	if (copy0_find_result)
 	{
 		ut::String& str = copy0_find_result.Get();
-		if (str == "__3")
+		if (str == "__128")
 		{
 			report += ". Success";
 		}
@@ -367,11 +427,11 @@ void AVLTreeTask::Execute()
 	report += ut::CRet() + "copy assignment: ";
 	ut::AVLTree<int, ut::String> tree_copy1;
 	tree_copy1 = tree;
-	ut::Optional<ut::String&> copy1_find_result = tree_copy1.Find(3);
+	ut::Optional<ut::String&> copy1_find_result = tree_copy1.Find(128);
 	if (copy1_find_result)
 	{
 		ut::String& str = copy1_find_result.Get();
-		if (str == "__3")
+		if (str == "__128")
 		{
 			report += ". Success";
 		}
@@ -392,13 +452,13 @@ void AVLTreeTask::Execute()
 #if CPP_STANDARD >= 2011
 	report += ut::CRet() + "move constructor: ";
 	ut::AVLTree<int, ut::String> tree_move(ut::Move(tree));
-	ut::Optional<ut::String&> move0_find_result = tree_move.Find(3);
+	ut::Optional<ut::String&> move0_find_result = tree_move.Find(128);
 	if (move0_find_result)
 	{
 		ut::String& str = move0_find_result.Get();
-		if (str == "__3")
+		if (str == "__128")
 		{
-			if (tree.Find(3))
+			if (tree.Find(128))
 			{
 				report += ". Failed, value was copied, but not moved.";
 			}
@@ -425,13 +485,13 @@ void AVLTreeTask::Execute()
 #if CPP_STANDARD >= 2011
 	report += ut::CRet() + "move assignment: ";
 	tree = ut::Move(tree_copy0);
-	ut::Optional<ut::String&> move1_find_result = tree.Find(3);
+	ut::Optional<ut::String&> move1_find_result = tree.Find(128);
 	if (move1_find_result)
 	{
 		ut::String& str = move1_find_result.Get();
-		if (str == "__3")
+		if (str == "__128")
 		{
-			if (tree_copy0.Find(3))
+			if (tree_copy0.Find(128))
 			{
 				report += ". Failed, value was copied, but not moved.";
 			}
