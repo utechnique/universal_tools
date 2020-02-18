@@ -53,6 +53,39 @@ void ArrayOpsTask::Execute()
 	// test removing an element
 	arr2.Remove(arr2.Begin() + 3);
 
+	// test array concatenation
+	report += ". Testing array concatenation:";
+	ut::Array<int> iarr0;
+	int ii = 0;
+	iarr0.Add(0);
+	iarr0.Add(1);
+	ut::Array<int> iarr1;
+	iarr0.Add(2);
+	iarr0.Add(3);
+	iarr0.Add(4);
+	ut::Array<int> iarr2 = iarr0 + iarr1;
+	iarr0 += iarr1;
+	if (iarr2.GetNum() != 5 || iarr0.GetNum() != 5)
+	{
+		report += " FAIL. ";
+		failed_test_counter.Increment();
+	}
+	else if (iarr0[0] != 0 || iarr0[1] != 1 || iarr0[2] != 2 || iarr0[3] != 3 || iarr0[4] != 4)
+	{
+		report += " FAIL. ";
+		failed_test_counter.Increment();
+	}
+	else if (iarr2[0] != 0 || iarr2[1] != 1 || iarr2[2] != 2 || iarr2[3] != 3 || iarr2[4] != 4)
+	{
+		report += " FAIL. ";
+		failed_test_counter.Increment();
+	}
+
+	// UniquePtr concatenation
+	ut::Array< ut::UniquePtr<int> > uniqarr0;
+	ut::Array< ut::UniquePtr<int> > uniqarr1;
+	uniqarr0 += ut::Move(uniqarr1);
+
 	// test reverse order iterator
 	report += ". Testing array reverse iterator:";
 	ut::Array<int>::Iterator riterator;
@@ -125,6 +158,13 @@ void MapTask::Execute()
 		report += ut::String("failed to find element\n");
 		failed_test_counter.Increment();
 	}
+
+	// UniquePtr, compile-time check
+	ut::Map<int, ut::UniquePtr<ut::String> > uniqmap0;
+	ut::Map<int, ut::UniquePtr<ut::String> > uniqmap1(ut::Move(uniqmap0));
+	ut::UniquePtr<ut::String> nstr0(new ut::String("str"));
+	uniqmap1.Insert(0, ut::Move(nstr0));
+	uniqmap1.Remove(0);
 
 	// another way to find specific value by key
 	report += ". Searching element by key \'4\'(should not be found): ";

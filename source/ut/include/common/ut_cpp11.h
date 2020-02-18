@@ -63,12 +63,25 @@ FORCEINLINE constexpr T&& Forward(typename RemoveReference<T>::Type&& ref)
 template <typename T> struct RemoveReference { typedef T Type; };
 template <typename T> struct RemoveReference<T& > { typedef T Type; };
 
-// R-Value reference type
-template <typename T> struct RValRef { typedef const T& Type; };
+// ut::RefConstness<T> determines whether ut::LValRef<T>
+// will have const or non-const reference type.
+#define UT_SET_CONSTNESS(__value) { static const bool is_const = __value; };
+template<typename T> struct RefConstness UT_SET_CONSTNESS(true)
+
+// ut::LValRefCreator holds const or non-const reference type according to the second
+// template argument - type will be non-const if @is_const is 'false'. 
+template<typename T, bool is_const> struct LValRefCreator { typedef const T& Type; };
+template<typename T> struct LValRefCreator<T, false> { typedef T& Type; };
 
 // L-Value reference type
-template <typename T> struct LValRef { typedef const T& Type; };
+template <typename T> struct LValRef
+{
+	typedef typename LValRefCreator<T, RefConstness<T>::is_const>::Type Type;
+};
 template <typename T> struct LValRef<T&> { typedef T& Type; };
+
+// R-Value reference type
+template <typename T> struct RValRef { typedef typename LValRef<T>::Type Type; };
 
 // Casts a reference to an rvalue reference.
 template <typename T>

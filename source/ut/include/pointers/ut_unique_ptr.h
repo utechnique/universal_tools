@@ -6,6 +6,8 @@
 #include "common/ut_common.h"
 #include "error/ut_throw_error.h"
 #include "containers/ut_array.h"
+#include "containers/ut_pair.h"
+#include "containers/ut_map.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
@@ -249,10 +251,35 @@ protected:
 	ElementType* pointer;
 };
 
-// ut::Ptr doesn't support const l-value references for old cpp standards.
+//----------------------------------------------------------------------------//
+// C++03 (and older standards) doesn't support r-value references and move
+// semantics. It means that all containers holding ut::UniquePtr can't be copied
+// because ut::UniquePtr requires non-const reference for copy constructor.
+// The only way to solve this issue somehow - is to specialize ut::RefConstness
+// for all such containers as a non-const reference, so that they could use
+// ut::LValRef instead of raw const reference in copy constructor.
+// Of course it's insanity to specialize all possible container types
+// here, but we can try to do this with some frequently used ones to
+// to provide at least minimum level of compatibility.
 #if CPP_STANDARD < 2011
-template <typename T> struct LValRef< UniquePtr<T> > { typedef UniquePtr<T>& Type; };
-template <typename T> struct RValRef< UniquePtr<T> > { typedef UniquePtr<T>& Type; };
+// ut::UniquePtr
+template <typename T> struct RefConstness< UniquePtr<T> > UT_SET_CONSTNESS(false)
+// ut::Pair
+template<typename T1, typename T2> struct RefConstness< Pair< UniquePtr<T1>, T2 > > UT_SET_CONSTNESS(false)
+template<typename T1, typename T2> struct RefConstness< Pair< T1, UniquePtr<T2> > > UT_SET_CONSTNESS(false)
+template<typename T1, typename T2> struct RefConstness< Pair< UniquePtr<T1>, UniquePtr<T2> > > UT_SET_CONSTNESS(false)
+// ut::BaseArray
+template <typename T> struct RefConstness< BaseArray< UniquePtr<T> > > UT_SET_CONSTNESS(false)
+template<typename T1, typename T2> struct RefConstness< BaseArray< Pair< UniquePtr<T1>, T2 > > > UT_SET_CONSTNESS(false)
+template<typename T1, typename T2> struct RefConstness< BaseArray< Pair< T1, UniquePtr<T2> > > > UT_SET_CONSTNESS(false)
+template<typename T1, typename T2> struct RefConstness< BaseArray< Pair< UniquePtr<T1>, UniquePtr<T2> > > > UT_SET_CONSTNESS(false)
+// ut::Array
+template <typename T> struct RefConstness< Array< UniquePtr<T> > > UT_SET_CONSTNESS(false)
+template<typename T1, typename T2> struct RefConstness< Array< Pair< UniquePtr<T1>, T2 > > > UT_SET_CONSTNESS(false)
+template<typename T1, typename T2> struct RefConstness< Array< Pair< T1, UniquePtr<T2> > > > UT_SET_CONSTNESS(false)
+template<typename T1, typename T2> struct RefConstness< Array< Pair< UniquePtr<T1>, UniquePtr<T2> > > > UT_SET_CONSTNESS(false)
+// ut::Map
+template <typename T1, typename T2> struct RefConstness< Map< T1, UniquePtr<T2> > > UT_SET_CONSTNESS(false)
 #endif
 
 //----------------------------------------------------------------------------//
@@ -421,6 +448,12 @@ public:
 	}
 #endif
 
+	// Addition assignment operator
+	Array& operator +=(typename RValRef<Array>::Type other)
+	{
+		return static_cast<Array&>(Base::operator += (ut::Move(other)));
+	}
+
 	// Adds new element to the end of the array (r-value reference)
 	// uses move semantics to perform copying
 	//    @param copy - new element
@@ -534,14 +567,13 @@ public:
 		// construct new array from the temporary variables
 		return Array< UniquePtr<_Tp1>  >(__arr, __num, __rsv);
 	}
+
+private:
+	// Additive promotion operator is prohibited.
+	Array operator +(const Array&) const PROHIBITED;
 };
 
-// ut::Array<Ptr> doesn't support const l-value references for old cpp standards.
-#if CPP_STANDARD < 2011
-template <typename T> struct LValRef< Array< UniquePtr<T> > > { typedef Array< UniquePtr<T> >& Type; };
-template <typename T> struct RValRef< Array< UniquePtr<T> > > { typedef Array< UniquePtr<T> >& Type; };
-#endif
-
+//----------------------------------------------------------------------------//
 // Specialize type name function for unique ptr
 template <typename T, typename Deleter> struct Type< UniquePtr<T, Deleter> >
 {

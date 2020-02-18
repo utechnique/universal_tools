@@ -68,12 +68,7 @@ public:
 	// This constructor constructs @R value from @value parameter
 	// Implementation for older cpp dialects
 #if CPP_STANDARD < 2011
-	Result(const ResultType& value) : has_result(true)
-	{
-		new (union_buffer)ResultType(value);
-	}
-
-	Result(ResultType& value) : has_result(true)
+	Result(typename LValRef<ResultType>::Type value) : has_result(true)
 	{
 		new (union_buffer)ResultType(value);
 	}
@@ -131,7 +126,7 @@ public:
 	// 'constexpr' specifier is used with visual studio only
 	// because gcc expects constructor to be empty for 'constexpr'.
 #if CPP_STANDARD >= 2011
-	WIN_CONSTEXPR Result(Result&& right) : has_result(right.has_result)
+	Result(Result&& right) : has_result(right.has_result)
 	{
 		if (has_result)
 		{

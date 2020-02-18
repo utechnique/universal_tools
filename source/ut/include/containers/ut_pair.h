@@ -18,7 +18,7 @@ public:
 	{ }
 
 	// Constructor, both arguments are const references
-	Pair(const T1& t1, const T2& t2) : first(t1), second(t2)
+	Pair(typename LValRef<T1>::Type t1, typename LValRef<T2>::Type t2) : first(t1), second(t2)
 	{ }
 
 #if CPP_STANDARD >= 2011
@@ -28,17 +28,17 @@ public:
 
 	// Constructor, first argument is l-value reference,
 	// second one is r-value reference
-	Pair(const T1& t1, T2 && t2) : first(t1), second(Move(t2))
+	Pair(typename LValRef<T1>::Type t1, T2 && t2) : first(t1), second(Move(t2))
 	{ }
 
 	// Constructor, first argument is r-value reference,
 	// second one is l-value reference
-	Pair(T1 && t1, const T2& t2) : first(Move(t1)), second(t2)
+	Pair(T1 && t1, typename LValRef<T2>::Type t2) : first(Move(t1)), second(t2)
 	{ }
 #endif
 
 	// Copy constructor
-	Pair(const Pair& copy) : first(copy.first), second(copy.second)
+	Pair(typename LValRef<Pair>::Type copy) : first(copy.first), second(copy.second)
 	{ }
 
 	// Move constructor

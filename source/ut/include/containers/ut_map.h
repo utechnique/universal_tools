@@ -13,10 +13,10 @@ START_NAMESPACE(ut)
 // retrieved based on a key, search and other operations are linear. If you
 // need faster container - use ut::AVLTree instead.
 template <typename Key, typename Value>
-class Map : public Array< Pair<Key, Value> >
+class Map : public BaseArray< Pair<Key, Value> >
 {
 	typedef Pair<Key, Value> PairType;
-	typedef Array<PairType> Base;
+	typedef BaseArray<PairType> Base;
 public:
 	// Iterator types are inherited from the base class
 	typedef typename Base::ConstIterator ConstIterator;
@@ -27,7 +27,7 @@ public:
 	//    @param value - constant l-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-	bool Insert(const Key& key, const Value& value)
+	bool Insert(typename LValRef<Key>::Type key, typename LValRef<Value>::Type value)
 	{
 		return EmplacePair(key, value);
 	}
@@ -73,11 +73,12 @@ public:
 	//    @param value - r-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-	template <typename ArgType1, typename ArgType2>
 #if CPP_STANDARD >= 2011
+	template <typename ArgType1, typename ArgType2>
 	inline bool EmplacePair(ArgType1 && key, ArgType2 && value)
 #else
-	inline bool EmplacePair(const ArgType1& key, const ArgType2& value)
+	inline bool EmplacePair(typename LValRef<Key>::Type key,
+	                        typename LValRef<Value>::Type value)
 #endif
 	{
 		for (size_t i = 0; i < Base::num; i++)
@@ -87,7 +88,12 @@ public:
 				return false;
 			}
 		}
-		return Base::Add(PairType(Forward<ArgType1>(key), Forward<ArgType2>(value)));
+		#if CPP_STANDARD >= 2011
+			return Base::Add(PairType(Forward<ArgType1>(key), Forward<ArgType2>(value)));
+		#else
+			PairType pair_copy(key, value);
+			return Base::Add(pair_copy);
+		#endif
 	}
 
 	// Finds an element with key equivalent to @key
