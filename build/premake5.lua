@@ -50,26 +50,6 @@ if BUILD_SAMPLES then
             "ut"
         }
     }
-	
-    utApplication
-    {
-        projname = "commie", -- project name
-        projdir  = "commie", -- project folder
-        bindfltk = true,     -- using fltk library
-        srcfiles =           -- sources
-        {
-            "../source/samples/commie/**.h",
-            "../source/samples/commie/**.cpp",
-        },
-        libs =               -- libraries
-        {
-            "ut"
-        },
-        dependencies =       -- dependencies
-        {
-            "ut"
-        }
-    }
 end
 
 ------------------------------------------------------------
