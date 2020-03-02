@@ -7,6 +7,7 @@
 #include "text/ut_string.h"
 #include "containers/ut_singleton.h"
 #include "system/ut_thread.h"
+#include "system/ut_sync.h"
 #include "streams/ut_input_stream.h"
 #include "streams/ut_output_stream.h"
 //----------------------------------------------------------------------------//

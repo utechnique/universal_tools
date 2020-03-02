@@ -20,7 +20,7 @@ public:
 		for (size_t i = 0; i < actions.GetNum(); i++)
 		{
 			// exit if connection is in closing state
-			if (!connection.IsActive() || exit_request.Get())
+			if (!connection.IsActive() || exit_request.Read())
 			{
 				break;
 			}

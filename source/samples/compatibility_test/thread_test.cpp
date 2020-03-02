@@ -7,6 +7,7 @@
 ThreadTestUnit::ThreadTestUnit() : TestUnit("THREAD")
 {
 	tasks.Add(new ThreadLauncherTask);
+	tasks.Add(new ThreadPoolTask);
 }
 
 //----------------------------------------------------------------------------//
@@ -48,7 +49,7 @@ void TestJob::Execute()
 	report.Print("\n    thread test, value is \"%i\", starting a loop..\n    ", a);
 
 	int i = 0;
-	while (exit_request.Get() != true)
+	while (!exit_request.Read())
 	{
 		ut::String number_str;
 		i++;
@@ -60,6 +61,181 @@ void TestJob::Execute()
 	report += "finished.";
 
 	owner.AddReport(report);
+}
+
+//----------------------------------------------------------------------------//
+// Thread pool
+ThreadPoolTask::ThreadPoolTask() : TestTask(ut::String("Thread Pool ") + ut::Print(ut::GetNumberOfProcessors()))
+                                 , counter(0)
+{}
+
+template <typename T> struct SumPoolCombiner
+{
+public:
+	SumPoolCombiner() : sum(0)
+	{}
+
+	void operator()(T element)
+	{
+		sum += element;
+	}
+
+	T GetSum()
+	{
+		ut::ScopeLock lock(mutex);
+		return sum;
+	}
+
+private:
+	T sum;
+	ut::Mutex mutex;
+};
+
+class PoolTest
+{
+public:
+	PoolTest(ThreadPoolTask& in_owner, ut::uint32 in_id, ut::uint32 in_depth) : owner(in_owner), id(in_id), depth(in_depth)
+	{}
+
+	int Execute(ut::String arg)
+	{
+		ut::uint32 r = id % 3;
+		ut::Sleep(r * 10);
+
+		ut::uptr threat_id = static_cast<ut::uptr>(ut::GetCurrentThreadId());
+
+		ut::String str_id = ut::Print(id);
+		ut::String str_th = ut::Print(threat_id);
+		owner.AddReport(arg + ut::String("i:") + str_id + ut::String(" t:") + str_th);
+
+		return 10;
+	}
+
+	int ExecuteRecursive(ut::String arg, ut::ThreadPool<int>& pool)
+	{
+		const ut::uint32 series = depth == 0 ? 0 : 2;
+		ut::Array<PoolTest> test_obj;
+		for (ut::uint32 i = 0; i < series; i++)
+		{
+			test_obj.Add(PoolTest(owner, i, depth - 1));
+		}
+
+		ut::Scheduler<int, SumPoolCombiner<int> > sum_scheduler = pool.CreateScheduler< SumPoolCombiner<int> >();
+		for (ut::uint32 i = 0; i < series; i++)
+		{
+			ut::MemberInvoker<int (PoolTest::*)(ut::String, ut::ThreadPool<int>&)> invoker(&PoolTest::ExecuteRecursive, &test_obj[i]);
+			ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String, ut::ThreadPool<int>&)>(invoker, arg + ut::Print(depth), pool));
+			sum_scheduler.Enqueue(ut::Move(task));
+		}
+		SumPoolCombiner<int>& sum_combiner = sum_scheduler.WaitForCompletion();
+
+		return sum_combiner.GetSum() + Execute(arg);
+	}
+
+	void ExecuteVoid()
+	{
+		Execute("o");
+	}
+
+private:
+	const ut::uint32 depth;
+	const ut::uint32 id;
+	ThreadPoolTask& owner;
+};
+
+int test_f(const char* str)
+{
+	ut::log << str << ut::cret;
+	return 10;
+}
+
+
+void ThreadPoolTask::Execute()
+{
+	const ut::uint32 series = 16;
+
+	ut::Array<PoolTest> test_obj;
+	for (ut::uint32 i = 0; i < series; i++)
+	{
+		test_obj.Add(PoolTest(*this, i, 2));
+	}
+
+	// plain
+	ut::UniquePtr< ut::ThreadPool<void> > pool(new ut::ThreadPool<void>);
+	report += ut::String("Starting plain pool test:") + ut::cret;
+	ut::Scheduler<void> scheduler = pool->CreateScheduler();
+	for (ut::uint32 i = 0; i < series; i++)
+	{
+		ut::MemberInvoker<void (PoolTest::*)()> invoker(&PoolTest::ExecuteVoid, &test_obj[i]);
+		ut::UniquePtr< ut::BaseTask<void> > task(new ut::Task<void()>(invoker));
+		scheduler.Enqueue(ut::Move(task));
+	}
+	scheduler.WaitForCompletion();
+	pool.Delete();
+	report += ut::String("finished.") + ut::cret + ut::cret + "    ";
+
+	// sum
+	ut::ThreadPool<int> int_pool;
+	report += ut::String("Starting plain pool test (sum combiner):") + ut::cret + "    ";
+	ut::Scheduler<int, SumPoolCombiner<int> > sum_scheduler = int_pool.CreateScheduler< SumPoolCombiner<int> >();
+	for (ut::uint32 i = 0; i < series; i++)
+	{
+		ut::MemberInvoker<int (PoolTest::*)(ut::String)> invoker(&PoolTest::Execute, &test_obj[i]);
+		ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String)>(invoker, ut::String("o")));
+		sum_scheduler.Enqueue(ut::Move(task));
+	}
+	SumPoolCombiner<int>& sum_combiner = sum_scheduler.WaitForCompletion();
+	int sum = sum_combiner.GetSum();
+	if (sum != 160)
+	{
+		report += ut::String("FAIL: Invalid sum - ") + ut::Print(sum);
+		failed_test_counter.Increment();
+		return;
+	}
+	report += ut::String("Combiner result: ") + ut::Print(sum) + ut::cret + "    ";
+	report += ut::String("finished.") + ut::cret + ut::cret + "    ";
+
+	// recursion
+	report += ut::String("Starting recursive pool test:") + ut::cret + "    ";
+	for (ut::uint32 i = 0; i < series; i++)
+	{
+		ut::MemberInvoker<int (PoolTest::*)(ut::String, ut::ThreadPool<int>&)> invoker(&PoolTest::ExecuteRecursive, &test_obj[i]);
+		ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String, ut::ThreadPool<int>&)>(invoker, ut::String("o"), int_pool));
+		sum_scheduler.Enqueue(ut::Move(task));
+	}
+	SumPoolCombiner<int>& rec_combiner = sum_scheduler.WaitForCompletion();
+	sum = sum_combiner.GetSum();
+	if (sum != 1280)
+	{
+		report += ut::String("FAIL: Invalid sum - ") + ut::Print(sum);
+		failed_test_counter.Increment();
+		return;
+	}
+	report += ut::String("Combiner result: ") + ut::Print(rec_combiner.GetSum()) + ut::cret + "    ";
+	report += ut::String("finished.") + ut::cret + "    ";
+}
+
+void ThreadPoolTask::AddReport(const ut::String& str)
+{
+	if (counter == 0)
+	{
+		report += "    ";
+	}
+
+	ut::ScopeLock sl(report_mutex);
+	report += str;
+
+	counter++;
+
+	if (counter % 4 == 0)
+	{
+		report += ut::cret;
+		report += "    ";
+	}
+	else
+	{
+		report += " ";
+	}
 }
 
 //----------------------------------------------------------------------------//

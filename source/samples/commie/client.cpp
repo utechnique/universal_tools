@@ -34,7 +34,7 @@ public:
 	// Thread routine.
 	void Execute()
 	{
-		while (!exit_request.Get())
+		while (!exit_request.Read())
 		{
 			if (client.IsActive())
 			{
@@ -49,7 +49,7 @@ public:
 			{
 				ut::Sleep(sleep_quantum);
 
-				if (exit_request.Get())
+				if (exit_request.Read())
 				{
 					return;
 				}

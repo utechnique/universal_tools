@@ -32,7 +32,7 @@ public:
 #endif
 
 		// process input
-		while (!exit_request.Get())
+		while (!exit_request.Read())
 		{
 #if UT_WINDOWS
 			// read sequence of characters successfully

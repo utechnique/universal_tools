@@ -8,7 +8,7 @@
 #include "pointers/ut_unique_ptr.h"
 #include "system/ut_mutex.h"
 #include "system/ut_lock.h"
-#include "system/ut_sync.h"
+#include "system/ut_atomic.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
@@ -39,6 +39,11 @@ void Sleep(uint32 ms);
 ThreadId GetCurrentThreadId();
 
 //----------------------------------------------------------------------------//
+// Returns the number of processors
+//    @return - number of processors
+uint32 GetNumberOfProcessors();
+
+//----------------------------------------------------------------------------//
 // ut::Job is an atomic piece of work, used in ut::Thread
 // ut::Job::Execute() is performed asynchronously, you have to implement
 // derived class and define your realization of Execute() function
@@ -55,14 +60,14 @@ public:
 	void Exit();
 
 	// Pure virtual asynchronous function, you have to implement
-	// your realization in derived class. Use @exit_request to understand
+	// your version in derived class. Use @exit_request to understand
 	// when you are to stop any work and exit the function
 	virtual void Execute() = 0;
 
 protected:
 	// Synchronized thred-safe variable to indicate
 	// when Execute() must stop it's work and exit
-	Synchronized<bool> exit_request;
+	Atomic<bool> exit_request;
 };
 
 //----------------------------------------------------------------------------//
@@ -84,6 +89,15 @@ public:
 	// wait the completion, but consider that's a bad practice to violently
 	// kill a thread. Try to normally finish (join) all threads.
 	~Thread();
+
+	// Returns id of the thread.
+	ThreadId GetId() const;
+
+	// Returns reference to the current job.
+	const Job& GetJobRef() const;
+
+	// Returns reference to the current job.
+	Job& GetJobRef();
 
 	// Sends exit request to the @job
 	void Exit();

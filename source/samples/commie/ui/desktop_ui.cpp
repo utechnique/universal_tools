@@ -79,7 +79,7 @@ public:
 	// Runs a dispatching loop.
 	void Execute()
 	{
-		while (!exit_request.Get())
+		while (!exit_request.Read())
 		{
 			// dispatch commands
 			commands = ui.DispatchCommands();

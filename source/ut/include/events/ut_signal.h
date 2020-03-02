@@ -9,26 +9,9 @@
 #include "templates/ut_function_traits.h"
 #include "templates/ut_container.h"
 #include "templates/ut_function.h"
+#include "templates/ut_default_combiner.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
-//----------------------------------------------------------------------------//
-// ut::DefaultSignalCombiner is a default signal combiner that returns the last
-// returned value from the last slot call.
-template <typename T> struct DefaultSignalCombiner
-{
-	T operator()(const T& element) const
-	{
-		return element;
-	}
-};
-
-// Specialization of the ut::DefaultSignalCombiner template for 'void' type.
-template <> struct DefaultSignalCombiner<void>
-{
-	void operator()(void) const
-	{ } // nothing to return
-};
-
 //----------------------------------------------------------------------------//
 #if CPP_STANDARD < 2011
 // ut::SlotInvoker class makes possible to call slots that return void type.
@@ -309,7 +292,7 @@ UT_PP_ENUM(UT_FUNCTION_MAX_ARITY, UT_SIGNAL_SPECIALIZATION)
 template
 <	
 	typename FunctionSignature,
-	typename Combiner = DefaultSignalCombiner<typename FunctionTraits<FunctionSignature>::ReturnType>
+	typename Combiner = DefaultCombiner<typename FunctionTraits<FunctionSignature>::ReturnType>
 >
 class Signal : public SignalTemplate<Combiner, typename AddPointer<FunctionSignature>::Type>
 { };

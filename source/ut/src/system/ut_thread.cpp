@@ -42,6 +42,22 @@ ThreadId GetCurrentThreadId()
 }
 
 //----------------------------------------------------------------------------//
+// Returns the number of processors
+//    @return - number of processors
+uint32 GetNumberOfProcessors()
+{
+#if UT_WINDOWS
+	SYSTEM_INFO sysinfo;
+	GetSystemInfo(&sysinfo);
+	return static_cast<uint32>(sysinfo.dwNumberOfProcessors);
+#elif UT_UNIX
+	return static_cast<uint32>(sysconf(_SC_NPROCESSORS_ONLN));
+#else
+	#error ut::GetNumberOfProcessors() is not implemented
+#endif
+}
+
+//----------------------------------------------------------------------------//
 // Android pthread_cancel() realization (absent in Android pthread lib)
 #if UT_ANDROID
 void pthread_cancel(pthread_t tid)
@@ -99,7 +115,7 @@ Job::~Job()
 // Safely sets exit_request to 'true', can be called from another thread
 void Job::Exit()
 {
-	exit_request = true;
+	exit_request.Store(true);
 }
 
 //----------------------------------------------------------------------------//
@@ -150,6 +166,27 @@ Thread::~Thread()
 			CloseHandle(handle);
 		#endif
 	}
+}
+
+//----------------------------------------------------------------------------->
+// Returns id of the thread.
+ThreadId Thread::GetId() const
+{
+	return id;
+}
+
+//----------------------------------------------------------------------------->
+// Returns reference to the current job.
+const Job& Thread::GetJobRef() const
+{
+	return job.GetRef();
+}
+
+//----------------------------------------------------------------------------->
+// Returns reference to the current job.
+Job& Thread::GetJobRef()
+{
+	return job.GetRef();
 }
 
 //----------------------------------------------------------------------------->
