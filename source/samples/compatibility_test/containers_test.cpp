@@ -766,6 +766,9 @@ void ResultTask::Execute()
 		return;
 	}
 
+	ut::String& str_ref = test_result.GetResult();
+	str_ref += "+++";
+
 	ut::String test_move_str;
 	test_move_str = test_result.MoveResult();
 #if CPP_STANDARD >= 2011
