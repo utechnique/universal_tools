@@ -785,6 +785,20 @@ void ResultTask::Execute()
 
 	ut::Result<const ut::String&, int> const_result_alt(ut::MakeAlt<int>(10));
 
+	ut::Result<ut::String, int> def_result;
+	if (!def_result)
+	{
+		report += "fail! default result has no value.";
+		failed_test_counter.Increment();
+		return;
+	}
+	else if (def_result.GetResult().Length() != 0)
+	{
+		report += "fail! default result has corrupted value.";
+		failed_test_counter.Increment();
+		return;
+	}
+
 	report += "success";
 }
 
