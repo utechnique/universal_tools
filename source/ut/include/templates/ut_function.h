@@ -3,7 +3,6 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut_container.h"
 #include "ut_function_traits.h"
 #include "pointers/ut_unique_ptr.h"
 //----------------------------------------------------------------------------//
@@ -66,7 +65,7 @@ public:
 
 	virtual R Invoke(Arguments... arguments) const
 	{
-		return function(arguments...);
+		return function(Forward<Arguments>(arguments)...);
 	}
 
 	virtual Invoker* MakeCopy() const
@@ -78,6 +77,8 @@ public:
 	{
 		return function != nullptr;
 	}
+
+	virtual ~Invoker() {}
 };
 
 // Specialization of the ut::MemberInvoker template class, where
@@ -94,7 +95,7 @@ public:
 
 	R Invoke(Arguments... arguments) const
 	{
-		return (owner->*member)(arguments...);
+		return (owner->*member)(Forward<Arguments>(arguments)...);
 	}
 
 	Base* MakeCopy() const
@@ -126,7 +127,7 @@ public:
 
 	R operator ()(Arguments... arguments) const
 	{
-		return Base::invoker->Invoke(arguments...);
+		return Base::invoker->Invoke(Forward<Arguments>(arguments)...);
 	}
 };
 
@@ -202,6 +203,7 @@ public:                                                     \
     {                                                       \
         return function != nullptr;                         \
     }                                                       \
+    virtual ~Invoker() {}                                   \
 };
 
 //----------------------------------------------------------------------------//

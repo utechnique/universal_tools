@@ -3,53 +3,25 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut.h"
-#include "test_task.h"
-#include "test_unit.h"
+#include "common/ut_def.h"
 //----------------------------------------------------------------------------//
-class ThreadTestUnit : public TestUnit
-{
-public:
-	ThreadTestUnit();
-};
-
+START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-class ThreadLauncherTask : public TestTask
-{
-public:
-	ThreadLauncherTask();
-	void Execute();
-	void AddReport(const ut::String& str);
-private:
-	ut::Mutex report_mutex;
-};
+// The class template ut::IntSequence represents a compile-time sequence of
+// integers. When used as an argument to a function template, the parameter pack
+// Ints can be deduced and used in pack expansion.
+#if CPP_STANDARD >= 2011
+template<int...>
+struct IntSequence {};
 
+template<int N, int... S>
+struct MakeIndexSequence : MakeIndexSequence<N - 1, N - 1, S...> {};
+
+template<int... S>
+struct MakeIndexSequence<0, S...>{ typedef IntSequence<S...> Type; };
+#endif
 //----------------------------------------------------------------------------//
-class TestJob : public ut::Job
-{
-public:
-	TestJob(ThreadLauncherTask& owner, int v = 0);
-	void Execute();
-
-private:
-	int a;
-	ut::Synchronized<int> b;
-	ThreadLauncherTask& owner;
-};
-
-//----------------------------------------------------------------------------//
-class ThreadPoolTask : public TestTask
-{
-public:
-	ThreadPoolTask();
-	void Execute();
-	void AddReport(const ut::String& str);
-	ut::Mutex report_mutex;
-
-private:
-	ut::uint32 counter;
-};
-
+END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
