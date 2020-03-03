@@ -1,0 +1,178 @@
+//----------------------------------------------------------------------------//
+//---------------------------------|  V  E  |---------------------------------//
+//----------------------------------------------------------------------------//
+#include "ve_pipeline.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+// Constructor, creates empty array of commands.
+PipelineCombiner::PipelineCombiner()
+{}
+
+// Concatenates provided result to the current array of commands.
+//    @param result - return value of the ve::Pipeline::Execute function.
+void PipelineCombiner::operator()(System::Result result)
+{
+	// check if current result already contains an error
+	if (!sum)
+	{
+		return;
+	}
+
+	// check if new portion of commands contains an error
+	if (!result)
+	{
+		sum = ut::Move(result);
+		return;
+	}
+
+	// add commands to the current result
+	CmdArray& commands = sum.GetResult();
+	commands += result.MoveResult();
+}
+
+// Returns current array of commands, original array becomes empty.
+System::Result PipelineCombiner::MoveResult()
+{
+	ut::ScopeLock lock(mutex);
+#if CPP_STANDARD >= 2011
+	return ut::Move(sum);
+#else
+	CmdArray empty;
+	if (!sum)
+	{
+		sum = empty;
+		return ut::MakeError(sum.GetAlt());
+	}
+	CmdArray temp(sum.GetResult());
+	sum = empty;
+	return temp;
+#endif
+}
+
+//----------------------------------------------------------------------------//
+// Constructor, managed system remains empty.
+Pipeline::Pipeline()
+{}
+
+// Constructor.
+//    @param sys - shared pointer to the managed system.
+Pipeline::Pipeline(ut::SharedPtr<System> sys) : system(ut::Move(sys))
+{}
+
+// Adds child pipeline that will be executed simultaneously with
+// other parallel pipelines during ve::Pipeline::Execute() call.
+//    @param pipeline - pipeline object to be added.
+//    @return - optional ut::Error if failed to add provided pipeline.
+ut::Optional<ut::Error> Pipeline::AddParallel(Pipeline pipeline)
+{
+	if (!parallel.Add(ut::Move(pipeline)))
+	{
+		return ut::Error(ut::error::out_of_memory);
+	}
+	return ut::Optional<ut::Error>();
+}
+
+// Adds child pipeline that will be executed in series with
+// other serial pipelines during ve::Pipeline::Execute() call.
+//    @param pipeline - pipeline object to be added.
+//    @return - optional ut::Error if failed to add provided pipeline.
+ut::Optional<ut::Error> Pipeline::AddSerial(Pipeline pipeline)
+{
+	if (!series.Add(ut::Move(pipeline)))
+	{
+		return ut::Error(ut::error::out_of_memory);
+	}
+	return ut::Optional<ut::Error>();
+}
+
+// Updates systems in the following order:
+//    @param pool - reference to the thread pool to
+//                  process parallel children simultaneously.
+// 1. Updates own system.
+// 2. Updates systems in parallel children pipelines simultaneously in
+//    different threads.
+// 3. Updates systems in serial children pipelines sequentially one by one.
+//    @return - array of commands to be executed by owning environment.
+System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
+{
+	// array of commands to be returned in the end of the function
+	CmdArray commands;
+
+	// update system
+	if (system)
+	{
+		System::Result update_result(system->Update());
+		if (!update_result)
+		{
+			return update_result;
+		}
+		commands += update_result.MoveResult();
+	}
+
+	// kick off parallel tasks
+	ut::Scheduler<System::Result, PipelineCombiner> scheduler = pool.CreateScheduler<PipelineCombiner>();
+	const size_t parallel_count = parallel.GetNum();
+	for (size_t i = 0; i < parallel_count; i++)
+	{
+		ut::MemberInvoker<System::Result(Pipeline::*)(ut::ThreadPool<System::Result>&)> invoker(&Pipeline::Execute, &parallel[i]);
+		ut::UniquePtr< ut::BaseTask<System::Result> > task(new ut::Task<System::Result(ut::ThreadPool<System::Result>&)>(invoker, pool));
+		scheduler.Enqueue(ut::Move(task));
+	}
+
+	// wait for all tasks to finish and combine all commands in a single array
+	PipelineCombiner& combiner = scheduler.WaitForCompletion();
+	System::Result parallel_result(combiner.MoveResult());
+	if (!parallel_result)
+	{
+		return parallel_result;
+	}
+	commands += parallel_result.MoveResult();
+
+	// execute serial tasks
+	const size_t serial_count = series.GetNum();
+	for (size_t i = 0; i < serial_count; i++)
+	{
+		System::Result execute_result = series[i].Execute(pool);
+		if (!execute_result)
+		{
+			return execute_result;
+		}
+		commands += execute_result.MoveResult();
+	}
+
+	// success
+	return commands;
+}
+
+// Iterates all systems and registers a provided entity.
+//    @param id - id of the provided entity.
+//    @param entity - reference to the entity to be registered.
+void Pipeline::RegisterEntity(Entity::Id id, Entity& entity)
+{
+	// register in own system
+	if (system)
+	{
+		system->RegisterEntity(id, entity);
+	}
+
+	// register parallel
+	const size_t parallel_count = parallel.GetNum();
+	for (size_t i = 0; i < parallel_count; i++)
+	{
+		parallel[i].RegisterEntity(id, entity);
+	}
+
+	// register series
+	const size_t serial_count = series.GetNum();
+	for (size_t i = 0; i < serial_count; i++)
+	{
+		series[i].RegisterEntity(id, entity);
+	}
+}
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//

@@ -27,6 +27,68 @@ utStaticLibProj
 }
 
 ------------------------------------------------------------
+--          V I R T U A L   E N V I R O N M E N T         --
+------------------------------------------------------------
+
+-- options that are specific for the ve projects
+newoption
+{
+    trigger = "no_ui",
+    description = "Builds virtual environment with no user interface"	
+}
+NO_UI = _OPTIONS["no_ui"]
+
+-- ve static lib
+utStaticLibProj
+{
+    projname = "ve",                    -- project name
+    targname = "ve",                    -- target name
+    projdir  = "ve",                    -- project folder
+	bindfltk = NO_UI and false or true, -- using fltk library
+    srcfiles =                          -- sources
+    {
+        "../source/ve/**.h",
+		"../source/ve/**.cpp",
+    },
+	incdir =
+	{
+		"../source/ut/include/",
+		"../source/ve/include/"
+	},
+	dependencies =       -- dependencies
+	{
+		"ut"
+	}
+}
+
+-- ve sandbox
+utApplication
+{
+	projname = "ve_sandbox",            -- project name
+	projdir  = "ve_sandbox",            -- project folder
+	bindfltk = NO_UI and false or true, -- using fltk library
+	srcfiles =                          -- sources
+	{
+		"../source/ve_sandbox/**.h",
+		"../source/ve_sandbox/**.cpp",
+	},
+	incdir =
+	{
+		"../source/ut/include/",
+		"../source/ve/include/",
+		"../source/ve_sandbox/include/"
+	},
+	libs =               -- libraries
+	{
+		"ve", "ut" -- correct order is important for gcc linker
+	},
+	dependencies =       -- dependencies
+	{
+		"ve", "ut"
+	}
+}
+
+------------------------------------------------------------
 --                     S A M P L E S                      --
 ------------------------------------------------------------
 
