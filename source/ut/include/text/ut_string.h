@@ -617,6 +617,14 @@ CarriageReturnType const CRet = &CarriageReturn<char>;
 static const String cret = CRet();
 
 //----------------------------------------------------------------------------//
+#if UT_WINDOWS
+static const char* skFileSeparator = "\\";
+#else
+static const char* skFileSeparator = "/";
+#endif
+static const String fsep = String(skFileSeparator);
+
+//----------------------------------------------------------------------------//
 // Converts @src string(type @T0) and returns result string(type @T1)
 //    @param src - source null-terminated string
 template <typename T0, typename T1, CodePage cp>
