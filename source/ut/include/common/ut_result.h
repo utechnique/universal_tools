@@ -59,6 +59,16 @@ class Result
 typedef R ResultType;
 typedef A AlternateType;
 public:
+	// Default constructor, @has_result is true, and result has default value
+	Result() : has_result(true)
+	{
+		#if CPP_STANDARD >= 2011
+			new (&result)ResultType();
+		#else
+			new (union_buffer)ResultType();
+		#endif
+	}
+
 	// This constructor constructs @R value from @value parameter
 #if CPP_STANDARD >= 2011
 	CONSTEXPR Result(const ResultType& value) : result(value), has_result(true)
