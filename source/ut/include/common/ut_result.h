@@ -226,6 +226,17 @@ public:
 		#endif
 	}
 
+	// Use this function to get @R value (if present)
+	//    @return - @result reference
+	ResultType& GetResult()
+	{
+#if CPP_STANDARD >= 2011
+		return result;
+#else
+		return *((ResultType*)union_buffer);
+#endif
+	}
+
 	// Use this function to move @R value (if present)
 	//    @return - @result r-value reference
 	typename RValRef<ResultType>::Type MoveResult()
@@ -247,6 +258,17 @@ public:
 		#else
 			return *((AlternateType*)union_buffer);
 		#endif
+	}
+
+	// Use this function to get @A value (if present)
+	//    @return - @alt reference
+	AlternateType& GetAlt()
+	{
+#if CPP_STANDARD >= 2011
+		return alt;
+#else
+		return *((AlternateType*)union_buffer);
+#endif
 	}
 
 	// Use this function to move @A value (if present)
