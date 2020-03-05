@@ -53,6 +53,7 @@ function utFLTK()
             "../contrib/fltk/src/Fl_Browser_load.cxx",
             "../contrib/fltk/src/Fl_Box.cxx",
             "../contrib/fltk/src/Fl_Button.cxx",
+			"../contrib/fltk/src/fl_call_main.c",
             "../contrib/fltk/src/Fl_Chart.cxx",
             "../contrib/fltk/src/Fl_Check_Browser.cxx",
             "../contrib/fltk/src/Fl_Check_Button.cxx",
