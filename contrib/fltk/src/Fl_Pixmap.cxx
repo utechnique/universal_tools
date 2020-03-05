@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Pixmap.cxx 11868 2016-08-09 15:19:46Z AlbrechtS $"
+// "$Id$"
 //
 // Pixmap drawing code for the Fast Light Tool Kit (FLTK).
 //
@@ -179,7 +179,7 @@ void Fl_GDI_Printer_Graphics_Driver::draw(Fl_Pixmap *pxm, int XP, int YP, int WP
   static fl_transp_func fl_TransparentBlt = NULL;
   if (!hMod) {
     hMod = LoadLibrary("MSIMG32.DLL");
-    if (hMod) fl_TransparentBlt = (fl_transp_func)GetProcAddress(hMod, "TransparentBlt");
+    if(hMod) fl_TransparentBlt = (fl_transp_func)GetProcAddress(hMod, "TransparentBlt");
   }
   if (fl_TransparentBlt) {
     HDC new_gc = CreateCompatibleDC(fl_gc);
@@ -567,5 +567,5 @@ void Fl_Pixmap::desaturate() {
 }
 
 //
-// End of "$Id: Fl_Pixmap.cxx 11868 2016-08-09 15:19:46Z AlbrechtS $".
+// End of "$Id$".
 //

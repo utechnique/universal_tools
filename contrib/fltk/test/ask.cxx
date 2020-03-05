@@ -1,12 +1,12 @@
 //
-// "$Id: ask.cxx 10805 2015-07-21 12:44:53Z AlbrechtS $"
+// "$Id$"
 //
 // Standard dialog test program for the Fast Light Tool Kit (FLTK).
 //
 // This also demonstrates how to trap attempts by the user to
 // close the last window by overriding Fl::exit
 //
-// Copyright 1998-2015 by Bill Spitzak and others.
+// Copyright 1998-2017 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -74,9 +74,6 @@ void window_callback(Fl_Widget*, void*) {
   is already open because the window used is a static (i.e. permanently
   allocated) Fl_Window instance. This should be fixed in FLTK 1.4.0.
   See STR #334 (sic !) and also STR #2751 ("Limit input field characters").
-
-  Note 2: Chances are that this /might/ be fixed in FLTK 1.3.4, but
-  this is not decided yet. AlbrechtS - July 21, 2015.
 */
 void timer_cb(void *) {
 
@@ -112,7 +109,6 @@ int main(int argc, char **argv) {
 
 // this is a test to make sure automatic destructors work.  Pop up
 // the question dialog several times and make sure it doesn't crash.
-// fc: added more fl_ask common dialogs for test cases purposes.
 
   Fl_Double_Window window(200, 105);
   Fl_Return_Button b(20, 10, 160, 35, buffer); b.callback(rename_me);
@@ -134,5 +130,5 @@ int main(int argc, char **argv) {
 }
 
 //
-// End of "$Id: ask.cxx 10805 2015-07-21 12:44:53Z AlbrechtS $".
+// End of "$Id$".
 //

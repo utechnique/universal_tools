@@ -1,5 +1,5 @@
 //
-// "$Id: fl_color.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id$"
 //
 // Color functions for the Fast Light Tool Kit (FLTK).
 //
@@ -121,14 +121,14 @@ void Fl_Xlib_Graphics_Driver::color(Fl_Color i) {
     fl_color((uchar)(rgb >> 24), (uchar)(rgb >> 16), (uchar)(rgb >> 8));
   } else {
     Fl_Graphics_Driver::color(i);
-    if (!fl_gc) return; // don't get a default gc if current window is not yet created/valid
+    if(!fl_gc) return; // don't get a default gc if current window is not yet created/valid
     XSetForeground(fl_display, fl_gc, fl_xpixel(i));
   }
 }
 
 void Fl_Xlib_Graphics_Driver::color(uchar r,uchar g,uchar b) {
   Fl_Graphics_Driver::color( fl_rgb_color(r, g, b) );
-  if (!fl_gc) return; // don't get a default gc if current window is not yet created/valid
+  if(!fl_gc) return; // don't get a default gc if current window is not yet created/valid
   XSetForeground(fl_display, fl_gc, fl_xpixel(r,g,b));
 }
 
@@ -458,5 +458,5 @@ Fl_Color fl_contrast(Fl_Color fg, Fl_Color bg) {
    @}
 */
 //
-// End of "$Id: fl_color.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id$".
 //

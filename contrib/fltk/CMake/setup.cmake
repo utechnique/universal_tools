@@ -1,10 +1,10 @@
 #
-# "$Id: setup.cmake 10986 2015-12-31 06:19:59Z manolo $"
+# "$Id$"
 #
 # CMakeLists.txt to build the FLTK project using CMake (www.cmake.org)
 # Written by Michael Surette
 #
-# Copyright 1998-2015 by Bill Spitzak and others.
+# Copyright 1998-2017 by Bill Spitzak and others.
 #
 # This library is free software. Distribution and use rights are outlined in
 # the file "COPYING" which should have been included with this file.  If this
@@ -23,7 +23,7 @@
 # The FLTK version
 set(FLTK_VERSION_MAJOR "1")
 set(FLTK_VERSION_MINOR "3")
-set(FLTK_VERSION_PATCH "4")
+set(FLTK_VERSION_PATCH "5")
 set(FLTK_VERSION "${FLTK_VERSION_MAJOR}.${FLTK_VERSION_MINOR}")
 set(FLTK_VERSION_FULL "${FLTK_VERSION}.${FLTK_VERSION_PATCH}")
 
@@ -68,6 +68,8 @@ set(FLTK_DOCDIR ${CMAKE_INSTALL_DATADIR}/doc CACHE PATH
 # platform dependent information
 #######################################################################
 
+# The following part is probably wrong but does no harm.
+# This will be removed in FLTK 1.4.0. AlbrechtS, Dec 28, 2017.
 # fix no WIN32 defined issue
 if(NOT WIN32)
     if(_WIN32)
@@ -97,8 +99,9 @@ if(APPLE)
    set(HAVE_SCANDIR 1)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated")
    if(OPTION_APPLE_X11)
-     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -U__APPLE__")
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -U__APPLE__ -mmacosx-version-min=10.3")
      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -U__APPLE__")
+     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L/opt/X11/lib -lfontconfig")
    else()
      set(__APPLE_QUARTZ__ 1)
      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework Cocoa")
@@ -107,6 +110,7 @@ if(APPLE)
 endif(APPLE)
 
 if(WIN32)
+    add_definitions(-DWIN32)
     if(MSVC)
         add_definitions(-DWIN32_LEAN_AND_MEAN)
         add_definitions(-D_CRT_SECURE_NO_WARNINGS)

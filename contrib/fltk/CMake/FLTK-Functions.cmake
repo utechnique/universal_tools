@@ -1,5 +1,5 @@
 #
-# "$Id: FLTK-Functions.cmake 11742 2016-05-16 14:43:37Z AlbrechtS $"
+# "$Id$"
 #
 # FLTK-Functions.cmake
 # Written by Michael Surette
@@ -49,5 +49,5 @@ function(FLTK_SET_BUNDLE_ICON TARGET ICON_PATH)
 endfunction(FLTK_SET_BUNDLE_ICON TARGET ICON_PATH)
 
 #
-# End of "$Id: FLTK-Functions.cmake 11742 2016-05-16 14:43:37Z AlbrechtS $".
+# End of "$Id$".
 #

@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Check_Browser.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id$"
 //
 // Fl_Check_Browser header file for the Fast Light Tool Kit (FLTK).
 //
@@ -201,12 +201,12 @@ int Fl_Check_Browser::remove(int item) {
   cb_item *p = find_item(item);
   
   // line at item exists
-  if (p) {
+  if(p) {
     // tell the Browser_ what we will do
     deleting(p);
 
     // fix checked count
-    if (p->checked)
+    if(p->checked)
       --nchecked_;
     
     // remove the node
@@ -316,5 +316,5 @@ int Fl_Check_Browser::handle(int event) {
 }
 
 //
-// End of "$Id: Fl_Check_Browser.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id$".
 //

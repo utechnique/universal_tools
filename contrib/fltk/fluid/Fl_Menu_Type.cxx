@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Menu_Type.cxx 10696 2015-04-10 19:26:17Z AlbrechtS $"
+// "$Id$"
 //
 // Menu item code for the Fast Light Tool Kit (FLTK).
 //
@@ -654,5 +654,5 @@ void shortcut_in_cb(Shortcut_Button* i, void* v) {
 }
 
 //
-// End of "$Id: Fl_Menu_Type.cxx 10696 2015-04-10 19:26:17Z AlbrechtS $".
+// End of "$Id$".
 //

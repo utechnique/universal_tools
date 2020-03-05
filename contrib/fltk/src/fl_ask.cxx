@@ -1,5 +1,5 @@
 //
-// "$Id: fl_ask.cxx 11842 2016-07-22 02:05:44Z greg.ercolano $"
+// "$Id$"
 //
 // Standard dialog functions for the Fast Light Tool Kit (FLTK).
 //
@@ -616,5 +616,5 @@ void fl_message_title_default(const char *title) {
 /** @} */
 
 //
-// End of "$Id: fl_ask.cxx 11842 2016-07-22 02:05:44Z greg.ercolano $".
+// End of "$Id$".
 //

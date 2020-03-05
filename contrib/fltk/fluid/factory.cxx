@@ -1,5 +1,5 @@
 //
-// "$Id: factory.cxx 10611 2015-03-09 20:37:45Z AlbrechtS $"
+// "$Id$"
 //
 // Widget factory code for the Fast Light Tool Kit (FLTK).
 //
@@ -1239,5 +1239,5 @@ int lookup_symbol(const char *name, int &v, int numberok) {
 }
 
 //
-// End of "$Id: factory.cxx 10611 2015-03-09 20:37:45Z AlbrechtS $".
+// End of "$Id$".
 //

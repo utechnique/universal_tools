@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_x.cxx 12028 2016-10-14 16:35:44Z AlbrechtS $"
+// "$Id$"
 //
 // X specific code for the Fast Light Tool Kit (FLTK).
 //
@@ -615,7 +615,7 @@ static void fl_init_xim() {
     fl_xim_im = NULL;
   }
   // if xim_styles is still allocated, free it now
-  if (xim_styles) XFree(xim_styles);
+  if(xim_styles) XFree(xim_styles);
 }
 
 void fl_xim_deactivate(void);
@@ -1074,7 +1074,7 @@ static unsigned char *create_bmp(const unsigned char *data, int W, int H, int *r
 }
 
 void Fl::copy_image(const unsigned char *data, int W, int H, int clipboard){
-  if (!data || W<=0 || H<=0) return;
+  if(!data || W<=0 || H<=0) return;
   delete[] fl_selection_buffer[clipboard];
   fl_selection_buffer[clipboard] = (char *) create_bmp(data,W,H,&fl_selection_length[clipboard]);
   fl_selection_buffer_length[clipboard] = fl_selection_length[clipboard];
@@ -1261,9 +1261,9 @@ static int wasXExceptionRaised() {
 static bool getNextEvent(XEvent *event_return)
 {
   time_t t = time(NULL);
-  while (!XPending(fl_display))
+  while(!XPending(fl_display))
   {
-    if (time(NULL) - t > 10.0)
+    if(time(NULL) - t > 10.0)
     {
       //fprintf(stderr,"Error: The XNextEvent never came...\n");
       return false; 
@@ -1351,7 +1351,7 @@ int fl_handle(const XEvent& thisevent)
       return(1);
   
 #if USE_XRANDR  
-  if ( XRRUpdateConfiguration_f && xevent.type == randrEventBase + RRScreenChangeNotify) {
+  if( XRRUpdateConfiguration_f && xevent.type == randrEventBase + RRScreenChangeNotify) {
     XRRUpdateConfiguration_f(&xevent);
     Fl::call_screen_init();
     fl_init_workarea();
@@ -2071,7 +2071,7 @@ fprintf(stderr,"\n");*/
     fl_xmousewin = window;
     in_a_window = true;
     { XIMStyles *xim_styles = NULL;
-      if (!fl_xim_im || XGetIMValues(fl_xim_im, XNQueryInputStyle, &xim_styles, NULL, NULL)) {
+      if(!fl_xim_im || XGetIMValues(fl_xim_im, XNQueryInputStyle, &xim_styles, NULL, NULL)) {
 	fl_init_xim();
       }
       if (xim_styles) XFree(xim_styles);
@@ -3048,7 +3048,7 @@ void Fl_Paged_Device::draw_decorated_window(Fl_Window *win, int x_offset, int y_
   int bx, bt, do_it;
   from = fl_window;
   do_it = (XQueryTree(fl_display, fl_window, &root, &parent, &children, &n) != 0 && 
-	   XTranslateCoordinates(fl_display, fl_window, parent, 0, 0, &bx, &bt, &child_win) );
+	   XTranslateCoordinates(fl_display, fl_window, parent, 0, 0, &bx, &bt, &child_win) == True);
   if (n) XFree(children);
   // hack to bypass STR #2648: when compiz is used, root and parent are the same window 
   // and I don't know where to find the window decoration
@@ -3093,10 +3093,10 @@ void printFront(Fl_Widget *o, void *data)
   Fl_Printer printer;
   o->window()->hide();
   Fl_Window *win = Fl::first_window();
-  if (!win) return;
+  if(!win) return;
   int w, h;
-  if ( printer.start_job(1) ) { o->window()->show(); return; }
-  if ( printer.start_page() ) { o->window()->show(); return; }
+  if( printer.start_job(1) ) { o->window()->show(); return; }
+  if( printer.start_page() ) { o->window()->show(); return; }
   printer.printable_rect(&w,&h);
   // scale the printer device so that the window fits on the page
   float scale = 1;
@@ -3141,7 +3141,7 @@ void copyFront(Fl_Widget *o, void *data)
 void preparePrintFront(void)
 {
   static int first=1;
-  if (!first) return;
+  if(!first) return;
   first=0;
   static Fl_Window w(0,0,140,60);
   static Fl_Button bp(0,0,w.w(),30, "Print front window");
@@ -3156,5 +3156,5 @@ void preparePrintFront(void)
 #endif
 
 //
-// End of "$Id: Fl_x.cxx 12028 2016-10-14 16:35:44Z AlbrechtS $".
+// End of "$Id$".
 //

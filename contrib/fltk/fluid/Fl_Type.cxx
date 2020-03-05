@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Type.cxx 12059 2016-10-28 21:33:45Z AlbrechtS $"
+// "$Id$"
 //
 // Widget type code for the Fast Light Tool Kit (FLTK).
 //
@@ -1135,5 +1135,5 @@ int Fl_Type::user_defined(const char* cbname) const {
 
 
 //
-// End of "$Id: Fl_Type.cxx 12059 2016-10-28 21:33:45Z AlbrechtS $".
+// End of "$Id$".
 //

@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Cairo.cxx 11980 2016-09-26 09:22:55Z manolo $"
+// "$Id$"
 //
 // Main header file for the Fast Light Tool Kit (FLTK).
 //
@@ -179,5 +179,5 @@ FL_EXPORT int fltk_cairo_dummy() { return 1;}
 #endif // FLTK_HAVE_CAIRO
 
 //
-// End of "$Id: Fl_Cairo.cxx 11980 2016-09-26 09:22:55Z manolo $" .
+// End of "$Id$" .
 //

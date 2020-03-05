@@ -1,5 +1,5 @@
 #
-# "$Id: UseFLTK.cmake.in 11742 2016-05-16 14:43:37Z AlbrechtS $"
+# "$Id$"
 #
 # UseFLTK.CMake - FLTK CMake environment configuration file for external projects.
 #
@@ -16,5 +16,5 @@ message(STATUS "*   'target_include_directories(<target> PUBLIC|PRIVATE \${FLTK_
 message(STATUS "*   instead of 'include(\${FLTK_USE_FILE})'.")
 
 #
-# End of "$Id: UseFLTK.cmake.in 11742 2016-05-16 14:43:37Z AlbrechtS $".
+# End of "$Id$".
 #

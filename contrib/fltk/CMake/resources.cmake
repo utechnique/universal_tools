@@ -1,5 +1,5 @@
 #
-# "$Id: resources.cmake 11865 2016-08-08 12:25:08Z AlbrechtS $"
+# "$Id$"
 #
 # Main CMakeLists.txt to build the FLTK project using CMake (www.cmake.org)
 # Written by Michael Surette
@@ -191,5 +191,5 @@ endif (DOXYGEN_FOUND)
 # message("LaTex Compiler : ${LATEX_COMPILER}")
 
 #
-# End of "$Id: resources.cmake 11865 2016-08-08 12:25:08Z AlbrechtS $".
+# End of "$Id$".
 #

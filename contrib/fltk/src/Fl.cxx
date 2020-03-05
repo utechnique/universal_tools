@@ -1,9 +1,9 @@
 //
-// "$Id: Fl.cxx 11321 2016-03-08 16:58:43Z AlbrechtS $"
+// "$Id$"
 //
 // Main event handling code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2015 by Bill Spitzak and others.
+// Copyright 1998-2018 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -39,8 +39,24 @@
 # endif
 #endif
 
+
+// STR #3454: We must #define FD_ISSET before we #include winsock2.h
+// to fix an undefined reference (__FD_ISSET). (AlbrechtS Feb 2018)
+// Other portions of the fix for STR #3454 are in src/Fl_win32.cxx.
+// This fix is only necessary for MinGW.
+
+#ifdef __MINGW32__
+static void * get_wsock_mod();
+typedef int(__stdcall *fl_wsk_fd_is_set_f)(unsigned int, void *);
+static fl_wsk_fd_is_set_f fl_wsk_fd_is_set = 0;
+
+#define FD_ISSET(S,SET) \
+  (get_wsock_mod() ? fl_wsk_fd_is_set(S, SET) : 0)
+#endif // __MINGW32__
+
 // recent versions of MinGW warn: "Please include winsock2.h before windows.h",
 // hence we must include winsock2.h before FL/Fl.H (A.S. Dec. 2010, IMM May 2011)
+
 #if defined(WIN32) && !defined(__CYGWIN__)
 #  include <winsock2.h>
 #endif
@@ -1877,10 +1893,10 @@ void Fl_Widget::damage(uchar fl, int X, int Y, int W, int H) {
 #elif defined(__APPLE_QUARTZ__)
       CGRect arg = fl_cgrectmake_cocoa(X, Y, W, H);
       int j; // don't add a rectangle totally inside the Fl_Region
-      for (j = 0; j < i->region->count; j++) {
-        if (CGRectContainsRect(i->region->rects[j], arg)) break;
+      for(j = 0; j < i->region->count; j++) {
+        if(CGRectContainsRect(i->region->rects[j], arg)) break;
       }
-      if ( j >= i->region->count) {
+      if( j >= i->region->count) {
         i->region->rects = (CGRect*)realloc(i->region->rects, (++(i->region->count)) * sizeof(CGRect));
         i->region->rects[i->region->count - 1] = arg;
       }
@@ -2262,5 +2278,5 @@ Fl_Widget_Tracker::~Fl_Widget_Tracker()
 
 int Fl::use_high_res_GL_ = 0;
 //
-// End of "$Id: Fl.cxx 11321 2016-03-08 16:58:43Z AlbrechtS $".
+// End of "$Id$".
 //

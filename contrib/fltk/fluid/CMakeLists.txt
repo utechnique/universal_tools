@@ -1,5 +1,5 @@
 #
-# "$Id: CMakeLists.txt 11816 2016-07-17 19:51:54Z greg.ercolano $"
+# "$Id$"
 #
 # CMakeLists.txt to build fluid for the FLTK project using CMake (www.cmake.org)
 #
@@ -41,7 +41,7 @@ set(CPPFILES
 )
 
 if(APPLE AND NOT OPTION_APPLE_X11)
-    set(FLUID_ICON "${CMAKE_CURRENT_SOURCE_DIR}/Fluid.app/Contents/Resources/fluid.icns")
+    set(FLUID_ICON "${CMAKE_CURRENT_SOURCE_DIR}/fluid.app/Contents/Resources/fluid.icns")
     add_executable(fluid MACOSX_BUNDLE ${CPPFILES} "${FLUID_ICON}")
     FLTK_SET_BUNDLE_ICON(fluid "${FLUID_ICON}")
 else()

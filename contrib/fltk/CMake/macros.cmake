@@ -1,5 +1,5 @@
 #
-# "$Id: macros.cmake 11865 2016-08-08 12:25:08Z AlbrechtS $"
+# "$Id$"
 #
 # macros.cmake
 # Written by Michael Surette
@@ -130,5 +130,5 @@ endfunction(CREATE_EXAMPLE NAME SOURCES LIBRARIES)
 #######################################################################
 
 #
-# End of "$Id: macros.cmake 11865 2016-08-08 12:25:08Z AlbrechtS $".
+# End of "$Id$".
 #

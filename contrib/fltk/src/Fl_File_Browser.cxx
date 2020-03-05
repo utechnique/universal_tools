@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_File_Browser.cxx 12047 2016-10-19 05:55:03Z manolo $"
+// "$Id$"
 //
 // Fl_File_Browser routines.
 //
@@ -597,7 +597,7 @@ Fl_File_Browser::load(const char     *directory,// I - Directory to load
 #  endif  // HAVE_PTHREAD
       // Get list of statvfs structures
       res = getmntinfo(&list, ST_WAIT);
-      if (0 < res) {
+      if(0 < res) {
         for (i = 0;  i < res; ++i) {
           strlcpy(filename, list[i].f_mntonname, sizeof(filename));
           // Skip the already added root filesystem
@@ -731,5 +731,5 @@ Fl_File_Browser::filter(const char *pattern)	// I - Pattern string
 
 
 //
-// End of "$Id: Fl_File_Browser.cxx 12047 2016-10-19 05:55:03Z manolo $".
+// End of "$Id$".
 //

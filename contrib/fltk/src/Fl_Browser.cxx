@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Browser.cxx 11464 2016-03-29 11:34:10Z AlbrechtS $"
+// "$Id$"
 //
 // Browser widget for the Fast Light Tool Kit (FLTK).
 //
@@ -398,7 +398,7 @@ int Fl_Browser::item_height(void *item) const {
       char* ptr = str;
       if (ptr && *i++) str = strchr(str, column_char());
       else str = NULL;
-      if ((!str && *ptr) || (str && ptr < str)) {
+      if((!str && *ptr) || (str && ptr < str)) {
 	fl_font(font, tsize); int hh = fl_height();
 	if (hh > hmax) hmax = hh;
       }
@@ -545,12 +545,12 @@ void Fl_Browser::item_draw(void* item, int X, int Y, int W, int H) const {
       case 'r': talign = FL_ALIGN_RIGHT; break;
       case 'B': 
 	if (!(l->flags & SELECTED)) {
-	  fl_color((Fl_Color)strtol(str, &str, 10));
+	  fl_color((Fl_Color)strtoul(str, &str, 10));
 	  fl_rectf(X, Y, w1, H);
 	} else while (isdigit(*str & 255)) str++; // skip digits
         break;
       case 'C':
-	lcol = (Fl_Color)strtol(str, &str, 10);
+	lcol = (Fl_Color)strtoul(str, &str, 10);
 	break;
       case 'F':
 	font = (Fl_Font)strtol(str, &str, 10);
@@ -960,5 +960,5 @@ Fl_Select_Browser::Fl_Select_Browser(int X,int Y,int W,int H,const char *L)
 
 
 //
-// End of "$Id: Fl_Browser.cxx 11464 2016-03-29 11:34:10Z AlbrechtS $".
+// End of "$Id$".
 //

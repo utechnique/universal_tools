@@ -1,5 +1,5 @@
 /*
- * "$Id: fl_utf.c 11404 2016-03-23 13:36:50Z AlbrechtS $"
+ * "$Id$"
  *
  * This is the utf.c file from fltk2 adapted for use in my fltk1.1 port
  */
@@ -375,20 +375,20 @@ unsigned fl_ucs_to_Utf16(const unsigned ucs, unsigned short *dst, const unsigned
   unsigned short u16[4]; /* Alternate buffer if dst is not set */
   unsigned short *out;   /* points to the active buffer */
   /* Ensure we have a valid buffer to write to */
-  if ((!dstlen) || (!dst)) {
+  if((!dstlen) || (!dst)) {
     out = u16;
   } else {
     out = dst;
   }
   /* Convert from UCS to UTF16 */
-  if ((ucs > 0x0010FFFF) || /* UCS is too large */
+  if((ucs > 0x0010FFFF) || /* UCS is too large */
   ((ucs > 0xD7FF) && (ucs < 0xE000))) { /* UCS in invalid range */
     out[0] = 0xFFFD; /* REPLACEMENT CHARACTER */
     count = 1;
-  } else if (ucs < 0x00010000) {
+  } else if(ucs < 0x00010000) {
     out[0] = (unsigned short)ucs;
     count = 1;
-  } else if (dstlen < 2) { /* dst is too small for the result */
+  } else if(dstlen < 2) { /* dst is too small for the result */
     out[0] = 0xFFFD; /* REPLACEMENT CHARACTER */
     count = 2;
   } else {
@@ -397,7 +397,7 @@ unsigned fl_ucs_to_Utf16(const unsigned ucs, unsigned short *dst, const unsigned
     count = 2;
   }
   /* NULL terminate the output, if there is space */
-  if (count < dstlen) { out[count] = 0; }
+  if(count < dstlen) { out[count] = 0; }
   return count;
 } /* fl_ucs_to_Utf16 */
 
@@ -988,5 +988,5 @@ int fl_wcwidth(const char* src) {
 /** @} */
 
 /*
- * End of "$Id: fl_utf.c 11404 2016-03-23 13:36:50Z AlbrechtS $".
+ * End of "$Id$".
  */

@@ -1,4 +1,4 @@
-/* "$Id: utf8Wrap.c 11243 2016-02-27 15:14:42Z AlbrechtS $"
+/* "$Id$"
  *
  * Author: Jean-Marc Lienher ( http://oksid.ch )
  * Copyright 2000-2003 by O'ksi'D.
@@ -79,7 +79,7 @@ get_font_list(
   while (*ptr) {
     int l = 0, i = 0;
 
-    while (isspace((int)(unsigned char)*ptr)) ptr++;
+    while(isspace((int)(unsigned char)*ptr)) ptr++;
     p = ptr;
     while (*ptr && *ptr != ',') { ptr++; l++; }
     if (l > 2) {
@@ -356,7 +356,7 @@ XUtf8DrawRtlString(Display 		*display,
   fnum = 0;
   ptr = buf + 128;
 
-  while (fnum < nb_font && !fonts[fnum]) fnum++;
+  while(fnum < nb_font && !fonts[fnum]) fnum++;
   if (fnum >= nb_font) {
     /* there is no valid font for the X server */
     return;
@@ -474,7 +474,7 @@ XUtf8DrawString(Display 	*display,
   i = 0;
   fnum = 0;
 
-  while (fnum < nb_font && !fonts[fnum]) fnum++;
+  while(fnum < nb_font && !fonts[fnum]) fnum++;
   if (fnum >= nb_font) {
     /* there is no valid font for the X server */
     return;
@@ -603,7 +603,7 @@ XUtf8_measure_extents(
   i = 0;
   fnum = 0;
 
-  while (fnum < nb_font && !fonts[fnum]) fnum++;
+  while(fnum < nb_font && !fonts[fnum]) fnum++;
   if (fnum >= nb_font) {
     /* there is no valid font for the X server */
     return;
@@ -624,8 +624,8 @@ XUtf8_measure_extents(
       /* recover the dimensions - should verify that res == 0 first! */
       wd += sizes.width; /* accumulate the width */
       hs = sizes.ascent + sizes.descent; /* total height */
-      if (hs > ht) ht = hs; /* new height exceeds previous height */
-      if (yt > (-sizes.ascent)) yt = -sizes.ascent; /* delta y offset */
+      if(hs > ht) ht = hs; /* new height exceeds previous height */
+      if(yt > (-sizes.ascent)) yt = -sizes.ascent; /* delta y offset */
       i = 0;
     }
 
@@ -665,8 +665,8 @@ XUtf8_measure_extents(
       /* recover the dimensions - should verify that res == 0 first! */
       wd += sizes.width; /* accumulate the width */
       hs = sizes.ascent + sizes.descent; /* total height */
-      if (hs > ht) ht = hs; /* new height exceeds previous height */
-      if (yt > (-sizes.ascent)) yt = -sizes.ascent; /* delta y offset */
+      if(hs > ht) ht = hs; /* new height exceeds previous height */
+      if(yt > (-sizes.ascent)) yt = -sizes.ascent; /* delta y offset */
       i = 0;
       (*buf).byte1 = glyph[0];
       (*buf).byte2 = glyph[1];
@@ -688,8 +688,8 @@ XUtf8_measure_extents(
   /* recover the dimensions - should verify that res == 0 first! */
   wd += sizes.width; /* accumulate the width */
   hs = sizes.ascent + sizes.descent; /* total height */
-  if (hs > ht) ht = hs; /* new height exceeds previous height */
-  if (yt > (-sizes.ascent)) yt = -sizes.ascent; /* delta y offset */
+  if(hs > ht) ht = hs; /* new height exceeds previous height */
+  if(yt > (-sizes.ascent)) yt = -sizes.ascent; /* delta y offset */
   /* return values */
   *ww = wd; /* width of inked area rectangle */
   *hh = ht; /* max height of inked area rectangle */
@@ -732,7 +732,7 @@ XUtf8TextWidth(XUtf8FontStruct 	*font_set,
   i = 0;
   fnum = 0;
 
-  while (fnum < nb_font && !fonts[fnum]) fnum++;
+  while(fnum < nb_font && !fonts[fnum]) fnum++;
   if (fnum >= nb_font) {
     /* there is no valid font for the X server */
     return x;
@@ -837,7 +837,7 @@ fl_XGetUtf8FontAndGlyph(XUtf8FontStruct  *font_set,
   encodings = font_set->encodings;
   fnum = 0;
 
-  while (fnum < nb_font && !fonts[fnum]) fnum++;
+  while(fnum < nb_font && !fonts[fnum]) fnum++;
   if (fnum >= nb_font) {
     /* there is no valid font for the X server */
     return -1;
@@ -903,7 +903,7 @@ XUtf8UcsWidth(XUtf8FontStruct  *font_set,
   encodings = font_set->encodings;
   fnum = 0;
 
-  while (fnum < nb_font && !fonts[fnum]) fnum++;
+  while(fnum < nb_font && !fonts[fnum]) fnum++;
   if (fnum >= nb_font) {
     /* there is no valid font for the X server */
     return x;
@@ -1024,5 +1024,5 @@ XFreeUtf8FontStruct(Display 	    *dpy,
 #endif /* X11 only */
 
 /*
- *  End of "$Id: utf8Wrap.c 11243 2016-02-27 15:14:42Z AlbrechtS $".
+ *  End of "$Id$".
  */

@@ -1,5 +1,5 @@
 //
-// "$Id: screen_xywh.cxx 11889 2016-08-23 16:38:10Z AlbrechtS $"
+// "$Id$"
 //
 // Screen/monitor bounding box API for the Fast Light Tool Kit (FLTK).
 //
@@ -74,7 +74,7 @@ static BOOL CALLBACK screen_cb(HMONITOR mon, HDC, LPRECT r, LPARAM) {
         dpi[num_screens][0] = (float)GetDeviceCaps(screen, LOGPIXELSX);
         dpi[num_screens][1] = (float)GetDeviceCaps(screen, LOGPIXELSY);
       }
-      ReleaseDC(0L, screen);
+      DeleteDC(screen);
     }
 
     num_screens ++;
@@ -124,7 +124,7 @@ static void screen_init() {
   CGDisplayCount count, i;
   CGRect r;
   CGGetActiveDisplayList(16, displays, &count);
-  for ( i = 0; i < count; i++) {
+  for( i = 0; i < count; i++) {
     r = CGDisplayBounds(displays[i]);
     screens[i].x      = int(r.origin.x);
     screens[i].y      = int(r.origin.y);
@@ -395,7 +395,7 @@ int Fl::screen_num(int x, int y) {
 // Return the number of pixels common to the two rectangular areas
 static inline float fl_intersection(int x1, int y1, int w1, int h1,
                                     int x2, int y2, int w2, int h2) {
-  if (x1+w1 < x2 || x2+w2 < x1 || y1+h1 < y2 || y2+h2 < y1)
+  if(x1+w1 < x2 || x2+w2 < x1 || y1+h1 < y2 || y2+h2 < y1)
     return 0.;
   int int_left = x1 > x2 ? x1 : x2;
   int int_right = x1+w1 > x2+w2 ? x2+w2 : x1+w1;
@@ -457,5 +457,5 @@ void Fl::screen_dpi(float &h, float &v, int n)
 
 
 //
-// End of "$Id: screen_xywh.cxx 11889 2016-08-23 16:38:10Z AlbrechtS $".
+// End of "$Id$".
 //

@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Menu_Window.cxx 10095 2014-02-07 00:09:52Z AlbrechtS $"
+// "$Id$"
 //
 // Menu window code for the Fast Light Tool Kit (FLTK).
 //
@@ -62,7 +62,7 @@ void Fl_Menu_Window::flush() {
   if (!gc) {
 	  gc = XCreateGC(fl_display, myi->xid, 0, 0);
 # if defined(FLTK_USE_CAIRO)
-	  if (Fl::autolink_context()) Fl::cairo_make_current(gc); // capture gc changes automatically to update the cairo context adequately
+	  if(Fl::autolink_context()) Fl::cairo_make_current(gc); // capture gc changes automatically to update the cairo context adequately
 # endif
   }
   fl_gc = gc;
@@ -112,5 +112,5 @@ Fl_Menu_Window::Fl_Menu_Window(int X, int Y, int W, int H, const char *l)
 
 
 //
-// End of "$Id: Fl_Menu_Window.cxx 10095 2014-02-07 00:09:52Z AlbrechtS $".
+// End of "$Id$".
 //

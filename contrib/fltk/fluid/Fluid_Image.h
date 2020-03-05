@@ -1,5 +1,5 @@
 //
-// "$Id: Fluid_Image.h 10972 2015-12-18 18:56:58Z manolo $"
+// "$Id$"
 //
 // Image header file for the Fast Light Tool Kit (FLTK).
 //
@@ -55,5 +55,5 @@ extern const char *ui_find_image_name;
 #endif
 
 //
-// End of "$Id: Fluid_Image.h 10972 2015-12-18 18:56:58Z manolo $".
+// End of "$Id$".
 //

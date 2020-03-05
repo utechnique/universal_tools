@@ -1,5 +1,5 @@
 //
-// "$Id: ExternalCodeEditor_UNIX.cxx 11878 2016-08-16 20:42:22Z greg.ercolano $".
+// "$Id$".
 //
 //       External code editor management class for Unix
 //
@@ -461,5 +461,5 @@ int ExternalCodeEditor::editors_open() {
 
 #endif /* !WIN32 */
 //
-// End of "$Id: ExternalCodeEditor_UNIX.cxx 11878 2016-08-16 20:42:22Z greg.ercolano $".
+// End of "$Id$".
 //

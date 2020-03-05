@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Tree_Item.cxx 11840 2016-07-21 00:35:06Z greg.ercolano $"
+// "$Id$"
 //
 
 #include <stdio.h>
@@ -431,10 +431,17 @@ Fl_Tree_Item *Fl_Tree_Item::add(const Fl_Tree_Prefs &prefs,
 	 : 0;				      // failed? error
 }
 
-/// Insert a new item named \p 'new_label' into current item's
-/// children at a specified position \p 'pos'.
-/// \returns the new item inserted.
-///
+/**
+  Insert a new item named \p 'new_label' into current item's
+  children at a specified position \p 'pos'.
+
+  If \p pos is out of range the new item is
+   - prepended if \p pos \< 0 or
+   - appended  if \p pos \> item->children().
+
+  \returns the new item inserted
+  \see Fl_Tree::insert()
+*/
 Fl_Tree_Item *Fl_Tree_Item::insert(const Fl_Tree_Prefs &prefs, const char *new_label, int pos) {
 #if FLTK_ABI_VERSION >= 10303
   Fl_Tree_Item *item = new Fl_Tree_Item(_tree);
@@ -1102,7 +1109,7 @@ void Fl_Tree_Item::draw(int X, int &Y, int W, Fl_Tree_Item *itemfocus,
   _collapse_xywh[3] = prefs.openicon()->h();
 
   // Horizontal connector values
-  //   Must calculate these even if (clipped) because 'draw children' code (below)
+  //   Must calculate these even if(clipped) because 'draw children' code (below)
   //   needs hconn_x_center value. (Otherwise, these calculations could be 'clipped')
   //
   int hconn_x  = X+icon_w/2-1;
@@ -1316,7 +1323,7 @@ void Fl_Tree_Item::draw(int X, int &Y, int W, Fl_Widget *tree,
   _collapse_xywh[3] = prefs.openicon()->h();
 
   // Horizontal connector values
-  //   XXX: Must calculate these even if (clipped) because 'draw children' code (below)
+  //   XXX: Must calculate these even if(clipped) because 'draw children' code (below)
   //   needs hconn_x_center value. (Otherwise, these calculations could be 'clipped')
   //
   int hconn_x  = X+icon_w/2-1;
@@ -1839,5 +1846,5 @@ void Fl_Tree_Item::recalc_tree() {
 }
 
 //
-// End of "$Id: Fl_Tree_Item.cxx 11840 2016-07-21 00:35:06Z greg.ercolano $".
+// End of "$Id$".
 //

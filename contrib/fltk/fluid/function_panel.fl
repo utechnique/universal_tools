@@ -1,13 +1,13 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0304
+version 1.0305
 header_name {.h}
 code_name {.cxx}
 comment {//
-// "$Id: function_panel.fl 12041 2016-10-17 16:46:57Z greg.ercolano $"
+// "$Id$"
 //
 // Code dialogs for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2016 by Bill Spitzak and others.
+// Copyright 1998-2017 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -954,6 +954,6 @@ Function {make_sourceview()} {} {
 
 comment {
 //
-// End of "$Id: function_panel.fl 12041 2016-10-17 16:46:57Z greg.ercolano $".
+// End of "$Id$".
 //} {in_source in_header
 }

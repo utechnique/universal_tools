@@ -1,5 +1,5 @@
 #
-# "$Id: variables.cmake 10719 2015-04-25 20:36:48Z AlbrechtS $"
+# "$Id$"
 #
 # This file sets variables for common use in export.cmake and install.cmake
 # Written by Michael Surette

@@ -1,5 +1,5 @@
 //
-// "$Id: ExternalCodeEditor_UNIX.h 11878 2016-08-16 20:42:22Z greg.ercolano $".
+// "$Id$".
 //
 //       External code editor management class for Unix
 //
@@ -48,5 +48,5 @@ public:
 
 #endif /*_EXTCODEEDITOR_H */
 //
-// End of "$Id: ExternalCodeEditor_UNIX.h 11878 2016-08-16 20:42:22Z greg.ercolano $".
+// End of "$Id$".
 //

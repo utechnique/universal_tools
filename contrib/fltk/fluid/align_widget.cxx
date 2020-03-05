@@ -1,5 +1,5 @@
 //
-// "$Id: align_widget.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id$"
 //
 // Alignment code for the Fast Light Tool Kit (FLTK).
 //
@@ -527,6 +527,6 @@ void widget_size_cb(Fl_Widget *, long size) {
 
 
 //
-// End of "$Id: align_widget.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id$".
 //
 

@@ -1,5 +1,5 @@
 //
-// "$Id: demo.cxx 11918 2016-09-03 08:14:43Z manolo $"
+// "$Id$"
 //
 // Main demo program for the Fast Light Tool Kit (FLTK).
 //
@@ -322,7 +322,7 @@ void dobut(Fl_Widget *, long arg)
       *arg = 0;
 #if defined USING_XCODE
       fl_filename_absolute(path, 2048, "../../../../test/");
-      fluidpath = "Fluid.app";
+      fluidpath = "fluid.app";
 #else
       strcpy(path, app_path); strcat(path, "/");
       fluidpath = "../fluid/fluid.app";
@@ -452,6 +452,6 @@ int main(int argc, char **argv) {
 }
 
 //
-// End of "$Id: demo.cxx 11918 2016-09-03 08:14:43Z manolo $".
+// End of "$Id$".
 //
 

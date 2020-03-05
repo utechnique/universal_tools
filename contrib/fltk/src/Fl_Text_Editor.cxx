@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Text_Editor.cxx 11808 2016-07-14 18:48:43Z greg.ercolano $"
+// "$Id$"
 //
 // Copyright 2001-2010 by Bill Spitzak and others.
 // Original code Copyright Mark Edel.  Permission to distribute under
@@ -726,7 +726,7 @@ int Fl_Text_Editor::handle(int event) {
         // don't let the text_display see this event
         if (Fl_Group::handle(event)) return 1;
         dragType = DRAG_NONE;
-	if (buffer()->selected()) {
+	if(buffer()->selected()) {
 	  buffer()->unselect();
 	  }
 	int pos = xy_to_position(Fl::event_x(), Fl::event_y(), CURSOR_POS);
@@ -822,5 +822,5 @@ int Fl_Text_Editor::tab_nav() const {
 #endif
 
 //
-// End of "$Id: Fl_Text_Editor.cxx 11808 2016-07-14 18:48:43Z greg.ercolano $".
+// End of "$Id$".
 //

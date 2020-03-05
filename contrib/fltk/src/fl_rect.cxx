@@ -1,5 +1,5 @@
 //
-// "$Id: fl_rect.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $"
+// "$Id$"
 //
 // Rectangle drawing routines for the Fast Light Tool Kit (FLTK).
 //
@@ -255,7 +255,7 @@ void Fl_Graphics_Driver::xyline(int x, int y, int x1, int y2, int x3) {
   p[3].x = clip_x(x3);
   XDrawLines(fl_display, fl_window, fl_gc, p, 4, 0);
 #elif defined(WIN32)
-  if (x3 < x1) x3--;
+  if(x3 < x1) x3--;
   else x3++;
   MoveToEx(fl_gc, x, y, 0L); 
   LineTo(fl_gc, x1, y);
@@ -336,7 +336,7 @@ void Fl_Graphics_Driver::yxline(int x, int y, int y1, int x2, int y3) {
   p[3].y = clip_x(y3);
   XDrawLines(fl_display, fl_window, fl_gc, p, 4, 0);
 #elif defined(WIN32)
-  if (y3<y1) y3--;
+  if(y3<y1) y3--;
   else y3++;
   MoveToEx(fl_gc, x, y, 0L); 
   LineTo(fl_gc, x, y1);
@@ -712,10 +712,10 @@ int Fl_Graphics_Driver::clip_box(int x, int y, int w, int h, int& X, int& Y, int
   CGRect arg = fl_cgrectmake_cocoa(x, y, w, h);
   CGRect u = CGRectMake(0,0,0,0);
   CGRect test;
-  for (int i = 0; i < r->count; i++) {
+  for(int i = 0; i < r->count; i++) {
     test = CGRectIntersection(r->rects[i], arg);
-    if ( ! CGRectIsEmpty(test) ) {
-      if (CGRectIsEmpty(u)) u = test;
+    if( ! CGRectIsEmpty(test) ) {
+      if(CGRectIsEmpty(u)) u = test;
       else u = CGRectUnion(u, test);
     }
   }
@@ -723,7 +723,7 @@ int Fl_Graphics_Driver::clip_box(int x, int y, int w, int h, int& X, int& Y, int
   Y = int(u.origin.y + 0.5);
   W = int(u.size.width + 0.5); // round to nearest integer
   H = int(u.size.height + 0.5);
-  if (CGRectIsEmpty(u)) W = H = 0;
+  if(CGRectIsEmpty(u)) W = H = 0;
   return ! CGRectEqualToRect(arg, u);
 #else
 # error unsupported platform
@@ -731,5 +731,5 @@ int Fl_Graphics_Driver::clip_box(int x, int y, int w, int h, int& X, int& Y, int
 }
 
 //
-// End of "$Id: fl_rect.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $".
+// End of "$Id$".
 //

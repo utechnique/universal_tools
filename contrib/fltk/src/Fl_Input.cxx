@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Input.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $"
+// "$Id$"
 //
 // Input widget for the Fast Light Tool Kit (FLTK).
 //
@@ -97,7 +97,7 @@ int Fl_Input::kf_lines_up(int repeat_num) {
     //UNNEEDED if (input_type()==FL_MULTILINE_INPUT && !Fl::option(Fl::OPTION_ARROW_FOCUS)) return 1;
     return NORMAL_INPUT_MOVE;
   }
-  while (repeat_num--) {
+  while(repeat_num--) {
     i = line_start(i);
     if (!i) break;
     i--;
@@ -765,7 +765,7 @@ int Fl_Input::handle(int event) {
 	if (old_position > dnd_save_position) position(old_position - (dnd_save_position - dnd_save_mark));
 	else position(old_position);
 	}
-      else if (dnd_save_focus) {
+      else if(dnd_save_focus) {
 	dnd_save_focus->handle(FL_UNFOCUS);
 	}
       dnd_save_focus = NULL;
@@ -849,5 +849,5 @@ int Fl_Secret_Input::handle(int event) {
 }
 
 //
-// End of "$Id: Fl_Input.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $".
+// End of "$Id$".
 //

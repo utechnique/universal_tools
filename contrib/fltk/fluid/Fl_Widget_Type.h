@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Widget_Type.h 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id$"
 //
 // Widget type header file for the Fast Light Tool Kit (FLTK).
 //
@@ -29,5 +29,5 @@ extern void* const LOAD;
 extern Fl_Widget_Type *current_widget; // one of the selected ones
 
 //
-// End of "$Id: Fl_Widget_Type.h 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id$".
 //

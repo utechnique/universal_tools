@@ -1,5 +1,5 @@
 /*
- * "$Id: flstring.c 9573 2012-06-06 03:38:02Z fabien $"
+ * "$Id$"
  *
  * BSD string functions for the Fast Light Tool Kit (FLTK).
  *
@@ -99,7 +99,7 @@ fl_strlcpy(char       *dst,	/* O - Destination string */
 int fl_ascii_strcasecmp(const char *s, const char *t) {
   if (!s || !t) return (s==t ? 0 : (!s ? -1 : +1));
   
-  for (;*s && *t; s++,t++) {
+  for(;*s && *t; s++,t++) {
     if (*s == *t) continue;
     if (*s < *t) {
       if ( (*s+0x20)!=*t || !C_RANGE(*s,'A','Z') ) return -1;
@@ -111,5 +111,5 @@ int fl_ascii_strcasecmp(const char *s, const char *t) {
 }
 
 /*
- * End of "$Id: flstring.c 9573 2012-06-06 03:38:02Z fabien $".
+ * End of "$Id$".
  */

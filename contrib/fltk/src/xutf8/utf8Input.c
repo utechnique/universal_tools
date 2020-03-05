@@ -219,7 +219,7 @@ XConvertCp936extToUtf8(char* buffer_return, int len)
 		  }
 	  l += XConvertUcsToUtf8(ucs, buffer_return + l);
   }
-  if (i + 1 == len) { 
+  if(i + 1 == len) { 
       l += XConvertUcsToUtf8((unsigned int)buf[i], buffer_return + l);
   }
   free(buf);

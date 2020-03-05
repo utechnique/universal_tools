@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Text_Display.cxx 12000 2016-10-01 21:20:18Z greg.ercolano $"
+// "$Id$"
 //
 // Copyright 2001-2016 by Bill Spitzak and others.
 // Original code Copyright Mark Edel.  Permission to distribute under
@@ -1025,7 +1025,7 @@ void Fl_Text_Display::overstrike(const char* text) {
   /* find which characters to remove, and if necessary generate additional
    padding to make up for removed control characters at the end */
   indent = startIndent;
-  for ( p = startPos; ; p=buffer()->next_char(p) ) {
+  for ( p = startPos; ; p = buf->next_char(p) ) {
     if ( p == buf->length() )
       break;
     ch = buf->char_at( p );
@@ -1033,11 +1033,11 @@ void Fl_Text_Display::overstrike(const char* text) {
       break;
     indent++;
     if ( indent == endIndent ) {
-      p++;
+      p = buf->next_char(p);
       break;
     } else if ( indent > endIndent ) {
       if ( ch != '\t' ) {
-        p++;
+        p = buf->next_char(p);
         paddedText = new char [ textLen + FL_TEXT_MAX_EXP_CHAR_LEN + 1 ];
         strcpy( paddedText, text );
         for ( i = 0; i < indent - endIndent; i++ )
@@ -4132,5 +4132,5 @@ double Fl_Text_Display::col_to_x(double col) const
 
 
 //
-// End of "$Id: Fl_Text_Display.cxx 12000 2016-10-01 21:20:18Z greg.ercolano $".
+// End of "$Id$".
 //

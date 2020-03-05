@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_PostScript.cxx 10645 2015-03-21 08:45:42Z manolo $"
+// "$Id$"
 //
 // PostScript device support for the Fast Light Tool Kit (FLTK).
 //
@@ -53,7 +53,7 @@ Fl_PostScript_Graphics_Driver::Fl_PostScript_Graphics_Driver(void)
 
 /** \brief The destructor. */
 Fl_PostScript_Graphics_Driver::~Fl_PostScript_Graphics_Driver() {
-  if (ps_filename_) free(ps_filename_);
+  if(ps_filename_) free(ps_filename_);
 }
 
 /**
@@ -97,7 +97,7 @@ int Fl_PostScript_File_Device::start_job (int pagecount, enum Fl_Paged_Device::P
   if ( fnfc.show() ) return 1;
   Fl_PostScript_Graphics_Driver *ps = driver();
   ps->output = fl_fopen(fnfc.filename(), "w");
-  if (ps->output == NULL) return 2;
+  if(ps->output == NULL) return 2;
   ps->ps_filename_ = strdup(fnfc.filename());
   ps->start_postscript(pagecount, format, layout);
   this->set_current();
@@ -636,7 +636,7 @@ void Fl_PostScript_Graphics_Driver::reset(){
   strcpy(linedash_,"");
   Clip *c=clip_;   ////just not to have memory leaks for badly writen code (forgotten clip popping)
   
-  while (c){
+  while(c){
     clip_=clip_->prev;
     delete c;
     c=clip_;
@@ -646,7 +646,7 @@ void Fl_PostScript_Graphics_Driver::reset(){
 
 void Fl_PostScript_Graphics_Driver::page_policy(int p){
   page_policy_ = p;
-  if (lang_level_>=2)
+  if(lang_level_>=2)
     fprintf(output,"<< /Policies << /Pagesize %i >> >> setpagedevice\n", p);
 }
 
@@ -669,9 +669,9 @@ void Fl_PostScript_Graphics_Driver::page(double pw, double ph, int media) {
   }
   
   fprintf(output, "%%%%BeginPageSetup\n");
-  if ((media & Fl_Paged_Device::MEDIA) &&(lang_level_>1)){
+  if((media & Fl_Paged_Device::MEDIA) &&(lang_level_>1)){
     int r = media & Fl_Paged_Device::REVERSED;
-    if (r) r = 2;
+    if(r) r = 2;
     fprintf(output, "<< /PageSize [%i %i] /Orientation %i>> setpagedevice\n", (int)(pw+.5), (int)(ph+.5), r);
   }
   fprintf(output, "%%%%EndPageSetup\n");
@@ -689,7 +689,7 @@ void Fl_PostScript_Graphics_Driver::page(double pw, double ph, int media) {
   
   if (!((media & Fl_Paged_Device::MEDIA) &&(lang_level_>1))){
     if (pw > ph) {
-      if (media & Fl_Paged_Device::REVERSED) {
+      if(media & Fl_Paged_Device::REVERSED) {
         fprintf(output, "-90 rotate %i 0 translate\n", int(-pw));
 	}
       else {
@@ -697,7 +697,7 @@ void Fl_PostScript_Graphics_Driver::page(double pw, double ph, int media) {
 	}
       }
       else {
-	if (media & Fl_Paged_Device::REVERSED)
+	if(media & Fl_Paged_Device::REVERSED)
 	  fprintf(output, "180 rotate %i %i translate\n", int(-pw), int(-ph));
 	}
   }
@@ -705,7 +705,7 @@ void Fl_PostScript_Graphics_Driver::page(double pw, double ph, int media) {
 }
 
 void Fl_PostScript_Graphics_Driver::page(int format){
-/*  if (format &  Fl_Paged_Device::LANDSCAPE){
+/*  if(format &  Fl_Paged_Device::LANDSCAPE){
     ph_=Fl_Paged_Device::page_formats[format & 0xFF].width;
     pw_=Fl_Paged_Device::page_formats[format & 0xFF].height;
   }else{
@@ -886,41 +886,41 @@ void Fl_PostScript_Graphics_Driver::line_style(int style, int width, char* dashe
   linewidth_=width;
   linestyle_=style;
   //dashes_= dashes;
-  if (dashes){
-    if (dashes != linedash_)
+  if(dashes){
+    if(dashes != linedash_)
       strcpy(linedash_,dashes);
     
   }else
     linedash_[0]=0;
   char width0 = 0;
-  if (!width){
+  if(!width){
     width=1; //for screen drawing compatibility
     width0=1;
   }
   
   fprintf(output, "%i setlinewidth\n", width);
   
-  if (!style && (!dashes || !(*dashes)) && width0) //system lines
+  if(!style && (!dashes || !(*dashes)) && width0) //system lines
     style = FL_CAP_SQUARE;
   
   int cap = (style &0xf00) >> 8;
-  if (cap) cap--;
+  if(cap) cap--;
   fprintf(output,"%i setlinecap\n", cap);
   
   int join = (style & 0xf000) >> 12;
   
-  if (join) join--;
+  if(join) join--;
   fprintf(output,"%i setlinejoin\n", join);
   
   
   fprintf(output, "[");
-  if (dashes && *dashes){
-    while (*dashes){
+  if(dashes && *dashes){
+    while(*dashes){
       fprintf(output, "%i ", *dashes);
       dashes++;
     }
   }else{
-    if (style & 0x200){ // round and square caps, dash length need to be adjusted
+    if(style & 0x200){ // round and square caps, dash length need to be adjusted
       const double *dt = dashes_cap[style & 0xff];
       while (*dt >= 0){
         clocale_printf("%g ",width * (*dt));
@@ -1239,12 +1239,12 @@ void Fl_PostScript_Graphics_Driver::begin_polygon(){
 }
 
 void Fl_PostScript_Graphics_Driver::vertex(double x, double y){
-  if (shape_==POINTS){
+  if(shape_==POINTS){
     clocale_printf("%g %g MT\n", x , y);
     gap_=1;
     return;
   }
-  if (gap_){
+  if(gap_){
     clocale_printf("%g %g MT\n", x , y);
     gap_=0;
   }else
@@ -1252,8 +1252,8 @@ void Fl_PostScript_Graphics_Driver::vertex(double x, double y){
 }
 
 void Fl_PostScript_Graphics_Driver::curve(double x, double y, double x1, double y1, double x2, double y2, double x3, double y3){
-  if (shape_==NONE) return;
-  if (gap_)
+  if(shape_==NONE) return;
+  if(gap_)
     clocale_printf("%g %g MT\n", x , y);
   else
     clocale_printf("%g %g LT\n", x , y);
@@ -1264,7 +1264,7 @@ void Fl_PostScript_Graphics_Driver::curve(double x, double y, double x1, double 
 
 
 void Fl_PostScript_Graphics_Driver::circle(double x, double y, double r){
-  if (shape_==NONE){
+  if(shape_==NONE){
     fprintf(output, "GS\n");
     concat();
     //    fprintf(output, "BP\n");
@@ -1279,9 +1279,9 @@ void Fl_PostScript_Graphics_Driver::circle(double x, double y, double r){
 }
 
 void Fl_PostScript_Graphics_Driver::arc(double x, double y, double r, double start, double a){
-  if (shape_==NONE) return;
+  if(shape_==NONE) return;
   gap_=0;
-  if (start>a)
+  if(start>a)
     clocale_printf("%g %g %g %g %g arc\n", x , y , r , -start, -a);
   else
     clocale_printf("%g %g %g %g %g arcn\n", x , y , r , -start, -a);
@@ -1353,7 +1353,7 @@ void Fl_PostScript_Graphics_Driver::end_polygon(){
 
 void Fl_PostScript_Graphics_Driver::transformed_vertex(double x, double y){
   reconcat();
-  if (gap_){
+  if(gap_){
     clocale_printf("%g %g MT\n", x , y);
     gap_=0;
   }else
@@ -1369,7 +1369,7 @@ void Fl_PostScript_Graphics_Driver::push_clip(int x, int y, int w, int h) {
   c->prev=clip_;
   clip_=c;
   fprintf(output, "CR\nCS\n");
-  if (lang_level_<3)
+  if(lang_level_<3)
     recover();
   clocale_printf("%g %g %i %i CL\n", clip_->x-0.5 , clip_->y-0.5 , clip_->w  , clip_->h);
   
@@ -1381,29 +1381,29 @@ void Fl_PostScript_Graphics_Driver::push_no_clip() {
   clip_=c;
   clip_->x = clip_->y = clip_->w = clip_->h = -1;
   fprintf(output, "CR\nCS\n");
-  if (lang_level_<3)
+  if(lang_level_<3)
     recover();
 }
 
 void Fl_PostScript_Graphics_Driver::pop_clip() {
-  if (!clip_)return;
+  if(!clip_)return;
   Clip * c=clip_;
   clip_=clip_->prev;
   delete c;
   fprintf(output, "CR\nCS\n");
-  if (clip_ && clip_->w >0)
+  if(clip_ && clip_->w >0)
     clocale_printf("%g %g %i %i CL\n", clip_->x - 0.5, clip_->y - 0.5, clip_->w  , clip_->h);
   // uh, -0.5 is to match screen clipping, for floats there should be something beter
-  if (lang_level_<3)
+  if(lang_level_<3)
     recover();
 }
 
 int Fl_PostScript_Graphics_Driver::clip_box(int x, int y, int w, int h, int &X, int &Y, int &W, int &H){
-  if (!clip_){
+  if(!clip_){
     X=x;Y=y;W=w;H=h;
     return 1;
   }
-  if (clip_->w < 0){
+  if(clip_->w < 0){
     X=x;Y=y;W=w;H=h;
     return 1;
   }
@@ -1417,7 +1417,7 @@ int Fl_PostScript_Graphics_Driver::clip_box(int x, int y, int w, int h, int &X, 
     
   }else
     W = clip_->x + clip_->w - X;
-  if (W<0){
+  if(W<0){
     W=0;
     return 1;
   }
@@ -1426,7 +1426,7 @@ int Fl_PostScript_Graphics_Driver::clip_box(int x, int y, int w, int h, int &X, 
     ret=1;
   }else
     H = clip_->y + clip_->h - Y;
-  if (H<0){
+  if(H<0){
     W=0;
     H=0;
     return 1;
@@ -1435,29 +1435,29 @@ int Fl_PostScript_Graphics_Driver::clip_box(int x, int y, int w, int h, int &X, 
 }
 
 int Fl_PostScript_Graphics_Driver::not_clipped(int x, int y, int w, int h){
-  if (!clip_) return 1;
-  if (clip_->w < 0) return 1;
+  if(!clip_) return 1;
+  if(clip_->w < 0) return 1;
   int X, Y, W, H;
   clip_box(x, y, w, h, X, Y, W, H);
-  if (W) return 1;
+  if(W) return 1;
   return 0;
 }
 
 void Fl_PostScript_File_Device::margins(int *left, int *top, int *right, int *bottom) // to implement
 {
   Fl_PostScript_Graphics_Driver *ps = driver();
-  if (left) *left = (int)(ps->left_margin / ps->scale_x + .5);
-  if (right) *right = (int)(ps->left_margin / ps->scale_x + .5);
-  if (top) *top = (int)(ps->top_margin / ps->scale_y + .5);
-  if (bottom) *bottom = (int)(ps->top_margin / ps->scale_y + .5);
+  if(left) *left = (int)(ps->left_margin / ps->scale_x + .5);
+  if(right) *right = (int)(ps->left_margin / ps->scale_x + .5);
+  if(top) *top = (int)(ps->top_margin / ps->scale_y + .5);
+  if(bottom) *bottom = (int)(ps->top_margin / ps->scale_y + .5);
 }
 
 int Fl_PostScript_File_Device::printable_rect(int *w, int *h)
 //returns 0 iff OK
 {
   Fl_PostScript_Graphics_Driver *ps = driver();
-  if (w) *w = (int)((ps->pw_ - 2 * ps->left_margin) / ps->scale_x + .5);
-  if (h) *h = (int)((ps->ph_ - 2 * ps->top_margin) / ps->scale_y + .5);
+  if(w) *w = (int)((ps->pw_ - 2 * ps->left_margin) / ps->scale_x + .5);
+  if(h) *h = (int)((ps->ph_ - 2 * ps->top_margin) / ps->scale_y + .5);
   return 0;
 }
 
@@ -1535,7 +1535,7 @@ void Fl_PostScript_File_Device::end_job (void)
   fputs("%%EOF",ps->output);
   ps->reset();
   fflush(ps->output);
-  if (ferror(ps->output)) {
+  if(ferror(ps->output)) {
     fl_alert ("Error during PostScript data output.");
     }
   if (ps->close_cmd_) {
@@ -1655,5 +1655,5 @@ int Fl_PostScript_Printer::start_job(int pages, int *firstpage, int *lastpage) {
 
 
 //
-// End of "$Id: Fl_PostScript.cxx 10645 2015-03-21 08:45:42Z manolo $".
+// End of "$Id$".
 //

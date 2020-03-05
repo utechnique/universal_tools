@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Double_Window.cxx 11312 2016-03-08 05:18:28Z manolo $"
+// "$Id$"
 //
 // Double-buffered window code for the Fast Light Tool Kit (FLTK).
 //
@@ -296,7 +296,7 @@ Fl_Offscreen fl_create_offscreen(int w, int h) {
 static void bmProviderRelease (void *src, const void *data, size_t size) {
   CFIndex count = CFGetRetainCount(src);
   CFRelease(src);
-  if (count == 1) free((void*)data);
+  if(count == 1) free((void*)data);
 }
 
 void Fl_Quartz_Graphics_Driver::copy_offscreen(int x,int y,int w,int h,Fl_Offscreen osrc,int srcx,int srcy) {
@@ -330,7 +330,7 @@ void fl_delete_offscreen(Fl_Offscreen ctx) {
   void *data = CGBitmapContextGetData((CGContextRef)ctx);
   CFIndex count = CFGetRetainCount(ctx);
   CGContextRelease((CGContextRef)ctx);
-  if (count == 1) free(data);
+  if(count == 1) free(data);
 }
 
 const int stack_max = 16;
@@ -545,5 +545,5 @@ Fl_Overlay_Window::Fl_Overlay_Window(int X, int Y, int W, int H, const char *l)
 
   
 //
-// End of "$Id: Fl_Double_Window.cxx 11312 2016-03-08 05:18:28Z manolo $".
+// End of "$Id$".
 //

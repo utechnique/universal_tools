@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_File_Chooser2.cxx 11813 2016-07-15 20:01:08Z AlbrechtS $"
+// "$Id$"
 //
 // More Fl_File_Chooser routines.
 //
@@ -1621,7 +1621,7 @@ void Fl_File_Chooser::showHidden(int value)
 void Fl_File_Chooser::remove_hidden_files()
 {
   int count = fileList->size();
-  for (int num = count; num >= 1; num--) {
+  for(int num = count; num >= 1; num--) {
     const char *p = fileList->text(num);
     if (*p == '.' && strcmp(p, "../") != 0) fileList->remove(num);
   }
@@ -1730,5 +1730,5 @@ get_homedir() {
 
 
 //
-// End of "$Id: Fl_File_Chooser2.cxx 11813 2016-07-15 20:01:08Z AlbrechtS $".
+// End of "$Id$".
 //

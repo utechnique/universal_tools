@@ -1,5 +1,5 @@
 #
-# "$Id: FLTKConfig.cmake.in 11742 2016-05-16 14:43:37Z AlbrechtS $"
+# "$Id$"
 #
 # FLTKConfig.cmake - FLTK CMake configuration file for external projects.
 #
@@ -39,5 +39,5 @@ else()
 endif(CMAKE_CROSSCOMPILING)
 
 #
-# End of "$Id: FLTKConfig.cmake.in 11742 2016-05-16 14:43:37Z AlbrechtS $".
+# End of "$Id$".
 #
