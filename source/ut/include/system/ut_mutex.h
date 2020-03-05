@@ -46,7 +46,7 @@ private:
 
 	// variable named 'mutex' is platform-specific mutex object
 #if UT_WINDOWS
-	HANDLE mutex; // windows 'mutex' kernel object
+	CRITICAL_SECTION cs;
 #elif UT_UNIX
 	pthread_mutex_t mutex; // using pthread library to obtain linux mutex
 #else

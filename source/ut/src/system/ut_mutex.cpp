@@ -51,7 +51,7 @@ Mutex::~Mutex()
 void Mutex::Lock()
 {
 #if UT_WINDOWS
-	WaitForSingleObject(mutex, INFINITE);
+	EnterCriticalSection(&cs);
 #elif UT_UNIX
 	pthread_mutex_lock(&mutex);
 #else
@@ -65,7 +65,7 @@ void Mutex::Lock()
 void Mutex::Unlock()
 {
 #if UT_WINDOWS
-	ReleaseMutex(mutex);
+	LeaveCriticalSection(&cs);
 #elif UT_UNIX
 	pthread_mutex_unlock(&mutex);
 #else
@@ -86,11 +86,7 @@ void Mutex::Sync()
 inline Optional<Error> Mutex::Create()
 {
 #if UT_WINDOWS
-	mutex = CreateMutex(NULL, FALSE, NULL);
-	if (mutex == NULL)
-	{
-		return Error(ConvertWinSysErr(GetLastError()));
-	}
+	InitializeCriticalSection(&cs);
 #elif UT_UNIX
 	int result = pthread_mutex_init(&mutex, NULL);
 	if (result != 0)
@@ -108,7 +104,7 @@ inline Optional<Error> Mutex::Create()
 inline void Mutex::Destroy()
 {
 #if UT_WINDOWS
-	CloseHandle(mutex);
+	DeleteCriticalSection(&cs);
 #elif UT_UNIX
 	pthread_mutex_destroy(&mutex);
 #else
