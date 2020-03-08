@@ -54,6 +54,16 @@ public:
 		return atomics::interlocked::Store(&var, val);
 	}
 
+	int32 UnsafeRead()
+	{
+		return var;
+	}
+
+	void UnsafeStore(int32 val)
+	{
+		var = val;
+	}
+
 private:
 	int32 var;
 };
@@ -100,6 +110,16 @@ public:
 	inline void Store(bool val)
 	{
 		return atomics::interlocked::Store(&var, val ? 1 : 0);
+	}
+
+	bool UnsafeRead()
+	{
+		return var != 0;
+	}
+
+	void UnsafeStore(bool val)
+	{
+		var = val ? 1 : 0;
 	}
 
 private:
