@@ -99,7 +99,7 @@ public:
 			}
 
 			// give other threads a chance to run
-			ut::Sleep(1);
+			ut::this_thread::Sleep(1);
 		}
 	}
 
@@ -134,7 +134,7 @@ private:
 	{
 		while (ut::atomics::interlocked::Read(&state) == 0)
 		{
-			ut::Sleep(1);
+			ut::this_thread::Sleep(1);
 		}
 	}
 

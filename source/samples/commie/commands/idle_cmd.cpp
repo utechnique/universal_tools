@@ -38,7 +38,7 @@ void IdleCmd::Reflect(ut::meta::Snapshot& snapshot)
 ut::Optional<ut::Error> IdleCmd::ExecuteOnClient(ut::net::Connection& connection)
 {
 	// wait
-	ut::Sleep(milliseconds_to_wait);
+	ut::this_thread::Sleep(milliseconds_to_wait);
 
 	// success
 	return ut::Optional<ut::Error>();

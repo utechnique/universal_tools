@@ -47,7 +47,7 @@ public:
 			ut::uint32 wait_step = frequency_ms / sleep_quantum;
 			for (ut::uint32 i = 0; i < wait_step; i++)
 			{
-				ut::Sleep(sleep_quantum);
+				ut::this_thread::Sleep(sleep_quantum);
 
 				if (exit_request.Read())
 				{

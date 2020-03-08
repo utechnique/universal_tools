@@ -77,7 +77,7 @@ public:
 			}
 
 			// wait for UT_WND_INPUT_PING milliseconds for the next iteration
-			ut::Sleep(UT_WND_INPUT_PING);
+			this_thread::Sleep(UT_WND_INPUT_PING);
 #elif UT_UNIX
 			// get current character
 			const char ch = getchar();
@@ -181,7 +181,7 @@ Optional<Error> Console::Read(void* ptr, size_t size, size_t count)
 	Array<char> temp_buffer;
 	while (true)
 	{
-		Sleep(UT_INPUT_RECOVERY);
+		this_thread::Sleep(UT_INPUT_RECOVERY);
 
 		ScopeRWLock lock(data->input_lock, access_write);
 
@@ -223,7 +223,7 @@ Optional<Error> Console::Write(const void* ptr, size_t size, size_t count)
 	}
 
 	// wait if output is locked by another thread
-	ThreadId thread_id = ut::GetCurrentThreadId();
+	ThreadId thread_id = ut::this_thread::GetId();
 	bool loop_out = false;
 	while (!loop_out)
 	{
@@ -240,7 +240,7 @@ Optional<Error> Console::Write(const void* ptr, size_t size, size_t count)
 			loop_out = true;
 		}
 		data->output_lock.Unlock(access_read);
-		ut::Sleep(1);
+		ut::this_thread::Sleep(1);
 	}
 
 	// start critical section
@@ -295,7 +295,7 @@ void Console::LockOutputSequence(bool status)
 	ScopeSyncRWLock<bool> lock(allocated, access_read);
 	if (lock.Get())
 	{
-		ThreadId thread_id = ut::GetCurrentThreadId();
+		ThreadId thread_id = ut::this_thread::GetId();
 		ScopeRWLock scope_lock(data->output_lock, access_write);
 		if (status && !data->output_locked)
 		{

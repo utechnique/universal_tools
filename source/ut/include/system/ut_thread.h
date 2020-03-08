@@ -10,6 +10,11 @@
 #include "system/ut_lock.h"
 #include "system/ut_atomic.h"
 //----------------------------------------------------------------------------//
+#if UT_WINDOWS
+// 'Yield()' macro of WinBase.h spoils ut::this_thread::Yield() function's name.
+#undef Yield
+#endif
+//----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // Platform-specific thread types, currently you should define
@@ -29,14 +34,22 @@ START_NAMESPACE(ut)
 #endif
 
 //----------------------------------------------------------------------------//
-// Blocks the execution of the current thread for at least the specified @ms
-//    @param ms - milliseconds to wait
-void Sleep(uint32 ms);
+// ut::this_thread namespace groups a set of functions that access the
+// current thread.
+namespace this_thread
+{
+	// Blocks the execution of the current thread for at least the specified @ms
+	//    @param ms - milliseconds to wait
+	void Sleep(uint32 ms);
 
-//----------------------------------------------------------------------------//
-// Returns the id of the current thread
-//    @return - id of the current thread
-ThreadId GetCurrentThreadId();
+	// Provides a hint to the implementation to reschedule the execution of
+	// threads, allowing other threads to run.
+	void Yield();
+
+	// Returns the id of the current thread
+	//    @return - id of the current thread
+	ThreadId GetId();
+}
 
 //----------------------------------------------------------------------------//
 // Returns the number of processors
@@ -57,7 +70,7 @@ public:
 	virtual ~Job();
 
 	// Safely sets exit_request to 'true', can be called from another thread
-	void Exit();
+	virtual void Exit();
 
 	// Pure virtual asynchronous function, you have to implement
 	// your version in derived class. Use @exit_request to understand
@@ -101,6 +114,10 @@ public:
 
 	// Sends exit request to the @job
 	void Exit();
+
+	// Blocks the current thread until the thread identified by *this
+	// finishes its execution.
+	void Join();
 
 	// Violently kills a thread, not waiting for completion
 	// use this function only for extreme cases
