@@ -166,7 +166,7 @@ void ClientTestJob::Execute()
 				ut::String err_str;
 				err_str.Print("    client connect iteration %u failed\n", iteration);
 				report += err_str;
-				ut::Sleep(250);
+				ut::this_thread::Sleep(250);
 			}
 		}
 

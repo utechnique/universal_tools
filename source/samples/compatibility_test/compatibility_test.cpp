@@ -40,7 +40,7 @@ int main()
 	ut::log << "\n[INPUT] You entered: " << input_result.GetResult() << ". Waiting a second before exit..";
 
 	// wait before exit
-	ut::Sleep(1500);
+	ut::this_thread::Sleep(1500);
 
 	// finish logging
 	ut::log.End();

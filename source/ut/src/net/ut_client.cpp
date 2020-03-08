@@ -71,7 +71,7 @@ Optional<Error> Client::Run()
 		connection_lock.Unlock();
 
 		// wait before the next attempt
-		Sleep(connection_interval_ms);
+		this_thread::Sleep(connection_interval_ms);
 	}
 
 	// signalize that host stopped working

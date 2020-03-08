@@ -1,12 +1,23 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "system/ut_mutex.h"
+#include "system/ut_condition_variable.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // Default constructor, platform-specific object is constructed here
-Mutex::Mutex()
+ConditionVariable::ConditionVariable()
+{
+	Optional<Error> creation_error = Create();
+	if (creation_error)
+	{
+		throw creation_error.Move();
+	}
+}
+
+//----------------------------------------------------------------------------->
+// Copy constructor, creates new synchronization object, nothing is really copied
+ConditionVariable::ConditionVariable(const ConditionVariable& copy)
 {
 	Optional<Error> creation_error = Create();
 	if (creation_error)
@@ -15,19 +26,9 @@ Mutex::Mutex()
 	}
 }
 //----------------------------------------------------------------------------->
-// Copy constructor, creates new 'mutex' object
-Mutex::Mutex(const Mutex& copy)
-{
-	Optional<Error> creation_error = Create();
-	if (creation_error)
-	{
-		throw creation_error.Move();
-	}
-}
-//----------------------------------------------------------------------------->
-// Assignment operator, creates new 'mutex' object,
-// nothing is really copied, old @mutex object is deleted
-Mutex& Mutex::operator = (const Mutex& copy)
+// Assignment operator, creates new synchronization object,
+// nothing is really copied, old object is deleted
+ConditionVariable& ConditionVariable::operator = (const ConditionVariable& copy)
 {
 	Destroy();
 	Optional<Error> creation_error = Create();
@@ -40,75 +41,82 @@ Mutex& Mutex::operator = (const Mutex& copy)
 
 //----------------------------------------------------------------------------->
 // Destructor, platform-specific object is destructed here
-Mutex::~Mutex()
+ConditionVariable::~ConditionVariable()
 {
 	Destroy();
 }
 
 //----------------------------------------------------------------------------->
-// Locks the mutex. If another thread has already locked the mutex,
-// a call to lock will block execution until the lock is acquired
-void Mutex::Lock()
+// Wait causes the current thread to block until the condition
+// variable is notified or a spurious wakeup occurs.
+//    @param lock - reference to the scope-lock object, which
+//                  must be locked by the current thread.
+void ConditionVariable::Wait(ScopeLock& lock)
 {
 #if UT_WINDOWS
-	EnterCriticalSection(&cs);
+	SleepConditionVariableCS(&cv, &lock.mutex.cs, INFINITE);
 #elif UT_UNIX
-	pthread_mutex_lock(&mutex);
+	pthread_cond_wait(&cv, &lock.mutex.mutex);
 #else
-	#error ut::Mutex::Lock() is not implemented
+#error ut::ConditionVariable::Wait() is not implemented
 #endif
 }
 
 //----------------------------------------------------------------------------->
-// Unlocks the mutex. The mutex must be locked by the current
-// thread of execution, otherwise, the behavior is undefined
-void Mutex::Unlock()
+// If any threads are waiting on *this, calling WakeOne
+// unblocks one of the waiting threads.
+void ConditionVariable::WakeOne()
 {
 #if UT_WINDOWS
-	LeaveCriticalSection(&cs);
+	WakeConditionVariable(&cv);
 #elif UT_UNIX
-	pthread_mutex_unlock(&mutex);
+	pthread_cond_signal(&cv);
 #else
-	#error ut::Mutex::Unlock() is not implemented
+#error ut::ConditionVariable::WakeOne() is not implemented
 #endif
 }
 
 //----------------------------------------------------------------------------->
-// Just calls Lock() and then Unlock()
-void Mutex::Sync()
+// Unblocks all threads currently waiting for *this.
+void ConditionVariable::WakeAll()
 {
-	Lock();
-	Unlock();
+#if UT_WINDOWS
+	WakeAllConditionVariable(&cv);
+#elif UT_UNIX
+	pthread_cond_broadcast(&cv);
+#else
+#error ut::ConditionVariable::WakeAll() is not implemented
+#endif
 }
 
 //----------------------------------------------------------------------------->
 // Creates platform-specific 'mutex' object
-inline Optional<Error> Mutex::Create()
+inline Optional<Error> ConditionVariable::Create()
 {
 #if UT_WINDOWS
-	InitializeCriticalSection(&cs);
+	InitializeConditionVariable(&cv);
 #elif UT_UNIX
-	int result = pthread_mutex_init(&mutex, NULL);
+	int result = pthread_cond_init(&cv, NULL);
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
 	}
 #else
-	#error ut::Mutex::Create() is not implemented
+#error ut::ConditionVariable::Create() is not implemented
 #endif
 	return Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
 // Destroys platform-specific 'mutex' object
-inline void Mutex::Destroy()
+inline void ConditionVariable::Destroy()
 {
 #if UT_WINDOWS
-	DeleteCriticalSection(&cs);
+	// nothing to do
 #elif UT_UNIX
-	pthread_mutex_destroy(&mutex);
+	pthread_cond_destroy(&cv);
 #else
-	#error ut::Mutex::Destroy() is not implemented
+#error ut::ConditionVariable::Destroy() is not implemented
 #endif
 }
 

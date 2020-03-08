@@ -10,28 +10,16 @@ START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // Constructor, @mutex is locked here
 //    @in_mutex - mutex to lock
-ScopeLock::ScopeLock(Mutex& in_mutex) : mutex(&in_mutex)
+ScopeLock::ScopeLock(Mutex& in_mutex) : mutex(in_mutex)
 {
-	mutex->Lock();
+	mutex.Lock();
 }
 
 //----------------------------------------------------------------------------->
 // Destructor, @mutex is unlocked here
 ScopeLock::~ScopeLock()
 {
-	Reset();
-}
-
-//----------------------------------------------------------------------------->
-// Unlocks @mutex, call it if you want to
-// release @mutex before the end of scope
-void ScopeLock::Reset()
-{
-	if (mutex)
-	{
-		mutex->Unlock();
-		mutex = nullptr;
-	}
+	mutex.Unlock();
 }
 
 //----------------------------------------------------------------------------//

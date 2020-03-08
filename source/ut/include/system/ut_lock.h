@@ -25,6 +25,7 @@ enum Access
 // mechanism for owning a mutex for the duration of a scoped block
 class ScopeLock : public NonCopyable
 {
+	friend class ConditionVariable;
 public:
 	// Constructor, @mutex is locked here
 	//    @in_mutex - mutex to lock
@@ -33,13 +34,9 @@ public:
 	// Destructor, @mutex is unlocked here
 	~ScopeLock();
 
-	// Unlocks @mutex, call it if you want to
-	// release @mutex before the end of scope
-	void Reset();
-
 private:
 	// Managed mutex object
-	Mutex* mutex;
+	Mutex& mutex;
 };
 
 //----------------------------------------------------------------------------//

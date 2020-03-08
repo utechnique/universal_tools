@@ -14,31 +14,48 @@ bool g_pthread_sig_handled = false;
 #endif
 
 //----------------------------------------------------------------------------//
-// Blocks the execution of the current thread for at least the specified @ms
-//    @param ms - milliseconds to wait
-void Sleep(uint32 ms)
+// ut::this_thread namespace groups a set of functions that access the
+// current thread.
+namespace this_thread
 {
+	// Blocks the execution of the current thread for at least the specified @ms
+	//    @param ms - milliseconds to wait
+	void Sleep(uint32 ms)
+	{
 #if UT_WINDOWS
-	::Sleep(ms);
+		::Sleep(ms);
 #elif UT_UNIX
-	usleep(ms*1e+3);
+		usleep(ms*1e+3);
 #else
-	#error ut::Sleep() is not implemented
+#error ut::this_thread::Sleep() is not implemented
 #endif
-}
+	}
 
-//----------------------------------------------------------------------------//
-// Returns the id of the current thread
-//    @return - id of the current thread
-ThreadId GetCurrentThreadId()
-{
+	// Provides a hint to the implementation to reschedule the execution of
+	// threads, allowing other threads to run.
+	void Yield()
+	{
 #if UT_WINDOWS
-	return ::GetCurrentThreadId();
+		SwitchToThread();
 #elif UT_UNIX
-	return pthread_self();
+		pthread_yield();
 #else
-	#error ut::GetCurrentThreadId() is not implemented
+#error ut::this_thread::Yield() is not implemented
 #endif
+	}
+
+	// Returns the id of the current thread
+	//    @return - id of the current thread
+	ThreadId GetId()
+	{
+#if UT_WINDOWS
+		return ::GetCurrentThreadId();
+#elif UT_UNIX
+		return pthread_self();
+#else
+#error ut::this_thread::GetId() is not implemented
+#endif
+	}
 }
 
 //----------------------------------------------------------------------------//
@@ -143,29 +160,7 @@ Thread::Thread(UniquePtr<Job> job_ptr) : job(Move(job_ptr))
 // kill a thread. Try to normally finish (join) all threads.
 Thread::~Thread()
 {
-	if (active)
-	{
-		// send 'exit' message to job
-		job->Exit();
-
-		// wait for thread to exit is needed only if thread object is being
-		// destroyed from the separate thread, note that you can destroy thread
-		// object from it's own thread only if there is no code after destruction
-		if (GetCurrentThreadId() != id) // btw. GetCurrentThreadId() is very cheap
-		{
-			#if UT_WINDOWS
-				WaitForSingleObject(handle, INFINITE);
-			#elif UT_UNIX
-				pthread_join(id, NULL);
-			#endif
-		}
-
-		// close handle for windows, otherwise thread object will be alive
-		// up to the end of the program 
-		#if UT_WINDOWS
-			CloseHandle(handle);
-		#endif
-	}
+	Join();
 }
 
 //----------------------------------------------------------------------------->
@@ -196,6 +191,38 @@ void Thread::Exit()
 	if (active)
 	{
 		job->Exit();
+	}
+}
+
+//----------------------------------------------------------------------------->
+// Blocks the current thread until the thread identified by *this
+// finishes its execution.
+void Thread::Join()
+{
+	if (active)
+	{
+		// send 'exit' message to job
+		job->Exit();
+
+		// wait for thread to exit is needed only if thread object is being
+		// destroyed from the separate thread, note that you can destroy thread
+		// object from it's own thread only if there is no code after destruction
+		if (this_thread::GetId() != id) // btw. GetCurrentThreadId() is very cheap
+		{
+			#if UT_WINDOWS
+				WaitForSingleObject(handle, INFINITE);
+			#elif UT_UNIX
+				pthread_join(id, NULL);
+			#endif
+		}
+
+		// close handle for windows, otherwise thread object will be alive
+		// up to the end of the program 
+		#if UT_WINDOWS
+			CloseHandle(handle);
+		#endif
+
+		active = false;
 	}
 }
 
