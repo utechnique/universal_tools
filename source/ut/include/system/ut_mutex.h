@@ -12,6 +12,7 @@ START_NAMESPACE(ut)
 // shared data from being simultaneously accessed by multiple threads.
 class Mutex
 {
+	friend class ConditionVariable;
 public:
 	// Default constructor, platform-specific object is constructed here
 	Mutex();
