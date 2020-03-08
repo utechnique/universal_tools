@@ -29,7 +29,7 @@ public:
 	CONSTEXPR Optional(const ValueType& v) : value(v), has_value(true)
 	{}
 #else
-	Optional(const ValueType& v) : has_value(true)
+	Optional(typename LValRef<ValueType>::Type v) : has_value(true)
 	{
 		new (union_buffer)ValueType(v);
 	}
@@ -42,7 +42,7 @@ public:
 #endif
 
 	// Copy constructor
-	Optional(const Optional& copy) : has_value(copy.has_value)
+	Optional(typename LValRef<Optional>::Type copy) : has_value(copy.has_value)
 	{
 		if (has_value)
 		{
@@ -67,7 +67,7 @@ public:
 #endif
 
 	// Assignment operator
-	Optional& operator = (const Optional& copy)
+	Optional& operator = (typename LValRef<Optional>::Type copy)
 	{
 		if (has_value && copy.has_value) // both objects are already constructed
 		{
@@ -118,6 +118,46 @@ public:
 	}
 #endif // CPP_STANDARD >= 2011
 
+	// Assignment operator
+	Optional& operator = (typename LValRef<ValueType>::Type v)
+	{
+		if (has_value)
+		{
+#if CPP_STANDARD >= 2011
+			value = v;
+#else
+			Get() = v;
+#endif
+		}
+		else
+		{
+#if CPP_STANDARD >= 2011
+			new (&value)ValueType(v);
+#else
+			new (union_buffer)ValueType(v);
+#endif
+			has_value = true;
+		}
+		return *this;
+	}
+
+	// Assignment (move) operator
+#if CPP_STANDARD >= 2011
+	Optional& operator = (ValueType&& v)
+	{
+		if (has_value)
+		{
+			value = ut::Move(v);
+		}
+		else
+		{
+			new (&value)ValueType(ut::Move(v));
+			has_value = true;
+		}
+		return *this;
+	}
+#endif // CPP_STANDARD >= 2011
+
 	// Function to check if object contains something
 	//    @return - 'true' if object owns a value
 	CONSTEXPR bool HasValue() const
@@ -161,12 +201,20 @@ public:
 	typename ut::RValRef<ValueType>::Type Move()
 	{
 		UT_ASSERT(has_value);
-		has_value = false;
 #if CPP_STANDARD >= 2011
 		return ut::Move(value);
 #else
 		return Get();
 #endif
+	}
+
+	// Destroyes current value if it's present.
+	void Empty()
+	{
+		if (has_value)
+		{
+			Destruct();
+		}
 	}
 
 	// Bool conversion operator
@@ -178,10 +226,7 @@ public:
 	// Destructor
 	~Optional()
 	{
-		if (has_value)
-		{
-			Destruct();
-		}
+		Empty();
 	}
 
 private:
