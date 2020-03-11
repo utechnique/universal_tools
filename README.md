@@ -4,7 +4,7 @@ Universal tools (UT) is an open-source cross-platform framework that is designed
 
 ### Why UT?
 
-The same code, that is written with UT, is both c++11 and c++03 compliant (and utilizes features such as r-value and move-semantics for c++11 version). UT doesn't use stl or boost, but provides own version of containers, smart-pointers, streams, serialization system etc. Code of the UT aims to be simple, understandable and densely commented. This project is an attempt to make a light universal basis for projects with no external dependencies, so that the all code could be compiled in one environment "in one click".
+UT doesn't use stl or boost, but provides own version of containers, smart-pointers, streams, serialization system etc. Code of the UT aims to be simple, understandable and densely commented. This project is an attempt to make a light universal basis for projects with no external dependencies, so that the all code could be compiled in one environment "in one click".
 
 ### Get started
 
@@ -24,14 +24,16 @@ UT heavily relies on [Premake utility](https://github.com/premake/premake-core) 
 Some of the noteworthy concepts implemented in the UT library:
 * Smart pointers: UniquePtr, SharedPtr, WeakPtr.
 * Containers: Array, Map, Tree, AVL Tree.
-* Multithreading: Thread, Job, Mutex, Synchronized, RWLock, ScopeLock.
+* Multithreading: Thread, Job, Mutex, Synchronized, RWLock, ScopeLock, Atomic.
 * Nonblocking native console: input and output are asynchronous (input string is always on the bottom line).
 * Serialization system: entities can be serialized in binary or text (json and xml formats are supported) form.
 * Modern error handling: ut::Result (similar to std::Expected) and ut::Optional (same as std::Optional).
-* Move semantics: ut::Move.
+* ut::Function (similar to std::function) and ut::Task.
 * Signal and slots: ut::Signal (similar to 'signal2' library of boost).
 * Network: ut::Socket and ut::Client/ut::Server for client-server model (still is experimental).
 * Encryption: Sha2, Bpkdf2, HMac, AES128.
+* Advanced thread pool with combiner that supports recursion.
+* 'ut_c03' branch supports c++03.
 
 ### Contribute
 

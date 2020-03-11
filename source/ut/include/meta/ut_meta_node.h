@@ -23,27 +23,8 @@ public:
 	//    @param in_name - name of the parameter
 	//    @param in_id - id of the parameter
 	Node(const SharedPtr<BaseParameter>& in_parameter,
-	     const String& in_name,
+	     String in_name,
 		 uint32 in_id);
-
-	// Constructor
-	//    @param in_parameter - shared pointer to a parameter
-	//                          that represents a reflected object
-	//    @param in_name - r-value reference to the name of the parameter
-	//    @param in_id - id of the parameter
-#if CPP_STANDARD >= 2011
-	Node(const SharedPtr<BaseParameter>& in_parameter,
-	     String&& in_name,
-		 uint32 in_id);
-#endif
-
-	// Copy constructor
-	Node(const Node& copy);
-
-	// Move constructor
-#if CPP_STANDARD >= 2011
-	Node(Node&& ref);
-#endif
 
 	// shared pointer to the parameter that represents a reflected object
 	SharedPtr<BaseParameter> parameter;

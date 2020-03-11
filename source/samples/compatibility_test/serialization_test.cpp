@@ -128,9 +128,9 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 	// make a copy of provided info structure to override slot for the log
 	// signal, so that we could intercept serialization event's description.
 	ut::meta::Info info(in_info);
-	ut::MemberInvoker<void (SerializationVariantsTask::*)(const ut::String&)>
-		log_entry_slot(&SerializationVariantsTask::AddReportEntry, this);
-	info.ConnectLogSignalSlot(log_entry_slot);
+	auto report_function = ut::MemberFunction<SerializationVariantsTask, void(const ut::String&)>
+		(this, &SerializationVariantsTask::AddReportEntry);
+	info.ConnectLogSignalSlot(ut::Move(report_function));
 
 	// create and change the object
 	bool is_mutable = info.HasTypeInformation() && info.HasBinaryNames();

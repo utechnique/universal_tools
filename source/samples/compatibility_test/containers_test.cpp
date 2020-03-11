@@ -489,7 +489,6 @@ void AVLTreeTask::Execute()
 	}
 
 	// move constructor test
-#if CPP_STANDARD >= 2011
 	report += ut::CRet() + "move constructor: ";
 	ut::AVLTree<int, ut::String> tree_move(ut::Move(tree));
 	ut::Optional<ut::String&> move0_find_result = tree_move.Find(128);
@@ -519,10 +518,8 @@ void AVLTreeTask::Execute()
 		failed_test_counter.Increment();
 		return;
 	}
-#endif // CPP_STANDARD >= 2011
 
 	// move assignment test
-#if CPP_STANDARD >= 2011
 	report += ut::CRet() + "move assignment: ";
 	tree = ut::Move(tree_copy0);
 	ut::Optional<ut::String&> move1_find_result = tree.Find(128);
@@ -552,7 +549,6 @@ void AVLTreeTask::Execute()
 		failed_test_counter.Increment();
 		return;
 	}
-#endif // CPP_STANDARD >= 2011
 }
 
 //----------------------------------------------------------------------------//
@@ -712,14 +708,12 @@ void OptionalTask::Execute()
 	}
 	else
 	{
-#if CPP_STANDARD >= 2011
 		if (test_str.GetNum() > 0)
 		{
 			report += "fail! string was copied instead of being moved.";
 			failed_test_counter.Increment();
 			return;
 		}
-#endif
 	}
 
 	// move assignment
@@ -771,14 +765,12 @@ void ResultTask::Execute()
 
 	ut::String test_move_str;
 	test_move_str = test_result.MoveResult();
-#if CPP_STANDARD >= 2011
 	if (test_str.GetNum() != 0)
 	{
 		report += "fail! string was copied instead of being moved.";
 		failed_test_counter.Increment();
 		return;
 	}
-#endif
 
 	ut::Result<const ut::String&, int> const_result(test_const_str);
 	ut::String test_copy_str = const_result.GetResult();
@@ -815,14 +807,12 @@ void PairTask::Execute()
 	ut::Pair<ut::String&, ut::String> pair_0(test_str_0, "pair");
 	ut::Pair<ut::String&, ut::String> pair_1(Move(pair_0));
 
-#if CPP_STANDARD >= 2011
 	if (pair_0.second.GetNum() != 0)
 	{
 		report += "fail! string was copied instead of being moved.";
 		failed_test_counter.Increment();
 		return;
 	}
-#endif
 
 	ut::Pair<int, const ut::String&> const_pair(24, test_const_str);
 	

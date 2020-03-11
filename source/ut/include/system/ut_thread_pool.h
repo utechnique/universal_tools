@@ -119,9 +119,8 @@ public:
 	void Enqueue(TaskPtr task)
 	{
 		// create and send a task to the pool
-		MemberInvoker<void(Scheduler::*)(TaskPtr)> invoker(&Scheduler::ExecuteTask, this);
-		Task<void(TaskPtr)> task_wrapper(invoker, Move(task));
-		pool.Enqueue(Move(task_wrapper));
+		auto function = MemberFunction<Scheduler, void(TaskPtr)>(this, &Scheduler::ExecuteTask);
+		pool.Enqueue(Task<void(TaskPtr)>(function, Move(task)));
 
 		// increment task counter
 		ScopeLock lock(mutex);
@@ -366,19 +365,6 @@ private:
 	ConditionVariable pool_cvar; // pool waits for a free worker
 };
 
-//----------------------------------------------------------------------------//
-// ut::ThreadPool::TaskType contains ut::UniquePtr thus needs to be constructed
-// via non-const reference for cpp standards older than c++11.
-#if CPP_STANDARD < 2011
-// ThreadPool::TaskType
-template<typename T>
-struct RefConstness< Task<void(UniquePtr< BaseTask<T> >)> >
-UT_SET_CONSTNESS(false)
-// Optional<ThreadPool::TaskType>
-template<typename T>
-struct RefConstness< Optional< Task<void(UniquePtr< BaseTask<T> >)> > >
-UT_SET_CONSTNESS(false)
-#endif // CPP_STANDARD < 2011
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

@@ -82,7 +82,7 @@ public:
 		while (!exit_request.Read())
 		{
 			// dispatch commands
-			commands = ui.DispatchCommands();
+			commands = ut::Move(ui.DispatchCommands());
 
 			// do something only if there is at least one command
 			if (commands.GetNum())
@@ -108,8 +108,7 @@ private:
 	// using this method.
 	ut::Array< ut::UniquePtr<UiCmd> > GrabCommands()
 	{
-		ut::Array< ut::UniquePtr<UiCmd> > out(commands);
-		commands.Empty();
+		ut::Array< ut::UniquePtr<UiCmd> > out(ut::Move(commands));
 		return out;
 	}
 
@@ -155,7 +154,7 @@ void DispatcherCallback(void* ptr)
 	UiDispatcherJob* job = static_cast<UiDispatcherJob*>(ptr);
 
 	// execute commands
-	ut::Array< ut::UniquePtr<UiCmd> > commands = job->GrabCommands();
+	ut::Array< ut::UniquePtr<UiCmd> > commands = ut::Move(job->GrabCommands());
 	for (size_t i = 0; i < commands.GetNum(); i++)
 	{
 		commands[i]->Execute();
@@ -264,9 +263,8 @@ DesktopUI::DesktopUI(Application& application) : app(application)
 		ClientUI* client_ui = new ClientUI(application, body_container.Get(), cfg.ui.lr_ratio, cfg.ui.tb_ratio);
 
 		// bind signals
-		ut::MemberInvoker<void (DesktopUI::*)(const ut::String&,
-		                                      const ut::net::HostAddress&)> msg_sent_callback(&DesktopUI::MessageSent, this);
-		client_ui->message_sent.Connect(msg_sent_callback);
+		auto function = ut::MemberFunction<DesktopUI, void(const ut::String&, const ut::net::HostAddress&)>(this, &DesktopUI::MessageSent);
+		client_ui->message_sent.Connect(ut::Move(function));
 
 		// set body pointer
 		body = client_ui;

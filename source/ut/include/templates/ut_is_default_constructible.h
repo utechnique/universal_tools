@@ -12,14 +12,11 @@ START_NAMESPACE(ut)
 // Check if class is default constructible
 namespace default_constructible_trait
 {
-	// Old gcc versions give invalid value for this expression.
-	// I can't figure out why. The only chance to cope with it -
-	// to derive class from ut::NonDefaultConstructible manually.
-	//
-	// broken variant: sizeof((T)T())
-	template<class T, void (T::*)()> struct Empty {};
-	template<class C> compile_time::no Check(Empty<C, &C::MarkAsNonConstructible>*);
-	template<class C> compile_time::yes Check(...);
+	template<typename _Tp, typename = decltype(_Tp())>
+	static compile_time::yes Check(int);
+
+	template<typename>
+	static compile_time::no Check(...);
 }
 
 template <class T>

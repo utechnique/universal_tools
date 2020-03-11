@@ -12,9 +12,6 @@
 #ifndef UT_UNIX
 #    define UT_UNIX 0
 #endif
-#ifndef UT_ANDROID
-#    define UT_ANDROID 0
-#endif
 
 // platform headers
 #if UT_WINDOWS
@@ -35,7 +32,7 @@
 #endif
 
 // define what platforms do not have console
-#define UT_NO_NATIVE_CONSOLE UT_ANDROID
+#define UT_NO_NATIVE_CONSOLE 0
 
 // enumeration of supported platforms
 enum UT_PLATFORM

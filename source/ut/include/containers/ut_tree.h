@@ -218,33 +218,33 @@ public:
 
 	// Constructor, @data has default value
 	BaseTree() : parent(nullptr), id(0)
-	{ }
+	{}
 
 	// Constructor, @data is copied from parameter
 	BaseTree(const DataType& data_copy) : data(data_copy), parent(nullptr), id(0)
-	{ }
+	{}
 
 	// Constructor, @data is moved from parameter
-#if CPP_STANDARD >= 2011
-	BaseTree(DataType && data_copy) : data(Move(data_copy)), parent(nullptr), id(0)
-	{ }
-#endif
+	BaseTree(DataType&& rval_data) : data(Move(rval_data)), parent(nullptr), id(0)
+	{}
 
 	// Copy constructor
 	BaseTree(const BaseTree& copy) : data(copy.data)
 	                               , parent(copy.parent)
 	                               , id(copy.id)
 	                               , child_nodes(copy.child_nodes)
-	{ }
+	{
+		ResetChildsId();
+	}
 
 	// Move constructor
-#if CPP_STANDARD >= 2011
-	BaseTree(BaseTree && rval) : data(Move(rval.data))
-	                           , parent(rval.parent)
-	                           , id(rval.id)
-	                           , child_nodes(Move(rval.child_nodes))
-	{ }
-#endif
+	BaseTree(BaseTree&& other) : data(Move(other.data))
+	                           , parent(other.parent)
+	                           , id(other.id)
+	                           , child_nodes(Move(other.child_nodes))
+	{
+		ResetChildsId();
+	}
 
 	// Assignment operator
 	BaseTree& operator = (const BaseTree& copy)
@@ -253,20 +253,20 @@ public:
 		parent = copy.parent;
 		id = copy.id;
 		child_nodes = copy.child_nodes;
+		ResetChildsId();
 		return *this;
 	}
 
 	// Move operator
-#if CPP_STANDARD >= 2011
-	BaseTree& operator = (BaseTree && rval)
+	BaseTree& operator = (BaseTree&& other)
 	{
-		data = Move(rval.data);
-		parent = rval.parent;
-		id = rval.id;
-		child_nodes = Move(rval.child_nodes);
+		data = Move(other.data);
+		parent = other.parent;
+		id = other.id;
+		child_nodes = Move(other.child_nodes);
+		ResetChildsId();
 		return *this;
 	}
-#endif
 
 	// Returns desired element from child array
 	inline NodeType& operator [] (const size_t id)
@@ -309,9 +309,8 @@ public:
 
 	// Moves new child node to the end of the array
 	// @data_copy is a constant reference
-	//    @param copy - new element
-#if CPP_STANDARD >= 2011
-	bool Add(NodeType && child_node)
+	//    @param child_node - r-value reference to a new element
+	bool Add(NodeType&& child_node)
 	{
 		if (!child_nodes.Add(Move(child_node)))
 		{
@@ -320,7 +319,6 @@ public:
 		ResetChildsId();
 		return true;
 	}
-#endif
 
 	// Adds new child node to the end of the array (reference)
 	// @data_copy is a constant reference
@@ -333,12 +331,10 @@ public:
 	// Adds new child node to the end of the array (r-value reference)
 	// uses move semantics to perform copying
 	//    @param copy - new element
-#if CPP_STANDARD >= 2011
-	bool Add(DataType && data_copy)
+	bool Add(DataType&& data_rval)
 	{
-		return EmplaceBack(Move(data_copy));
+		return EmplaceBack(Move(data_rval));
 	}
-#endif
 
 	// Inserts elements at the specified location in the container.
 	//    @param position - iterator before which the content will be inserted
@@ -355,12 +351,10 @@ public:
 	//    @param element - element to be moved
 	//    @return - 'true' if element was inserted successfully
 	//              'false' if not enough memory, or @position is out of range
-#if CPP_STANDARD >= 2011
-	bool Insert(size_t position, DataType && element)
+	bool Insert(size_t position, DataType&& element)
 	{
 		return Emplace(Move(element), position);
 	}
-#endif
 
 	// Inserts elements at the specified location in the container.
 	//    @param position - iterator before which the content will be inserted
@@ -385,8 +379,7 @@ public:
 	//    @param element - element to be moved
 	//    @return - 'true' if element was inserted successfully
 	//              'false' if not enough memory, or @position is out of range
-#if CPP_STANDARD >= 2011
-	bool Insert(typename Array<NodeType>::ConstIterator position, DataType && element)
+	bool Insert(typename Array<NodeType>::ConstIterator position, DataType&& element)
 	{
 		Optional<size_t> child_id = ConvertChildIdFromIterator(position);
 		if (child_id && Emplace(Move(element), child_id.Get()))
@@ -398,7 +391,6 @@ public:
 			return false;
 		}
 	}
-#endif
 
 	// Removes desired child element
 	//    @param node_id - index of the child node
@@ -532,11 +524,7 @@ protected:
 	//    @return - 'true' if element was inserted successfully
 	//              'false' if not enough memory, or @position is out of range
 	template <typename ArgType>
-#if CPP_STANDARD >= 2011
 	inline bool Emplace(ArgType && copy, size_t position)
-#else
-	inline bool Emplace(const ArgType& copy, size_t position)
-#endif
 	{
 		// insert new child node
 		if (!child_nodes.Insert(position, Forward<ArgType>(copy)))
@@ -558,11 +546,7 @@ protected:
 	//    @param copy - data to be copied
 	//    @return - true if succeeded
 	template <typename ArgType>
-#if CPP_STANDARD >= 2011
 	inline bool EmplaceBack(ArgType && copy)
-#else
-	inline bool EmplaceBack(const ArgType& copy)
-#endif
 	{
 		// add new node to the end of the array
 		if (!child_nodes.Add(NodeType(Forward<ArgType>(copy))))
@@ -707,10 +691,8 @@ public:
 	{ }
 
 	// Constructor, @data is moved from parameter
-#if CPP_STANDARD >= 2011
-	Tree(typename Base::DataType && data_rval_ref) : Base(data_rval_ref)
+	Tree(typename Base::DataType&& data_rval_ref) : Base(Move(data_rval_ref))
 	{ }
-#endif
 };
 
 //----------------------------------------------------------------------------//

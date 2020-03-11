@@ -3,31 +3,21 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-// True / False macro
-#define UT_TRUE 1
-#define UT_FALSE 0
+#include "common/ut_def.h"
+#include "common/ut_platform.h"
+#include "templates/ut_remove_ref.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ut)
+//----------------------------------------------------------------------------//
+// Casts a reference to an rvalue reference.
+template <typename T>
+FORCEINLINE typename RemoveReference<T>::Type&& Move(T&& ref)
+{
+	return (typename RemoveReference<T>::Type&&)ref;
+}
 
-// debug macros
-#ifdef NDEBUG
-	#define UT_DEBUG 0
-#else
-	#ifdef DEBUG
-		#define UT_DEBUG 1
-	#else
-		#define UT_DEBUG 0
-	#endif
-#endif
-
-// Enable to detect memory leaks
-#define UT_MEMORY_PROFILING UT_DEBUG
-
-// Enable to use Visual Leak Detector in visual studio
-#define UT_USE_VLD 0
-
-// General namespace macro
-#define START_NAMESPACE(__namespace) namespace __namespace {
-#define END_NAMESPACE(__namespace) }
-
+//----------------------------------------------------------------------------//
+END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

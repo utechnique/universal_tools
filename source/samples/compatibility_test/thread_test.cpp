@@ -6,8 +6,18 @@
 // Unit
 ThreadTestUnit::ThreadTestUnit() : TestUnit("THREAD")
 {
+	tasks.Add(new ThreadProcTask);
 	tasks.Add(new ThreadLauncherTask);
 	tasks.Add(new ThreadPoolTask);
+}
+
+//----------------------------------------------------------------------------//
+
+ThreadProcTask::ThreadProcTask() : TestTask("Thread Procedure") {}
+
+void ThreadProcTask::Execute()
+{
+	ut::Thread thread(new ut::Task<void()>([this] { this->report += "Hello from another thread. Success."; }));
 }
 
 //----------------------------------------------------------------------------//
@@ -23,8 +33,9 @@ void ThreadLauncherTask::Execute()
 
 	ut::Synchronized<int> sa;
 	sa.Set(12);
-	ut::Synchronized<int> sb(sa);
-	sb = sa;
+	ut::Synchronized<int> sb(ut::Move(sa));
+	ut::Synchronized<int> sc;
+	sc = ut::Move(sb);
 
 	ut::UniquePtr<ut::Thread> thread2;
 
@@ -124,8 +135,8 @@ public:
 		ut::Scheduler<int, SumPoolCombiner<int>, sync_method> sum_scheduler = pool.template CreateScheduler< SumPoolCombiner<int> >();
 		for (ut::uint32 i = 0; i < series; i++)
 		{
-			ut::MemberInvoker<int (PoolTest::*)(ut::String, ut::ThreadPool<int, sync_method>&)> invoker(&PoolTest::ExecuteRecursive<sync_method>, &test_obj[i]);
-			ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String, ut::ThreadPool<int, sync_method>&)>(invoker, arg + ut::Print(depth), pool));
+			auto function = ut::MemberFunction<PoolTest, int(ut::String, ut::ThreadPool<int, sync_method>&)>(&test_obj[i], &PoolTest::ExecuteRecursive<sync_method>);
+			ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String, ut::ThreadPool<int, sync_method>&)>(function, arg + ut::Print(depth), pool));
 			sum_scheduler.Enqueue(ut::Move(task));
 		}
 		SumPoolCombiner<int>& sum_combiner = sum_scheduler.WaitForCompletion();
@@ -144,13 +155,6 @@ private:
 	ThreadPoolTask& owner;
 };
 
-int test_f(const char* str)
-{
-	ut::log << str << ut::cret;
-	return 10;
-}
-
-
 void ThreadPoolTask::Execute()
 {
 	const ut::uint32 series = 16;
@@ -167,8 +171,8 @@ void ThreadPoolTask::Execute()
 	ut::Scheduler<void, ut::DefaultCombiner<void>, ut::pool_sync::cond_var> scheduler = pool->CreateScheduler();
 	for (ut::uint32 i = 0; i < series; i++)
 	{
-		ut::MemberInvoker<void (PoolTest::*)()> invoker(&PoolTest::ExecuteVoid, &test_obj[i]);
-		ut::UniquePtr< ut::BaseTask<void> > task(new ut::Task<void()>(invoker));
+		auto function = ut::MemberFunction<PoolTest, void()>(&test_obj[i], &PoolTest::ExecuteVoid);
+		ut::UniquePtr< ut::BaseTask<void> > task(new ut::Task<void()>(function));
 		scheduler.Enqueue(ut::Move(task));
 	}
 	scheduler.WaitForCompletion();
@@ -181,8 +185,8 @@ void ThreadPoolTask::Execute()
 	ut::Scheduler<int, SumPoolCombiner<int>, ut::pool_sync::cond_var > sum_scheduler = int_pool.CreateScheduler< SumPoolCombiner<int> >();
 	for (ut::uint32 i = 0; i < series; i++)
 	{
-		ut::MemberInvoker<int (PoolTest::*)(ut::String)> invoker(&PoolTest::Execute, &test_obj[i]);
-		ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String)>(invoker, ut::String("o")));
+		auto function = ut::MemberFunction<PoolTest, int(ut::String)>(&test_obj[i], &PoolTest::Execute);
+		ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String)>(function, ut::String("o")));
 		sum_scheduler.Enqueue(ut::Move(task));
 	}
 	SumPoolCombiner<int>& sum_combiner = sum_scheduler.WaitForCompletion();
@@ -200,8 +204,8 @@ void ThreadPoolTask::Execute()
 	report += ut::String("Starting recursive pool test (cvar):") + ut::cret + "    ";
 	for (ut::uint32 i = 0; i < series; i++)
 	{
-		ut::MemberInvoker<int (PoolTest::*)(ut::String, ut::ThreadPool<int>&)> invoker(&PoolTest::ExecuteRecursive<ut::pool_sync::cond_var>, &test_obj[i]);
-		ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String, ut::ThreadPool<int>&)>(invoker, ut::String("o"), int_pool));
+		auto function = ut::MemberFunction<PoolTest, int(ut::String, ut::ThreadPool<int, ut::pool_sync::cond_var>&)>(&test_obj[i], &PoolTest::ExecuteRecursive<ut::pool_sync::cond_var>);
+		ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String, ut::ThreadPool<int, ut::pool_sync::cond_var>&)>(function, ut::String("o"), int_pool));
 		sum_scheduler.Enqueue(ut::Move(task));
 	}
 	SumPoolCombiner<int>& rec_combiner = sum_scheduler.WaitForCompletion();
@@ -221,8 +225,8 @@ void ThreadPoolTask::Execute()
 	ut::Scheduler<int, SumPoolCombiner<int>, ut::pool_sync::atomic > sum_scheduler_atomics = int_pool_atomic.CreateScheduler< SumPoolCombiner<int> >();
 	for (ut::uint32 i = 0; i < series; i++)
 	{
-		ut::MemberInvoker<int (PoolTest::*)(ut::String, ut::ThreadPool<int, ut::pool_sync::atomic>&)> invoker(&PoolTest::ExecuteRecursive<ut::pool_sync::atomic>, &test_obj[i]);
-		ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String, ut::ThreadPool<int, ut::pool_sync::atomic>&)>(invoker, ut::String("o"), int_pool_atomic));
+		auto function = ut::MemberFunction<PoolTest, int(ut::String, ut::ThreadPool<int, ut::pool_sync::atomic>&)>(&test_obj[i], &PoolTest::ExecuteRecursive<ut::pool_sync::atomic>);
+		ut::UniquePtr< ut::BaseTask<int> > task(new ut::Task<int(ut::String, ut::ThreadPool<int, ut::pool_sync::atomic>&)>(function, ut::String("o"), int_pool_atomic));
 		sum_scheduler_atomics.Enqueue(ut::Move(task));
 	}
 	SumPoolCombiner<int>& rec_combiner_atomics = sum_scheduler_atomics.WaitForCompletion();

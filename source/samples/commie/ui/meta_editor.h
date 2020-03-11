@@ -165,9 +165,6 @@ private:
 class MetaEditorTextField : public MetaEditorWidget
 {
 public:
-	// Inform UT that this class has no default constructor.
-	UT_NO_DEFAULT_CONSTRUCTOR
-
 	// Constructor, creates input text field widget, note that @value_type
 	// of the provided @node can hold type name. If it is integer or float
 	// then only digits and dot are allowed for input.
@@ -205,9 +202,6 @@ private:
 class MetaEditorCheckbox : public MetaEditorWidget
 {
 public:
-	// Inform UT that this class has no default constructor.
-	UT_NO_DEFAULT_CONSTRUCTOR
-
 	// Constructor, creates checkbox widget.
 	//    @param node - reference to the managed text node.
 	//    @param left - left (x) position of the widget.

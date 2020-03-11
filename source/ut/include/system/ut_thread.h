@@ -9,6 +9,7 @@
 #include "system/ut_mutex.h"
 #include "system/ut_lock.h"
 #include "system/ut_atomic.h"
+#include "templates/ut_task.h"
 //----------------------------------------------------------------------------//
 #if UT_WINDOWS
 // 'Yield()' macro of WinBase.h spoils ut::this_thread::Yield() function's name.
@@ -97,6 +98,10 @@ public:
 	//                 called asynchronously in separate thread
 	Thread(UniquePtr<Job> job);
 
+	// Constructor, launches provided task in a new thread.
+	//    @param proc - task to be executed in a new thread.
+	Thread(UniquePtr< BaseTask<void> > proc);
+
 	// Destructor, sends exit request to the @job, and wait it's completion,
 	// then thread object is destroyed. Use Kill() if you don't want to
 	// wait the completion, but consider that's a bad practice to violently
@@ -124,16 +129,18 @@ public:
 	void Kill();
 
 private:
-	// Starts a new thread, Windows realization uses _beginthreadex() to run
-	// a thread, Linux realization uses pthread_create(), Android uses the
-	// same as linux, but overrides pthread signals to avoid run-time errors.
+	// Starts a new thread with a job, windows realization uses _beginthreadex() to run
+	// a thread, Linux realization uses pthread_create().
 	Optional<Error> Start();
 
 	// Entry function for the new thread, calls job_ptr->Execute() internally
-	static THREAD_PROCEDURE Entry(Job* job_ptr);
+	static THREAD_PROCEDURE Entry(BaseTask<void>* proc);
 
 	// Job to be executed
 	UniquePtr<Job> job;
+
+	// procedure
+	UniquePtr< BaseTask<void> > task;
 
 	// Thread handle, used only in windows
 	ThreadHandle handle;

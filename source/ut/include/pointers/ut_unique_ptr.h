@@ -45,24 +45,13 @@ public:
 	// Default constructor, you should never use @ptr after passing it here
 	//    @param ptr - object's pointer
 	UniquePtr(ElementType* ptr = nullptr) : pointer(ptr)
-	{ }
-
-	// Copy constructor, for cpp standard older than 2011
-	// use ut::Move for newer dialects
-	//    @param copy - another ut::Ptr object to copy from
-	//                  @copy will be discarded after copying
-#if CPP_STANDARD < 2011
-	UniquePtr(UniquePtr& copy) : pointer(copy.Discard())
-	{ }
-#endif
+	{}
 
 	// Move constructor
 	//    @param copy - another ut::Ptr object to copy from
 	//                  @copy will be discarded after copying
-#if CPP_STANDARD >= 2011
-	UniquePtr(UniquePtr && copy) : pointer(copy.Discard())
-	{ }
-#endif
+	UniquePtr(UniquePtr&& other) : pointer(other.Discard())
+	{}
 
 	// Destructor, deletes @pointer object
 	~UniquePtr()
@@ -73,27 +62,14 @@ public:
 		}
 	}
 
-	// Assignment operator
-	//    @param copy - another ut::Ptr object to copy from
-	//                  @copy will be discarded after copying
-#if CPP_STANDARD < 2011
-	UniquePtr& operator = (UniquePtr& copy)
-	{
-		Switch(copy.Discard());
-		return *this;
-	}
-#endif
-
 	// Move operator
 	//    @param copy - another ut::Ptr object to copy from
 	//                  @copy will be discarded after copying
-#if CPP_STANDARD >= 2011
 	UniquePtr& operator = (UniquePtr && copy)
 	{
 		Switch(copy.Discard());
 		return *this;
 	}
-#endif
 
 	// Assignment operator, retrives raw pointer as an argument
 	//    @param ptr - new object's pointer, old one is to be deleted
@@ -252,37 +228,6 @@ protected:
 };
 
 //----------------------------------------------------------------------------//
-// C++03 (and older standards) doesn't support r-value references and move
-// semantics. It means that all containers holding ut::UniquePtr can't be copied
-// because ut::UniquePtr requires non-const reference for copy constructor.
-// The only way to solve this issue somehow - is to specialize ut::RefConstness
-// for all such containers as a non-const reference, so that they could use
-// ut::LValRef instead of raw const reference in copy constructor.
-// Of course it's insanity to specialize all possible container types
-// here, but we can try to do this with some frequently used ones to
-// to provide at least minimum level of compatibility.
-#if CPP_STANDARD < 2011
-// ut::UniquePtr
-template <typename T> struct RefConstness< UniquePtr<T> > UT_SET_CONSTNESS(false)
-// ut::Pair
-template<typename T1, typename T2> struct RefConstness< Pair< UniquePtr<T1>, T2 > > UT_SET_CONSTNESS(false)
-template<typename T1, typename T2> struct RefConstness< Pair< T1, UniquePtr<T2> > > UT_SET_CONSTNESS(false)
-template<typename T1, typename T2> struct RefConstness< Pair< UniquePtr<T1>, UniquePtr<T2> > > UT_SET_CONSTNESS(false)
-// ut::BaseArray
-template <typename T> struct RefConstness< BaseArray< UniquePtr<T> > > UT_SET_CONSTNESS(false)
-template<typename T1, typename T2> struct RefConstness< BaseArray< Pair< UniquePtr<T1>, T2 > > > UT_SET_CONSTNESS(false)
-template<typename T1, typename T2> struct RefConstness< BaseArray< Pair< T1, UniquePtr<T2> > > > UT_SET_CONSTNESS(false)
-template<typename T1, typename T2> struct RefConstness< BaseArray< Pair< UniquePtr<T1>, UniquePtr<T2> > > > UT_SET_CONSTNESS(false)
-// ut::Array
-template <typename T> struct RefConstness< Array< UniquePtr<T> > > UT_SET_CONSTNESS(false)
-template<typename T1, typename T2> struct RefConstness< Array< Pair< UniquePtr<T1>, T2 > > > UT_SET_CONSTNESS(false)
-template<typename T1, typename T2> struct RefConstness< Array< Pair< T1, UniquePtr<T2> > > > UT_SET_CONSTNESS(false)
-template<typename T1, typename T2> struct RefConstness< Array< Pair< UniquePtr<T1>, UniquePtr<T2> > > > UT_SET_CONSTNESS(false)
-// ut::Map
-template <typename T1, typename T2> struct RefConstness< Map< T1, UniquePtr<T2> > > UT_SET_CONSTNESS(false)
-#endif
-
-//----------------------------------------------------------------------------//
 // Comparison operators for ut::UniquePtr
 template <class T1, class T2>
 inline bool operator == (const UniquePtr<T1>& left, const UniquePtr<T2>& right)
@@ -311,267 +256,41 @@ inline bool operator <= (const UniquePtr<T1>& left, const UniquePtr<T2>& right)
 
 //----------------------------------------------------------------------------//
 // Comparison operators for ut::UniquePtr with nullptr_t type
-#if CPP_STANDARD >= 2011
-	template <class T> inline bool operator == (const UniquePtr<T>& left, nullptr_t)
-	{ return left.Get() == nullptr; }
+template <class T> inline bool operator == (const UniquePtr<T>& left, nullptr_t)
+{ return left.Get() == nullptr; }
 
-	template <class T> inline bool operator == (nullptr_t, const UniquePtr<T>& right)
-	{ return nullptr == right.Get(); }
+template <class T> inline bool operator == (nullptr_t, const UniquePtr<T>& right)
+{ return nullptr == right.Get(); }
 
-	template <class T> inline bool operator != (const UniquePtr<T>& left, nullptr_t)
-	{ return left.Get() != nullptr; }
+template <class T> inline bool operator != (const UniquePtr<T>& left, nullptr_t)
+{ return left.Get() != nullptr; }
 
-	template <class T> inline bool operator != (nullptr_t, const UniquePtr<T>& right)
-	{ return nullptr != right.Get(); }
+template <class T> inline bool operator != (nullptr_t, const UniquePtr<T>& right)
+{ return nullptr != right.Get(); }
 
-	template <class T> inline bool operator > (const UniquePtr<T>& left, nullptr_t)
-	{ return left.Get() > nullptr; }
+template <class T> inline bool operator > (const UniquePtr<T>& left, nullptr_t)
+{ return left.Get() > nullptr; }
 
-	template <class T> inline bool operator > (nullptr_t, const UniquePtr<T>& right)
-	{ return nullptr > right.Get(); }
+template <class T> inline bool operator > (nullptr_t, const UniquePtr<T>& right)
+{ return nullptr > right.Get(); }
 
-	template <class T> inline bool operator >= (const UniquePtr<T>& left, nullptr_t)
-	{ return left.Get() >= nullptr; }
+template <class T> inline bool operator >= (const UniquePtr<T>& left, nullptr_t)
+{ return left.Get() >= nullptr; }
 
-	template <class T> inline bool operator >= (nullptr_t, const UniquePtr<T>& right)
-	{ return nullptr >= right.Get(); }
+template <class T> inline bool operator >= (nullptr_t, const UniquePtr<T>& right)
+{ return nullptr >= right.Get(); }
 
-	template <class T> inline bool operator < (const UniquePtr<T>& left, nullptr_t)
-	{ return left.Get() < nullptr; }
+template <class T> inline bool operator < (const UniquePtr<T>& left, nullptr_t)
+{ return left.Get() < nullptr; }
 
-	template <class T> inline bool operator < (nullptr_t, const UniquePtr<T>& right)
-	{ return nullptr < right.Get(); }
+template <class T> inline bool operator < (nullptr_t, const UniquePtr<T>& right)
+{ return nullptr < right.Get(); }
 
-	template <class T> inline bool operator <= (const UniquePtr<T>& left, nullptr_t)
-	{ return left.Get() <= nullptr; }
+template <class T> inline bool operator <= (const UniquePtr<T>& left, nullptr_t)
+{ return left.Get() <= nullptr; }
 
-	template <class T> inline bool operator <= (nullptr_t, const UniquePtr<T>& right)
-	{ return nullptr <= right.Get(); }
-#endif // CPP_STANDARD >= 2011
-
-//----------------------------------------------------------------------------//
-// struct ut::ArrPtrRefCast is a proxy structure for ut::Array<ut::UniquePtr>
-// convertions. C++03 doesn't support r-value references and move semantics, so
-// we need to implement UniquePtr copy constructor with non-reference (but a
-// full object) parameter. This is done via intermediate structure ut::ArrPtrRefCast.
-template<typename T>
-struct ArrPtrRefCast
-{
-	// Constructor
-	explicit ArrPtrRefCast(UniquePtr<T>* p,
-	                       size_t n,
-	                       size_t r) : arr(p), num(n), rsv(r)
-	{ }
-
-	// raw ut::Array members for initialization of the new ut::Array object
-	// without actual copy-constructing elements of the array.
-	UniquePtr<T>* arr;
-	size_t        num;
-	size_t        rsv;
-};
-
-//----------------------------------------------------------------------------//
-// class ut::Array< UniquePtr<T> > is ut::BaseArray template specialization, that
-// supports operations with ut::Ptr. It's impossible to use 'unique' smart
-// pointer inside usual array container for cpp dialects older than C++11.
-// ut::Array<Ptr> implements safe copying and adding unique pointers for arrays.
-template<typename T>
-class Array< UniquePtr<T> > : public BaseArray< UniquePtr<T> >
-{
-	typedef UniquePtr<T> ElementType;
-	typedef BaseArray< UniquePtr<T> > Base;
-public:
-	// Default constructor
-	Array()
-	{ }
-
-	// Constructor, creates @num_elements new empty elements
-	//    @param num_elements - how many elements to be initialized
-	Array(size_t num_elements) : Base(num_elements)
-	{ }
-
-	// Constructor, copies content of another array
-	//    @param copy - array to copy
-	Array(Array& copy) : Base()
-	{
-		if (!Base::Resize(copy.GetNum()))
-		{
-			ThrowError(error::out_of_memory);
-		}
-
-		for (size_t i = 0; i < Base::num; i++)
-		{
-			Base::arr[i] = Move(copy[i]);
-		}
-
-		copy.Empty();
-	}
-
-	// Constructor, moves content of another array
-	//    @param copy - array to copy
-#if CPP_STANDARD >= 2011
-	Array(Array && copy) : Base(Move(copy))
-	{
-		copy.arr = nullptr;
-		copy.num = 0;
-		copy.reserved_elements = 0;
-	}
-#endif
-
-	// Assignment operator
-	//    @param copy - array to copy
-	Array& operator = (Array& copy)
-	{
-		Base::Empty();
-
-		if (!Base::Resize(copy.GetNum()))
-		{
-			ThrowError(error::out_of_memory);
-		}
-
-		for (size_t i = 0; i < Base::num; i++)
-		{
-			Base::arr[i] = Move(copy[i]);
-		}
-
-		copy.Empty();
-
-		return *this;
-	}
-
-	// Assignment (move) operator, moves content of another array
-	//    @param copy - array to copy
-#if CPP_STANDARD >= 2011
-	Array& operator = (Array && copy)
-	{
-		return static_cast<Array&>(Base::operator = (Move(copy)));
-	}
-#endif
-
-	// Addition assignment operator
-	Array& operator +=(typename RValRef<Array>::Type other)
-	{
-		return static_cast<Array&>(Base::operator += (ut::Move(other)));
-	}
-
-	// Adds new element to the end of the array (r-value reference)
-	// uses move semantics to perform copying
-	//    @param copy - new element
-#if CPP_STANDARD >= 2011
-	inline bool Add(ElementType && copy)
-	{
-		return Base::Add(Move(copy));
-	}
-#endif // CPP_STANDARD >= 2011
-
-	// Adds new element to the end of the array (reference), @copy is a constant
-	//    @param copy - new element
-	inline bool Add(typename LValRef<ElementType>::Type copy)
-	{
-		return Base::Add(copy);
-	}
-
-	// Adds new element to the end of the array
-	//    @param ptr - pointer to the new element
-	bool Add(T* ptr)
-	{
-		Base::num++;
-		if (Base::Realloc())
-		{
-			new(Base::arr + Base::num - 1) UniquePtr<T>(ptr);
-			return true;
-		}
-		else
-		{
-			Base::num--;
-			return false;
-		}
-	}
-
-	// Makes copies for every element, nothing is swapped
-	//    @param copy - array to copy
-	bool Copy(const Array& copy)
-	{
-		Base::Empty();
-
-		if (!Base::Resize(copy.GetNum()))
-		{
-			return false;
-		}
-
-		for (size_t i = 0; i < Base::num; i++)
-		{
-			T* new_element = new T(copy[i].GetRef());
-			new(Base::arr + i) UniquePtr<T>(new_element);
-		}
-	}
-
-	// Conversion constructor from value
-	Array< ElementType  >(ArrPtrRefCast<T> __ref)
-	{
-		// just assign members without copying array elements
-		Base::arr = __ref.arr;
-		Base::num = __ref.num;
-		Base::reserved_elements = __ref.rsv;
-	}
-
-	// Conversion assignment from value
-	Array< ElementType  >& operator = (ArrPtrRefCast<T> __ref)
-	{
-		if (__ref.arr != Base::arr)
-		{
-			// destruct current elements
-			Base::Empty();
-			
-			// just assign members without copying array elements
-			Base::arr = __ref.arr;
-			Base::num = __ref.num;
-			Base::reserved_elements = __ref.rsv;
-		}
-		return *this;
-	}
-
-	// This operation converts ut::Array<ut::UniquePtr> into and from an ut::ArrPtrRefCast
-	// automatically as needed.
-	template<typename _Tp1>
-	operator ArrPtrRefCast<_Tp1>()
-	{
-		// store temporary variables
-		UniquePtr<T>* __arr = Base::arr;
-		size_t        __num = Base::num;
-		size_t        __rsv = Base::reserved_elements;
-
-		// release memory without destruction
-		Base::arr = nullptr;
-		Base::num = 0;
-		Base::reserved_elements = 0;
-
-		// construct ref-caster from the temporary variables
-		return ArrPtrRefCast<_Tp1>(__arr, __num, __rsv);
-	}
-
-	// This operation converts ut::Array<ut::UniquePtr> into and from value (without copying).
-	template<typename _Tp1>
-	operator Array< UniquePtr<_Tp1> >()
-	{
-		// store temporary variables
-		UniquePtr<T>* __arr = Base::arr;
-		size_t        __num = Base::num;
-		size_t        __rsv = Base::reserved_elements;
-
-		// release memory without destruction
-		Base::arr = nullptr;
-		Base::num = 0;
-		Base::reserved_elements = 0;
-
-		// construct new array from the temporary variables
-		return Array< UniquePtr<_Tp1>  >(__arr, __num, __rsv);
-	}
-
-private:
-	// Additive promotion operator is prohibited.
-	Array operator +(const Array&) const PROHIBITED;
-};
+template <class T> inline bool operator <= (nullptr_t, const UniquePtr<T>& right)
+{ return nullptr <= right.Get(); }
 
 //----------------------------------------------------------------------------//
 // Specialize type name function for unique ptr

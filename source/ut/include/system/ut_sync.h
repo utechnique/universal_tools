@@ -17,27 +17,28 @@ START_NAMESPACE(ut)
 // received from calling ut::Sync::Lock(), but not ut::SyncRW::Get(),
 // ut::SyncRW::Set() or assignment operator.
 template<typename T>
-class Synchronized
+class Synchronized : public NonCopyable
 {
 public:
 	// Default constructor
 	Synchronized() {}
 
-	// Copy constructor, @object is safely extracted from @copy
-	Synchronized(Synchronized& copy) : object(copy.Get()) {}
+	// Move constructor
+	Synchronized(Synchronized&& other) : object(Move(other.object))
+	                                   , m(Move(other.m))
+	{}
 
-	// Copy constructor, @object is explicitly copied from @copy
-	Synchronized(typename LValRef<T>::Type copy) : object(copy) {}
+	// Constructor, @object is explicitly copied from @copy
+	Synchronized(const T& copy) : object(copy) {}
 
-	// Move constructor, @object is explicitly copied from @copy
-#if CPP_STANDARD >= 2011
+	// Constructor, @object is explicitly copied from @copy
 	Synchronized(T&& rval) : object(Move(rval)) {}
-#endif
 
-	// Assignment operator, @object is safely extracted from @copy
-	Synchronized& operator = (Synchronized& copy)
+	// Move operator
+	Synchronized& operator = (Synchronized&& other)
 	{
-		Set(copy.Get());
+		object = Move(other.object);
+		m = Move(other.m);
 		return *this;
 	}
 
@@ -47,6 +48,7 @@ public:
 		Set(copy);
 		return *this;
 	}
+
 
 	// Getter function, safely returns a copy of managed object
 	//    @return - copy(!) of the @object
@@ -70,20 +72,18 @@ public:
 	}
 
 	// Setter function, @object is safely extracted from @copy
-	void Set(typename LValRef<T>::Type copy)
+	void Set(const T& copy)
 	{
 		ScopeLock scl(m);
 		object = copy;
 	}
 
 	// Setter function, @object is moved from @rval
-#if CPP_STANDARD >= 2011
 	void Set(T&& rval)
 	{
 		ScopeLock scl(m);
 		object = Move(rval);
 	}
-#endif
 
 private:
 	// Managed object
@@ -116,9 +116,7 @@ public:
 	SyncRW(const T& copy) : object(copy) {}
 
 	// Move constructor, @object is explicitly copied from @copy
-#if CPP_STANDARD >= 2011
 	SyncRW(T&& rval) : object(Move(rval)) {}
-#endif
 
 	// Assignment operator, @object is safely extracted from @copy
 	SyncRW& operator = (SyncRW& copy)
@@ -163,13 +161,11 @@ public:
 	}
 
 	// Setter function, @object is moved from @rval
-#if CPP_STANDARD >= 2011
 	void Set(T&& rval)
 	{
 		ScopeRWLock scl(lock, access_write);
 		object = Move(rval);
 	}
-#endif
 
 private:
 	// Managed object

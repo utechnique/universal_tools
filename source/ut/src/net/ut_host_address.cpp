@@ -18,36 +18,6 @@ HostAddress::HostAddress(const String& in_ip, int in_port) : ip(in_ip)
                                                            , port((int)in_port)
 {}
 
-// Copy constructor, @ip and @port are copied
-HostAddress::HostAddress(const HostAddress& copy) : ip(copy.ip), port(copy.port)
-{}
-
-// Move constructor, @ip is moved, @port is copied
-#if CPP_STANDARD >= 2011
-HostAddress::HostAddress(HostAddress && copy) : ip(Move(copy.ip)), port(copy.port)
-{
-
-}
-#endif
-
-// Assignment operator, both @ip and @port are copied
-HostAddress& HostAddress::operator = (const HostAddress& copy)
-{
-	ip = copy.ip;
-	port = copy.port;
-	return *this;
-}
-
-// Move operator, @ip is moved, @port is copied
-#if CPP_STANDARD >= 2011
-HostAddress& HostAddress::operator = (HostAddress && copy)
-{
-	ip = Move(copy.ip);
-	port = copy.port;
-	return *this;
-}
-#endif
-
 // Comparison operator
 //    @param address - address to compare with
 bool HostAddress::operator == (const HostAddress& address) const

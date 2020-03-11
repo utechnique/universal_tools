@@ -18,9 +18,6 @@ TestManager::TestManager()
 {
 	units.Add(new ContainersTestUnit);
 	units.Add(new StringTestUnit);
-#if !UT_ANDROID
-	units.Add(new FileTestUnit);
-#endif
 	units.Add(new ThreadTestUnit);
 	units.Add(new SignalTestUnit);
 	units.Add(new NetTestUnit);

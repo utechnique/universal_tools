@@ -79,9 +79,8 @@ public:
 	void Enqueue(TaskPtr task)
 	{
 		atomics::interlocked::Increment(&counter);
-		MemberInvoker<void(Scheduler::*)(TaskPtr)> invoker(&Scheduler::ExecuteTask, this);
-		Task<void(TaskPtr)> task_wrapper(invoker, Move(task));
-		pool.Enqueue(Move(task_wrapper));
+		auto function = MemberFunction<Scheduler, void(TaskPtr)>(this, &Scheduler::ExecuteTask);
+		pool.Enqueue(Task<void(TaskPtr)>(function, Move(task)));
 	}
 
 	// Waits until all tasks finish.

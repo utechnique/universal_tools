@@ -3,10 +3,6 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#if CPP_STANDARD < 2011 && UT_WINDOWS
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-//----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "preprocessor/ut_array_arguments.h"
 //----------------------------------------------------------------------------//
@@ -310,7 +306,6 @@ inline int VStrScan(const T* buffer, const T* format, va_list arg_list)
 	return 0;
 }
 
-#if (CPP_STANDARD >= 2011 || !UT_WINDOWS) && !UT_ANDROID
 //----------------------------------------------------------------------------//
 // StrScan spec for 'char' type
 template<> inline int VStrScan<char>(const char* buffer, const char* format, va_list arg_list)
@@ -331,144 +326,6 @@ template<> inline int VStrScan<wchar>(const wchar* buffer, const wchar* format, 
 	return vswscanf(buffer, format, arg_list);
 #endif
 }
-#else
-// StrScanfT() is a replacement for vsscanf(), but pointer is used instead of va_list
-//    @param arg_num - number of arguments('%' parameters)
-//    @param p - pointer to the array of parameters
-template <typename T>
-inline int StrScanfT(const T* str, int arg_num, const T* format, void** p);
-
-// StrScanfT() spec for 'char' type
-template<> inline int StrScanfT<char>(const char* str, int arg_num, const char* format, void** p)
-{
-	switch (arg_num)
-	{
-	case  0: return 0;
-	case  1: return sscanf(str, format, UT_ARGS_1(p));
-	case  2: return sscanf(str, format, UT_ARGS_2(p));
-	case  3: return sscanf(str, format, UT_ARGS_3(p));
-	case  4: return sscanf(str, format, UT_ARGS_4(p));
-	case  5: return sscanf(str, format, UT_ARGS_5(p));
-	case  6: return sscanf(str, format, UT_ARGS_6(p));
-	case  7: return sscanf(str, format, UT_ARGS_7(p));
-	case  8: return sscanf(str, format, UT_ARGS_8(p));
-	case  9: return sscanf(str, format, UT_ARGS_9(p));
-	case 10: return sscanf(str, format, UT_ARGS_10(p));
-	case 11: return sscanf(str, format, UT_ARGS_11(p));
-	case 12: return sscanf(str, format, UT_ARGS_12(p));
-	case 13: return sscanf(str, format, UT_ARGS_13(p));
-	case 14: return sscanf(str, format, UT_ARGS_14(p));
-	case 15: return sscanf(str, format, UT_ARGS_15(p));
-	case 16: return sscanf(str, format, UT_ARGS_16(p));
-	case 17: return sscanf(str, format, UT_ARGS_17(p));
-	case 18: return sscanf(str, format, UT_ARGS_18(p));
-	case 19: return sscanf(str, format, UT_ARGS_19(p));
-	case 20: return sscanf(str, format, UT_ARGS_20(p));
-	}
-	return 0;
-}
-
-// StrScanfT() spec for 'wchar' type
-template<> inline int StrScanfT<wchar>(const wchar* str, int arg_num, const wchar* format, void** p)
-{
-	switch (arg_num)
-	{
-	case  0: return 0;
-	case  1: return swscanf(str, format, UT_ARGS_1(p));
-	case  2: return swscanf(str, format, UT_ARGS_2(p));
-	case  3: return swscanf(str, format, UT_ARGS_3(p));
-	case  4: return swscanf(str, format, UT_ARGS_4(p));
-	case  5: return swscanf(str, format, UT_ARGS_5(p));
-	case  6: return swscanf(str, format, UT_ARGS_6(p));
-	case  7: return swscanf(str, format, UT_ARGS_7(p));
-	case  8: return swscanf(str, format, UT_ARGS_8(p));
-	case  9: return swscanf(str, format, UT_ARGS_9(p));
-	case 10: return swscanf(str, format, UT_ARGS_10(p));
-	case 11: return swscanf(str, format, UT_ARGS_11(p));
-	case 12: return swscanf(str, format, UT_ARGS_12(p));
-	case 13: return swscanf(str, format, UT_ARGS_13(p));
-	case 14: return swscanf(str, format, UT_ARGS_14(p));
-	case 15: return swscanf(str, format, UT_ARGS_15(p));
-	case 16: return swscanf(str, format, UT_ARGS_16(p));
-	case 17: return swscanf(str, format, UT_ARGS_17(p));
-	case 18: return swscanf(str, format, UT_ARGS_18(p));
-	case 19: return swscanf(str, format, UT_ARGS_19(p));
-	case 20: return swscanf(str, format, UT_ARGS_20(p));
-	}
-	return 0;
-}
-
-//----------------------------------------------------------------------------//
-// VStrScanT simulates vsscanf() function, parses @buffer string into separate
-// parameters, so that StrScanfT<>() could be called instead of vsscanf()
-template <typename T>
-inline int VStrScanT(const T* buffer, const T* format, va_list arg_list)
-{
-	int   arg_num = 0;
-	void* arg_ptr[UT_ARG_MAX];
-	const T* curr_buff = StrChr<T>(format, '%');
-	T curr_char;
-
-	if (curr_buff == nullptr)
-	{
-		// no valid format specifier!
-		return 0;
-	}
-
-	do
-	{
-		// Move pointer to next character
-		curr_buff++;
-		curr_char = (T)(*curr_buff);
-
-		if (curr_char == 0)
-		{
-			// End of string
-			//      -> processing will stop!
-		}
-		else if (curr_char == '*')
-		{
-			// "%*" suppresses argument assignment
-			//      -> do not get argument from stack!
-		}
-		else if (curr_char == '%')
-		{
-			// "%%" substitutes "%" character!
-			//      -> do not get argument from stack!
-			//      -> Increment to next character
-			curr_buff++;
-		}
-		else
-		{
-			if (arg_num >= UT_ARG_MAX)
-			{
-				// This function can only handle UT_ARG_MAX arguments!
-				return 0;
-			}
-			arg_ptr[arg_num++] = va_arg(arg_list, void*);
-		}
-		curr_buff = StrChr<T>(curr_buff, '%');
-	} while (curr_buff != nullptr);
-
-	va_end(arg_list);
-
-	return StrScanfT(buffer, arg_num, format, arg_ptr);
-}
-
-//----------------------------------------------------------------------------//
-// StrScan spec for 'char' type
-template<> inline int VStrScan<char>(const char* buffer, const char* format, va_list arg_list)
-{
-	return VStrScanT<char>(buffer, format, arg_list);
-}
-
-// StrScan spec for 'wchar' type
-template<> inline int VStrScan<wchar>(const wchar* buffer, const wchar* format, va_list arg_list)
-{
-	return VStrScanT<wchar>(buffer, format, arg_list);
-}
-
-#endif //CPP_STANDARD >= 2011
 
 //----------------------------------------------------------------------------//
 // Writes the C string pointed by @format to string @buffer. If format includes

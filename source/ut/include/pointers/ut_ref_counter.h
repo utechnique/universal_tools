@@ -292,12 +292,10 @@ public:
 
 	// Move constructor, just copies a pointer to the reference controller
 	// without incrementing reference count.
-#if CPP_STANDARD >= 2011
 	SharedReferencer(SharedReferencer&& rval) : controller(rval.controller)
 	{
 		rval.controller = nullptr;
 	}
-#endif
 
 	// Constructor, creates a shared referencer object from a weak referencer object. This will only result
 	// in a valid object reference if the object already has at least one other shared referencer.
@@ -335,10 +333,8 @@ public:
 
 private:
 	// Assign operators are prohibited.
-	SharedReferencer& operator=(const SharedReferencer& copy) PROHIBITED;
-#if CPP_STANDARD >= 2011
-	SharedReferencer& operator=(SharedReferencer&& rval) PROHIBITED;
-#endif
+	SharedReferencer& operator=(const SharedReferencer& copy) = delete;
+	SharedReferencer& operator=(SharedReferencer&& rval) = delete;
 
 	// Reference-counting controller
 	Controller* controller;
@@ -376,12 +372,10 @@ public:
 
 	// Move constructor, just copies a pointer to the reference controller
 	// without incrementing reference count.
-#if CPP_STANDARD >= 2011
 	WeakReferencer(WeakReferencer&& rval) : controller(rval.controller)
 	{
 		rval.controller = nullptr;
 	}
-#endif
 
 	// Constructor from the shared pointer, copies a pointer to the
 	// reference controller and increments weak reference count.
@@ -411,10 +405,8 @@ public:
 
 private:
 	// Assign operators are prohibited.
-	WeakReferencer& operator=(const WeakReferencer& copy) PROHIBITED;
-#if CPP_STANDARD >= 2011
-	WeakReferencer& operator=(WeakReferencer&& rval) PROHIBITED;
-#endif
+	WeakReferencer& operator=(const WeakReferencer& copy) = delete;
+	WeakReferencer& operator=(WeakReferencer&& rval) = delete;
 
 	// Reference-counting controller
 	Controller* controller;

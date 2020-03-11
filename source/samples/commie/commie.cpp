@@ -233,10 +233,10 @@ void Application::BindUserInterfaceSignals()
 	UT_ASSERT(ui != nullptr);
 
 	// send message
-	ut::MemberInvoker<void (Application::*)(const ut::String&,
-	                                        const ut::net::HostAddress& address,
-	                                        bool encrypted)> send_message(&Application::SendMessageEvent, this);
-	ui->message_sent.Connect(send_message);
+	auto function = ut::MemberFunction<Application, void(const ut::String&,
+	                                                    const ut::net::HostAddress&,
+	                                                    bool)>(this, &Application::SendMessageEvent);
+	ui->message_sent.Connect(ut::Move(function));
 }
 
 //----------------------------------------------------------------------------->
@@ -274,20 +274,20 @@ void Application::SendMessageEvent(const ut::String& message,
 void Application::BindHostSignals(ut::net::Host& host)
 {
 	// launched
-	ut::MemberInvoker<void (Application::*)(const ut::net::HostAddress&)> host_launched(&Application::HostLaunchedEvent, this);
-	host.launched.Connect(host_launched);
+	auto host_launched = ut::MemberFunction<Application, void(const ut::net::HostAddress&)>(this, &Application::HostLaunchedEvent);
+	host.launched.Connect(ut::Move(host_launched));
 
 	// stopped
-	ut::MemberInvoker<void (Application::*)()> host_stopped(&Application::HostStoppedEvent, this);
-	host.stopped.Connect(host_stopped);
+	auto host_stopped = ut::MemberFunction<Application, void()>(this, &Application::HostStoppedEvent);
+	host.stopped.Connect(ut::Move(host_stopped));
 
 	// command failed
-	ut::MemberInvoker<void (Application::*)(const ut::Error& error)> cmd_failed(&Application::CmdFailedEvent, this);
-	host.command_failed.Connect(cmd_failed);
+	auto cmd_failed = ut::MemberFunction<Application, void(const ut::Error& error)>(this, &Application::CmdFailedEvent);
+	host.command_failed.Connect(ut::Move(cmd_failed));
 
 	// command failed
-	ut::MemberInvoker<void (Application::*)(const ut::net::HostAddress&)> connection_closed(&Application::ConnectionClosedEvent, this);
-	host.connection_closed.Connect(connection_closed);
+	auto connection_closed = ut::MemberFunction<Application, void(const ut::net::HostAddress&)>(this, &Application::ConnectionClosedEvent);
+	host.connection_closed.Connect(ut::Move(connection_closed));
 }
 
 //----------------------------------------------------------------------------->
@@ -343,8 +343,9 @@ void Application::ConnectionClosedEvent(const ut::net::HostAddress& address)
 void Application::BindServerSignals(Server& server)
 {
 	// client accepted
-	ut::MemberInvoker<void (Application::*)(const ut::net::HostAddress&)> client_accepted(&Application::ClientAcceptedEvent, this);
-	server.client_accepted.Connect(client_accepted);
+	auto client_accepted = ut::MemberFunction<Application, void(const ut::net::HostAddress&)>
+		(this, &Application::ClientAcceptedEvent);
+	server.client_accepted.Connect(ut::Move(client_accepted));
 }
 
 //----------------------------------------------------------------------------->
@@ -365,12 +366,14 @@ void Application::ClientAcceptedEvent(const ut::net::HostAddress& address)
 void Application::BindClientSignals(Client& client)
 {
 	// connection failed
-	ut::MemberInvoker<void (Application::*)(const ut::net::HostAddress&)> connection_failed(&Application::ConnectionFailedEvent, this);
-	client.connection_failed.Connect(connection_failed);
+	auto connection_failed = ut::MemberFunction<Application, void(const ut::net::HostAddress&)>
+		(this, &Application::ConnectionFailedEvent);
+	client.connection_failed.Connect(ut::Move(connection_failed));
 
 	// connected to server
-	ut::MemberInvoker<void (Application::*)(const ut::net::HostAddress&)> connected_to_server(&Application::ConnectedToServerEvent, this);
-	client.connected_to_server.Connect(connected_to_server);
+	auto connected_to_server = ut::MemberFunction<Application, void(const ut::net::HostAddress&)>
+		(this, &Application::ConnectedToServerEvent);
+	client.connected_to_server.Connect(ut::Move(connected_to_server));
 }
 
 //----------------------------------------------------------------------------->

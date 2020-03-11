@@ -20,10 +20,8 @@ StringTestUnit::StringTestUnit() : TestUnit("STRING")
 	tasks.Add(new StrExtensionTask);
 	tasks.Add(new StrParsingTask);
 	tasks.Add(new StrSeparatorsTask);
-#if !UT_ANDROID // Android doesn't support wide characters
 	tasks.Add(new StrASCIITask);
 	tasks.Add(new StrUTF8Task);
-#endif
 	tasks.Add(new StrPrintTask);
 	tasks.Add(new StrScanTask);
 	tasks.Add(new StrMoveTask);

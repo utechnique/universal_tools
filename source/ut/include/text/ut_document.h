@@ -24,22 +24,6 @@ public:
 	// Default constructor
 	Document();
 
-	// Copy constructor
-	Document(const Document& copy);
-
-	// Move constructor
-#if CPP_STANDARD >= 2011
-	Document(Document && rvalue);
-#endif
-
-	// Assignment operator
-	Document& operator = (const Document& copy);
-
-	// Move operator
-#if CPP_STANDARD >= 2011
-	Document& operator = (Document && rvalue);
-#endif
-
 	// Parses raw text
 	//    @param doc - string with a text to be parsed
 	//    @return - ut::Error if encountered an error
@@ -59,9 +43,7 @@ public:
 	Document& operator << (const Tree<Node>& node);
 
 	// This operator moves a new node to the document
-#if CPP_STANDARD >= 2011
-	Document& operator << (Tree<Node> && node);
-#endif
+	Document& operator << (Tree<Node>&& node);
 
 	// This operator reads a node from the document
 	Document& operator >> (Tree<Node>& node);

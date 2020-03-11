@@ -105,7 +105,7 @@ public:
 
 	// Connects slot to the log signal. This signal is triggered when
 	// some extraordinary serialization event occurs.
-	void ConnectLogSignalSlot(const Function<void(const ut::String& event_description)>& slot);
+	void ConnectLogSignalSlot(Function<void(const ut::String& event_description)> slot);
 	
 	// Calls log slots with the provided message.
 	void LogMessage(const String& msg);

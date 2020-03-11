@@ -120,7 +120,7 @@ public:
 
 		// deserialized proxy will be exported back to the avl tree
 		// after loading is done
-		snapshot.SetPostLoadCallback(MemberInvoker<void (AVLParameter::*)()>(&AVLParameter::Export, this));
+		snapshot.SetPostLoadCallback(MemberFunction<AVLParameter, void()>(this, &AVLParameter::Export));
 	}
 
 	// Serializes managed object.

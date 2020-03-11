@@ -50,11 +50,9 @@ public:
 	{ }
 
 	// Move constructor. Moves referencer object. Reference count doesn't change here.
-#if CPP_STANDARD >= 2011
 	SharedPtr(SharedPtr&& rval) : object(rval.object)
 	                            , referencer(Move(rval.referencer))
 	{ }
-#endif
 
 	// Assign operator. Reference count to the old object is decreased by 1 here, and
 	// reference count to the new object is increased by 1.
@@ -65,13 +63,11 @@ public:
 	}
 
 	// Move operator. Behaves exactly as assign operator (with full-copy behaviour).
-#if CPP_STANDARD >= 2011
 	SharedPtr& operator=(SharedPtr&& rval)
 	{
 		Reset(rval);
 		return *this;
 	}
-#endif
 
 	// Overloaded inheritance operator, provides access to the owned object
 	ObjectType* operator -> ()
@@ -210,43 +206,41 @@ inline bool operator <= (const SharedPtr<T1>& left, const SharedPtr<T2>& right)
 
 //----------------------------------------------------------------------------//
 // Comparison operators for ut::SharedPtr with nullptr_t type
-#if CPP_STANDARD >= 2011
-	template <class T> inline bool operator == (const SharedPtr<T>& left, nullptr_t)
-	{ return left.Get() == nullptr; }
+template <class T> inline bool operator == (const SharedPtr<T>& left, nullptr_t)
+{ return left.Get() == nullptr; }
 
-	template <class T> inline bool operator == (nullptr_t, const SharedPtr<T>& right)
-	{ return nullptr == right.Get(); }
+template <class T> inline bool operator == (nullptr_t, const SharedPtr<T>& right)
+{ return nullptr == right.Get(); }
 
-	template <class T> inline bool operator != (const SharedPtr<T>& left, nullptr_t)
-	{ return left.Get() != nullptr; }
+template <class T> inline bool operator != (const SharedPtr<T>& left, nullptr_t)
+{ return left.Get() != nullptr; }
 
-	template <class T> inline bool operator != (nullptr_t, const SharedPtr<T>& right)
-	{ return nullptr != right.Get(); }
+template <class T> inline bool operator != (nullptr_t, const SharedPtr<T>& right)
+{ return nullptr != right.Get(); }
 
-	template <class T> inline bool operator > (const SharedPtr<T>& left, nullptr_t)
-	{ return left.Get() > nullptr; }
+template <class T> inline bool operator > (const SharedPtr<T>& left, nullptr_t)
+{ return left.Get() > nullptr; }
 
-	template <class T> inline bool operator > (nullptr_t, const SharedPtr<T>& right)
-	{ return nullptr > right.Get(); }
+template <class T> inline bool operator > (nullptr_t, const SharedPtr<T>& right)
+{ return nullptr > right.Get(); }
 
-	template <class T> inline bool operator >= (const SharedPtr<T>& left, nullptr_t)
-	{ return left.Get() >= nullptr; }
+template <class T> inline bool operator >= (const SharedPtr<T>& left, nullptr_t)
+{ return left.Get() >= nullptr; }
 
-	template <class T> inline bool operator >= (nullptr_t, const SharedPtr<T>& right)
-	{ return nullptr >= right.Get(); }
+template <class T> inline bool operator >= (nullptr_t, const SharedPtr<T>& right)
+{ return nullptr >= right.Get(); }
 
-	template <class T> inline bool operator < (const SharedPtr<T>& left, nullptr_t)
-	{ return left.Get() < nullptr; }
+template <class T> inline bool operator < (const SharedPtr<T>& left, nullptr_t)
+{ return left.Get() < nullptr; }
 
-	template <class T> inline bool operator < (nullptr_t, const SharedPtr<T>& right)
-	{ return nullptr < right.Get(); }
+template <class T> inline bool operator < (nullptr_t, const SharedPtr<T>& right)
+{ return nullptr < right.Get(); }
 
-	template <class T> inline bool operator <= (const SharedPtr<T>& left, nullptr_t)
-	{ return left.Get() <= nullptr; }
+template <class T> inline bool operator <= (const SharedPtr<T>& left, nullptr_t)
+{ return left.Get() <= nullptr; }
 
-	template <class T> inline bool operator <= (nullptr_t, const SharedPtr<T>& right)
-	{ return nullptr <= right.Get(); }
-#endif // CPP_STANDARD >= 2011
+template <class T> inline bool operator <= (nullptr_t, const SharedPtr<T>& right)
+{ return nullptr <= right.Get(); }
 
 // Specialize type name function for shared ptr
 template <typename T, thread_safety::Mode mode, typename Deleter>

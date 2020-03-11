@@ -30,16 +30,6 @@ public:
 	//    @param port - port, must be > 0
 	Socket(const String& ip, int port);
 
-	// Move constructor, moves socket and address
-#if CPP_STANDARD >= 2011
-	Socket(Socket && copy);
-#endif
-
-	// Move operator, moves socket and address
-#if CPP_STANDARD >= 2011
-	Socket& operator = (Socket && copy);
-#endif
-
 	// Destructor, closes @socket, and optionally calls
 	// ut::Socket::ShutDown() (Linux)
 	~Socket();

@@ -46,31 +46,7 @@ Socket::Socket(const String& ip, int port)
 Socket::Socket(socket_t      in_socket,
 	           sockaddr_in* in_sockaddr) : socket(in_socket)
                                          , sock_addr_in(*in_sockaddr)
-{
-
-}
-
-//----------------------------------------------------------------------------->
-// Move constructor, moves socket and address
-#if CPP_STANDARD >= 2011
-Socket::Socket(Socket && copy) : socket(copy.socket)
-                               , sock_addr_in(copy.sock_addr_in)
-{
-	copy.socket = UT_INVALID_SOCKET;
-}
-#endif
-
-//----------------------------------------------------------------------------->
-// Move operator, moves socket and address
-#if CPP_STANDARD >= 2011
-Socket& Socket::operator = (Socket && copy)
-{
-	socket = copy.socket;
-	sock_addr_in = copy.sock_addr_in;
-	copy.socket = UT_INVALID_SOCKET;
-	return *this;
-}
-#endif
+{}
 
 //----------------------------------------------------------------------------->
 // Destructor, closes @socket, and optionally calls

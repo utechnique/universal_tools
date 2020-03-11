@@ -3,26 +3,28 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-//  This file is a set of other header files, that are commonly used in UT
+#include "common/ut_def.h"
+#include "common/ut_platform.h"
+#include "templates/ut_remove_ref.h"
 //----------------------------------------------------------------------------//
-#include "ut_def.h"
-#include "ut_enum.h"
-#include "ut_libc.h"
-#include "ut_stl.h"
-#include "ut_char_traits.h"
-#include "ut_numeric_types.h"
-#include "ut_type_names.h"
-#include "ut_platform.h"
-#include "ut_assert.h"
-#include "ut_noncopyable.h"
+START_NAMESPACE(ut)
+//----------------------------------------------------------------------------//
+// Casts a reference to an lvalue reference.
+template <typename T>
+FORCEINLINE constexpr T&& Forward(typename RemoveReference<T>::Type& ref)
+{
+	return static_cast<T&&>(ref);
+}
+
+// Casts a reference to an rvalue reference.
+template <typename T>
+FORCEINLINE constexpr T&& Forward(typename RemoveReference<T>::Type&& ref)
+{
+	return static_cast<T&&>(ref);
+}
 
 //----------------------------------------------------------------------------//
-// Some commonly-used templates.
-#include "templates/ut_move.h"
-#include "templates/ut_forward.h"
-#include "templates/ut_optional.h"
-#include "templates/ut_result.h"
-
+END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

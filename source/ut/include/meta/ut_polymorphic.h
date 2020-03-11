@@ -111,10 +111,6 @@ private:
 	inline typename EnableIf<IsDefaultConstructible<TArg>::value, TArg>::Type*
 		CreateInstanceTemplate() const
 	{
-		// If you have error here in old compiler versions (compiler is trying to
-		// instantiate non-existent default constructor) - make sure you put
-		// UT_NO_DEFAULT_CONSTRUCTOR macro inside 'public:' section of your
-		// class declaration.
 		return new T;
 	}
 

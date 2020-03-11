@@ -23,10 +23,6 @@ class AVLTree
 	// ut::meta::Parameter must be a friend so that ut::AVLTree could be serializable.
 	template <typename> friend class meta::Parameter;
 public:
-	// L-Value reference types must be defined to provide ut::UniquePtr<>
-	// compatibility for cpp dialects lower then C++11.
-	typedef typename LValRef<Key>::Type KeyLRef;
-	typedef typename LValRef<Value>::Type ValueLRef;
 
 	// Each node of the tree has a key/value pair,
 	// balance variable ('left side height' minus 'right side height')
@@ -44,8 +40,8 @@ public:
 		Value value;
 
 		// Constructor, key and value are copied
-		Node(KeyLRef k,
-			 ValueLRef v,
+		Node(const Key& k,
+		     const Value& v,
 		     Node* p) : key(k)
 		              , value(v)
 		              , balance(0)
@@ -54,10 +50,9 @@ public:
 		              , right(nullptr)
 		{}
 
-#if CPP_STANDARD >= 2011
 		// Constructor, key is copied, value is moved
-		Node(KeyLRef k,
-			 Value && v,
+		Node(const Key& k,
+			 Value&& v,
 			 Node* p) : key(k)
 			          , value(Move(v))
 			          , balance(0)
@@ -67,8 +62,8 @@ public:
 		{}
 
 		// Constructor, key is moved, value is copied
-		Node(Key && k,
-			 ValueLRef v,
+		Node(Key&& k,
+			 const Value& v,
 			 Node* p) : key(Move(k))
 			          , value(Move(v))
 			          , balance(0)
@@ -78,8 +73,8 @@ public:
 		{}
 
 		// Constructor, key and value are moved
-		Node(Key && k,
-			 Value && v,
+		Node(Key&& k,
+			 Value&& v,
 			 Node* p) : key(Move(k))
 			          , value(Move(v))
 			          , balance(0)
@@ -87,7 +82,6 @@ public:
 			          , left(nullptr)
 			          , right(nullptr)
 		{}
-#endif // CPP_STANDARD >= 2011
 
 		// Destructor
 		~Node()
@@ -428,12 +422,10 @@ public:
 	}
 
 	// Move constructor
-#if CPP_STANDARD >= 2011
 	AVLTree(AVLTree&& right) : root(right.root)
 	{
 		right.root = nullptr;
 	}
-#endif
 
 	// Assignment operator
 	AVLTree& operator = (const AVLTree& copy)
@@ -443,7 +435,6 @@ public:
 	}
 
 	// Move operator
-#if CPP_STANDARD >= 2011
 	AVLTree& operator = (AVLTree&& right)
 	{
 		delete root;
@@ -451,7 +442,6 @@ public:
 		right.root = nullptr;
 		return *this;
 	}
-#endif
 
 	// Destructor, deletes all nodes
 	~AVLTree()
@@ -480,15 +470,9 @@ public:
 	//    @param value - constant l-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-	bool Insert(KeyLRef key, ValueLRef value)
+	bool Insert(const Key& key, const Value& value)
 	{
-#if CPP_STANDARD >= 2011
 		return EmplacePair(key, value);
-#else
-		// MS Visual Studio can't deduce template arguments
-		// if they were defined via proxy ut::LValRef type
-		return EmplacePair<Key, Value>(key, value);
-#endif
 	}
 
 	// Inserts new key-value pair to the map
@@ -496,36 +480,30 @@ public:
 	//    @param value - r-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-#if CPP_STANDARD >= 2011
-	bool Insert(Key && key, Value && value)
+	bool Insert(Key&& key, Value&& value)
 	{
 		return EmplacePair(Move(key), Move(value));
 	}
-#endif
 
 	// Inserts new key-value pair to the map
 	//    @param key - constant l-value refenrence to the key
 	//    @param value - r-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-#if CPP_STANDARD >= 2011
-	bool Insert(KeyLRef key, Value && value)
+	bool Insert(const Key& key, Value&& value)
 	{
 		return EmplacePair(key, Move(value));
 	}
-#endif
 
 	// Inserts new key-value pair to the map
 	//    @param key - r-value refenrence to the key
 	//    @param value - constant l-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-#if CPP_STANDARD >= 2011
-	bool Insert(Key && key, ValueLRef value)
+	bool Insert(Key&& key, const Value& value)
 	{
 		return EmplacePair(Move(key), value);
 	}
-#endif
 
 	// Removes node from the tree
 	//    @param key - key of the node to be deleted
@@ -621,11 +599,7 @@ private:
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
 	template <typename KeyType, typename ValueType>
-#if CPP_STANDARD >= 2011
 	inline bool EmplacePair(KeyType && key, ValueType && value)
-#else
-	inline bool EmplacePair(KeyLRef key, ValueLRef value)
-#endif
 	{
 		// check if root exists
 		if (root == nullptr)

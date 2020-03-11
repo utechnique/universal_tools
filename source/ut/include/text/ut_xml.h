@@ -12,25 +12,6 @@ START_NAMESPACE(ut)
 class XmlDoc : public text::Document
 {
 public:
-	// Default constructor
-	XmlDoc();
-
-	// Copy constructor
-	XmlDoc(const XmlDoc& copy);
-
-	// Move constructor
-#if CPP_STANDARD >= 2011
-	XmlDoc(XmlDoc && rvalue);
-#endif
-
-	// Assignment operator
-	XmlDoc& operator = (const XmlDoc& copy);
-
-	// Move operator
-#if CPP_STANDARD >= 2011
-	XmlDoc& operator = (XmlDoc && rvalue);
-#endif
-
 	// Parses raw text
 	//    @param text - string with a text to be parsed
 	//    @return - ut::Error if encountered an error

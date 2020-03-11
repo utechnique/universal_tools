@@ -3,11 +3,11 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut_compile_time.h"
-#include "ut_is_constructible.h"
-#include "ut_integral_constant.h"
-#include "ut_enable_if.h"
-#include "ut_is_base_of.h"
+#include "templates/ut_compile_time.h"
+#include "templates/ut_is_constructible.h"
+#include "templates/ut_integral_constant.h"
+#include "templates/ut_enable_if.h"
+#include "templates/ut_is_base_of.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

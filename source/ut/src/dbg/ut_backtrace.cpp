@@ -8,14 +8,6 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// Forward declaration for backtrace() function
-// Android NDK doesn't support execinfo.h, thus backtrace() is not implemented
-// Implementation of backtrace() is placed in the end of this file.
-#if UT_ANDROID
-size_t backtrace(void** buffer, size_t max);
-#endif
-
-//----------------------------------------------------------------------------//
 // Returns current call stack
 //    @return - array of addresses of the functions in the callstack
 Array<void*> Backtrace()
@@ -98,39 +90,30 @@ Array<String> SymbolsBacktrace()
 		free(line);
 		SymCleanup(process);
 	#elif UT_UNIX
-		#if UT_ANDROID
-			for (size_t i = 0; i < addresses.GetNum(); i++)
+		char** symbols = backtrace_symbols(addresses.GetAddress(), addresses.GetNum());
+
+		for (size_t i = 0; i < addresses.GetNum(); i++)
+		{
+			String addr_str;
+			addr_str.Print("0x%0X", addresses[i]);
+
+			Dl_info info;
+			if (dladdr(addresses[i], &info))
 			{
-				String addr_str;
-				addr_str.Print("0x%0X", addresses[i]);
+				char* demangled = nullptr;
+				int status;
+				demangled = abi::__cxa_demangle(info.dli_sname, nullptr, 0, &status);
+				String name(status == 0 ? demangled : info.dli_sname);
+				out.Add(name + String("(") + addr_str + String(")"));
+				free(demangled);
+			}
+			else
+			{
 				out.Add(String("unknown_function(") + addr_str + String(")"));
 			}
-		#else
-			char** symbols = backtrace_symbols(addresses.GetAddress(), addresses.GetNum());
+		}
 
-			for (size_t i = 0; i < addresses.GetNum(); i++)
-			{
-				String addr_str;
-				addr_str.Print("0x%0X", addresses[i]);
-
-				Dl_info info;
-				if (dladdr(addresses[i], &info))
-				{
-					char* demangled = nullptr;
-					int status;
-					demangled = abi::__cxa_demangle(info.dli_sname, nullptr, 0, &status);
-					String name(status == 0 ? demangled : info.dli_sname);
-					out.Add(name + String("(") + addr_str + String(")"));
-					free(demangled);
-				}
-				else
-				{
-					out.Add(String("unknown_function(") + addr_str + String(")"));
-				}
-			}
-
-			free(symbols);
-		#endif // UT_ANDROID
+		free(symbols);
 	#else
 		#error ut::SymbolsBacktrace() is not implemented
 	#endif // PLATFORM
@@ -151,52 +134,6 @@ Array<String> SymbolsBacktrace()
 #endif // DEBUG
 }
 
-//----------------------------------------------------------------------------//
-#if UT_ANDROID
-// struct ut::AndroidBacktraceState contains current state of the backtrace
-// process. Used in ut::AndroidUnwindCallback() and ut::backtrace() functions.
-struct AndroidBacktraceState
-{
-	void** current;
-	void** end;
-};
-
-// Backtrace callback for _Unwind_Backtrace(), see _Unwind_Trace_Fn (unwind.h)
-//    @param context - callback parameter, type is _Unwind_Context
-//    @param arg - callback parameter, this should be ut::AndroidBacktraceState
-//                 for our case (backtrace callback)
-//    @return - reason code
-static _Unwind_Reason_Code AndroidUnwindCallback(struct _Unwind_Context* context, void* arg)
-{
-	AndroidBacktraceState* state = static_cast<AndroidBacktraceState*>(arg);
-	uintptr_t pc = _Unwind_GetIP(context);
-	if (pc)
-	{
-		if (state->current == state->end)
-		{
-			return _URC_END_OF_STACK;
-		}
-		else
-		{
-			*state->current++ = reinterpret_cast<void*>(pc);
-		}
-	}
-	return _URC_NO_REASON;
-}
-
-// Custom implementation of linux backtrace() function.
-// Android NDK doesn't support execinfo.h, thus backtrace() is not implemented
-size_t backtrace(void** buffer, size_t max)
-{
-	AndroidBacktraceState state;
-	state.current = buffer;
-	state.end = buffer + max;
-
-	_Unwind_Backtrace(AndroidUnwindCallback, &state);
-
-	return state.current - buffer;
-}
-#endif // UT_ANDROID
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

@@ -28,14 +28,7 @@ public:
 	// Constructor
 	//    @param error_code - error code, see ut::error::Code enumeration
 	//    @param error_desc - custom (user-defined) error description
-	Error(error::Code error_code, const String& error_desc);
-	
-	// Constructor
-	//    @param error_code - error code, see ut::error::Code enumeration
-	//    @param error_desc - custom (user-defined) error description
-#if CPP_STANDARD >= 2011
-	Error(error::Code error_code, String && error_desc);
-#endif
+	Error(error::Code error_code, String error_desc);
 
 	// Returns error code
 	//    @return - error code, see ut::error::Code enumeration

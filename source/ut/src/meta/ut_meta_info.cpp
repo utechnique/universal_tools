@@ -241,9 +241,9 @@ void Info::SetVersion(Version in_version)
 //----------------------------------------------------------------------------->
 // Connects slot to the log signal. This signal is triggered when
 // some extraordinary serialization event occurs.
-void Info::ConnectLogSignalSlot(const Function<void(const ut::String&)>& slot)
+void Info::ConnectLogSignalSlot(Function<void(const ut::String&)> slot)
 {
-	log_signal.Connect(slot);
+	log_signal.Connect(Move(slot));
 }
 
 // Calls log slots with the provided message.

@@ -18,9 +18,6 @@ START_NAMESPACE(commie)
 class ServerUI : public BodyUI
 {
 public:
-	// Inform UT that this class has no default constructor.
-	UT_NO_DEFAULT_CONSTRUCTOR
-
 	// Constructor, parent application must be provided.
 	// All widgets are initialized here.
 	//    @param application - reference to parent (owning) application object

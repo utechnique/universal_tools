@@ -27,11 +27,9 @@ public:
 	{ }
 
 	// Move constructor. Moves referencer object. Reference count doesn't change here.
-#if CPP_STANDARD >= 2011
 	WeakPtr(WeakPtr&& rval) : object(rval.object)
 	                        , referencer(Move(rval.referencer))
 	{ }
-#endif
 
 	// Constructor from shared pointer.
 	WeakPtr(const SharedPtr<ObjectType, thread_safety_mode>& copy) : object(copy.object)
@@ -47,13 +45,11 @@ public:
 	}
 
 	// Move operator. Behaves exactly as assign operator (with full-copy behaviour).
-#if CPP_STANDARD >= 2011
 	WeakPtr& operator=(WeakPtr&& rval)
 	{
 		Reset< WeakPtr<ObjectType> >(rval);
 		return *this;
 	}
-#endif
 
 	// Assign operator. Takes shared pointer here.
 	WeakPtr& operator=(const SharedPtr<ObjectType, thread_safety_mode>& copy)

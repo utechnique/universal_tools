@@ -1,7 +1,3 @@
--- androidproj module is required for functions:
---    1. utAndroidProj
-require("../source/build/androidproj")
-
 -- Generates a project for console application.
 -- @options members:
 --    projname     - name of the project
@@ -15,7 +11,6 @@ require("../source/build/androidproj")
 --    bindfltk     - set 'true' to bind fltk library
 --    libs         - libraries to link
 --    srcfiles     - source files table
---    androidsrc   - source files table for the android project
 function utApplication(options)
     -- get project location folder from options
     project_folder = options.projdir or "";
@@ -36,20 +31,13 @@ function utApplication(options)
     files { options.srcfiles or {} }
     
     -- bind fltk
-    if ANDROID == false then
-        if options.bindfltk or false then
-            USES_FLTK = true
-            links "fltk"
-            dependson "fltk"
-            includedirs { FLTK_INCLUDE_DIR }
-            links { FLTK_LIBS }
-            defines { FLTK_DEF }
-        end
-    end
-    
-    -- android package project
-    if ANDROID then
-        utAndroidProj(options)
-    end
+	if options.bindfltk or false then
+		USES_FLTK = true
+		links "fltk"
+		dependson "fltk"
+		includedirs { FLTK_INCLUDE_DIR }
+		links { FLTK_LIBS }
+		defines { FLTK_DEF }
+	end
 end
 

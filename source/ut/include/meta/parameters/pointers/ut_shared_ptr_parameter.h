@@ -47,12 +47,10 @@ public:
 	{ }
 
 	// Move constructor, pointer must be reset.
-#if CPP_STANDARD >= 2011
 	SharedPtrHolder(SharedPtrHolder&& rval) : SharedPtrHolderBase(&ptr)
 	                                        , ptr(Move(rval.ptr))
 	                                        , type_name(Move(rval.type_name))
 	{ }
-#endif
 
 	// Assignment operator, pointer must be reset.
 	SharedPtrHolder& operator = (const SharedPtrHolder& copy)
@@ -64,7 +62,6 @@ public:
 	}
 
 	// Move operator, pointer must be reset.
-#if CPP_STANDARD >= 2011
 	SharedPtrHolder& operator = (SharedPtrHolder&& rval)
 	{
 		ptr = Move(rval.ptr);
@@ -72,7 +69,6 @@ public:
 		address = &ptr;
 		return *this;
 	}
-#endif
 
 	// Serializes managed object using provided controller.
 	//    @param controller - reference to the controller to save the
