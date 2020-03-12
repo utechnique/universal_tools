@@ -7,16 +7,16 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// Specialized ut::ThreadPoolJob template version where synchronization is
-// performed using atomic operations.
+// ut::AtomicPoolJob is a template class representing a job for each thread
+// in a thread pool. Template argument is a return type of a thread task.
 template<typename ReturnType>
-class ThreadPoolJob<ReturnType, pool_sync::atomic> : public ut::Job
+class AtomicPoolJob : public ut::Job
 {
 	// Type of the unique pointer to the managed task.
-	typedef UniquePtr< BaseTask<ReturnType> > TaskPtr;
+	typedef UniquePtr< BaseTask<void> > UniqueTaskPtr;
 public:
 	// Constructor.
-	ThreadPoolJob() : busy(0)
+	AtomicPoolJob() : busy(0)
 	{}
 
 	// Waits for a task and then executes it.
@@ -26,7 +26,7 @@ public:
 		{
 			if (atomics::interlocked::Read(&busy) == 2)
 			{
-				task.Execute();
+				task->Execute();
 				atomics::interlocked::Store(&busy, 0);
 			}
 			this_thread::Yield();
@@ -37,7 +37,7 @@ public:
 	//    @param new_task - reference to the unique pointer to the task
 	//                      to be executed.
 	//    @return - 'true' if task was accepted or 'false' if thread is busy.
-	bool SetTask(Task<void(TaskPtr)>& new_task)
+	bool SetTask(UniqueTaskPtr& new_task)
 	{
 		if (atomics::interlocked::CompareExchange(&busy, 1, 0) == 0)
 		{
@@ -55,7 +55,7 @@ public:
 	}
 
 private:
-	Task<void(TaskPtr)> task;
+	UniqueTaskPtr task;
 	int32 busy;
 };
 
@@ -70,17 +70,17 @@ class Scheduler<ReturnType, Combiner, pool_sync::atomic>
 	template <typename, ut::pool_sync::Method> friend class ThreadPool;
 
 	// Type of the unique pointer to the managed task.
-	typedef UniquePtr< BaseTask<ReturnType> > TaskPtr;
+	typedef UniquePtr< BaseTask<ReturnType> > UniqueTaskPtr;
 
 public:
 	// Assigns a task to a thread from the thread pool. If all threads are busy,
 	// waits until one of them ends current task.
 	//    @param task - unique pointer to the task to be executed.
-	void Enqueue(TaskPtr task)
+	void Enqueue(UniqueTaskPtr task)
 	{
 		atomics::interlocked::Increment(&counter);
-		auto function = MemberFunction<Scheduler, void(TaskPtr)>(this, &Scheduler::ExecuteTask);
-		pool.Enqueue(Task<void(TaskPtr)>(function, Move(task)));
+		auto function = MemberFunction<Scheduler, void(UniqueTaskPtr)>(this, &Scheduler::ExecuteTask);
+		pool.Enqueue(new Task<void(UniqueTaskPtr)>(function, Move(task)));
 	}
 
 	// Waits until all tasks finish.
@@ -97,7 +97,7 @@ public:
 private:
 	// Executes provided task and decreases counter of tasks by one.
 	//    @param task - unique pointer to the task to be executed.
-	void ExecuteTask(TaskPtr task)
+	void ExecuteTask(UniqueTaskPtr task)
 	{
 		ThreadCombinerHelper<ReturnType, Combiner>::Combine(combiner, task.GetRef(), lock);
 		atomics::interlocked::Decrement(&counter);
@@ -128,7 +128,10 @@ template<typename ReturnType>
 class ThreadPool<ReturnType, pool_sync::atomic>
 {
 	// Job type for all threads in a pool.
-	typedef ThreadPoolJob<ReturnType, pool_sync::atomic> JobType;
+	typedef AtomicPoolJob<ReturnType> JobType;
+
+	// Type of the task to be executed in a thread.
+	typedef UniquePtr< BaseTask<void> > UniqueTaskPtr;
 
 public:
 	// Constructor.
@@ -158,7 +161,7 @@ public:
 
 	// Waits for a free thread and assigns provided task to it.
 	//    @param task - task to be executed in a thread.
-	void Enqueue(Task<void(UniquePtr< BaseTask<ReturnType> >)> task)
+	void Enqueue(UniqueTaskPtr task)
 	{
 		while (true)
 		{
@@ -175,7 +178,7 @@ public:
 
 				// attempt to enqueue a task
 				JobType& job = static_cast<JobType&>(threads[i]->GetJobRef());
-				if (job.SetTask(task))
+				if (job.SetTask(Move(task)))
 				{
 					return; // thread was free and accepted a task
 				}
@@ -184,7 +187,7 @@ public:
 			// check if task must be executed in the current thread
 			if (thread_belongs_to_pool)
 			{
-				task.Execute(); // task wasn't enqueued, but current
+				task->Execute(); // task wasn't enqueued, but current
 				return;          // thread is one of the threads in a pool
 			}
 

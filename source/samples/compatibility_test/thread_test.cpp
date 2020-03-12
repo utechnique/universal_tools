@@ -17,7 +17,10 @@ ThreadProcTask::ThreadProcTask() : TestTask("Thread Procedure") {}
 
 void ThreadProcTask::Execute()
 {
-	ut::Thread thread(new ut::Task<void()>([this] { this->report += "Hello from another thread. Success."; }));
+	ut::Thread thread(ut::Function<void()>([this] { this->report += "Hello from another thread. Success."; }));
+
+	ut::UniquePtr< ut::BaseTask<void> > task = new ut::Task<void()>([this] { this->report += "Hello from another thread 2. Success."; });
+	ut::Thread thread2(ut::Move(task));
 }
 
 //----------------------------------------------------------------------------//

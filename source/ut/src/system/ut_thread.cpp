@@ -107,6 +107,22 @@ Thread::Thread(UniquePtr<Job> job_ptr) : job(Move(job_ptr))
 }
 
 //----------------------------------------------------------------------------->
+// Constructor, launches provided function in a new thread.
+//    @param proc - function to be called from a new thread.
+Thread::Thread(Function<void()> proc) : handle(0)
+                                      , id(0)
+                                      , active(false)
+{
+	UT_ASSERT(proc.IsValid());
+	task = new Task<void()>(Move(proc));
+	Optional<Error> launch_error = Start();
+	if (launch_error)
+	{
+		throw launch_error.Move();
+	}
+}
+
+//----------------------------------------------------------------------------->
 // Constructor, launches provided task in a new thread.
 //    @param proc - task to be executed in a new thread.
 Thread::Thread(UniquePtr< BaseTask<void> > proc) : task(Move(proc))

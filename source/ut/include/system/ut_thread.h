@@ -98,6 +98,10 @@ public:
 	//                 called asynchronously in separate thread
 	Thread(UniquePtr<Job> job);
 
+	// Constructor, launches provided function in a new thread.
+	//    @param proc - function to be called from a new thread.
+	Thread(Function<void()> proc);
+
 	// Constructor, launches provided task in a new thread.
 	//    @param proc - task to be executed in a new thread.
 	Thread(UniquePtr< BaseTask<void> > proc);
