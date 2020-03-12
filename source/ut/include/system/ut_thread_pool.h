@@ -90,7 +90,7 @@ public:
 	{
 		// create and send a task to the pool
 		auto function = MemberFunction<Scheduler, void(UniqueTaskPtr)>(this, &Scheduler::ExecuteTask);
-		pool.Enqueue(new Task<void(UniqueTaskPtr)>(function, Move(task)));
+		pool.Enqueue(MakeUnique< Task<void(UniqueTaskPtr)> >(function, Move(task)));
 
 		// increment task counter
 		ScopeLock lock(mutex);
@@ -176,7 +176,7 @@ public:
 	{
 		for (size_t i = 0; i < size; i++)
 		{
-			threads[i] = new Thread(Function<void()>([this] { while (this->DispatchTask(true)); }));
+			threads[i] = MakeUnique<Thread>([this] { while (this->DispatchTask(true)); });
 		}
 	}
 

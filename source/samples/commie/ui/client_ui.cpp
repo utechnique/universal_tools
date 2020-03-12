@@ -62,33 +62,33 @@ ClientUI::ClientUI(Application& application,
 	int output_height = group->h() - input_height;
 
 	// start tile widget
-	tile = new Fl_Tile(0, 0, group->w(), group->h());
-	border_box = new Fl_Box(skTileBorder,
+	tile = ut::MakeUnique<Fl_Tile>(0, 0, group->w(), group->h());
+	border_box = ut::MakeUnique<Fl_Box>(skTileBorder,
 	                        skTileBorder,
 	                        group->w() - skTileBorder * 2,
 	                        group->h() - skTileBorder * 2);
 	tile->resizable(border_box.Get());
 
 	// clients list
-	clients = new Fl_Hold_Browser(0, 0, list_width, group->h());
+	clients = ut::MakeUnique<Fl_Hold_Browser>(0, 0, list_width, group->h());
 	clients->end();
 
 	// output window
-	output_buffer = new Fl_Text_Buffer();
-	output = new Fl_Text_Display(list_width,
-	                             0,
-	                             text_width,
-	                             output_height);
+	output_buffer = ut::MakeUnique<Fl_Text_Buffer>();
+	output = ut::MakeUnique<Fl_Text_Display>(list_width,
+	                                         0,
+	                                         text_width,
+	                                         output_height);
 	output->buffer(output_buffer.Get());
 	output->textfont(FL_COURIER);
 	output->textsize(14);
 	output->end();
 
 	// input window
-	input = new Fl_Multiline_Input(list_width,
-	                               output_height,
-	                               text_width,
-	                               input_height);
+	input = ut::MakeUnique<Fl_Multiline_Input>(list_width,
+	                                           output_height,
+	                                           text_width,
+	                                           input_height);
 	input->textfont(FL_COURIER);
 	input->textsize(14);
 	input->when(FL_WHEN_ENTER_KEY_ALWAYS);

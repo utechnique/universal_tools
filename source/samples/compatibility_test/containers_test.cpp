@@ -5,15 +5,16 @@
 //----------------------------------------------------------------------------//
 ContainersTestUnit::ContainersTestUnit() : TestUnit("CONTAINERS")
 {
-	tasks.Add(new ArrayOpsTask);
-	tasks.Add(new MapTask);
-	tasks.Add(new TreeTask);
-	tasks.Add(new AVLTreeTask);
-	tasks.Add(new SharedPtrTask);
-	tasks.Add(new ContainerTask);
-	tasks.Add(new OptionalTask);
-	tasks.Add(new ResultTask);
-	tasks.Add(new PairTask);
+	tasks.Add(ut::MakeUnique<ArrayOpsTask>());
+	tasks.Add(ut::MakeUnique<MapTask>());
+	tasks.Add(ut::MakeUnique<TreeTask>());
+	tasks.Add(ut::MakeUnique<AVLTreeTask>());
+	tasks.Add(ut::MakeUnique<SharedPtrTask>());
+	tasks.Add(ut::MakeUnique<ContainerTask>());
+	tasks.Add(ut::MakeUnique<OptionalTask>());
+	tasks.Add(ut::MakeUnique<ResultTask>());
+	tasks.Add(ut::MakeUnique<PairTask>());
+	tasks.Add(ut::MakeUnique<SmartPtrTask>());
 }
 
 //----------------------------------------------------------------------------//
@@ -162,7 +163,7 @@ void MapTask::Execute()
 	// UniquePtr, compile-time check
 	ut::Map<int, ut::UniquePtr<ut::String> > uniqmap0;
 	ut::Map<int, ut::UniquePtr<ut::String> > uniqmap1(ut::Move(uniqmap0));
-	ut::UniquePtr<ut::String> nstr0(new ut::String("str"));
+	ut::UniquePtr<ut::String> nstr0(ut::MakeUnique<ut::String>("str"));
 	uniqmap1.Insert(0, ut::Move(nstr0));
 	uniqmap1.Remove(0);
 
@@ -616,12 +617,12 @@ void ContainerTask::Execute()
 	arr.Add(1);
 	arr.Add(2);
 
-	ut::UniquePtr<int> uniq_ptr(new int(10));
+	ut::UniquePtr<int> uniq_ptr(ut::MakeUnique<int>(10));
 	ut::SharedPtr<ut::uint> sh_ptr(new ut::uint(12));
 
 	TestContainer c(0, b, Move(uniq_ptr), sh_ptr, Move(arr));
 
-	TestContainer::Item<2>::Type test_unique_ptr(new int(1));
+	TestContainer::Item<2>::Type test_unique_ptr(ut::MakeUnique<int>(1));
 
 	const int n = TestContainer::size;
 	if (n != 5)
@@ -818,6 +819,40 @@ void PairTask::Execute()
 	
 	ut::String test_str = "test";
 	ut::Pair<ut::String&, const ut::String&> ref_pair(test_str, test_const_str);
+
+	report += "success";
+}
+
+//----------------------------------------------------------------------------//
+SmartPtrTask::SmartPtrTask() : TestTask("Smart pointers")
+{ }
+
+struct TestBase
+{
+	int a;
+};
+
+struct TestDerived : public TestBase
+{
+	int b;
+};
+
+struct TestAnother
+{
+	int a;
+};
+
+void SmartPtrTask::Execute()
+{
+	// must be compilable
+	ut::UniquePtr<TestAnother> other = ut::MakeUnique<TestAnother>();
+	ut::UniquePtr<TestDerived> derived = ut::MakeUnique<TestDerived>();
+	ut::UniquePtr<TestBase> base(ut::Move(derived));
+	base = ut::Move(derived);
+
+	// must be non-compilable
+	//ut::UniquePtr<TestBase> base2(ut::Move(other));
+	//base = ut::Move(other);
 
 	report += "success";
 }

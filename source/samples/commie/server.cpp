@@ -26,13 +26,13 @@ ut::UniquePtr<ut::net::Connection> Server::CreateConnection(ut::UniquePtr<ut::ne
 	ut::UniquePtr<ut::net::Command> idle_cmd(new IdleCmd(IdleCmd::skDefaultFrequency));
 
 	// authorization command
-	actions.Add(new ut::net::ReceiveCommand(ut::GetPolymorphicName<ClientAuthorizationCmd>()));
+	actions.Add(ut::MakeUnique<ut::net::ReceiveCommand>(ut::GetPolymorphicName<ClientAuthorizationCmd>()));
 
 	// main loop
 	ut::Array< ut::UniquePtr<ut::net::Action> > looped_actions;
-	looped_actions.Add(new ut::net::SendCommandFromStack(Move(idle_cmd)));
-	looped_actions.Add(new ut::net::ReceiveCommand());
-	actions.Add(new ut::net::Loop(ut::Move(looped_actions)));
+	looped_actions.Add(ut::MakeUnique<ut::net::SendCommandFromStack>(Move(idle_cmd)));
+	looped_actions.Add(ut::MakeUnique<ut::net::ReceiveCommand>());
+	actions.Add(ut::MakeUnique<ut::net::Loop>(ut::Move(looped_actions)));
 
 	// create connection
 	ut::UniquePtr<ut::net::Connection> connection(new Connection(*this, ut::Move(socket), ut::Move(actions)));

@@ -16,15 +16,15 @@
 
 TestManager::TestManager()
 {
-	units.Add(new ContainersTestUnit);
-	units.Add(new StringTestUnit);
-	units.Add(new ThreadTestUnit);
-	units.Add(new SignalTestUnit);
-	units.Add(new NetTestUnit);
-	units.Add(new TextFormatUnit);
-	units.Add(new EncryptionTestUnit);
-	units.Add(new SerializationTestUnit);
-	units.Add(new DbgTestUnit);
+	units.Add(ut::MakeUnique<ContainersTestUnit>());
+	units.Add(ut::MakeUnique<StringTestUnit>());
+	units.Add(ut::MakeUnique<ThreadTestUnit>());
+	units.Add(ut::MakeUnique<SignalTestUnit>());
+	units.Add(ut::MakeUnique<NetTestUnit>());
+	units.Add(ut::MakeUnique<TextFormatUnit>());
+	units.Add(ut::MakeUnique<EncryptionTestUnit>());
+	units.Add(ut::MakeUnique<SerializationTestUnit>());
+	units.Add(ut::MakeUnique<DbgTestUnit>());
 }
 
 void TestManager::Execute()

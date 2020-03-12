@@ -85,11 +85,11 @@ ut::Optional<ut::Error> CfgEditor::Open(Configuration& cfg)
 	else
 	{
 		// create main window
-		window = new Fl_Double_Window(0, 0, skCfgEditorSizeX, skCfgEditorSizeY, "Configuration");
+		window = ut::MakeUnique<Fl_Double_Window>(0, 0, skCfgEditorSizeX, skCfgEditorSizeY, "Configuration");
 		window->size_range(skCfgEditorSizeX, 120, skCfgEditorSizeX);
 
 		// create editor container window
-		editor_container = new Fl_Double_Window(0, 0, window->w(), window->h() - skBottomOffset, "Cfg Editor Container");
+		editor_container = ut::MakeUnique<Fl_Double_Window>(0, 0, window->w(), window->h() - skBottomOffset, "Cfg Editor Container");
 		editor_container->resizable(editor_container.Get());
 
 		// create text node editor
@@ -103,24 +103,24 @@ ut::Optional<ut::Error> CfgEditor::Open(Configuration& cfg)
 		editor_container->end();
 
 		// create bottom button panel
-		button_container = new Fl_Double_Window(0, window->h() - skBottomOffset, window->w(), skBottomOffset, "Cfg Button Container");
+		button_container = ut::MakeUnique<Fl_Double_Window>(0, window->h() - skBottomOffset, window->w(), skBottomOffset, "Cfg Button Container");
 		button_container->size_range(320, skBottomOffset, 0, skBottomOffset);
 		button_container->resizable(window.Get());
 
 		// create reset button
-		reset_button = new Fl_Button(skButtonOffset,
-		                             skButtonOffset,
-		                             skButtonWidth,
-		                             button_container->h() - skButtonOffset * 2, "Reset");
+		reset_button = ut::MakeUnique<Fl_Button>(skButtonOffset,
+		                                         skButtonOffset,
+		                                         skButtonWidth,
+		                                         button_container->h() - skButtonOffset * 2, "Reset");
 		reset_button->callback(CfgEditorResetCB, this);
 		reset_button->when(FL_WHEN_RELEASE);
 		reset_button->visible_focus(0);
 
 		// create save button
-		save_button = new Fl_Button(button_container->w() - skButtonWidth - skButtonOffset,
-		                            skButtonOffset,
-		                            skButtonWidth,
-		                            button_container->h() - skButtonOffset * 2, "Save");
+		save_button = ut::MakeUnique<Fl_Button>(button_container->w() - skButtonWidth - skButtonOffset,
+		                                        skButtonOffset,
+		                                        skButtonWidth,
+		                                        button_container->h() - skButtonOffset * 2, "Save");
 		save_button->callback(CfgEditorSaveCB, this);
 		save_button->when(FL_WHEN_RELEASE);
 		save_button->visible_focus(0);

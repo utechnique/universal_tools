@@ -72,7 +72,7 @@ Connection::Connection(class Host& owner,
 	}
 
 	// create connection job
-	job = new ConnectionJob(*this, Move(in_actions));
+	job = MakeUnique<ConnectionJob>(*this, Move(in_actions));
 }
 
 // Destructor, shuts socket down and closes connection thread.
@@ -97,7 +97,7 @@ Optional<Error> Connection::RunInSeparateThread()
 	}
 
 	// create new thread
-	thread = new Thread(Move(job));
+	thread = MakeUnique<Thread>(Move(job));
 
 	// success
 	return Optional<Error>();

@@ -64,7 +64,7 @@ Application::Application()
 	}
 
 	// create the ui
-	ui = new PlatformUI(*this);
+	ui = ut::MakeUnique<PlatformUI>(*this);
 	BindUserInterfaceSignals();
 
 	// create host
@@ -73,7 +73,7 @@ Application::Application()
 		Server* server = new Server(ut::net::HostAddress(ut::String(), cfg.address.port),
 		                            cfg.authorization_password);
 		BindServerSignals(*server);
-		host = server;
+		host = ut::UniquePtr<Server>(server);
 	}
 	else
 	{
@@ -88,7 +88,7 @@ Application::Application()
 		                            ui.GetRef(),
 		                            ini_data);
 		BindClientSignals(*client);
-		host = client;
+		host = ut::UniquePtr<Client>(client);
 	}
 
 	// bind signals
@@ -96,7 +96,7 @@ Application::Application()
 
 	// run host thread
 	ut::UniquePtr<ut::Job> host_job(new HostJob(host.GetRef()));
-	host_thread = new ut::Thread(ut::Move(host_job));
+	host_thread = ut::MakeUnique<ut::Thread>(ut::Move(host_job));
 
 	// run user interface
 	ui->Run();

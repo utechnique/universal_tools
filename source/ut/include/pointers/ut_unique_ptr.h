@@ -8,20 +8,10 @@
 #include "containers/ut_array.h"
 #include "containers/ut_pair.h"
 #include "containers/ut_map.h"
+#include "templates/ut_enable_if.h"
+#include "templates/ut_is_base_of.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
-//----------------------------------------------------------------------------//
-// struct ut::PtrRefCast is a proxy structure for ut::UniquePtr convertions.
-// C++03 doesn't support r-value references and move semantics, so we need
-// to implement UniquePtr copy constructor with non-reference (but a full object)
-// parameter. This is done via intermediate structure ut::PtrRefCast.
-template<typename T>
-struct PtrRefCast
-{
-	explicit PtrRefCast(T* p) : ptr(p) { }
-	T* ptr;
-};
-
 //----------------------------------------------------------------------------//
 // Default deleter for unique smart pointer. Just calls a delete operator.
 template <typename T>
@@ -42,15 +32,27 @@ class UniquePtr : public NonCopyable, private Deleter
 {
 typedef T ElementType;
 public:
-	// Default constructor, you should never use @ptr after passing it here
+	// Default constructor
+	constexpr UniquePtr() : pointer(nullptr)
+	{}
+
+	// Constructor, takes ownership of provided pointe,
+	// you should never use @ptr after passing it here
 	//    @param ptr - object's pointer
-	UniquePtr(ElementType* ptr = nullptr) : pointer(ptr)
+	explicit UniquePtr(ElementType* ptr) : pointer(ptr)
 	{}
 
 	// Move constructor
-	//    @param copy - another ut::Ptr object to copy from
-	//                  @copy will be discarded after copying
+	//    @param other - another ut::UniquePtr object to copy from
+	//                  @other will be discarded after copying
 	UniquePtr(UniquePtr&& other) : pointer(other.Discard())
+	{}
+
+	// Move constructor, takes derived type.
+	//    @param other - another ut::UniquePtr object to copy from
+	//                   @other will be discarded after copying
+	template<typename Drv, typename Del, typename = typename EnableIf<IsBaseOf<T, Drv>::value>::Type>
+	UniquePtr(UniquePtr<Drv, Del>&& other) : pointer(other.Discard())
 	{}
 
 	// Destructor, deletes @pointer object
@@ -63,30 +65,21 @@ public:
 	}
 
 	// Move operator
-	//    @param copy - another ut::Ptr object to copy from
-	//                  @copy will be discarded after copying
-	UniquePtr& operator = (UniquePtr && copy)
+	//    @param other - another ut::UniquePtr object to move data from
+	//                   @other will be discarded after copying
+	UniquePtr& operator = (UniquePtr&& other)
 	{
-		Switch(copy.Discard());
+		Switch(other.Discard());
 		return *this;
 	}
 
-	// Assignment operator, retrives raw pointer as an argument
-	//    @param ptr - new object's pointer, old one is to be deleted
-	UniquePtr& operator = (ElementType* ptr)
+	// Move operator
+	//    @param copy - another ut::UniquePtr object to move data from
+	//                  @other will be discarded after copying
+	template<typename Drv, typename Del>
+	typename EnableIf<IsBaseOf<T, Drv>::value, UniquePtr&>::Type operator = (UniquePtr<Drv, Del>&& other)
 	{
-		GetDeleter()(pointer);
-		pointer = ptr;
-		return *this;
-	}
-
-	// Assignment operator, template
-	//    @param copy - another ut::Ptr object to copy from
-	//                  @copy will be discarded after copying
-	template<typename _Tp> UniquePtr &
-		operator = (UniquePtr<_Tp>& copy)
-	{
-		Switch(copy.Discard());
+		Switch(other.Discard());
 		return *this;
 	}
 
@@ -181,45 +174,11 @@ public:
 	// so the managed memory is released without deletion.
 	//    @return - pointer to the managed object. Caller is responsible for
 	//              managing this object after the call.
-	T* Release()
+	ElementType* Release()
 	{
-		T* tmp = pointer;
+		ElementType* tmp = pointer;
 		pointer = nullptr;
 		return tmp;
-	}
-
-	// Conversion constructor from value via intermediate pointer holder
-	UniquePtr(PtrRefCast<ElementType> __ref) : pointer(__ref.ptr)
-	{ }
-
-	// Conversion assignment from value via intermediate pointer holder
-	UniquePtr& operator = (PtrRefCast<ElementType> __ref)
-	{
-		if (__ref.ptr != pointer)
-		{
-			GetDeleter()(pointer);
-			pointer = __ref.ptr;
-		}
-		return *this;
-	}
-
-	// These operations convert ut::UniquePtr into and from an ut::PtrRefCast
-	// automatically as needed.  This allows constructs such as
-	// @code
-	//     UniquePtr<Derived>  func_returning_ptr(.....);
-	//     ...
-	//     UniquePtr<Base> ptr = func_returning_ptr(.....);
-	// @endcode
-	template<typename _Tp1>
-	operator PtrRefCast<_Tp1>()
-	{
-		return PtrRefCast<_Tp1>(this->Release());
-	}
-
-	template<typename _Tp1>
-	operator UniquePtr<_Tp1>()
-	{
-		return UniquePtr<_Tp1>(this->Release());
 	}
 
 protected:
@@ -291,6 +250,14 @@ template <class T> inline bool operator <= (const UniquePtr<T>& left, nullptr_t)
 
 template <class T> inline bool operator <= (nullptr_t, const UniquePtr<T>& right)
 { return nullptr <= right.Get(); }
+
+//----------------------------------------------------------------------------//
+// Constructs an object of specified type and wraps it in a ut::UniquePtr
+template<typename T, typename... Args>
+inline UniquePtr<T> MakeUnique(Args&&...args)
+{
+	return UniquePtr<T>(new T(Forward<Args>(args)...));
+}
 
 //----------------------------------------------------------------------------//
 // Specialize type name function for unique ptr

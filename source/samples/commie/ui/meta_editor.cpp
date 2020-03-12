@@ -46,7 +46,7 @@ MetaEditorItem::MetaEditorItem(const MetaEditorItem& copy) : item(copy.item)
 		// perform polymorphic copying
 		const ut::DynamicType& dynamic_type = copy.input->Identify();
 		ut::Polymorphic* clone = dynamic_type.CloneObject(copy.input.GetRef());
-		input = static_cast<MetaEditorWidget*>(clone);
+		input = ut::UniquePtr<MetaEditorWidget>(static_cast<MetaEditorWidget*>(clone));
 	}
 }
 
@@ -111,11 +111,11 @@ ut::Optional<ut::Error> MetaEditorItem::Create(Fl_Tree* tree,
 		// create input widget of the appropriate type
 		if (is_boolean)
 		{
-			input = new MetaEditorCheckbox(node.data, input_x, skItemHeight, active);
+			input = ut::MakeUnique<MetaEditorCheckbox>(node.data, input_x, skItemHeight, active);
 		}
 		else
 		{
-			input = new MetaEditorTextField(node.data, input_x, input_width, skItemHeight, skItemTextSize, active);
+			input = ut::MakeUnique<MetaEditorTextField>(node.data, input_x, input_width, skItemHeight, skItemTextSize, active);
 		}
 
 		// finish creating tile child widgets
@@ -196,7 +196,7 @@ ut::Optional<ut::Error> MetaEditor::Create(const Fl_Window* parent_window,
 	parent = parent_window;
 
 	// create tree widget
-	tree = new Fl_Tree(0, 0, parent->w(), parent->h());
+	tree = ut::MakeUnique<Fl_Tree>(0, 0, parent->w(), parent->h());
 	tree->tooltip("Test tree");
 	tree->box(FL_DOWN_BOX);
 	tree->color((Fl_Color)55);
@@ -372,7 +372,7 @@ ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> MetaEditor::AddTr
 	}
 
 	// add node name to the buffer
-	if (!name_buffer.Add(new ut::String(node.data.name)))
+	if (!name_buffer.Add(ut::MakeUnique<ut::String>(node.data.name)))
 	{
 		return ut::MakeError(ut::error::out_of_memory);
 	}

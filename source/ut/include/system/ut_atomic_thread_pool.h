@@ -80,7 +80,7 @@ public:
 	{
 		atomics::interlocked::Increment(&counter);
 		auto function = MemberFunction<Scheduler, void(UniqueTaskPtr)>(this, &Scheduler::ExecuteTask);
-		pool.Enqueue(new Task<void(UniqueTaskPtr)>(function, Move(task)));
+		pool.Enqueue(MakeUnique< Task<void(UniqueTaskPtr)> >(function, Move(task)));
 	}
 
 	// Waits until all tasks finish.
@@ -141,8 +141,8 @@ public:
 	{
 		for (size_t i = 0; i < size; i++)
 		{
-			UniquePtr<Job> job(new JobType);
-			threads[i] = new Thread(Move(job));
+			UniquePtr<Job> job(MakeUnique<JobType>());
+			threads[i] = ut::MakeUnique<Thread>(Move(job));
 		}
 	}
 
@@ -176,9 +176,16 @@ public:
 					continue;
 				}
 
+				// extract reference to the job
+				Optional<Job&> job = threads[i]->GetJob();
+				if (!job)
+				{
+					continue;
+				}
+
 				// attempt to enqueue a task
-				JobType& job = static_cast<JobType&>(threads[i]->GetJobRef());
-				if (job.SetTask(Move(task)))
+				JobType& job_ref = static_cast<JobType&>(job.Get());
+				if (job_ref.SetTask(task))
 				{
 					return; // thread was free and accepted a task
 				}

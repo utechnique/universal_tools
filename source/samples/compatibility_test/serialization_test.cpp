@@ -26,8 +26,8 @@ UT_REGISTER_TYPE(ReflectiveBaseAlt, ReflectiveAltB, "reflective_B")
 //----------------------------------------------------------------------------//
 SerializationTestUnit::SerializationTestUnit() : TestUnit("SERIALIZATION")
 {
-	tasks.Add(new SerializationBaseTestTask);
-	tasks.Add(new SerializationVariantsTask);
+	tasks.Add(ut::MakeUnique<SerializationBaseTestTask>());
+	tasks.Add(ut::MakeUnique<SerializationVariantsTask>());
 }
 
 //----------------------------------------------------------------------------//
@@ -355,8 +355,8 @@ SerializationTest::SerializationTest(bool in_alternate,
                                                              , ival_ptr(&ival)
                                                              , ival_const_ptr(&ival)
                                                              , void_ptr(nullptr)
-                                                             , int16_unique(new ut::int16(1))
-                                                             , int16_unique_void(new ut::int16(2))
+                                                             , int16_unique(ut::MakeUnique<ut::int16>(1))
+                                                             , int16_unique_void(ut::MakeUnique<ut::int16>(2))
                                                              , uval(0)
                                                              , bool_val(false)
                                                              , fval(0.0f)
@@ -380,17 +380,17 @@ SerializationTest::SerializationTest(bool in_alternate,
 	i16_ptr = int16_unique.Get();
 
 	// initialize dynamic object
-	dyn_type_ptr = new PolymorphicA(-1, 1);
-	dyn_ptr_c = new PolymorphicA(2, 0);
-	dyn_ptr_e = new PolymorphicA(3, 1);
-	dyn_ptr_cc = new PolymorphicE("e_obj");
-	dyn_ptr_cd = new PolymorphicC("c_obj");
-	dyn_ptr_ce = new PolymorphicC("c_obj");
+	dyn_type_ptr = ut::MakeUnique<PolymorphicA>(-1, 1);
+	dyn_ptr_c = ut::MakeUnique<PolymorphicA>(2, 0);
+	dyn_ptr_e = ut::MakeUnique<PolymorphicA>(3, 1);
+	dyn_ptr_cc = ut::MakeUnique<PolymorphicE>("e_obj");
+	dyn_ptr_cd = ut::MakeUnique<PolymorphicC>("c_obj");
+	dyn_ptr_ce = ut::MakeUnique<PolymorphicC>("c_obj");
 
 	// initialize reflective parameters
-	reflective_param = new ReflectiveA(-2, 2);
-	reflect_unique_ptr = new ReflectiveA(0, 0);
-	reflect_unique_ptr2 = new ReflectiveA(0, 2);
+	reflective_param = ut::MakeUnique<ReflectiveA>(-2, 2);
+	reflect_unique_ptr = ut::MakeUnique<ReflectiveA>(0, 0);
+	reflect_unique_ptr2 = ut::MakeUnique<ReflectiveA>(0, 2);
 
 	// pointers to compicated types
 	refl_ptr = reflect_unique_ptr.Get();
@@ -607,7 +607,7 @@ ReflectiveB::ReflectiveB(const char* in_str,
                                             , ui16(13)
                                             , bstr(in_str)
                                             , uval(in_uval)
-                                            , i_ptr(new ut::int32(in_ival))
+                                            , i_ptr(ut::MakeUnique<ut::int32>(in_ival))
 { }
 
 const ut::DynamicType& ReflectiveB::Identify() const
@@ -639,7 +639,7 @@ ReflectiveAltB::ReflectiveAltB(const char* in_str,
                                ut::int32 in_ival) : bstr(in_str)
                                                   , ui32(13)
                                                   , uval(in_uval)
-                                                  , i_ptr(new ut::int32(in_ival))
+                                                  , i_ptr(ut::MakeUnique<ut::int32>(in_ival))
 { }
 
 const ut::DynamicType& ReflectiveAltB::Identify() const
@@ -712,7 +712,7 @@ void ChangeSerializedObject(SerializationTest& object)
 	{
 		object.strarr.Add("strarr");
 
-		object.u16ptrarr.Add(new ut::uint16(static_cast<ut::uint16>(i) * 2));
+		object.u16ptrarr.Add(ut::MakeUnique<ut::uint16>(static_cast<ut::uint16>(i) * 2));
 
 		object.arr.Add(SerializationSubClass());
 		object.arr[i].u16val = 42;
@@ -741,22 +741,22 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.str_ptr = &object.strarrarr[0][0];
 
 	// change dynamic objects
-	object.dyn_type_ptr = new PolymorphicB("test_b", 500);
+	object.dyn_type_ptr = ut::MakeUnique<PolymorphicB>("test_b", 500);
 	object.dyn_type_ptr->fval = 1001.504f;
-	object.dyn_ptr_c = new PolymorphicC("c_obj");
-	object.dyn_ptr_e = new PolymorphicE("e_obj");
-	object.dyn_ptr_cc = new PolymorphicC("c_obj");
-	object.dyn_ptr_cd = new PolymorphicD(10);
-	object.dyn_ptr_ce = new PolymorphicE("e_obj");
+	object.dyn_ptr_c = ut::MakeUnique<PolymorphicC>("c_obj");
+	object.dyn_ptr_e = ut::MakeUnique<PolymorphicE>("e_obj");
+	object.dyn_ptr_cc = ut::MakeUnique<PolymorphicC>("c_obj");
+	object.dyn_ptr_cd = ut::MakeUnique<PolymorphicD>(10);
+	object.dyn_ptr_ce = ut::MakeUnique<PolymorphicE>("e_obj");
 
 	// change reflective parameter
-	object.reflective_param = new ReflectiveB("reflective_b_str", 42, 10);
+	object.reflective_param = ut::MakeUnique<ReflectiveB>("reflective_b_str", 42, 10);
 	object.reflective_param->base_str = "changed";
 	ReflectiveB* b_ptr = static_cast<ReflectiveB*>(object.reflective_param.Get());
 	b_ptr->b_ptr_arr.Empty();
-	b_ptr->b_ptr_arr.Add(new ut::byte(128));
-	b_ptr->b_ptr_arr.Add(new ut::byte(64));
-	b_ptr->b_ptr_arr.Add(new ut::byte(255));
+	b_ptr->b_ptr_arr.Add(ut::MakeUnique<ut::byte>(128));
+	b_ptr->b_ptr_arr.Add(ut::MakeUnique<ut::byte>(64));
+	b_ptr->b_ptr_arr.Add(ut::MakeUnique<ut::byte>(255));
 
 	// change pointers
 	object.int16_unique_void.Delete();

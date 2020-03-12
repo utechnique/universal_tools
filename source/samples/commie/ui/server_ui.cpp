@@ -19,7 +19,7 @@ const int ServerUI::skToolbarHeight = 60;
 ServerUI::ServerUI(Application& application, Fl_Group* group)
 {
 	// title
-	title_box = new Fl_Box(FL_FRAME_BOX, 0, 0, group->w(), skToolbarHeight, "Server mode");
+	title_box = ut::MakeUnique<Fl_Box>(FL_FRAME_BOX, 0, 0, group->w(), skToolbarHeight, "Server mode");
 	title_box->color(FL_GRAY);
 	title_box->labelsize(24);
 	title_box->labelfont(FL_BOLD);
@@ -27,8 +27,8 @@ ServerUI::ServerUI(Application& application, Fl_Group* group)
 	title_box->labeltype(FL_ENGRAVED_LABEL);
 
 	// log output
-	output_buffer = new Fl_Text_Buffer();
-	output = new Fl_Text_Display(0, title_box->h(), group->w(), group->h() - title_box->h());
+	output_buffer = ut::MakeUnique<Fl_Text_Buffer>();
+	output = ut::MakeUnique<Fl_Text_Display>(0, title_box->h(), group->w(), group->h() - title_box->h());
 	output->buffer(output_buffer.Get());
 	output->textfont(FL_COURIER);
 	output->textsize(14);

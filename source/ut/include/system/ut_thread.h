@@ -14,6 +14,8 @@
 #if UT_WINDOWS
 // 'Yield()' macro of WinBase.h spoils ut::this_thread::Yield() function's name.
 #undef Yield
+// 'GetJob()' macro of winspool.h spoils ut::Thread::GetJob() function's name.
+#undef GetJob
 #endif
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
@@ -93,18 +95,18 @@ protected:
 class Thread : public NonCopyable
 {
 public:
-	// Constructor, starts a new thread with ut::Job::Execute() function
-	//    @param job - job object, whose Execute() function will be
-	//                 called asynchronously in separate thread
-	Thread(UniquePtr<Job> job);
-
 	// Constructor, launches provided function in a new thread.
 	//    @param proc - function to be called from a new thread.
 	Thread(Function<void()> proc);
 
+	// Constructor, starts a new thread with ut::Job::Execute() function
+	//    @param job - job object, whose Execute() function will be
+	//                 called asynchronously in separate thread
+	explicit Thread(UniquePtr<Job> job);
+
 	// Constructor, launches provided task in a new thread.
 	//    @param proc - task to be executed in a new thread.
-	Thread(UniquePtr< BaseTask<void> > proc);
+	explicit Thread(UniquePtr< BaseTask<void> > proc);
 
 	// Destructor, sends exit request to the @job, and wait it's completion,
 	// then thread object is destroyed. Use Kill() if you don't want to
@@ -116,12 +118,12 @@ public:
 	ThreadId GetId() const;
 
 	// Returns reference to the current job.
-	const Job& GetJobRef() const;
+	Optional<const Job&> GetJob() const;
 
 	// Returns reference to the current job.
-	Job& GetJobRef();
+	Optional<Job&> GetJob();
 
-	// Sends exit request to the @job
+	// Sends exit request to the @job.
 	void Exit();
 
 	// Blocks the current thread until the thread identified by *this
@@ -129,18 +131,18 @@ public:
 	void Join();
 
 	// Violently kills a thread, not waiting for completion
-	// use this function only for extreme cases
+	// use this function only for extreme cases.
 	void Kill();
 
 private:
-	// Starts a new thread with a job, windows realization uses _beginthreadex() to run
-	// a thread, Linux realization uses pthread_create().
-	Optional<Error> Start();
-
-	// Entry function for the new thread, calls job_ptr->Execute() internally
+	// Entry function for the new thread, calls @task->Execute() internally.
 	static THREAD_PROCEDURE Entry(BaseTask<void>* proc);
 
-	// Job to be executed
+	// Starts a new thread using @task member, windows variant uses
+	// _beginthreadex() to run a thread, Linux variant uses pthread_create().
+	Optional<Error> Start();
+
+	// job to be executed (optional)
 	UniquePtr<Job> job;
 
 	// procedure
@@ -155,9 +157,6 @@ private:
 	// Thread is valid till this variable is 'true'
 	bool active;
 };
-
-// Shorter type name for UniquePtr<Thread>
-typedef UniquePtr<Thread> ThreadPtr;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

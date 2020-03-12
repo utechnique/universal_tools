@@ -38,7 +38,7 @@ public:
 		{
 			if (client.IsActive())
 			{
-				ut::UniquePtr<ut::net::Command> cmd(new ClientListCmd);
+				ut::UniquePtr<ut::net::Command> cmd(ut::MakeUnique<ClientListCmd>());
 				client.SendCommand(ut::Move(cmd));
 			}
 			
@@ -88,21 +88,21 @@ ut::UniquePtr<ut::net::Connection> Client::CreateConnection(ut::UniquePtr<ut::ne
 	ut::Array< ut::UniquePtr<ut::net::Action> > actions;
 
 	// idle command
-	ut::UniquePtr<ut::net::Command> idle_cmd(new IdleCmd(IdleCmd::skDefaultFrequency));
+	ut::UniquePtr<ut::net::Command> idle_cmd(ut::MakeUnique<IdleCmd>(IdleCmd::skDefaultFrequency));
 
 	// authorization command
-	ut::UniquePtr<ut::net::Command> client_authorization_cmd(new ClientAuthorizationCmd(initialization_data.password,
-	                                                                                    initialization_data.name));
-	actions.Add(new ut::net::SendCommand(Move(client_authorization_cmd)));
+	ut::UniquePtr<ut::net::Command> client_authorization_cmd(ut::MakeUnique<ClientAuthorizationCmd>(initialization_data.password,
+	                                                                                                initialization_data.name));
+	actions.Add(ut::MakeUnique<ut::net::SendCommand>(Move(client_authorization_cmd)));
 
 	// main loop
 	ut::Array< ut::UniquePtr<ut::net::Action> > looped_actions;
-	looped_actions.Add(new ut::net::ReceiveCommand());
-	looped_actions.Add(new ut::net::SendCommandFromStack(Move(idle_cmd)));
-	actions.Add(new ut::net::Loop(ut::Move(looped_actions)));
+	looped_actions.Add(ut::MakeUnique<ut::net::ReceiveCommand>());
+	looped_actions.Add(ut::MakeUnique<ut::net::SendCommandFromStack>(Move(idle_cmd)));
+	actions.Add(ut::MakeUnique<ut::net::Loop>(ut::Move(looped_actions)));
 
 	// create new connection
-	ut::UniquePtr<ut::net::Connection> connection(new Connection(*this, Move(socket), Move(actions)));
+	ut::UniquePtr<ut::net::Connection> connection(ut::MakeUnique<Connection>(*this, Move(socket), Move(actions)));
 
 	// move connection
 	return Move(connection);
@@ -120,8 +120,8 @@ UI& Client::GetUI()
 ut::Optional<ut::Error> Client::Run()
 {
 	// run client-list update thread
-	ut::UniquePtr<ut::Job> job(new ClientListJob(*this, ui, skUpdateClientListFreq));
-	clientlist_thread = new ut::Thread(ut::Move(job));
+	ut::UniquePtr<ut::Job> job = ut::MakeUnique<ClientListJob>(*this, ui, skUpdateClientListFreq);
+	clientlist_thread = ut::MakeUnique<ut::Thread>(ut::Move(job));
 
 	// run client
 	return ut::net::Client::Run();

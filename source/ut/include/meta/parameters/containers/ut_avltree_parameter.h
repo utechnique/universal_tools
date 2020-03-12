@@ -50,13 +50,13 @@ public:
 		// import left leaf
 		if (left_leaf != nullptr)
 		{
-			left = new AVLNodeProxy(*left_leaf);
+			left = MakeUnique<AVLNodeProxy>(*left_leaf);
 		}
 
 		// import right leaf
 		if (right_leaf != nullptr)
 		{
-			right = new AVLNodeProxy(*right_leaf);
+			right = MakeUnique<AVLNodeProxy>(*right_leaf);
 		}
 	}
 
@@ -225,7 +225,7 @@ private:
 		// export tree to the temporary proxy structure
 		if (tree.root != nullptr)
 		{
-			proxy = new ProxyNode(*tree.root);
+			proxy = ut::MakeUnique<ProxyNode>(*tree.root);
 		}
 	}
 

@@ -6,9 +6,9 @@
 // Unit
 ThreadTestUnit::ThreadTestUnit() : TestUnit("THREAD")
 {
-	tasks.Add(new ThreadProcTask);
-	tasks.Add(new ThreadLauncherTask);
-	tasks.Add(new ThreadPoolTask);
+	tasks.Add(ut::MakeUnique<ThreadProcTask>());
+	tasks.Add(ut::MakeUnique<ThreadLauncherTask>());
+	tasks.Add(ut::MakeUnique<ThreadPoolTask>());
 }
 
 //----------------------------------------------------------------------------//
@@ -17,9 +17,9 @@ ThreadProcTask::ThreadProcTask() : TestTask("Thread Procedure") {}
 
 void ThreadProcTask::Execute()
 {
-	ut::Thread thread(ut::Function<void()>([this] { this->report += "Hello from another thread. Success."; }));
+	ut::Thread thread([this] { this->report += "Hello from another thread. Success.\n"; });
 
-	ut::UniquePtr< ut::BaseTask<void> > task = new ut::Task<void()>([this] { this->report += "Hello from another thread 2. Success."; });
+	ut::UniquePtr< ut::BaseTask<void> > task = ut::MakeUnique< ut::Task<void()> >([this] { this->report += "Hello from another thread 2. Success.\n"; });
 	ut::Thread thread2(ut::Move(task));
 }
 
@@ -29,7 +29,7 @@ ThreadLauncherTask::ThreadLauncherTask() : TestTask("Thread Launcher") {}
 
 void ThreadLauncherTask::Execute()
 {
-	ut::UniquePtr<ut::Job> job(new TestJob(*this, 0));
+	ut::UniquePtr<ut::Job> job(ut::MakeUnique<TestJob>(*this, 0));
 	ut::Thread test_thread(Move(job));
 	ut::this_thread::Sleep(600);
 	test_thread.Exit();
@@ -42,8 +42,8 @@ void ThreadLauncherTask::Execute()
 
 	ut::UniquePtr<ut::Thread> thread2;
 
-	ut::UniquePtr<ut::Job> job2(new TestJob(*this, 1));
-	thread2 = new ut::Thread(Move(job2));
+	ut::UniquePtr<ut::Job> job2(ut::MakeUnique<TestJob>(*this, 1));
+	thread2 = ut::MakeUnique<ut::Thread>(Move(job2));
 }
 
 void ThreadLauncherTask::AddReport(const ut::String& str)
@@ -169,13 +169,13 @@ void ThreadPoolTask::Execute()
 	}
 
 	// plain
-	ut::UniquePtr< ut::ThreadPool<void, ut::pool_sync::cond_var> > pool(new ut::ThreadPool<void>);
+	ut::UniquePtr< ut::ThreadPool<void, ut::pool_sync::cond_var> > pool(ut::MakeUnique< ut::ThreadPool<void> >());
 	report += ut::String("Starting plain pool test:") + ut::cret;
 	ut::Scheduler<void, ut::DefaultCombiner<void>, ut::pool_sync::cond_var> scheduler = pool->CreateScheduler();
 	for (ut::uint32 i = 0; i < series; i++)
 	{
 		auto function = ut::MemberFunction<PoolTest, void()>(&test_obj[i], &PoolTest::ExecuteVoid);
-		ut::UniquePtr< ut::BaseTask<void> > task(new ut::Task<void()>(function));
+		ut::UniquePtr< ut::BaseTask<void> > task(ut::MakeUnique< ut::Task<void()> >(function));
 		scheduler.Enqueue(ut::Move(task));
 	}
 	scheduler.WaitForCompletion();

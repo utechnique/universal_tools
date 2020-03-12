@@ -5,9 +5,9 @@
 //----------------------------------------------------------------------------//
 EncryptionTestUnit::EncryptionTestUnit() : TestUnit("ENCRYPTION")
 {
-	tasks.Add(new HashTask);
-	tasks.Add(new AesTask);
-	tasks.Add(new XorTask);
+	tasks.Add(ut::MakeUnique<HashTask>());
+	tasks.Add(ut::MakeUnique<AesTask>());
+	tasks.Add(ut::MakeUnique<XorTask>());
 }
 
 //----------------------------------------------------------------------------//

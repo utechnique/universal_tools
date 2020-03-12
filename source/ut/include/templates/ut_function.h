@@ -42,7 +42,7 @@ public:
 	// Assignment operator, copies invoker object from the source.
 	FunctionBase& operator = (const FunctionBase& copy)
 	{
-		invoker = copy.invoker->MakeCopy();
+		invoker = UniquePtr< Invoker<Signature> >(copy.invoker->MakeCopy());
 		return *this;
 	}
 
@@ -176,11 +176,11 @@ public:
 	Function(UniquePtr< Invoker<Pointer> > invoker) : Base(Move(invoker))
 	{}
 
-	Function(Pointer ptr = nullptr) : Base(new Invoker<Pointer>(ptr))
+	Function(Pointer ptr = nullptr) : Base(MakeUnique< Invoker<Pointer> >(ptr))
 	{}
 
 	template<typename Functor>
-	Function(Functor functor) : Base(new FunctorInvoker<Functor, Pointer>(Move(functor)))
+	Function(Functor functor) : Base(MakeUnique< FunctorInvoker<Functor, Pointer> >(Move(functor)))
 	{}
 
 	bool IsValid() const
@@ -195,7 +195,7 @@ template<typename C, typename S>
 inline Function<S> MemberFunction(C* obj, typename Function<S>::template MemberFunction<C> ptr)
 {
 	UniquePtr< Invoker<typename AddPointer<S>::Type> > invoker
-		(new MemberInvoker<typename Function<S>::template MemberFunction<C> >(ptr, obj));
+		(MakeUnique< MemberInvoker<typename Function<S>::template MemberFunction<C> > >(ptr, obj));
 	return Function<S>(Move(invoker));
 }
 

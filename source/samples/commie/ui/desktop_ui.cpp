@@ -190,53 +190,53 @@ DesktopUI::DesktopUI(Application& application) : app(application)
 	Fl::scheme("plastic");
 
 	// create main window
-	window = new Fl_Double_Window(cfg.ui.position_x,
-	                              cfg.ui.position_y,
-	                              cfg.ui.width,
-	                              cfg.ui.height,
-	                              "Commie");
+	window = ut::MakeUnique<Fl_Double_Window>(cfg.ui.position_x,
+	                                          cfg.ui.position_y,
+	                                          cfg.ui.width,
+	                                          cfg.ui.height,
+	                                          "Commie");
 	window->size_range(skRangeX, skRangeY);
 
 	// create toolbar
-	toolbar.container = new Fl_Double_Window(0, 0,
-	                                         interior_width,
-	                                         skToolbarHeight,
-	                                         "Toolbar");
+	toolbar.container = ut::MakeUnique<Fl_Double_Window>(0, 0,
+	                                                     interior_width,
+	                                                     skToolbarHeight,
+	                                                     "Toolbar");
 
-	toolbar.configuration = new Fl_Button(toolbar_element_offset,
-	                                      toolbar_element_offset,
-	                                      skToolbarElementSize,
-	                                      skToolbarElementSize);
-	toolbar.configuration_image = new Fl_RGB_Image(resources::gkOptionsIcon.data,
-	                                               resources::gkOptionsIcon.width,
-	                                               resources::gkOptionsIcon.height,
-	                                               4);
+	toolbar.configuration = ut::MakeUnique<Fl_Button>(toolbar_element_offset,
+	                                                  toolbar_element_offset,
+	                                                  skToolbarElementSize,
+	                                                  skToolbarElementSize);
+	toolbar.configuration_image = ut::MakeUnique<Fl_RGB_Image>(resources::gkOptionsIcon.data,
+	                                                           resources::gkOptionsIcon.width,
+	                                                           resources::gkOptionsIcon.height,
+	                                                           4);
 	toolbar.configuration->image(toolbar.configuration_image.Get());
 	toolbar.configuration->callback(Toolbar::CfgButtonCallback, this);
 	toolbar.configuration->visible_focus(0);
 
 
-	toolbar.encryption_on = new Fl_Button(toolbar_element_offset * 2 + skToolbarElementSize,
-	                                   toolbar_element_offset,
-	                                   skToolbarElementSize,
-	                                   skToolbarElementSize);
-	toolbar.encryption_on_image = new Fl_RGB_Image(resources::gkClosedLockIcon.data,
-	                                               resources::gkClosedLockIcon.width,
-	                                               resources::gkClosedLockIcon.height,
-	                                               4);
+	toolbar.encryption_on = ut::MakeUnique<Fl_Button>(toolbar_element_offset * 2 + skToolbarElementSize,
+	                                                  toolbar_element_offset,
+	                                                  skToolbarElementSize,
+	                                                  skToolbarElementSize);
+	toolbar.encryption_on_image = ut::MakeUnique<Fl_RGB_Image>(resources::gkClosedLockIcon.data,
+	                                                           resources::gkClosedLockIcon.width,
+	                                                           resources::gkClosedLockIcon.height,
+	                                                           4);
 	toolbar.encryption_on->image(toolbar.encryption_on_image.Get());
 	toolbar.encryption_on->callback(Toolbar::TurnOffEncryptionCallback, this);
 	toolbar.encryption_on->visible_focus(0);
 	toolbar.encryption_on->hide();
 
-	toolbar.encryption_off = new Fl_Button(toolbar_element_offset * 2 + skToolbarElementSize,
-	                                       toolbar_element_offset,
-	                                       skToolbarElementSize,
-	                                       skToolbarElementSize);
-	toolbar.encryption_off_image = new Fl_RGB_Image(resources::gkOpenedLockIcon.data,
-	                                                resources::gkOpenedLockIcon.width,
-	                                                resources::gkOpenedLockIcon.height,
-	                                                4);
+	toolbar.encryption_off = ut::MakeUnique<Fl_Button>(toolbar_element_offset * 2 + skToolbarElementSize,
+	                                                   toolbar_element_offset,
+	                                                   skToolbarElementSize,
+	                                                   skToolbarElementSize);
+	toolbar.encryption_off_image = ut::MakeUnique<Fl_RGB_Image>(resources::gkOpenedLockIcon.data,
+	                                                            resources::gkOpenedLockIcon.width,
+	                                                            resources::gkOpenedLockIcon.height,
+	                                                            4);
 	toolbar.encryption_off->image(toolbar.encryption_off_image.Get());
 	toolbar.encryption_off->callback(Toolbar::ToggleEncryptionCallback, this);
 	toolbar.encryption_off->visible_focus(0);
@@ -251,11 +251,11 @@ DesktopUI::DesktopUI(Application& application) : app(application)
 	}
 
 	// create body
-	body_container = new Fl_Double_Window(0, skToolbarHeight, interior_width, interior_height);
+	body_container = ut::MakeUnique<Fl_Double_Window>(0, skToolbarHeight, interior_width, interior_height);
 	body_container->resizable(body_container.Get());
 	if (cfg.server_mode)
 	{
-		body = new ServerUI(application, body_container.Get());
+		body = ut::MakeUnique<ServerUI>(application, body_container.Get());
 	}
 	else
 	{
@@ -267,7 +267,7 @@ DesktopUI::DesktopUI(Application& application) : app(application)
 		client_ui->message_sent.Connect(ut::Move(function));
 
 		// set body pointer
-		body = client_ui;
+		body = ut::UniquePtr<ClientUI>(client_ui);
 	}
 	body_container->end();
 
@@ -291,7 +291,7 @@ void DesktopUI::Run()
 	// dispatching thread that will be grabbing commands from the UI layer
 	// and pass them into the main thread to be processed by fltk.
 	ut::UniquePtr<ut::Job> job(new UiDispatcherJob(*this));
-	cmd_dispatcher_thread = new ut::Thread(ut::Move(job));
+	cmd_dispatcher_thread = ut::MakeUnique<ut::Thread>(ut::Move(job));
 
 	// lock fltk so that we could pass commands to the main thread
 	// using Fl::awake(cmd) function

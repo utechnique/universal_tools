@@ -89,6 +89,22 @@ void Job::Exit()
 //----------------------------------------------------------------------------//
 // class ut::Thread                                                           //
 //----------------------------------------------------------------------------//
+// Constructor, launches provided function in a new thread.
+//    @param proc - function to be called from a new thread.
+Thread::Thread(Function<void()> proc) : handle(0)
+                                      , id(0)
+                                      , active(false)
+{
+	UT_ASSERT(proc.IsValid());
+	task = MakeUnique< Task<void()> >(Move(proc));
+	Optional<Error> launch_error = Start();
+	if (launch_error)
+	{
+		throw launch_error.Move();
+	}
+}
+
+//----------------------------------------------------------------------------->
 // Constructor, starts a new thread with ut::Job::Execute() function
 //    @param job - job object, whose Execute() function will be
 //                 called asynchronously in separate thread
@@ -98,23 +114,7 @@ Thread::Thread(UniquePtr<Job> job_ptr) : job(Move(job_ptr))
                                        , active(false)
 {
 	UT_ASSERT(job);
-	task = new Task<void()>(MemberFunction<Job, void()>(job.Get(), &Job::Execute));
-	Optional<Error> launch_error = Start();
-	if (launch_error)
-	{
-		throw launch_error.Move();
-	}
-}
-
-//----------------------------------------------------------------------------->
-// Constructor, launches provided function in a new thread.
-//    @param proc - function to be called from a new thread.
-Thread::Thread(Function<void()> proc) : handle(0)
-                                      , id(0)
-                                      , active(false)
-{
-	UT_ASSERT(proc.IsValid());
-	task = new Task<void()>(Move(proc));
+	task = MakeUnique< Task<void()> >(MemberFunction<Job, void()>(job.Get(), &Job::Execute));
 	Optional<Error> launch_error = Start();
 	if (launch_error)
 	{
@@ -156,18 +156,16 @@ ThreadId Thread::GetId() const
 
 //----------------------------------------------------------------------------->
 // Returns reference to the current job.
-const Job& Thread::GetJobRef() const
+Optional<const Job&> Thread::GetJob() const
 {
-	UT_ASSERT(job);
-	return job.GetRef();
+	return job ? Optional<const Job&>(job.GetRef()) : Optional<const Job&>();
 }
 
 //----------------------------------------------------------------------------->
 // Returns reference to the current job.
-Job& Thread::GetJobRef()
+Optional<Job&> Thread::GetJob()
 {
-	UT_ASSERT(job);
-	return job.GetRef();
+	return job ? Optional<Job&>(job.GetRef()) : Optional<Job&>();
 }
 
 //----------------------------------------------------------------------------->
@@ -232,8 +230,8 @@ void Thread::Kill(void)
 }
 
 //----------------------------------------------------------------------------->
-// Starts a new thread with a job, windows realization uses _beginthreadex() to run
-// a thread, Linux realization uses pthread_create().
+// Starts a new thread using @task member, windows variant uses
+// _beginthreadex() to run a thread, Linux variant uses pthread_create().
 inline Optional<Error> Thread::Start()
 {
 #if UT_WINDOWS
@@ -266,7 +264,7 @@ inline Optional<Error> Thread::Start()
 }
 
 //----------------------------------------------------------------------------->
-// Entry function for the new thread, calls job_ptr->Execute() internally
+// Entry function for the new thread, calls @task->Execute() internally.
 THREAD_PROCEDURE Thread::Entry(BaseTask<void>* proc)
 {
 	if (proc != nullptr)

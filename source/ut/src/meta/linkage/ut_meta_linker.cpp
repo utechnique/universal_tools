@@ -32,7 +32,7 @@ Optional<Error> Linker::AddLink(const SharedPtr<BaseParameter>& parameter, size_
 	// Add a link. Link is created as unique ptr because it must
 	// have a stable address in memory, ut::Array would change this address
 	// during reallocation otherwise.
-	if (!links.Add(new Link(Move(link))))
+	if (!links.Add(MakeUnique<Link>(Move(link))))
 	{
 		return Error(error::out_of_memory);
 	}
