@@ -18,7 +18,7 @@ Optional<Error> Snapshot::Init(T& object, String name)
 {
 	// create one of the possible parameters - correct
 	// variant is deduced from the argument list
-	data.parameter = new Parameter<T>(&object);
+	data.parameter = MakeShared< Parameter<T> >(&object);
 
 	// copy parameter name
 	data.name = Move(name);

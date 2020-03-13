@@ -5,11 +5,19 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "pointers/ut_ref_counter.h"
+#include "templates/ut_enable_if.h"
+#include "templates/ut_is_base_of.h"
+#include "templates/ut_are_types_equal.h"
+#include "templates/ut_are_values_equal.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // Forward Declaration for the ut::WeakPtr template class.
 template<class T, thread_safety::Mode> class WeakPtr;
+
+//----------------------------------------------------------------------------//
+// Default thread safety mode for ut::SharedPtr.
+static const thread_safety::Mode skDefaultSharedPtrMode = thread_safety::on;
 
 //----------------------------------------------------------------------------//
 // template class ut::SharedPtr is a smart pointer that retains shared ownership
@@ -26,33 +34,62 @@ template<class T, thread_safety::Mode> class WeakPtr;
 // managed pointer is the one passed to the deleter when use count reaches zero.
 // Also ut::SharedPtr can be used with an incomplete type.
 template <typename ObjectType,
-          thread_safety::Mode thread_safety_mode = thread_safety::on,
+          thread_safety::Mode thread_safety_mode = skDefaultSharedPtrMode,
           typename Deleter = DefaultSharedDeleter<ObjectType> >
 class SharedPtr
 {
-	typedef ReferenceController<ObjectType, thread_safety_mode> Controller;
+	typedef ReferenceController<thread_safety_mode> Controller;
 
 	// WeakPtr is a friend to get access to the reference controller.
 	template <typename, thread_safety::Mode> friend class WeakPtr;
+
+	// SharedPtr must have access to other template instantiations.
+	template <typename, thread_safety::Mode, typename> friend class SharedPtr;
+
+	// Helper structure to discover if another shared pointer
+	// is convertible to the current one.
+	template<typename Drv, thread_safety::Mode drv_mode>
+	struct IsConvertible
+	{
+		enum
+		{
+			value = IsBaseOf<ObjectType, Drv>::value &&
+			AreValuesEqual<thread_safety::Mode, thread_safety_mode, drv_mode>::value
+		};
+	};
 public:
 	// Default constructor
 	SharedPtr() : object(nullptr), referencer()
-	{ }
+	{}
 
 	// Constructor. Creates a new reference controller from the raw pointer.
-	SharedPtr(ObjectType* managed_object) : object(managed_object)
-	                                      , referencer(CreateController(managed_object))
-	{ }
+	explicit SharedPtr(ObjectType* managed_object) : object(managed_object)
+	                                               , referencer(CreateController(managed_object))
+	{}
 
 	// Copy constructor. Copies referencer object. Reference count is increased by 1 here.
 	SharedPtr(const SharedPtr& copy) : object(copy.object)
 	                                 , referencer(copy.referencer)
-	{ }
+	{}
+
+	// Copy constructor, takes derived type.
+	template<typename Drv, thread_safety::Mode drv_mode, typename DrvDel,
+	         typename = typename EnableIf<IsConvertible<Drv, drv_mode>::value>::Type>
+	SharedPtr(const SharedPtr<Drv, drv_mode, DrvDel>& copy)  : object(copy.object)
+	                                                         , referencer(copy.referencer)
+	{}
 
 	// Move constructor. Moves referencer object. Reference count doesn't change here.
 	SharedPtr(SharedPtr&& rval) : object(rval.object)
 	                            , referencer(Move(rval.referencer))
-	{ }
+	{}
+
+	// Move constructor, takes derived type.
+	template<typename Drv, thread_safety::Mode drv_mode, typename DrvDel,
+	         typename = typename EnableIf<IsConvertible<Drv, drv_mode>::value>::Type>
+	SharedPtr(SharedPtr<Drv, drv_mode, DrvDel>&& rval) : object(rval.object)
+	                                                   , referencer(Move(rval.referencer))
+	{}
 
 	// Assign operator. Reference count to the old object is decreased by 1 here, and
 	// reference count to the new object is increased by 1.
@@ -62,8 +99,26 @@ public:
 		return *this;
 	}
 
+	// Assign operator. Takes derived type.
+	template<typename Drv, thread_safety::Mode drv_mode, typename DrvDel>
+	typename EnableIf<IsConvertible<Drv, drv_mode>::value, SharedPtr&>::Type
+		operator=(const SharedPtr<Drv, drv_mode, DrvDel>& copy)
+	{
+		Reset(copy);
+		return *this;
+	}
+
 	// Move operator. Behaves exactly as assign operator (with full-copy behaviour).
 	SharedPtr& operator=(SharedPtr&& rval)
+	{
+		Reset(rval);
+		return *this;
+	}
+
+	// Move operator. Takes derived type.
+	template<typename Drv, thread_safety::Mode drv_mode, typename DrvDel>
+	typename EnableIf<IsConvertible<Drv, drv_mode>::value, SharedPtr&>::Type
+		operator=(SharedPtr<Drv, drv_mode, DrvDel>&& rval)
 	{
 		Reset(rval);
 		return *this;
@@ -123,7 +178,7 @@ public:
 	void Reset(ObjectType* obj = nullptr)
 	{
 		DestructReferencer();
-		new(&referencer) SharedReferencer<ObjectType, thread_safety_mode>(CreateController(obj));
+		new(&referencer) SharedReferencer<thread_safety_mode>(CreateController(obj));
 		object = obj;
 	}
 
@@ -132,7 +187,7 @@ public:
 	void Reset(const SharedPtr& copy)
 	{
 		DestructReferencer();
-		new(&referencer) SharedReferencer<ObjectType, thread_safety_mode>(copy.referencer);
+		new(&referencer) SharedReferencer<thread_safety_mode>(copy.referencer);
 		object = copy.object;
 	}
 
@@ -174,7 +229,7 @@ private:
 	// Referencer for the shared pointers, contains a pointer to the reference controller.
 	// SharedReferencer<> class is a convenient wrapper, that uses reference controller
 	// to increment reference count on construction and decrement this count on destruction.
-	SharedReferencer<ObjectType, thread_safety_mode> referencer;
+	SharedReferencer<thread_safety_mode> referencer;
 };
 
 //----------------------------------------------------------------------------//
@@ -242,6 +297,33 @@ template <class T> inline bool operator <= (const SharedPtr<T>& left, nullptr_t)
 template <class T> inline bool operator <= (nullptr_t, const SharedPtr<T>& right)
 { return nullptr <= right.Get(); }
 
+//----------------------------------------------------------------------------//
+// Constructs an object of specified type and wraps it in a ut::SharedPtr
+template<typename T, typename... Args>
+inline SharedPtr<T> MakeShared(Args&&...args)
+{
+	return SharedPtr<T, skDefaultSharedPtrMode>(new T(Forward<Args>(args)...));
+}
+
+//----------------------------------------------------------------------------//
+// The same as ut::MakeShared(), but resulting pointer is guaranteed to have
+// thread safety enabled.
+template<typename T, typename... Args>
+inline SharedPtr<T, thread_safety::on> MakeSafeShared(Args&&...args)
+{
+	return SharedPtr<T, thread_safety::on>(new T(Forward<Args>(args)...));
+}
+
+//----------------------------------------------------------------------------//
+// The same as ut::MakeShared(), but resulting pointer is guaranteed to have
+// thread safety disabled.
+template<typename T, typename... Args>
+inline SharedPtr<T, thread_safety::off> MakeUnsafeShared(Args&&...args)
+{
+	return SharedPtr<T, thread_safety::off>(new T(Forward<Args>(args)...));
+}
+
+//----------------------------------------------------------------------------//
 // Specialize type name function for shared ptr
 template <typename T, thread_safety::Mode mode, typename Deleter>
 struct Type< SharedPtr<T, mode, Deleter> >

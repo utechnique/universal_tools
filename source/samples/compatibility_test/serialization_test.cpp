@@ -398,11 +398,11 @@ SerializationTest::SerializationTest(bool in_alternate,
 	refl_A_ptr = static_cast<ReflectiveA*>(reflect_unique_ptr.Get());
 
 	// shared pointers
-	ival_shared_ptr_0 = new ut::int32(2);
+	ival_shared_ptr_0 = ut::MakeShared<ut::int32>(2);
 	ival_shared_ptr_1 = ival_shared_ptr_0;
-	ival_shared_ptr_2 = new ut::int32(102);
-	refl_shared_ptr = new ReflectiveA(0, 3);
-	refl_shared_void_ptr = new ReflectiveA(1, 1);
+	ival_shared_ptr_2 = ut::MakeShared<ut::int32>(102);
+	refl_shared_ptr = ut::MakeShared<ReflectiveA>(0, 3);
+	refl_shared_void_ptr = ut::MakeShared<ReflectiveA>(1, 1);
 	ival_weak_ptr_0 = ival_shared_ptr_0;
 	void_weak_ptr_0 = ival_shared_ptr_0;
 }
@@ -665,7 +665,7 @@ void ReflectiveAltB::Reflect(ut::meta::Snapshot& snapshot)
 }
 
 //----------------------------------------------------------------------------//
-SharedTestLevel2::SharedTestLevel2() : i32_shared(new ut::int32(3))
+SharedTestLevel2::SharedTestLevel2() : i32_shared(ut::MakeShared<ut::int32>(3))
 { }
 
 void SharedTestLevel2::Reflect(ut::meta::Snapshot& snapshot)
@@ -674,7 +674,7 @@ void SharedTestLevel2::Reflect(ut::meta::Snapshot& snapshot)
 }
 
 //----------------------------------------------------------------------------//
-SharedTestLevel1::SharedTestLevel1() : shared_obj(new SharedTestLevel2)
+SharedTestLevel1::SharedTestLevel1() : shared_obj(ut::MakeShared<SharedTestLevel2>())
 { }
 
 void SharedTestLevel1::Reflect(ut::meta::Snapshot& snapshot)
@@ -683,7 +683,7 @@ void SharedTestLevel1::Reflect(ut::meta::Snapshot& snapshot)
 }
 
 //----------------------------------------------------------------------------//
-SharedTestLevel0::SharedTestLevel0() : shared_obj(new SharedTestLevel1)
+SharedTestLevel0::SharedTestLevel0() : shared_obj(ut::MakeShared<SharedTestLevel1>())
 { }
 
 void SharedTestLevel0::Reflect(ut::meta::Snapshot& snapshot)
@@ -764,12 +764,12 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.refl_ptr = object.reflect_unique_ptr2.Get();
 
 	// change shared pointers
-	object.ival_shared_ptr_0 = new ut::int32(4);
+	object.ival_shared_ptr_0 = ut::MakeShared<ut::int32>(4);
 	object.ival_shared_ptr_1 = object.ival_shared_ptr_0;
-	object.ival_shared_ptr_2 = new ut::int32(101);
-	object.refl_shared_ptr = new ReflectiveB("reflective_b_str", 1, 1);
+	object.ival_shared_ptr_2 = ut::MakeShared<ut::int32>(101);
+	object.refl_shared_ptr = ut::MakeShared<ReflectiveB>("reflective_b_str", 1, 1);
 	object.refl_shared_void_ptr.Reset();
-	object.refl_shared_level_ptr = new SharedTestLevel0;
+	object.refl_shared_level_ptr = ut::MakeShared<SharedTestLevel0>();
 	object.refl_shared_level_ptr->shared_obj->shared_obj->i32_shared.GetRef() = 114;
 
 	// weak pointers

@@ -571,8 +571,8 @@ void SharedPtrTask::Execute()
 
 	if(true)
 	{
-		ut::SharedPtr<int, safety_mode> ptr(new int(-1));
-		ut::SharedPtr<int, safety_mode> alt_ptr(new int(2));
+		ut::SharedPtr<int, safety_mode> ptr(ut::MakeShared<int>(-1));
+		ut::SharedPtr<int, safety_mode> alt_ptr(ut::MakeShared<int>(2));
 
 		ut::SharedPtr<int, safety_mode> ptr0(ptr);
 
@@ -618,7 +618,7 @@ void ContainerTask::Execute()
 	arr.Add(2);
 
 	ut::UniquePtr<int> uniq_ptr(ut::MakeUnique<int>(10));
-	ut::SharedPtr<ut::uint> sh_ptr(new ut::uint(12));
+	ut::SharedPtr<ut::uint> sh_ptr(ut::MakeShared<ut::uint>(12));
 
 	TestContainer c(0, b, Move(uniq_ptr), sh_ptr, Move(arr));
 
@@ -853,6 +853,49 @@ void SmartPtrTask::Execute()
 	// must be non-compilable
 	//ut::UniquePtr<TestBase> base2(ut::Move(other));
 	//base = ut::Move(other);
+
+	// must be compilable
+	ut::SharedPtr<TestAnother, ut::thread_safety::on> sh_other_safe = ut::MakeSafeShared<TestAnother>();
+	ut::SharedPtr<TestDerived, ut::thread_safety::on> sh_derived_safe = ut::MakeSafeShared<TestDerived>();
+	ut::SharedPtr<TestBase, ut::thread_safety::on> sh_base_safe(ut::Move(sh_derived_safe));
+	sh_base_safe = ut::Move(sh_derived_safe);
+
+	ut::SharedPtr<TestAnother, ut::thread_safety::off> sh_other_unsafe = ut::MakeUnsafeShared<TestAnother>();
+	ut::SharedPtr<TestDerived, ut::thread_safety::off> sh_derived_unsafe = ut::MakeUnsafeShared<TestDerived>();
+	ut::SharedPtr<TestBase, ut::thread_safety::off> sh_base_unsafe(ut::Move(sh_derived_unsafe));
+	sh_base_unsafe = ut::Move(sh_derived_unsafe);
+
+	// must be non-compilable
+	/*
+	ut::SharedPtr<TestBase, ut::thread_safety::on> sh_base2_safe(ut::Move(sh_other_safe));
+	sh_base_safe = ut::Move(sh_other_safe);
+	ut::SharedPtr<TestBase, ut::thread_safety::off> sh_base2_unsafe(ut::Move(sh_other_unsafe));
+	sh_base_unsafe = ut::Move(sh_other_unsafe);
+	sh_base_safe = sh_base_unsafe;
+	*/
+
+	// must be compilable
+	ut::WeakPtr<TestAnother, ut::thread_safety::on> wk_other_safe;
+	ut::WeakPtr<TestDerived, ut::thread_safety::on> wk_derived_safe;
+	ut::WeakPtr<TestBase, ut::thread_safety::on> wk_base_safe = wk_derived_safe;
+	wk_base_safe = ut::Move(wk_derived_safe);
+	wk_base_safe = sh_derived_safe;
+
+	ut::WeakPtr<TestAnother, ut::thread_safety::off> wk_other_unsafe;
+	ut::WeakPtr<TestDerived, ut::thread_safety::off> wk_derived_unsafe;
+	ut::WeakPtr<TestBase, ut::thread_safety::off> wk_base_unsafe = wk_derived_unsafe;
+	wk_base_unsafe = ut::Move(wk_derived_unsafe);
+	wk_base_unsafe = sh_derived_unsafe;
+
+	// must be non-compilable
+	/*
+	ut::WeakPtr<TestBase, ut::thread_safety::on> wk_base2_safe(ut::Move(wk_other_safe));
+	wk_base_safe = ut::Move(sh_other_safe);
+	ut::WeakPtr<TestBase, ut::thread_safety::off> wk_base2_unsafe(ut::Move(wk_other_unsafe));
+	wk_base_unsafe = ut::Move(sh_other_unsafe);
+	wk_base_safe = wk_base_unsafe;
+	wk_base_safe = sh_derived_unsafe;
+	*/
 
 	report += "success";
 }

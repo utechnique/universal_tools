@@ -15,7 +15,7 @@ static const bool skLogSerializationEvents = true;
 // Constructor
 //    @param info_copy - copy of the serialization info, that will be
 //                       used during serialization and deserialization
-Snapshot::Snapshot(Info info_copy) : Base(), info(new Info(Move(info_copy)))
+Snapshot::Snapshot(Info info_copy) : Base(), info(MakeUnsafeShared<Info>(Move(info_copy)))
 { }
 
 //----------------------------------------------------------------------------->
