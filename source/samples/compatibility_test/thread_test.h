@@ -14,6 +14,17 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class ThreadProcTask : public TestTask
+{
+public:
+	ThreadProcTask();
+	void Execute();
+
+private:
+	ut::Mutex report_mutex;
+};
+
+//----------------------------------------------------------------------------//
 class ThreadLauncherTask : public TestTask
 {
 public:

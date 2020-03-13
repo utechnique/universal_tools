@@ -5,10 +5,10 @@
 //----------------------------------------------------------------------------//
 SignalTestUnit::SignalTestUnit() : TestUnit("SIGNALS")
 {
-	tasks.Add(new Slot0Task);
-	tasks.Add(new Slot1Task);
-	tasks.Add(new Slot2Task);
-	tasks.Add(new Slot3Task);
+	tasks.Add(ut::MakeUnique<Slot0Task>());
+	tasks.Add(ut::MakeUnique<Slot1Task>());
+	tasks.Add(ut::MakeUnique<Slot2Task>());
+	tasks.Add(ut::MakeUnique<Slot3Task>());
 }
 
 //----------------------------------------------------------------------------//

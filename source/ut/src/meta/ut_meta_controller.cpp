@@ -562,7 +562,7 @@ Optional<Error> Controller::InitializeNode(Snapshot& node)
 	// create linker
 	if (info.HasLinkageInformation())
 	{
-		linker = new Linker;
+		linker = MakeShared<Linker>();
 	}
 
 	// success

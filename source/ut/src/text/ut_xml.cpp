@@ -5,40 +5,6 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// Default constructor
-XmlDoc::XmlDoc()
-{ }
-
-//----------------------------------------------------------------------------->
-// Copy constructor
-XmlDoc::XmlDoc(const XmlDoc& copy) : Document(copy)
-{ }
-
-//----------------------------------------------------------------------------->
-// Move constructor
-#if CPP_STANDARD >= 2011
-XmlDoc::XmlDoc(XmlDoc && rvalue) : Document(Move(rvalue))
-{ }
-#endif
-
-//----------------------------------------------------------------------------->
-// Assignment operator
-XmlDoc& XmlDoc::operator = (const XmlDoc& copy)
-{
-	Document::operator = (copy);
-	return *this;
-}
-
-//----------------------------------------------------------------------------->
-// Move operator
-#if CPP_STANDARD >= 2011
-XmlDoc& XmlDoc::operator = (XmlDoc && rvalue)
-{
-	return static_cast<XmlDoc&>(Document::operator = (Move(rvalue)));
-}
-#endif
-
-//----------------------------------------------------------------------------->
 // Parses raw text
 //    @param text - string with a text to be parsed
 //    @return - ut::Error if encountered an error

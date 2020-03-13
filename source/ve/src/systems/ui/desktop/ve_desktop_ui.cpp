@@ -118,11 +118,11 @@ void DesktopUI::Run()
 	Fl::scheme("plastic");
 
 	// create main window
-	window = new Fl_Double_Window(cfg.position_x,
-		cfg.position_y,
-		cfg.width,
-		cfg.height,
-		skTitle);
+	window = ut::MakeUnique<Fl_Double_Window>(cfg.position_x,
+	                                          cfg.position_y,
+	                                          cfg.width,
+	                                          cfg.height,
+	                                          skTitle);
 	window->size_range(skMinWidth, skMinHeight);
 
 	// finish main window

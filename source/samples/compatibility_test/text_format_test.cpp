@@ -6,8 +6,8 @@
 // Unit
 TextFormatUnit::TextFormatUnit() : TestUnit("TEXT FORMAT")
 {
-	tasks.Add(new XmlTask);
-	tasks.Add(new JsonTask);
+	tasks.Add(ut::MakeUnique<XmlTask>());
+	tasks.Add(ut::MakeUnique<JsonTask>());
 }
 
 //----------------------------------------------------------------------------//

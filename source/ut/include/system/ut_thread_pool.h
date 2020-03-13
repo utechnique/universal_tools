@@ -30,11 +30,6 @@ namespace pool_sync
 }
 
 //----------------------------------------------------------------------------//
-// ut::ThreadPoolJob is a template class representing a job for each thread
-// in a thread pool. Template argument is a return type of a thread task.
-template<typename ReturnType, pool_sync::Method sync_method = pool_sync::skDefaultMethod>
-class ThreadPoolJob;
-
 // ut::Scheduler is a template class that syncronizes execution of the tasks
 // in a thread pool and combines the result of this execution.
 template<typename ReturnType,
@@ -75,31 +70,6 @@ struct ThreadCombinerHelper<void, Combiner>
 };
 
 //----------------------------------------------------------------------------//
-// Specialized ut::ThreadPoolJob template version where synchronization is
-// performed using condition variables.
-template<typename ReturnType>
-class ThreadPoolJob<ReturnType, pool_sync::cond_var> : public ut::Job
-{
-	// Type of the thread pool.
-	typedef ThreadPool<ReturnType, pool_sync::cond_var> PoolType;
-
-public:
-	// Constructor.
-	ThreadPoolJob(PoolType& in_pool) : pool(in_pool)
-	{}
-
-	// Waits for a task and then executes it.
-	void Execute()
-	{
-		while (pool.DispatchTask(true))
-		{ }
-	}
-
-private:
-	PoolType& pool;
-};
-
-//----------------------------------------------------------------------------//
 // Specialized ut::Scheduler template version where synchronization is
 // performed using condition variables.
 template<typename ReturnType, typename Combiner>
@@ -110,18 +80,17 @@ class Scheduler<ReturnType, Combiner, pool_sync::cond_var>
 	template <typename, ut::pool_sync::Method> friend class ThreadPool;
 
 	// Type of the unique pointer to the managed task.
-	typedef UniquePtr< BaseTask<ReturnType> > TaskPtr;
+	typedef UniquePtr< BaseTask<ReturnType> > UniqueTaskPtr;
 
 public:
 	// Assigns a task to a thread from the thread pool. If all threads are busy,
 	// waits until one of them ends current task.
 	//    @param task - unique pointer to the task to be executed.
-	void Enqueue(TaskPtr task)
+	void Enqueue(UniqueTaskPtr task)
 	{
 		// create and send a task to the pool
-		MemberInvoker<void(Scheduler::*)(TaskPtr)> invoker(&Scheduler::ExecuteTask, this);
-		Task<void(TaskPtr)> task_wrapper(invoker, Move(task));
-		pool.Enqueue(Move(task_wrapper));
+		auto function = MemberFunction<Scheduler, void(UniqueTaskPtr)>(this, &Scheduler::ExecuteTask);
+		pool.Enqueue(MakeUnique< Task<void(UniqueTaskPtr)> >(function, Move(task)));
 
 		// increment task counter
 		ScopeLock lock(mutex);
@@ -138,7 +107,7 @@ public:
 		if (pool.InWorkerThread())
 		{
 			while (counter != 0 && pool.DispatchTask(false))
-			{ }
+			{}
 		}
 		else // otherwise - just wait until all tasks are processed
 		{
@@ -154,7 +123,7 @@ public:
 private:
 	// Executes provided task and decreases counter of tasks by one.
 	//    @param task - unique pointer to the task to be executed.
-	void ExecuteTask(TaskPtr task)
+	void ExecuteTask(UniqueTaskPtr task)
 	{
 		// combine the result of execution
 		ThreadCombinerHelper<ReturnType, Combiner>::Combine(combiner, task.GetRef(), combiner_lock);
@@ -195,11 +164,8 @@ private:
 template<typename ReturnType>
 class ThreadPool<ReturnType, pool_sync::cond_var> : NonCopyable
 {
-	// Job type for all threads in a pool.
-	typedef ThreadPoolJob<ReturnType, pool_sync::cond_var> JobType;
-
-	// Type of the task provided by scheduler.
-	typedef Task<void(UniquePtr< BaseTask<ReturnType> >)> TaskType;
+	// Type of the task to be executed in a thread.
+	typedef UniquePtr< BaseTask<void> > UniqueTaskPtr;
 
 public:
 	// Constructor.
@@ -210,8 +176,7 @@ public:
 	{
 		for (size_t i = 0; i < size; i++)
 		{
-			UniquePtr<Job> job(new JobType(*this));
-			threads[i] = new Thread(Move(job));
+			threads[i] = MakeUnique<Thread>([this] { while (this->DispatchTask(true)); });
 		}
 	}
 
@@ -263,7 +228,7 @@ public:
 	//    @return - 'true' if ok, 'false' if pool is about to exit
 	bool DispatchTask(bool wait)
 	{
-		Optional<TaskType> task;
+		Optional<UniqueTaskPtr> task;
 
 		{ // get a new task to execute
 			ScopeLock lock(mutex);
@@ -294,7 +259,7 @@ public:
 			pool_cvar.WakeOne();
 
 			// execute a task
-			task.Get().Execute();
+			task.Get()->Execute();
 		}
 
 		// success
@@ -302,13 +267,14 @@ public:
 	}
 
 	// Waits for a free thread and assigns provided task to it.
-	//    @param task - task to be executed in a worker thread.
-	void Enqueue(TaskType task)
+	//    @param task - unique pointer to the task to be executed
+	//                  in a worker thread.
+	void Enqueue(UniqueTaskPtr task)
 	{
 		// task that needs to be processed immediately without dispatching to
 		// a worker thread, such a case can occur if ut::ThreadPool::Enqueue()
 		// function was called within one of the worker threads
-		Optional<TaskType> immediate_task;
+		Optional<UniqueTaskPtr> immediate_task;
 
 		{ // wait for current task to be dispatched by a worker thread
 			ScopeLock lock(mutex);
@@ -342,7 +308,7 @@ public:
 		// and the task provided as argument remains for the next round
 		if (immediate_task)
 		{
-			immediate_task.Get().Execute();
+			immediate_task.Get()->Execute();
 		}
 	}
 
@@ -355,7 +321,7 @@ private:
 
 	// task that is waiting to be processed by
 	// one of the worker threads
-	Optional<TaskType> current_task;
+	Optional<UniqueTaskPtr> current_task;
 
 	// bool variable indicating when to stop workers
 	bool stop;
@@ -366,19 +332,6 @@ private:
 	ConditionVariable pool_cvar; // pool waits for a free worker
 };
 
-//----------------------------------------------------------------------------//
-// ut::ThreadPool::TaskType contains ut::UniquePtr thus needs to be constructed
-// via non-const reference for cpp standards older than c++11.
-#if CPP_STANDARD < 2011
-// ThreadPool::TaskType
-template<typename T>
-struct RefConstness< Task<void(UniquePtr< BaseTask<T> >)> >
-UT_SET_CONSTNESS(false)
-// Optional<ThreadPool::TaskType>
-template<typename T>
-struct RefConstness< Optional< Task<void(UniquePtr< BaseTask<T> >)> > >
-UT_SET_CONSTNESS(false)
-#endif // CPP_STANDARD < 2011
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

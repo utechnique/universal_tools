@@ -22,22 +22,6 @@ struct HostAddress
 	//    @param port - port, will be converted to signed integer internally
 	HostAddress(const String& in_ip, int in_port);
 
-	// Copy constructor, both @ip and @port are copied
-	HostAddress(const HostAddress& copy);
-
-	// Move constructor, @ip is moved, @port is copied
-#if CPP_STANDARD >= 2011
-	HostAddress(HostAddress && copy);
-#endif
-
-	// Assignment operator, both @ip and @port are copied
-	HostAddress& operator = (const HostAddress& copy);
-
-	// Move operator, @ip is moved, @port is copied
-#if CPP_STANDARD >= 2011
-	HostAddress& operator = (HostAddress && copy);
-#endif
-
 	// Comparison operator
 	//    @param address - address to compare with
 	bool operator == (const HostAddress& address) const;

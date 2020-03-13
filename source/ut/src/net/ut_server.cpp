@@ -27,7 +27,7 @@ Server::~Server()
 Optional<Error> Server::Run()
 {
 	// create new socket
-	UniquePtr<Socket> socket(new Socket(address.ip, address.port));
+	UniquePtr<Socket> socket(MakeUnique<Socket>(address.ip, address.port));
 	
 	// bind address
 	Optional<Error> bind_error = socket->Bind();

@@ -6,7 +6,7 @@
 // Unit
 DbgTestUnit::DbgTestUnit() : TestUnit("DEBUG")
 {
-	tasks.Add(new BacktraceTask);
+	tasks.Add(ut::MakeUnique<BacktraceTask>());
 }
 
 //----------------------------------------------------------------------------//

@@ -27,7 +27,7 @@ public:
 	//    @param value - constant l-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-	bool Insert(typename LValRef<Key>::Type key, typename LValRef<Value>::Type value)
+	bool Insert(const Key& key, const Value& value)
 	{
 		return EmplacePair(key, value);
 	}
@@ -37,49 +37,38 @@ public:
 	//    @param value - r-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-#if CPP_STANDARD >= 2011
-	bool Insert(Key && key, Value && value)
+	bool Insert(Key&& key, Value&& value)
 	{
 		return EmplacePair(Move(key), Move(value));
 	}
-#endif
 
 	// Inserts new key-value pair to the map
 	//    @param key - constant l-value refenrence to the key
 	//    @param value - r-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-#if CPP_STANDARD >= 2011
-	bool Insert(const Key& key, Value && value)
+	bool Insert(const Key& key, Value&& value)
 	{
 		return EmplacePair(key, Move(value));
 	}
-#endif
 
 	// Inserts new key-value pair to the map
 	//    @param key - r-value refenrence to the key
 	//    @param value - constant l-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-#if CPP_STANDARD >= 2011
-	bool Insert(Key && key, const Value& value)
+	bool Insert(Key&& key, const Value& value)
 	{
 		return EmplacePair(Move(key), value);
 	}
-#endif
 
 	// Inserts new key-value pair to the map
 	//    @param key - r-value refenrence to the key
 	//    @param value - r-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
 	//              'false' if pair with such key already exists
-#if CPP_STANDARD >= 2011
 	template <typename ArgType1, typename ArgType2>
-	inline bool EmplacePair(ArgType1 && key, ArgType2 && value)
-#else
-	inline bool EmplacePair(typename LValRef<Key>::Type key,
-	                        typename LValRef<Value>::Type value)
-#endif
+	inline bool EmplacePair(ArgType1&& key, ArgType2&& value)
 	{
 		for (size_t i = 0; i < Base::num; i++)
 		{
@@ -88,12 +77,7 @@ public:
 				return false;
 			}
 		}
-		#if CPP_STANDARD >= 2011
-			return Base::Add(PairType(Forward<ArgType1>(key), Forward<ArgType2>(value)));
-		#else
-			PairType pair_copy(key, value);
-			return Base::Add(pair_copy);
-		#endif
+		return Base::Add(PairType(Forward<ArgType1>(key), Forward<ArgType2>(value)));
 	}
 
 	// Finds an element with key equivalent to @key

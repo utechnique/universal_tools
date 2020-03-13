@@ -16,27 +16,45 @@ class WeakPtr
 {
 	// SharedPtr is a friend to get access to the reference controller.
 	template <typename, thread_safety::Mode, typename> friend class SharedPtr;
+
+	// WeakPtr must have access to other template instantiations.
+	template <typename, thread_safety::Mode> friend class WeakPtr;
+
+	// Type of corresponding shared pointer.
+	typedef SharedPtr<ObjectType, thread_safety_mode> SharedPtrType;
 public:
 	// Default constructor.
 	WeakPtr() : object(nullptr), referencer(nullptr)
-	{ }
+	{}
 
 	// Copy constructor. Copies referencer object. Reference count is increased by 1 here.
 	WeakPtr(const WeakPtr& copy) : object(copy.object)
 	                             , referencer(copy.referencer)
-	{ }
+	{}
+
+	// Copy constructor, takes derived type.
+	template<typename Drv, thread_safety::Mode drv_mode,
+	         typename = typename EnableIf<SharedPtrType::template IsConvertible<Drv, drv_mode>::value>::Type>
+	WeakPtr(const WeakPtr<Drv, drv_mode>& copy) : object(copy.object)
+	                                            , referencer(copy.referencer)
+	{}
 
 	// Move constructor. Moves referencer object. Reference count doesn't change here.
-#if CPP_STANDARD >= 2011
 	WeakPtr(WeakPtr&& rval) : object(rval.object)
 	                        , referencer(Move(rval.referencer))
-	{ }
-#endif
+	{}
+
+	// Move constructor, takes derived type.
+	template<typename Drv, thread_safety::Mode drv_mode,
+	         typename = typename EnableIf<SharedPtrType::template IsConvertible<Drv, drv_mode>::value>::Type>
+	WeakPtr(WeakPtr<Drv, drv_mode>&& rval) : object(rval.object)
+	                                       , referencer(Move(rval.referencer))
+	{}
 
 	// Constructor from shared pointer.
 	WeakPtr(const SharedPtr<ObjectType, thread_safety_mode>& copy) : object(copy.object)
 	                                                               , referencer(copy.referencer)
-	{ }
+	{}
 
 	// Assign operator. Reference count to the old object is decreased by 1 here, and
 	// reference count to the new object is increased by 1.
@@ -46,14 +64,30 @@ public:
 		return *this;
 	}
 
-	// Move operator. Behaves exactly as assign operator (with full-copy behaviour).
-#if CPP_STANDARD >= 2011
-	WeakPtr& operator=(WeakPtr&& rval)
+	// Assign operator. Takes derived type.
+	template<typename Drv, thread_safety::Mode drv_mode>
+	typename EnableIf<SharedPtrType::template IsConvertible<Drv, drv_mode>::value, WeakPtr&>::Type
+		operator=(const WeakPtr<Drv, drv_mode>& copy)
 	{
-		Reset< WeakPtr<ObjectType> >(rval);
+		Reset< WeakPtr<ObjectType, thread_safety_mode> >(copy);
 		return *this;
 	}
-#endif
+
+	// Move operator. Behaves exactly as assign operator (with full-copy behaviour).
+	WeakPtr& operator=(WeakPtr&& rval)
+	{
+		Reset< WeakPtr<ObjectType, thread_safety_mode> >(rval);
+		return *this;
+	}
+
+	// Move operator. Takes derived type.
+	template<typename Drv, thread_safety::Mode drv_mode>
+	typename EnableIf<SharedPtrType::template IsConvertible<Drv, drv_mode>::value, WeakPtr&>::Type
+		operator=(WeakPtr<Drv, drv_mode>&& rval)
+	{
+		Reset< WeakPtr<ObjectType, thread_safety_mode> >(rval);
+		return *this;
+	}
 
 	// Assign operator. Takes shared pointer here.
 	WeakPtr& operator=(const SharedPtr<ObjectType, thread_safety_mode>& copy)
@@ -86,7 +120,7 @@ public:
 	void Reset(const PointerType& copy)
 	{
 		DestructReferencer();
-		new(&referencer) WeakReferencer<ObjectType, thread_safety_mode>(copy.referencer);
+		new(&referencer) WeakReferencer<thread_safety_mode>(copy.referencer);
 		object = copy.object;
 	}
 
@@ -94,7 +128,7 @@ public:
 	void Reset()
 	{
 		DestructReferencer();
-		new(&referencer) WeakReferencer<ObjectType, thread_safety_mode>(nullptr);
+		new(&referencer) WeakReferencer<thread_safety_mode>(nullptr);
 		object = nullptr;
 	}
 
@@ -117,7 +151,7 @@ private:
 	// Referencer for the weak pointers, contains a pointer to the reference controller.
 	// WeakReferencer<> class is a convenient wrapper, that uses reference controller
 	// to increment reference count on construction and decrement this count on destruction.
-	WeakReferencer<ObjectType, thread_safety_mode> referencer;
+	WeakReferencer<thread_safety_mode> referencer;
 };
 
 // Specialize type name function for weak ptr

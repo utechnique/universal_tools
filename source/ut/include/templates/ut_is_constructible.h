@@ -7,19 +7,16 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// Enable this macro if your compiler supports '__is_constructible'
-// intrinsic function.
-#define UT_INTRINSIC_IS_CONSTRUCTIBLE CPP_STANDARD >= 2011 && UT_WINDOWS
+#define UT_INTRINSIC_IS_CONSTRUCTIBLE UT_WINDOWS
 
-//----------------------------------------------------------------------------//
 // Check if class is constructible with provided arguments
-#if UT_INTRINSIC_IS_CONSTRUCTIBLE
-template <typename T, typename... Args>
+template<typename T, typename... Args>
 struct IsConstructible
 {
+#if UT_INTRINSIC_IS_CONSTRUCTIBLE
 	enum { value = __is_constructible(T, Args...) };
-};
 #endif
+};
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

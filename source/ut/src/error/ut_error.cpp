@@ -25,32 +25,15 @@ Error::Error(error::Code error_code) : code(error_code)
 //    @param error_code - error code, see ut::error::Code enumeration
 //    @param error_desc - custom (user-defined) error description
 Error::Error(error::Code error_code,
-             const String& error_desc) : code(error_code)
+             String error_desc) : code(error_code)
 #if UT_ERROR_DESCRIPTION
-                                       , description(error_desc)
+                                , description(Move(error_desc))
 #endif
 {
 #if UT_ERROR_BACKTRACE
 	GetCallstack();
 #endif
 }
-
-//----------------------------------------------------------------------------->
-// Constructor
-//    @param error_code - error code, see ut::error::Code enumeration
-//    @param error_desc - custom (user-defined) error description
-#if CPP_STANDARD >= 2011
-Error::Error(error::Code error_code,
-             String && error_desc) : code(error_code)
-#if UT_ERROR_DESCRIPTION
-                                   , description(Move(error_desc))
-#endif
-{
-#if UT_ERROR_BACKTRACE
-	GetCallstack();
-#endif
-}
-#endif
 
 //----------------------------------------------------------------------------->
 // Returns error code

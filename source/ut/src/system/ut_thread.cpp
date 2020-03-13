@@ -7,13 +7,6 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// ut::g_pthread_sig_handled global variable indicates if android pthread
-// cancel signal was handled, it should be done only once
-#if UT_ANDROID
-bool g_pthread_sig_handled = false;
-#endif
-
-//----------------------------------------------------------------------------//
 // ut::this_thread namespace groups a set of functions that access the
 // current thread.
 namespace this_thread
@@ -75,58 +68,16 @@ uint32 GetNumberOfProcessors()
 }
 
 //----------------------------------------------------------------------------//
-// Android pthread_cancel() realization (absent in Android pthread lib)
-#if UT_ANDROID
-void pthread_cancel(pthread_t tid)
-{
-	pthread_kill(tid, SIGUSR1);
-}
-#endif // UT_ANDROID
-
-//----------------------------------------------------------------------------//
-// ut::pthread_cancel_handler is linux sigaction for Android,
-// handles pthread_cancel()
-#if UT_ANDROID
-void pthread_cancel_handler(int sig)
-{
-	pthread_exit(0);
-}
-#endif // UT_ANDROID
-
-//----------------------------------------------------------------------------//
-// Overrides Android pthread cancel sig, because pthread_kill() is not performed
-// in Android pthread realization, so we should define it by hands
-#if UT_ANDROID
-void InitAndroidCancelSig()
-{
-	if (!g_pthread_sig_handled)
-	{
-		struct sigaction actions;
-		memory::Set(&actions, 0, sizeof(actions));
-		sigemptyset(&actions.sa_mask);
-		actions.sa_flags = 0;
-		actions.sa_handler = pthread_cancel_handler;
-		sigaction(SIGUSR1, &actions, NULL);
-		g_pthread_sig_handled = true;
-	}
-}
-#endif // UT_ANDROID
-
-//----------------------------------------------------------------------------//
 // class ut::Job                                                              //
 //----------------------------------------------------------------------------//
 // Constructor, @exit_request is set to 'false' by default
 Job::Job() : exit_request(false)
-{
-
-}
+{}
 
 //---------------------------------------------------------------------------->
 // Destructor is virtual, ut::Job is polymorphic type
 Job::~Job()
-{
-
-}
+{}
 
 //----------------------------------------------------------------------------->
 // Safely sets exit_request to 'true', can be called from another thread
@@ -138,6 +89,22 @@ void Job::Exit()
 //----------------------------------------------------------------------------//
 // class ut::Thread                                                           //
 //----------------------------------------------------------------------------//
+// Constructor, launches provided function in a new thread.
+//    @param proc - function to be called from a new thread.
+Thread::Thread(Function<void()> proc) : handle(0)
+                                      , id(0)
+                                      , active(false)
+{
+	UT_ASSERT(proc.IsValid());
+	task = MakeUnique< Task<void()> >(Move(proc));
+	Optional<Error> launch_error = Start();
+	if (launch_error)
+	{
+		throw launch_error.Move();
+	}
+}
+
+//----------------------------------------------------------------------------->
 // Constructor, starts a new thread with ut::Job::Execute() function
 //    @param job - job object, whose Execute() function will be
 //                 called asynchronously in separate thread
@@ -145,6 +112,23 @@ Thread::Thread(UniquePtr<Job> job_ptr) : job(Move(job_ptr))
                                        , handle(0)
                                        , id(0)
                                        , active(false)
+{
+	UT_ASSERT(job);
+	task = MakeUnique< Task<void()> >(MemberFunction<Job, void()>(job.Get(), &Job::Execute));
+	Optional<Error> launch_error = Start();
+	if (launch_error)
+	{
+		throw launch_error.Move();
+	}
+}
+
+//----------------------------------------------------------------------------->
+// Constructor, launches provided task in a new thread.
+//    @param proc - task to be executed in a new thread.
+Thread::Thread(UniquePtr< BaseTask<void> > proc) : task(Move(proc))
+                                                 , handle(0)
+                                                 , id(0)
+                                                 , active(false)
 {
 	Optional<Error> launch_error = Start();
 	if (launch_error)
@@ -172,23 +156,23 @@ ThreadId Thread::GetId() const
 
 //----------------------------------------------------------------------------->
 // Returns reference to the current job.
-const Job& Thread::GetJobRef() const
+Optional<const Job&> Thread::GetJob() const
 {
-	return job.GetRef();
+	return job ? Optional<const Job&>(job.GetRef()) : Optional<const Job&>();
 }
 
 //----------------------------------------------------------------------------->
 // Returns reference to the current job.
-Job& Thread::GetJobRef()
+Optional<Job&> Thread::GetJob()
 {
-	return job.GetRef();
+	return job ? Optional<Job&>(job.GetRef()) : Optional<Job&>();
 }
 
 //----------------------------------------------------------------------------->
 // Sends exit request to the @job
 void Thread::Exit()
 {
-	if (active)
+	if (active && job)
 	{
 		job->Exit();
 	}
@@ -202,7 +186,10 @@ void Thread::Join()
 	if (active)
 	{
 		// send 'exit' message to job
-		job->Exit();
+		if (job)
+		{
+			job->Exit();
+		}
 
 		// wait for thread to exit is needed only if thread object is being
 		// destroyed from the separate thread, note that you can destroy thread
@@ -243,9 +230,8 @@ void Thread::Kill(void)
 }
 
 //----------------------------------------------------------------------------->
-// Starts a new thread, Windows realization uses _beginthreadex() to run
-// a thread, Linux realization uses pthread_create(), Android uses the
-// same as linux, but overrides pthread signals to avoid run-time errors.
+// Starts a new thread using @task member, windows variant uses
+// _beginthreadex() to run a thread, Linux variant uses pthread_create().
 inline Optional<Error> Thread::Start()
 {
 #if UT_WINDOWS
@@ -253,7 +239,7 @@ inline Optional<Error> Thread::Start()
 			_beginthreadex(NULL, // security
 			               0, // stack size
 			               reinterpret_cast<unsigned int(__stdcall*)(void*)>(Entry),
-			               job.Get(), // thread argument
+			               task.Get(), // thread argument
 			               0, // initialization flags
 			               (unsigned int*)&id)); // thread id (address)
 
@@ -262,13 +248,10 @@ inline Optional<Error> Thread::Start()
 		return Error(ConvertErrno(errno));
 	}
 #elif UT_UNIX
-	#if UT_ANDROID
-		InitAndroidCancelSig();
-	#endif
 	int result = pthread_create(&id,
 	                            NULL,
 	                            reinterpret_cast<void* (*)(void*)>(Entry),
-	                            job.Get());
+	                            task.Get());
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
@@ -281,10 +264,13 @@ inline Optional<Error> Thread::Start()
 }
 
 //----------------------------------------------------------------------------->
-// Entry function for the new thread, calls job_ptr->Execute() internally
-THREAD_PROCEDURE Thread::Entry(Job* job_ptr)
+// Entry function for the new thread, calls @task->Execute() internally.
+THREAD_PROCEDURE Thread::Entry(BaseTask<void>* proc)
 {
-	job_ptr->Execute();
+	if (proc != nullptr)
+	{
+		proc->Execute();
+	}
 	return NULL;
 }
 

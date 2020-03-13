@@ -8,7 +8,7 @@ START_NAMESPACE(ve)
 // Generates default pipeline tree.
 Pipeline GenDefaultPipeline()
 {
-	return Pipeline(new UI);
+	return Pipeline(ut::MakeShared<UI>());
 }
 
 //----------------------------------------------------------------------------//

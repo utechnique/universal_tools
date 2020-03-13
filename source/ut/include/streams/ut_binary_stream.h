@@ -58,10 +58,8 @@ public:
 	// Makes a copy of the provided array and replaces current buffer with it
 	void SetBuffer(const Array<byte>& copy);
 
-#if CPP_STANDARD >= 2011
 	// Moves provided array and replaces current buffer with it
 	void SetBuffer(Array<byte>&& rval);
-#endif
 
 protected:
 	// current cursor position

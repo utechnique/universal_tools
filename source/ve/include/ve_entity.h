@@ -12,6 +12,15 @@ START_NAMESPACE(ve)
 class Entity
 {
 public:
+	// Explicitly declare defaulted constructors and move operator.
+	Entity() = default;
+	Entity(Entity&&) = default;
+	Entity& operator =(Entity&&) = default;
+
+	// Copying is prohibited
+	Entity(const Entity&) = delete;
+	Entity& operator =(const Entity&) = delete;
+
 	// Type of the identifier that can be associated with entity.
 	typedef ut::uint32 Id;
 
@@ -61,16 +70,6 @@ private:
 };
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ve)
-//----------------------------------------------------------------------------//
-// ve::Entity contains unique pointers, so it can't be copied. However old cpp
-// standards don't support move semantics. Thus ve::Entity must be marked as a
-// type that supports only copying with non-constant reference.
-#if CPP_STANDARD < 2011
-START_NAMESPACE(ut)
-template <> struct RefConstness<ve::Entity> UT_SET_CONSTNESS(false)
-template <typename T> struct RefConstness< Pair<T, ve::Entity> > UT_SET_CONSTNESS(false)
-END_NAMESPACE(ut)
-#endif
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

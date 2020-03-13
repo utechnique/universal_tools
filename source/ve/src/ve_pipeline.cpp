@@ -35,19 +35,7 @@ void PipelineCombiner::operator()(System::Result result)
 System::Result PipelineCombiner::MoveResult()
 {
 	ut::ScopeLock lock(mutex);
-#if CPP_STANDARD >= 2011
 	return ut::Move(sum);
-#else
-	CmdArray empty;
-	if (!sum)
-	{
-		sum = empty;
-		return ut::MakeError(sum.GetAlt());
-	}
-	CmdArray temp(sum.GetResult());
-	sum = empty;
-	return temp;
-#endif
 }
 
 //----------------------------------------------------------------------------//
@@ -115,9 +103,8 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 	const size_t parallel_count = parallel.GetNum();
 	for (size_t i = 0; i < parallel_count; i++)
 	{
-		ut::MemberInvoker<System::Result(Pipeline::*)(ut::ThreadPool<System::Result>&)> invoker(&Pipeline::Execute, &parallel[i]);
-		ut::UniquePtr< ut::BaseTask<System::Result> > task(new ut::Task<System::Result(ut::ThreadPool<System::Result>&)>(invoker, pool));
-		scheduler.Enqueue(ut::Move(task));
+		auto execute = ut::MemberFunction<Pipeline, TaskSignature>(&parallel[i], &Pipeline::Execute);
+		scheduler.Enqueue(ut::MakeUnique<PoolTask>(execute, pool));
 	}
 
 	// wait for all tasks to finish and combine all commands in a single array

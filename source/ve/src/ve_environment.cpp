@@ -23,9 +23,8 @@ ut::Optional<ut::Error> Environment::Run()
 		// processing pipeline must happen inside a thread pool, so that
 		// we could measure and analyze performance
 		ut::Scheduler<System::Result, PipelineCombiner> scheduler = pool.CreateScheduler<PipelineCombiner>();
-		ut::MemberInvoker<System::Result(Pipeline::*)(ut::ThreadPool<System::Result>&)> invoker(&Pipeline::Execute, &pipeline);
-		ut::UniquePtr< ut::BaseTask<System::Result> > task(new ut::Task<System::Result(ut::ThreadPool<System::Result>&)>(invoker, pool));
-		scheduler.Enqueue(ut::Move(task));
+		auto execute = ut::MemberFunction<Pipeline, Pipeline::TaskSignature>(&pipeline, &Pipeline::Execute);
+		scheduler.Enqueue(ut::MakeUnique<Pipeline::PoolTask>(execute, pool));
 
 		// get the result of execution
 		PipelineCombiner& combiner = scheduler.WaitForCompletion();

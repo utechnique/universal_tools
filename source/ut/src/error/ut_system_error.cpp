@@ -25,9 +25,7 @@ error::Code ConvertErrno(int code)
 		case ENAMETOOLONG: return error::name_too_long;
 		case EROFS:        return error::access_denied;
 		case EXDEV:        return error::not_supported;
-#if CPP_STANDARD >= 2011
 		case EADDRINUSE:   return error::address_in_use;
-#endif
 		default:           return error::fail;
 	}
 }

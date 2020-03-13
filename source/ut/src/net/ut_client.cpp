@@ -40,7 +40,7 @@ Optional<Error> Client::Run()
 		if (connection_lock.Get().GetNum() == 0)
 		{
 			// create new socket
-			UniquePtr<Socket> socket(new Socket(address.ip, address.port));
+			UniquePtr<Socket> socket(MakeUnique<Socket>(address.ip, address.port));
 
 			// try to connect
 			ut::Optional<ut::Error> connect_error = socket->Connect();

@@ -27,30 +27,6 @@ template<> String StrConvert<wchar, char, cp_utf8>(const wchar* src)
 	WideCharToMultiByte(CP_UTF8, 0, src, (int)length, out_str.GetAddress(), size_needed, NULL, NULL);
 	out_str.Add(0);
 	return out_str;
-#elif UT_ANDROID
-	if (src == nullptr)
-	{
-		return String();
-	}
-
-	size_t length = StrLen<wchar>(src);
-
-	if (length > 0)
-	{
-		String out_str;
-		out_str.Empty();
-		for (size_t i = 0; i < length; i++)
-		{
-			char c = src[i] <= 127 ? (char)src[i] : 'X';
-			out_str.Add(c);
-		}
-		out_str.Add(0);
-		return out_str;
-	}
-	else
-	{
-		return String();
-	}
 #elif UT_UNIX
 	size_t src_length = StrLen<wchar>(src) + 1;
 	size_t dst_max_l = src_length * UT_UTF8_MAX;
@@ -85,8 +61,6 @@ template<> WString StrConvert<char, wchar, cp_utf8>(const char* src)
 	MultiByteToWideChar(CP_UTF8, 0, src, (int)length, out_str.GetAddress(), size_needed);
 	out_str.Add(0);
 	return out_str;
-#elif UT_ANDROID
-	return StrConvert<char, wchar, cp_ascii>(src);
 #elif UT_UNIX
 	size_t src_length = StrLen<char>(src) + 1;
 	size_t dst_max_l = src_length * sizeof(wchar_t);

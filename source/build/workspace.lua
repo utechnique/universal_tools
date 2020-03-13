@@ -2,10 +2,6 @@ function utGenerateWorkspace()
     workspace "UniversalTools"
     -- language is C++ for all projects
     language "C++"
-    -- system
-    if ANDROID then
-        system("android");
-    end
     -- directories
     targetdir(BIN_DIR)
     objdir(INTERMEDIATE)
@@ -24,9 +20,6 @@ function utGenerateWorkspace()
             platforms { "x32" }
         end
     else
-        if ANDROID then
-            platforms { "ARM" }
-        end
         platforms { "x32", "x64" }
     end
     
@@ -46,11 +39,8 @@ function utGenerateWorkspace()
     if WINDOWS then
         links { "ws2_32.lib" }
     elseif LINUX then
-        -- Librt and Libpthread are included in Bionic lib,
-        -- which substitutes GLibC in Android
-        if (ANDROID == false) then
-            links { "pthread" }
-        end
+        -- Librt and Libpthread are included in Bionic lib
+		links { "pthread" }
     end
     
     -- platform-specific defines
@@ -59,9 +49,6 @@ function utGenerateWorkspace()
     elseif LINUX then
         defines { "UT_UNIX" }
 		defines { "UT_LINUX" }
-        if ANDROID then
-            defines { "UT_ANDROID" }
-        end
     end
     
     -- C++ standard macro-definition

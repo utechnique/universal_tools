@@ -11,25 +11,6 @@ START_NAMESPACE(ut)
 class JsonDoc : public text::Document
 {
 public:
-	// Default constructor
-	JsonDoc();
-
-	// Copy constructor
-	JsonDoc(const JsonDoc& copy);
-
-	// Move constructor
-#if CPP_STANDARD >= 2011
-	JsonDoc(JsonDoc && rvalue);
-#endif
-
-	// Assignment operator
-	JsonDoc& operator = (const JsonDoc& copy);
-
-	// Move operator
-#if CPP_STANDARD >= 2011
-	JsonDoc& operator = (JsonDoc && rvalue);
-#endif
-
 	// Parses raw text
 	//    @param text - string with a text to be parsed
 	//    @return - ut::Error if encountered an error

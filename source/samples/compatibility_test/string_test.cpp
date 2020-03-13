@@ -6,27 +6,25 @@
 // Unit
 StringTestUnit::StringTestUnit() : TestUnit("STRING")
 {
-	tasks.Add(new StrLengthTask);
-	tasks.Add(new StrCmpTask);
-	tasks.Add(new StrStrTask);
-	tasks.Add(new StrChrTask);
-	tasks.Add(new StrCatTask);
-	tasks.Add(new StrConstructorTask);
-	tasks.Add(new StrComparisonOpTask);
-	tasks.Add(new StrAppendTask);
-	tasks.Add(new StrValidationTask);
-	tasks.Add(new StrIsolateFilenameTask);
-	tasks.Add(new StrAbsolutePathTask);
-	tasks.Add(new StrExtensionTask);
-	tasks.Add(new StrParsingTask);
-	tasks.Add(new StrSeparatorsTask);
-#if !UT_ANDROID // Android doesn't support wide characters
-	tasks.Add(new StrASCIITask);
-	tasks.Add(new StrUTF8Task);
-#endif
-	tasks.Add(new StrPrintTask);
-	tasks.Add(new StrScanTask);
-	tasks.Add(new StrMoveTask);
+	tasks.Add(ut::MakeUnique<StrLengthTask>());
+	tasks.Add(ut::MakeUnique<StrCmpTask>());
+	tasks.Add(ut::MakeUnique<StrStrTask>());
+	tasks.Add(ut::MakeUnique<StrChrTask>());
+	tasks.Add(ut::MakeUnique<StrCatTask>());
+	tasks.Add(ut::MakeUnique<StrConstructorTask>());
+	tasks.Add(ut::MakeUnique<StrComparisonOpTask>());
+	tasks.Add(ut::MakeUnique<StrAppendTask>());
+	tasks.Add(ut::MakeUnique<StrValidationTask>());
+	tasks.Add(ut::MakeUnique<StrIsolateFilenameTask>());
+	tasks.Add(ut::MakeUnique<StrAbsolutePathTask>());
+	tasks.Add(ut::MakeUnique<StrExtensionTask>());
+	tasks.Add(ut::MakeUnique<StrParsingTask>());
+	tasks.Add(ut::MakeUnique<StrSeparatorsTask>());
+	tasks.Add(ut::MakeUnique<StrASCIITask>());
+	tasks.Add(ut::MakeUnique<StrUTF8Task>());
+	tasks.Add(ut::MakeUnique<StrPrintTask>());
+	tasks.Add(ut::MakeUnique<StrScanTask>());
+	tasks.Add(ut::MakeUnique<StrMoveTask>());
 }
 
 //----------------------------------------------------------------------------//

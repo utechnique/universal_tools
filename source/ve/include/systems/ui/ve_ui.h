@@ -22,7 +22,7 @@ public:
 	virtual void Run() = 0;
 
 	// When ui exits.
-	void ConnectExitSignalSlot(const ut::Function<void()>& slot); 
+	void ConnectExitSignalSlot(ut::Function<void()> slot); 
 
 protected:
 	// signals
@@ -30,22 +30,6 @@ protected:
 
 	// title of the application
 	static const char* skTitle;
-};
-
-//----------------------------------------------------------------------------//
-// ve::UIJob is a thread job running ui routine.
-class UIJob : public ut::Job
-{
-public:
-	// Constructor.
-	//    @param ui_device - reference to the ui device to run.
-	UIJob(UIDevice& ui_device);
-
-	// Calls ve::UIDevice::Run().
-	void Execute();
-
-private:
-	UIDevice& device;
 };
 
 //----------------------------------------------------------------------------//

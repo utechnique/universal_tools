@@ -16,15 +16,3 @@ newoption
     trigger = "build_all",
     description = "Builds Everything."	
 }
-
-newoption
-{
-    trigger = "android_ndk",
-    description = "Builds projects for Android NDK."	
-}
-
-newoption
-{
-    trigger = "c03",
-    description = "C++03 standard"	
-}

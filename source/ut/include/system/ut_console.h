@@ -142,19 +142,12 @@ private:
 			FILE* console_in;
 			FILE* console_out;
 		#elif UT_UNIX
-			#if UT_ANDROID
-				// Holds accumulated output. Android java code calls
-				// ut::Console::FlushOutput() to grab and display this
-				// sequence of characters.
-				String pending_output;
-			#else
-				// UT console has very specific properties
-				// (disabled default output, disabled canon mode, etc.).
-				// Thus @prev_t variable holds state of the console before
-				// ut::Console::Open() was called to be able to revert
-				// these attributes after ut::Console::Close().
-				struct termios prev_t;
-			#endif
+			// UT console has very specific properties
+			// (disabled default output, disabled canon mode, etc.).
+			// Thus @prev_t variable holds state of the console before
+			// ut::Console::Open() was called to be able to revert
+			// these attributes after ut::Console::Close().
+			struct termios prev_t;
 		#endif
 	};
 

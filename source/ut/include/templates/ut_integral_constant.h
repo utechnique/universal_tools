@@ -11,7 +11,7 @@ START_NAMESPACE(ut)
 template<class T, T v>
 struct IntegralConstant
 {
-	enum { value = v };
+	static constexpr T value = v;
 };
 
 //----------------------------------------------------------------------------//

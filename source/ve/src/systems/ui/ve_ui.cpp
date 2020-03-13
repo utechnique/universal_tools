@@ -18,34 +18,20 @@ typedef DesktopUI PlatformUIDevice;
 const char* UIDevice::skTitle = "Virtual Environment";
 
 // When ui exits.
-void UIDevice::ConnectExitSignalSlot(const ut::Function<void()>& slot)
+void UIDevice::ConnectExitSignalSlot(ut::Function<void()> slot)
 {
 	exit_signal.Connect(slot);
 }
 
 //----------------------------------------------------------------------------//
 // Constructor.
-//    @param ui_device - reference to the ui device to run.
-UIJob::UIJob(UIDevice& ui_device) : device(ui_device)
-{}
-
-// Calls ve::UIDevice::Run().
-void UIJob::Execute()
-{
-	device.Run();
-}
-
-//----------------------------------------------------------------------------//
-// Constructor.
-UI::UI() : System("ui"), device(new PlatformUIDevice)
+UI::UI() : System("ui"), device(ut::MakeShared<PlatformUIDevice>())
 {
 	// connect ui slots
-	ut::MemberInvoker<void(UI::*)()> exit_invoker(&UI::AddExitTask, this);
-	device->ConnectExitSignalSlot(exit_invoker);
+	device->ConnectExitSignalSlot(ut::MemberFunction<UI, void()>(this, &UI::AddExitTask));
 
 	// run ui in a separate thread
-	ut::UniquePtr<ut::Job> job(new UIJob(device.GetRef()));
-	thread = new ut::Thread(ut::Move(job));
+	thread = ut::MakeUnique<ut::Thread>([this] { this->device->Run(); } );
 }
 
 // Updates system. This function is called once per tick
@@ -58,11 +44,7 @@ System::Result UI::Update()
 	ut::Array< ut::UniquePtr<Cmd> > commands;
 
 	// get tasks from the buffer
-	UiTaskBuffer& task_array = task_buffer.Lock();
-	UiTaskBuffer tasks = ut::Move(task_array);
-#if CPP_STANDARD < 2011
-	task_array.Empty();
-#endif
+	UiTaskBuffer tasks = ut::Move(task_buffer.Lock());
 	task_buffer.Unlock();
 
 	// execute all tasks and assemble the result
@@ -86,11 +68,11 @@ System::Result UI::Update()
 void UI::AddExitTask()
 {
 	// create exit task
-	ut::MemberInvoker<System::Result(UI::*)()> exit_invoker(&UI::Exit, this);
-	UiTaskPtr exit_task(new ut::Task<System::Result()>(exit_invoker));
+	auto exit_function = ut::MemberFunction<UI, System::Result()>(this, &UI::Exit);
+	UiTaskPtr exit_task = ut::MakeUnique< ut::Task<System::Result()> >(exit_function);
 
 	// add task to the buffer
-	ut::ScopeSyncLock< ut::Array<UiTaskPtr> > lock(task_buffer);
+	ut::ScopeSyncLock<UiTaskBuffer> lock(task_buffer);
 	lock.Get().Add(ut::Move(exit_task));
 }
 
@@ -98,8 +80,7 @@ void UI::AddExitTask()
 System::Result UI::Exit()
 {
 	CmdArray commands;
-	ut::UniquePtr<Cmd> exit_cmd(new CmdExit);
-	commands.Add(ut::Move(exit_cmd));
+	commands.Add(ut::MakeUnique<CmdExit>());
 	return commands;
 }
 

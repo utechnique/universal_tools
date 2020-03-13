@@ -4,7 +4,6 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "ut_def.h"
-#include "ut_cpp11.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
@@ -18,8 +17,8 @@ protected:
 	~NonCopyable() {}
 
 private:
-	NonCopyable(const NonCopyable&) PROHIBITED;
-	NonCopyable& operator=(const NonCopyable&) PROHIBITED;
+	NonCopyable(const NonCopyable&) = delete;
+	NonCopyable& operator=(const NonCopyable&) = delete;
 };
 
 //----------------------------------------------------------------------------//

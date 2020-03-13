@@ -6,6 +6,7 @@
 #include "common/ut_common.h"
 #include "containers/ut_iterator.h"
 #include "error/ut_throw_error.h"
+#include "templates/ut_is_copy_constructible.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
@@ -259,11 +260,11 @@ public:
 
 	// Constructor, copies content of another array
 	//    @param copy - array to copy
-	BaseArray(typename LValRef<BaseArray>::Type copy) : arr(nullptr)
-	                                                  , num(0)
-	                                                  , reserved_elements(0)
+	BaseArray(const BaseArray& copy) : arr(nullptr)
+	                                 , num(0)
+	                                 , reserved_elements(0)
 	{
-		if (!CopyEmplace(copy))
+		if (!CopyToEmpty(copy))
 		{
 			ThrowError(error::out_of_memory);
 		}
@@ -271,23 +272,22 @@ public:
 
 	// Constructor, moves content of another array
 	//    @param copy - array to copy
-#if CPP_STANDARD >= 2011
-	BaseArray(BaseArray && copy) : arr(copy.arr)
-	                             , num(copy.num)
-	                             , reserved_elements(copy.reserved_elements)
+
+	BaseArray(BaseArray&& other) : arr(other.arr)
+	                             , num(other.num)
+	                             , reserved_elements(other.reserved_elements)
 	{
-		copy.arr = nullptr;
-		copy.num = 0;
-		copy.reserved_elements = 0;
+		other.arr = nullptr;
+		other.num = 0;
+		other.reserved_elements = 0;
 	}
-#endif
 
 	// Assignment operator
 	//    @param copy - array to copy
-	BaseArray& operator = (typename LValRef<BaseArray>::Type copy)
+	BaseArray& operator = (const BaseArray& copy)
 	{
 		Empty();
-		if (!CopyEmplace(copy))
+		if (!CopyToEmpty(copy))
 		{
 			ThrowError(error::out_of_memory);
 		}
@@ -295,26 +295,24 @@ public:
 	}
 
 	// Assignment (move) operator, moves content of another array
-	//    @param copy - array to copy
-#if CPP_STANDARD >= 2011
-	BaseArray& operator = (BaseArray && copy)
+	//    @param other - array to move
+	BaseArray& operator = (BaseArray&& other)
 	{
 		// release memory
 		Empty();
 
-		// copy
-		arr = copy.arr;
-		num = copy.num;
-		reserved_elements = copy.reserved_elements;
+		// move
+		arr = other.arr;
+		num = other.num;
+		reserved_elements = other.reserved_elements;
 
 		// swap
-		copy.arr = nullptr;
-		copy.num = 0;
-		copy.reserved_elements = 0;
+		other.arr = nullptr;
+		other.num = 0;
+		other.reserved_elements = 0;
 
 		return *this;
 	}
-#endif
 
 	// Returns desired element
 	ElementType& operator [] (const size_t id)
@@ -335,7 +333,7 @@ public:
 	}
 
 	// Additive promotion operator
-	BaseArray operator +(typename LValRef<BaseArray>::Type other) const
+	BaseArray operator +(const BaseArray& other) const
 	{
 		BaseArray out(*this);
 		out += other;
@@ -343,19 +341,17 @@ public:
 	}
 
 	// Additive promotion operator, r-value variant
-#if CPP_STANDARD >= 2011
 	BaseArray operator +(BaseArray&& other) const
 	{
 		BaseArray out(*this);
 		out += Move(other);
 		return out;
 	}
-#endif
 
 	// Addition assignment operator
-	BaseArray& operator +=(typename LValRef<BaseArray>::Type other)
+	BaseArray& operator +=(const BaseArray& other)
 	{
-		if (!Concatenate<typename LValRef<ElementType>::Type>(other))
+		if (!Concatenate<const ElementType&>(other))
 		{
 			ThrowError(ut::error::out_of_memory);
 		}
@@ -363,7 +359,6 @@ public:
 	}
 
 	// Addition assignment operator, r-value variant
-#if CPP_STANDARD >= 2011
 	BaseArray& operator +=(BaseArray&& other)
 	{
 		if (!Concatenate<ElementType&&>(Move(other)))
@@ -372,7 +367,6 @@ public:
 		}
 		return *this;
 	}
-#endif
 
 	// Destructor, releases allocated memory
 	~BaseArray()
@@ -462,15 +456,14 @@ public:
 
 	// Adds new element to the end of the array (r-value reference)
 	// uses move semantics to perform copying
-	//    @param copy - new element
-#if CPP_STANDARD >= 2011
-	bool Add(ElementType && copy)
+	//    @param element - r-value referece to a new element
+	bool Add(ElementType&& element)
 	{
 		num++;
 			
 		if (Realloc())
 		{
-			Emplace(Move(copy), num - 1);
+			Emplace(Move(element), num - 1);
 			return true;
 		}
 		else
@@ -479,11 +472,10 @@ public:
 			return false;
 		}
 	}
-#endif // CPP_STANDARD >= 2011
 
 	// Adds new element to the end of the array (reference), @copy is a constant
 	//    @param copy - new element
-	bool Add(typename LValRef<ElementType>::Type copy)
+	bool Add(const ElementType& copy)
 	{
 		num++;
 			
@@ -504,8 +496,7 @@ public:
 	//    @param element - element to be moved
 	//    @return - 'true' if element was inserted successfully
 	//              'false' if not enough memory, or @position is out of range
-#if CPP_STANDARD >= 2011
-	bool Insert(size_t position, ElementType && element)
+	bool Insert(size_t position, ElementType&& element)
 	{
 		if (position >= num)
 		{
@@ -513,7 +504,6 @@ public:
 		}
 		return EmplaceForward(position, Move(element));
 	}
-#endif
 
 	// Inserts elements at the specified location in the container.
 	//    @param position - iterator before which the content will be inserted
@@ -534,8 +524,7 @@ public:
 	//    @param element - element to be moved
 	//    @return - 'true' if element was inserted successfully
 	//              'false' if not enough memory, or @position is out of range
-#if CPP_STANDARD >= 2011
-	bool Insert(ConstIterator position, ElementType && element)
+	bool Insert(ConstIterator position, ElementType&& element)
 	{
 		T* ptr = position.ptr;
 		if (ptr >= arr && ptr < arr + num)
@@ -545,7 +534,6 @@ public:
 		}
 		return false;
 	}
-#endif
 
 	// Inserts elements at the specified location in the container.
 	//    @param position - iterator before which the content will be inserted
@@ -567,12 +555,10 @@ public:
 	//    @param copy - element to be added
 	//    @return - 'true' if element was added successfully
 	//              'false' if not enough memory
-#if CPP_STANDARD >= 2011
-	bool PushForward(ElementType && copy)
+	bool PushForward(ElementType&& copy)
 	{
 		return EmplaceForward(0, Move(copy));
 	}
-#endif
 
 	// Adds an element in front of the array
 	//    @param copy - element to be added
@@ -671,7 +657,7 @@ public:
 	}
 
 	// Moves desired element
-	typename RValRef<ElementType>::Type MoveElement(size_t id)
+	ElementType&& MoveElement(size_t id)
 	{
 		UT_ASSERT(id < num);
 		return Move(arr[id]);
@@ -708,8 +694,7 @@ protected:
 	{
 		new(arr + id) ElementType();
 	}
-
-#if CPP_STANDARD >= 2011
+	
 	// Uses 'placement new' to initialize element
 	//    @arg - r-value reference of the object to be initialized
 	//    @id - index of the element to be initialized
@@ -718,18 +703,12 @@ protected:
 	{
 		new(arr + id) ElementType(Forward<ArgType>(arg));
 	}
-#else
-	inline void Emplace(typename LValRef<ElementType>::Type arg, size_t id)
-	{
-		new(arr + id) ElementType(arg);
-	}
-#endif // CPP_STANDARD >= 2011
 
 	// Adds an element in front of the array
-	//    @param copy - element to be added
+	//    @param element - element to be added
 	//    @return - 'true' if element was added successfully
 	//              'false' if not enough memory
-	inline bool EmplaceForward(size_t position, typename RValRef<ElementType>::Type copy)
+	inline bool EmplaceForward(size_t position, ElementType&& element)
 	{
 		num++;
 		if (Realloc())
@@ -744,7 +723,7 @@ protected:
 			}
 
 			// emplace new element
-			new(arr + position) ElementType(Forward<ElementType>(copy));
+			new(arr + position) ElementType(Forward<ElementType>(element));
 
 			// success
 			return true;
@@ -757,7 +736,7 @@ protected:
 	}
 
 	// Concatenates current data and contents of another array
-	//    @param copy - array to copy content from
+	//    @param other - array to copy (or move) content from
 	template <typename ElementRefType, typename ArgRefType>
 	inline bool Concatenate(ArgRefType other)
 	{
@@ -771,7 +750,7 @@ protected:
 			return false;
 		}
 
-		// copy tail
+		// copy (move) tail
 		for (size_t i = 0; i < other_num; i++)
 		{
 			Emplace(static_cast<ElementRefType>(other[i]), previous_num + i);
@@ -790,7 +769,7 @@ protected:
 
 	// Copies content of another array, without calling ut::Array::Empty()
 	//    @param copy - array to copy content from
-	bool CopyEmplace(typename LValRef<BaseArray>::Type copy)
+	bool CopyToEmpty(const BaseArray& copy)
 	{
 		num = copy.GetNum();
 		arr = nullptr;
@@ -889,24 +868,22 @@ typedef BaseArray<T> Base;
 public:
 	// Default constructor
 	Array()
-	{ }
+	{}
 
 	// Constructor, creates @num_elements new empty elements
 	//    @param num_elements - how many elements to be initialized
 	Array(size_t num_elements) : Base(num_elements)
-	{ }
+	{}
 
 	// Constructor, copies content of another array
 	//    @param copy - array to copy
-	Array(typename LValRef<Array>::Type copy) : Base(copy)
-	{ }
+	Array(const Array& copy) : Base(copy)
+	{}
 
 	// Constructor, moves content of another array
 	//    @param copy - array to copy
-#if CPP_STANDARD >= 2011
-	Array(Array && copy) : Base(Move(copy))
-	{ }
-#endif
+	Array(Array&& other) : Base(Move(other))
+	{}
 
 	// Assignment operator
 	//    @param copy - array to copy
@@ -918,15 +895,13 @@ public:
 
 	// Assignment (move) operator, moves content of another array
 	//    @param copy - array to copy
-#if CPP_STANDARD >= 2011
-	Array& operator = (Array && copy)
+	Array& operator = (Array&& other)
 	{
-		return static_cast<Array&>(Base::operator = (Move(copy)));
+		return static_cast<Array&>(Base::operator = (Move(other)));
 	}
-#endif
 
 	// Additive promotion operator
-	Array operator +(typename LValRef<Array>::Type other) const
+	Array operator +(const Array& other) const
 	{
 		Array out(*this);
 		out += other;
@@ -934,28 +909,24 @@ public:
 	}
 
 	// Additive promotion operator, r-value variant
-#if CPP_STANDARD >= 2011
 	Array operator +(Array&& other) const
 	{
 		Array out(*this);
 		out += Move(other);
 		return out;
 	}
-#endif
 
 	// Addition assignment operator
-	Array& operator +=(typename LValRef<Array>::Type other)
+	Array& operator +=(const Array& other)
 	{
 		return static_cast<Array&>(Base::operator += (other));
 	}
 
 	// Addition assignment operator, r-value variant
-#if CPP_STANDARD >= 2011
 	Array& operator +=(Array&& other)
 	{
 		return static_cast<Array&>(Base::operator += (Move(other)));
 	}
-#endif
 };
 
 //----------------------------------------------------------------------------//

@@ -5,40 +5,6 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// Default constructor
-JsonDoc::JsonDoc()
-{ }
-
-//----------------------------------------------------------------------------->
-// Copy constructor
-JsonDoc::JsonDoc(const JsonDoc& copy) : Document(copy)
-{ }
-
-//----------------------------------------------------------------------------->
-// Move constructor
-#if CPP_STANDARD >= 2011
-JsonDoc::JsonDoc(JsonDoc && rvalue) : Document(Move(rvalue))
-{ }
-#endif
-
-//----------------------------------------------------------------------------->
-// Assignment operator
-JsonDoc& JsonDoc::operator = (const JsonDoc& copy)
-{
-	Document::operator = (copy);
-	return *this;
-}
-
-//----------------------------------------------------------------------------->
-// Move operator
-#if CPP_STANDARD >= 2011
-JsonDoc& JsonDoc::operator = (JsonDoc && rvalue)
-{
-	return static_cast<JsonDoc&>(Document::operator = (Move(rvalue)));
-}
-#endif
-
-//----------------------------------------------------------------------------->
 // Parses raw text
 //    @param text - string with a text to be parsed
 //    @return - ut::Error if encountered an error

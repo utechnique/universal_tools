@@ -3,23 +3,19 @@
 //----------------------------------------------------------------------------//
 #include "file_test.h"
 //----------------------------------------------------------------------------//
-#if UT_ANDROID
-	ut::String g_test_dir("/sdcard/");
-#else
-	ut::String g_test_dir("");
-#endif
+ut::String g_test_dir("");
 
 //----------------------------------------------------------------------------//
 // Unit
 FileTestUnit::FileTestUnit() : TestUnit("FILE")
 {
-	tasks.Add(new CreateFolderTask);
-	tasks.Add(new CreateFileTask);
-	tasks.Add(new CopyFileTask);
-	tasks.Add(new RenameFileTask);
-	tasks.Add(new RemoveDirectoryTask);
-	tasks.Add(new BinaryFileOpsTask);
-	tasks.Add(new FileTestCleanupTask);
+	tasks.Add(ut::MakeUnique<CreateFolderTask>());
+	tasks.Add(ut::MakeUnique<CreateFileTask>());
+	tasks.Add(ut::MakeUnique<CopyFileTask>());
+	tasks.Add(ut::MakeUnique<RenameFileTask>());
+	tasks.Add(ut::MakeUnique<RemoveDirectoryTask>());
+	tasks.Add(ut::MakeUnique<BinaryFileOpsTask>());
+	tasks.Add(ut::MakeUnique<FileTestCleanupTask>());
 }
 
 //----------------------------------------------------------------------------//

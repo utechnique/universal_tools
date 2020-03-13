@@ -6,10 +6,10 @@
 // Unit
 NetTestUnit::NetTestUnit() : TestUnit("NETWORK")
 {
-	tasks.Add(new HostNameTask);
-	tasks.Add(new IpFromNameLHTask);
+	tasks.Add(ut::MakeUnique<HostNameTask>());
+	tasks.Add(ut::MakeUnique<IpFromNameLHTask>());
 	//tasks.Add(new GoogleIpTask);
-	tasks.Add(new ClientServerCommTask);
+	tasks.Add(ut::MakeUnique<ClientServerCommTask>());
 }
 
 //----------------------------------------------------------------------------//
@@ -78,10 +78,10 @@ ClientServerCommTask::ClientServerCommTask() : TestTask("Client-server communica
 void ClientServerCommTask::Execute()
 {
 	report += "performing client-server communication via localhost:";
-	ut::UniquePtr<ut::Job> client_job(new ClientTestJob(*this));
-	ut::UniquePtr<ut::Job> server_job(new ServerTestJob(*this));
-	ut::ThreadPtr client_thread(new ut::Thread(Move(client_job)));
-	ut::ThreadPtr server_thread(new ut::Thread(Move(server_job)));
+	ut::UniquePtr<ut::Job> client_job(ut::MakeUnique<ClientTestJob>(*this));
+	ut::UniquePtr<ut::Job> server_job(ut::MakeUnique<ServerTestJob>(*this));
+	ut::UniquePtr<ut::Thread> client_thread(ut::MakeUnique<ut::Thread>(Move(client_job)));
+	ut::UniquePtr<ut::Thread> server_thread(ut::MakeUnique<ut::Thread>(Move(server_job)));
 
 	// wait for both threads
 	client_thread.Delete();
@@ -105,7 +105,7 @@ void ClientTestJob::Execute()
 	ut::String report;
 	try
 	{
-		socket = new ut::net::Socket("127.0.0.1", 50000);
+		socket = ut::MakeUnique<ut::net::Socket>("127.0.0.1", 50000);
 
 		bool connected = false;
 
@@ -200,7 +200,7 @@ void ServerTestJob::Execute()
 	ut::String report;
 	try
 	{
-		socket = new ut::net::Socket("127.0.0.1", 50000);
+		socket = ut::MakeUnique<ut::net::Socket>("127.0.0.1", 50000);
 
 		// bind local address
 		ut::Optional<ut::Error> bind_error = socket->Bind();

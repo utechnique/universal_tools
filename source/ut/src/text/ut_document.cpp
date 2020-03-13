@@ -11,34 +11,6 @@ START_NAMESPACE(text)
 Document::Document() : cursor(0)
 { }
 
-// Copy constructor
-Document::Document(const Document& copy) : nodes(copy.nodes)
-                                          , cursor(copy.cursor)
-{ }
-
-// Move constructor
-#if CPP_STANDARD >= 2011
-Document::Document(Document && rvalue) : nodes(Move(rvalue.nodes))
-                                       , cursor(rvalue.cursor)
-{ }
-#endif
-
-// Assignment operator
-Document& Document::operator = (const Document& copy)
-{
-	nodes = copy.nodes;
-	return *this;
-}
-
-// Move operator
-#if CPP_STANDARD >= 2011
-Document& Document::operator = (Document && rvalue)
-{
-	nodes = Move(rvalue.nodes);
-	return *this;
-}
-#endif
-
 // Parses text file
 //    @param filename - string with a path to the file
 //    @return - ut::Error if encountered an error
@@ -93,8 +65,7 @@ Document& Document::operator << (const Tree<Node>& node)
 }
 
 // This operator moves a new node to the document
-#if CPP_STANDARD >= 2011
-Document& Document::operator << (Tree<Node> && node)
+Document& Document::operator << (Tree<Node>&& node)
 {
 	if (!nodes.Add(Move(node)))
 	{
@@ -102,7 +73,6 @@ Document& Document::operator << (Tree<Node> && node)
 	}
 	return *this;
 }
-#endif
 
 // This operator reads a node from the document
 Document& Document::operator >> (Tree<Node>& node)

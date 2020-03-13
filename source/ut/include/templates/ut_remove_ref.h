@@ -3,26 +3,17 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-//  This file is a set of other header files, that are commonly used in UT
+#include "common/ut_def.h"
 //----------------------------------------------------------------------------//
-#include "ut_def.h"
-#include "ut_enum.h"
-#include "ut_libc.h"
-#include "ut_stl.h"
-#include "ut_char_traits.h"
-#include "ut_numeric_types.h"
-#include "ut_type_names.h"
-#include "ut_platform.h"
-#include "ut_assert.h"
-#include "ut_noncopyable.h"
+START_NAMESPACE(ut)
+//----------------------------------------------------------------------------//
+// ut::RemoveReference template will remove any references from a type.
+template <typename T> struct RemoveReference { typedef T Type; };
+template <typename T> struct RemoveReference<T& > { typedef T Type; };
+template <typename T> struct RemoveReference<T&&> { typedef T Type; };
 
 //----------------------------------------------------------------------------//
-// Some commonly-used templates.
-#include "templates/ut_move.h"
-#include "templates/ut_forward.h"
-#include "templates/ut_optional.h"
-#include "templates/ut_result.h"
-
+END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

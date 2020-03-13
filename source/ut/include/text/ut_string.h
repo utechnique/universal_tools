@@ -56,13 +56,11 @@ public:
 
 	// Copy constructor
 	TString(const TString& copy) : Base(copy)
-    { }
+    {}
 
 	// Move constructor
-#if CPP_STANDARD >= 2011
-	TString(TString && copy) : Base(Move(copy))
-	{ }
-#endif // CPP_STANDARD >= 2011
+	TString(TString&& other) : Base(Move(other))
+	{}
 
 	// Assignment operator
 	TString& operator = (const T* str)
@@ -82,12 +80,10 @@ public:
     }
 
 	// Assignment (move) operator
-#if CPP_STANDARD >= 2011
 	TString& operator = (TString && str)
 	{
 		return static_cast<TString&>(Base::operator = (Move(str)));
 	}
-#endif // CPP_STANDARD >= 2011
 
 	// Comparison operator
 	//    @param str - string to compare with

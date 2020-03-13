@@ -15,37 +15,33 @@ class Pair
 public:
 	// Default constructor
 	Pair()
-	{ }
+	{}
 
 	// Constructor, both arguments are const references
-	Pair(typename LValRef<T1>::Type t1, typename LValRef<T2>::Type t2) : first(t1), second(t2)
-	{ }
+	Pair(const T1& t1, const T2& t2) : first(t1), second(t2)
+	{}
 
-#if CPP_STANDARD >= 2011
 	// Constructor, both arguments are r-value references
 	Pair(T1 && t1, T2 && t2) : first(Move(t1)), second(Move(t2))
-	{ }
+	{}
 
 	// Constructor, first argument is l-value reference,
 	// second one is r-value reference
-	Pair(typename LValRef<T1>::Type t1, T2 && t2) : first(t1), second(Move(t2))
-	{ }
+	Pair(const T1& t1, T2 && t2) : first(t1), second(Move(t2))
+	{}
 
 	// Constructor, first argument is r-value reference,
 	// second one is l-value reference
-	Pair(T1 && t1, typename LValRef<T2>::Type t2) : first(Move(t1)), second(t2)
-	{ }
-#endif
+	Pair(T1 && t1, const T2& t2) : first(Move(t1)), second(t2)
+	{}
 
 	// Copy constructor
-	Pair(typename LValRef<Pair>::Type copy) : first(copy.first), second(copy.second)
-	{ }
+	Pair(const Pair& copy) : first(copy.first), second(copy.second)
+	{}
 
 	// Move constructor
-#if CPP_STANDARD >= 2011
 	Pair(Pair && copy) : first(Move(copy.first)), second(Move(copy.second))
-	{ }
-#endif
+	{}
 
 	// Assignment operator
 	Pair& operator = (const Pair& copy)
@@ -56,14 +52,12 @@ public:
 	}
 
 	// Move operator
-#if CPP_STANDARD >= 2011
 	Pair& operator = (Pair && copy)
 	{
 		first = Move(copy.first);
 		second = Move(copy.second);
 		return *this;
 	}
-#endif
 
 	// managed objects
 	T1 first;
@@ -78,36 +72,28 @@ class Pair<T1&, T2>
 public:
 	// Constructor, both arguments are references
 	Pair(T1& t1, const T2& t2) : first(t1), second(t2)
-	{ }
+	{}
 
-#if CPP_STANDARD >= 2011
 	// Constructor, second argument is r-value reference
 	Pair(T1& t1, T2 && t2) : first(t1), second(Move(t2))
-	{ }
-#endif
+	{}
 
 	// Copy constructor
 	Pair(const Pair& copy) : first(copy.first), second(copy.second)
-	{ }
+	{}
 
 	// Move constructor
-#if CPP_STANDARD >= 2011
 	Pair(Pair && copy) : first(copy.first), second(Move(copy.second))
-	{ }
-#endif
+	{}
 
 	// managed objects
 	T1& first;
 	T2 second;
 
 private:
-	// Assignment operator is prohibited.
-	Pair& operator = (const Pair& copy) PROHIBITED;
-
-	// Move operator is prohibited.
-#if CPP_STANDARD >= 2011
-	Pair& operator = (Pair && copy) PROHIBITED;
-#endif
+	// Assignment operators are prohibited.
+	Pair& operator = (const Pair& copy) = delete;
+	Pair& operator = (Pair && copy) = delete;
 };
 
 //----------------------------------------------------------------------------//
@@ -118,36 +104,29 @@ class Pair<T1, T2&>
 public:
 	// Constructor, both arguments are references
 	Pair(const T1& t1, T2& t2) : first(t1), second(t2)
-	{ }
+	{}
 
-#if CPP_STANDARD >= 2011
 	// Constructor, first argument is r-value reference
 	Pair(T1&& t1, T2& t2) : first(Move(t1)), second(t2)
-	{ }
-#endif
+	{}
 
 	// Copy constructor
 	Pair(const Pair& copy) : first(copy.first), second(copy.second)
-	{ }
+	{}
 
 	// Move constructor
-#if CPP_STANDARD >= 2011
 	Pair(Pair && copy) : first(Move(copy.first)), second(copy.second)
-	{ }
-#endif
+	{}
 
 	// managed objects
 	T1 first;
 	T2& second;
 
 private:
-	// Assignment operator is prohibited.
-	Pair& operator = (const Pair& copy) PROHIBITED;
+	// Assignment operators are prohibited.
+	Pair& operator = (const Pair& copy) = delete;
+	Pair& operator = (Pair && copy) = delete;
 
-	// Move operator is prohibited.
-#if CPP_STANDARD >= 2011
-	Pair& operator = (Pair && copy) PROHIBITED;
-#endif
 };
 
 //----------------------------------------------------------------------------//
@@ -169,13 +148,9 @@ public:
 	T2& second;
 
 private:
-	// Assignment operator is prohibited.
-	Pair& operator = (const Pair& copy) PROHIBITED;
-
-	// Move operator is prohibited.
-#if CPP_STANDARD >= 2011
-	Pair& operator = (Pair && copy) PROHIBITED;
-#endif
+	// Assignment operators are prohibited.
+	Pair& operator = (const Pair& copy) = delete;
+	Pair& operator = (Pair && copy) = delete;
 };
 
 //----------------------------------------------------------------------------//

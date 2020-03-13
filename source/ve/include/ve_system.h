@@ -82,24 +82,12 @@ struct ComponentIterator<depth, depth, PtrContainer>
 // could be registered. Therefore, only entities that have all(!) needed
 // components will be registered. Registered entities are stored in the special
 // array ('@entities') that holds pointers to the components and entity id.
-#if CPP_STANDARD >= 2011
 template<typename... Components>
-#else
-template<typename T> struct AddComponentPointer { typedef T* Type; };
-template<> struct AddComponentPointer<void> { typedef void Type; };
-#define VE_SYSTEM_DEF_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) typename Component##id = void
-#define VE_SYSTEM_TYPENAME_ITERATOR(id) UT_PP_COMMA_IF(id) typename AddComponentPointer<Component##id>::Type
-template<UT_PP_ENUM(UT_CONTAINER_MAX, VE_SYSTEM_DEF_TYPENAME_ITERATOR)>
-#endif
 class ComponentSystem : public System
 {
 public:
 	// Type of container holding pointers to all needed components.
-#if CPP_STANDARD >= 2011
 	typedef ut::Container<Components*...> ComponentPtrSet;
-#else
-	typedef ut::Container<UT_PP_ENUM(UT_CONTAINER_MAX, VE_SYSTEM_TYPENAME_ITERATOR)> ComponentPtrSet;
-#endif
 
 	// Constructor.
 	//    @param system_name - name of the system.

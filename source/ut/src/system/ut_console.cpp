@@ -131,7 +131,7 @@ bool Console::Open()
 	if (!lock.Get())
 	{
 		// allocate data
-		data = new Data(this);
+		data = MakeUnique<Data>(this);
 
 		// set @allocated as 'true' after console was fully
 		// allocated and input thread was created and launched
@@ -563,8 +563,8 @@ Console::Data::Data(Console* owner) : output_locked(false)
 	// Java code will be responsible for grabbing and displaying this buffer.
 #if !UT_NO_NATIVE_CONSOLE
 	// launch input thread
-	UniquePtr<Job> input_job(new ConsoleInputJob(owner));
-	input_thread = new Thread(Move(input_job));
+	UniquePtr<Job> input_job(MakeUnique<ConsoleInputJob>(owner));
+	input_thread = MakeUnique<Thread>(Move(input_job));
 #endif
 }
 

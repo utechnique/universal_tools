@@ -25,14 +25,8 @@
 #include <poll.h>
 #include <netdb.h>
 
-// android is unix-like os
-#if UT_ANDROID
-#	include <jni.h> // native code
-#	include <unwind.h> // for backtrace
-#else
-#	include <execinfo.h> // for backtrace
-#	include <iconv.h> // string conversion
-#endif
+#include <execinfo.h> // for backtrace
+#include <iconv.h> // string conversion
 
 // headers for debug version
 #if DEBUG

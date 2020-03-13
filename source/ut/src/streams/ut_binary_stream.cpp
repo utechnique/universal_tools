@@ -152,12 +152,10 @@ void BinaryStream::SetBuffer(const Array<byte>& copy)
 
 //----------------------------------------------------------------------------->
 // Moves provided array and replaces current buffer with it
-#if CPP_STANDARD >= 2011
 void BinaryStream::SetBuffer(Array<byte>&& rval)
 {
 	data = rval;
 }
-#endif
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

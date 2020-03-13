@@ -33,6 +33,12 @@ private:
 class Pipeline
 {
 public:
+	// Type of a task that is scheduled in a thread pool.
+	typedef ut::Task<System::Result(ut::ThreadPool<System::Result>&)> PoolTask;
+
+	// Function signature of a task that is scheduled in a thread pool.
+	typedef System::Result(TaskSignature)(ut::ThreadPool<System::Result>&);
+
 	// Constructor, managed system remains empty.
 	Pipeline();
 
