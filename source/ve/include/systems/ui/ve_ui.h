@@ -4,22 +4,24 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "ve_system.h"
+#include "ve_dedicated_thread.h"
 //----------------------------------------------------------------------------//
 #define VE_DESKTOP 1
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
-// ve::UIDevice is an abstract class for ui wrappers. Those wrappers are
+// ve::ui::Frontend is an abstract class for ui wrappers. Those wrappers are
 // supposed to contain and process actual widgets (that are specific to the
 // current platform).
-class UIDevice : public ut::NonCopyable
+class Frontend : public ut::NonCopyable
 {
 public:
-	// Destructor.
-	virtual ~UIDevice() {};
+	// dedicated thread for the ui frontend
+	typedef DedicatedThread< ut::UniquePtr<Frontend> > Thread;
 
-	// Runs ui routine.
-	virtual void Run() = 0;
+	// Destructor.
+	virtual ~Frontend() {};
 
 	// When ui exits.
 	void ConnectExitSignalSlot(ut::Function<void()> slot); 
@@ -33,8 +35,8 @@ protected:
 };
 
 //----------------------------------------------------------------------------//
-// ve::UI is a system processing ui events.
-class UI : public System
+// ve::ui::Backend is a system processing ui events.
+class Backend : public System
 {
 	typedef ut::BaseTask<System::Result> UiTask;
 	typedef ut::UniquePtr<UiTask> UiTaskPtr;
@@ -42,7 +44,7 @@ class UI : public System
 
 public:
 	// Constructor.
-	UI();
+	Backend(ut::SharedPtr<Frontend::Thread> in_frontend_thread);
 
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
@@ -51,23 +53,23 @@ public:
 	System::Result Update();
 
 private:
+	void ConnectFrontendSignals(Frontend& frontend);
+
 	// Adds ve::UI::Exit() function to the task buffer.
 	void AddExitTask();
 
 	// Returns ve::CmdExit command.
 	System::Result Exit();
 
-	// UI device with actual widgets.
-	ut::SharedPtr<UIDevice> device;
-
-	// Thread for the ui device.
-	ut::UniquePtr<ut::Thread> thread;
-
 	// Thread-safe buffer for ui tasks.
 	ut::Synchronized<UiTaskBuffer> task_buffer;
+
+	// UI shell with actual widgets.
+	ut::SharedPtr<Frontend::Thread> frontend_thread;
 };
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(ui)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

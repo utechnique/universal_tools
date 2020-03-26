@@ -6,39 +6,39 @@
 #include "commands/ve_cmd_exit.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
-typedef DesktopUI PlatformUIDevice;
+typedef DesktopFrontend PlatformFrontend;
 #else
 #error PlatformUIDevice is not implemented
 #endif
 
 //----------------------------------------------------------------------------//
 // Title of the application.
-const char* UIDevice::skTitle = "Virtual Environment";
+const char* Frontend::skTitle = "Virtual Environment";
 
 // When ui exits.
-void UIDevice::ConnectExitSignalSlot(ut::Function<void()> slot)
+void Frontend::ConnectExitSignalSlot(ut::Function<void()> slot)
 {
 	exit_signal.Connect(slot);
 }
 
 //----------------------------------------------------------------------------//
 // Constructor.
-UI::UI() : System("ui"), device(ut::MakeShared<PlatformUIDevice>())
+Backend::Backend(ut::SharedPtr<Frontend::Thread> in_frontend_thread) : System("ui")
+                                                                     , frontend_thread(ut::Move(in_frontend_thread))
 {
 	// connect ui slots
-	device->ConnectExitSignalSlot(ut::MemberFunction<UI, void()>(this, &UI::AddExitTask));
-
-	// run ui in a separate thread
-	thread = ut::MakeUnique<ut::Thread>([this] { this->device->Run(); } );
+	auto connect_signals_proc = ut::MemberFunction<Backend, void(Frontend&)>(this, &Backend::ConnectFrontendSignals);
+	frontend_thread->Enqueue(ut::Move(connect_signals_proc));
 }
 
 // Updates system. This function is called once per tick
 // by ve::Environment.
 //    @return - array of commands to be executed by owning environment,
 //              or ut::Error if system encountered fatal error.
-System::Result UI::Update()
+System::Result Backend::Update()
 {
 	// return value
 	ut::Array< ut::UniquePtr<Cmd> > commands;
@@ -64,11 +64,16 @@ System::Result UI::Update()
 	return commands;
 }
 
-// Adds ve::UI::Exit() function to the task buffer.
-void UI::AddExitTask()
+void Backend::ConnectFrontendSignals(Frontend& frontend)
+{
+	frontend.ConnectExitSignalSlot(ut::MemberFunction<Backend, void()>(this, &Backend::AddExitTask));
+}
+
+// Adds ve::Backend::Exit() function to the task buffer.
+void Backend::AddExitTask()
 {
 	// create exit task
-	auto exit_function = ut::MemberFunction<UI, System::Result()>(this, &UI::Exit);
+	auto exit_function = ut::MemberFunction<Backend, System::Result()>(this, &Backend::Exit);
 	UiTaskPtr exit_task = ut::MakeUnique< ut::Task<System::Result()> >(exit_function);
 
 	// add task to the buffer
@@ -77,7 +82,7 @@ void UI::AddExitTask()
 }
 
 // Returns ve::CmdExit command.
-System::Result UI::Exit()
+System::Result Backend::Exit()
 {
 	CmdArray commands;
 	commands.Add(ut::MakeUnique<CmdExit>());
@@ -85,6 +90,7 @@ System::Result UI::Exit()
 }
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(ui)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

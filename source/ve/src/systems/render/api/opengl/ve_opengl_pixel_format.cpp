@@ -1,24 +1,40 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
+#include "systems/render/api/opengl/ve_opengl_pixel_format.h"
 //----------------------------------------------------------------------------//
-#include "ve_pipeline.h"
+#if VE_OPENGL
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-namespace directories
+// Converts pixel format to the one compatible with OpenGL.
+GLenum ConvertPixelFormatToOpenGL(pixel::Format format)
 {
-	// Configuration files.
-	static const char* skCfg = "cfg";
+	switch (format)
+	{
+	case pixel::r8g8b8a8: return GL_RGBA;
+	case pixel::r8g8b8a8_srgb: return GL_RGBA;
+	}
+	return GL_COLOR_INDEX;
+}
+
+// Converts OpenGL pixel format to ve::render::pixel::Format value.
+pixel::Format ConvertPixelFormatFromOpenGL(GLenum format)
+{
+	switch (format)
+	{
+	case GL_RGBA: return pixel::r8g8b8a8;
+	case GL_SRGB_ALPHA: return pixel::r8g8b8a8_srgb;
+	}
+	return pixel::unknown;
 }
 
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline();
-
-//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_OPENGL
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

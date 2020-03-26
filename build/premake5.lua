@@ -4,6 +4,7 @@ require("../source/build/buildops")
 require("../source/build/workspace")
 require("../source/build/staticlib")
 require("../source/build/application")
+require("../source/build/renderapi")
 require("../source/build/fltk")
 
 -- override functions
@@ -53,11 +54,16 @@ utStaticLibProj
 	incdir =
 	{
 		"../source/ut/include/",
-		"../source/ve/include/"
+		"../source/ve/include/",
+		RENDER_INCLUDE_DIRS
 	},
 	dependencies =       -- dependencies
 	{
 		"ut"
+	},
+	def =                -- macros
+	{
+		RENDER_DEFS
 	}
 }
 
@@ -72,20 +78,21 @@ utApplication
 		"../source/ve_sandbox/**.h",
 		"../source/ve_sandbox/**.cpp",
 	},
-	incdir =
+	incdir =                            --include directories
 	{
 		"../source/ut/include/",
 		"../source/ve/include/",
-		"../source/ve_sandbox/include/"
+		"../source/ve_sandbox/include/",
+		RENDER_INCLUDE_DIRS
 	},
-	libs =               -- libraries
-	{
-		"ve", "ut" -- correct order is important for gcc linker
-	},
-	dependencies =       -- dependencies
-	{
-		"ve", "ut"
-	}
+	libdir = { RENDER_LIB_DIRS }, --library directories
+	libdir_32 = { RENDER_LIB_DIRS_32 }, --library directories (32 bits only)
+	libdir_64 = { RENDER_LIB_DIRS_64 }, --library directories (64 bits only)
+	libs = { "ve", "ut", RENDER_LIBS }, -- libraries (correct order is important for gcc linker)
+	libs_release = { RENDER_LIBS_RELEASE }, -- libraries ('Release' only)
+	libs_dbg = { RENDER_LIBS_DBG }, -- libraries ('Debug' only)
+	dependencies = { "ve", "ut" }, -- dependencies
+	def = { RENDER_DEFS } -- preprocessor
 }
 
 ------------------------------------------------------------

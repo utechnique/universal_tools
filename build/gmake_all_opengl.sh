@@ -1,0 +1,1 @@
+rm -rf gmake && ./premake5_linux --build_all --opengl gmake

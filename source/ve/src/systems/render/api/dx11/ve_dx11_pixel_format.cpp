@@ -1,24 +1,40 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
+#include "systems/render/api/dx11/ve_dx11_pixel_format.h"
 //----------------------------------------------------------------------------//
-#include "ve_pipeline.h"
+#if VE_DX11
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-namespace directories
+// Converts pixel format to the one compatible with DirectX 11.
+DXGI_FORMAT ConvertPixelFormatToDX11(pixel::Format format)
 {
-	// Configuration files.
-	static const char* skCfg = "cfg";
+	switch (format)
+	{
+	case pixel::r8g8b8a8: return DXGI_FORMAT_R8G8B8A8_UNORM;
+	case pixel::r8g8b8a8_srgb: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	}
+	return DXGI_FORMAT_UNKNOWN;
+}
+
+// Converts DirectX 11 pixel format to ve::render::pixel::Format value.
+pixel::Format ConvertPixelFormatFromDX11(DXGI_FORMAT format)
+{
+	switch (format)
+	{
+	case DXGI_FORMAT_R8G8B8A8_UNORM: return pixel::r8g8b8a8;
+	case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return pixel::r8g8b8a8_srgb;
+	}
+	return pixel::unknown;
 }
 
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline();
-
-//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_DX11
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

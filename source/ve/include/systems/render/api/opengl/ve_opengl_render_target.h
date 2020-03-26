@@ -3,22 +3,38 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_pipeline.h"
+#if VE_OPENGL
+//----------------------------------------------------------------------------//
+#include "systems/render/api/opengl/ve_opengl_platform.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-namespace directories
+// OpenGL render target.
+class PlatformRenderTarget
 {
-	// Configuration files.
-	static const char* skCfg = "cfg";
-}
+	friend class Device;
+	friend class Context;
+public:
+	// Constructor.
+	PlatformRenderTarget();
+
+	// Move constructor.
+	PlatformRenderTarget(PlatformRenderTarget&&) noexcept;
+
+	// Move operator.
+	PlatformRenderTarget& operator =(PlatformRenderTarget&&) noexcept;
+
+	// Copying is prohibited.
+	PlatformRenderTarget(const PlatformRenderTarget&) = delete;
+	PlatformRenderTarget& operator =(const PlatformRenderTarget&) = delete;
+};
 
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline();
-
-//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_OPENGL
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

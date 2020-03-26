@@ -3,22 +3,46 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_pipeline.h"
+#if VE_OPENGL
+//----------------------------------------------------------------------------//
+#include "systems/render/api/opengl/ve_opengl_platform.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-namespace directories
+// OpenGL texture.
+class PlatformTexture
 {
-	// Configuration files.
-	static const char* skCfg = "cfg";
-}
+	friend class Device;
+	friend class Context;
+public:
+	// Constructor.
+	PlatformTexture(GLuint opengl_texture);
+
+	// Destructor.
+	~PlatformTexture();
+
+	// Move constructor.
+	PlatformTexture(PlatformTexture&&) noexcept;
+	PlatformTexture& operator =(PlatformTexture&&) noexcept;
+
+	// Copying is prohibited.
+	PlatformTexture(const PlatformTexture&) = delete;
+	PlatformTexture& operator =(const PlatformTexture&) = delete;
+
+protected:
+	GLuint gl_tex_id;
+
+private:
+	// Destroys managed object.
+	void Destroy();
+};
 
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline();
-
-//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_OPENGL
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

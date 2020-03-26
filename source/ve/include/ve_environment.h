@@ -55,7 +55,7 @@ private:
 	ut::Atomic<bool> exit;
 
 	// Thread pool that can process multiple tasks simultaneously.
-	ut::ThreadPool<System::Result> pool;
+	ut::ThreadPool<System::Result, ut::pool_sync::cond_var> pool;
 };
 
 //----------------------------------------------------------------------------//

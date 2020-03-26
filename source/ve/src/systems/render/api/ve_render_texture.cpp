@@ -1,32 +1,31 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "ve_default.h"
-#include "systems/ui/ve_ui.h"
-#include "systems/ui/desktop/ve_desktop_ui.h"
-#include "systems/render/ve_render.h"
+#include "systems/render/api/ve_render_texture.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline()
+// Constructor.
+Texture::Texture(PlatformTexture platform_texture,
+                 pixel::Format pixel_format) : PlatformTexture(ut::Move(platform_texture))
+                                             , format(pixel_format)
+{}
+
+// Move constructor.
+Texture::Texture(Texture&&) noexcept = default;
+
+// Move operator.
+Texture& Texture::operator =(Texture&&) noexcept = default;
+
+// Returns pixel format of the texture, see ve::render::pixel::Format.
+pixel::Format Texture::GetFormat() const
 {
-	// create render thread
-	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>();
-
-	// create ui window
-	ut::UniquePtr<ui::Frontend> ui_frontend = ut::MakeUnique<ui::DesktopFrontend>(render_thread);
-	ut::SharedPtr<ui::Frontend::Thread> ui_frontend_thread = ut::MakeShared<ui::Frontend::Thread>(ut::Move(ui_frontend));
-
-	// build a pipeline
-	Pipeline pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread));
-	pipeline.AddSerial(Pipeline(ut::MakeShared<render::Renderer>(render_thread)));
-
-	// success
-	return pipeline;
+	return format;
 }
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

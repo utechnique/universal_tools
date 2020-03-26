@@ -3,22 +3,16 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_pipeline.h"
+#if VE_DX11
 //----------------------------------------------------------------------------//
-START_NAMESPACE(ve)
+#include "systems/render/api/dx11/ve_dx11_pixel_format.h"
+#include "systems/render/api/dx11/ve_dx11_device.h"
+#include "systems/render/api/dx11/ve_dx11_context.h"
+#include "systems/render/api/dx11/ve_dx11_texture.h"
+#include "systems/render/api/dx11/ve_dx11_render_target.h"
+#include "systems/render/api/dx11/ve_dx11_display.h"
 //----------------------------------------------------------------------------//
-namespace directories
-{
-	// Configuration files.
-	static const char* skCfg = "cfg";
-}
-
-//----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline();
-
-//----------------------------------------------------------------------------//
-END_NAMESPACE(ve)
+#endif // VE_DX11
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

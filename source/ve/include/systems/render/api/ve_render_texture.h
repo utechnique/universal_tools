@@ -3,21 +3,39 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_pipeline.h"
+#include "systems/render/api/ve_render_platform.h"
+#include "systems/render/api/ve_render_pixel_format.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-namespace directories
+// ve::render::Texture interface manages texel data, which is structured memory.
+class Texture : public PlatformTexture
 {
-	// Configuration files.
-	static const char* skCfg = "cfg";
-}
+public:
+	// context is default-constructible
+	Texture(PlatformTexture platform_texture, pixel::Format pixel_format);
+
+	// Move constructor.
+	Texture(Texture&&) noexcept;
+
+	// Move operator.
+	Texture& operator =(Texture&&) noexcept;
+
+	// Copying is prohibited.
+	Texture(const Texture&) = delete;
+	Texture& operator =(const Texture&) = delete;
+
+	// Returns pixel format of the texture, see ve::render::pixel::Format.
+	pixel::Format GetFormat() const;
+
+private:
+	// Format of the texture can't be changed after creation.
+	pixel::Format format;
+};
 
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline();
-
-//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

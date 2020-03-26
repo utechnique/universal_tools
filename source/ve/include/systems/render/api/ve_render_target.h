@@ -1,32 +1,37 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "ve_default.h"
-#include "systems/ui/ve_ui.h"
-#include "systems/ui/desktop/ve_desktop_ui.h"
-#include "systems/render/ve_render.h"
+#pragma once
+//----------------------------------------------------------------------------//
+#include "systems/render/api/ve_render_platform.h"
+#include "systems/render/api/ve_render_texture.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline()
+// ut::render::Target is an interface to render data to textures.
+class Target : public PlatformRenderTarget
 {
-	// create render thread
-	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>();
+public:
+	// Constructor.
+	Target(PlatformRenderTarget platform_target, Texture texture);
 
-	// create ui window
-	ut::UniquePtr<ui::Frontend> ui_frontend = ut::MakeUnique<ui::DesktopFrontend>(render_thread);
-	ut::SharedPtr<ui::Frontend::Thread> ui_frontend_thread = ut::MakeShared<ui::Frontend::Thread>(ut::Move(ui_frontend));
+	// Move constructor.
+	Target(Target&&) noexcept;
 
-	// build a pipeline
-	Pipeline pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread));
-	pipeline.AddSerial(Pipeline(ut::MakeShared<render::Renderer>(render_thread)));
+	// Move operator.
+	Target& operator =(Target&&) noexcept;
 
-	// success
-	return pipeline;
-}
+	// Copying is prohibited.
+	Target(const Target&) = delete;
+	Target& operator =(const Target&) = delete;
+
+	// Texture buffer associated with render target.
+	Texture buffer;
+};
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

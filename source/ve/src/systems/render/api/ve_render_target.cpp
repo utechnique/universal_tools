@@ -1,32 +1,25 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "ve_default.h"
-#include "systems/ui/ve_ui.h"
-#include "systems/ui/desktop/ve_desktop_ui.h"
-#include "systems/render/ve_render.h"
+#include "systems/render/api/ve_render_target.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline()
-{
-	// create render thread
-	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>();
+// Constructor.
+Target::Target(PlatformRenderTarget platform_target,
+               Texture texture) : PlatformRenderTarget(ut::Move(platform_target))
+                                , buffer(ut::Move(texture))
+{}
 
-	// create ui window
-	ut::UniquePtr<ui::Frontend> ui_frontend = ut::MakeUnique<ui::DesktopFrontend>(render_thread);
-	ut::SharedPtr<ui::Frontend::Thread> ui_frontend_thread = ut::MakeShared<ui::Frontend::Thread>(ut::Move(ui_frontend));
+// Move constructor.
+Target::Target(Target&&) noexcept = default;
 
-	// build a pipeline
-	Pipeline pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread));
-	pipeline.AddSerial(Pipeline(ut::MakeShared<render::Renderer>(render_thread)));
-
-	// success
-	return pipeline;
-}
+// Move operator.
+Target& Target::operator =(Target&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

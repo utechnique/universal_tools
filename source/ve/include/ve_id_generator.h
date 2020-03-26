@@ -33,7 +33,7 @@ public:
 			return id;
 		}
 
-		return ++last;
+		return last++;
 	}
 
 	// Signals that provided identifier (that was generated before)
