@@ -59,7 +59,7 @@ public:
     {}
 
 	// Move constructor
-	TString(TString&& other) : Base(Move(other))
+	TString(TString&& other) noexcept : Base(Move(other))
 	{}
 
 	// Assignment operator

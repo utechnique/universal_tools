@@ -47,9 +47,9 @@ public:
 	{ }
 
 	// Move constructor, pointer must be reset.
-	SharedPtrHolder(SharedPtrHolder&& rval) : SharedPtrHolderBase(&ptr)
-	                                        , ptr(Move(rval.ptr))
-	                                        , type_name(Move(rval.type_name))
+	SharedPtrHolder(SharedPtrHolder&& rval) noexcept : SharedPtrHolderBase(&ptr)
+	                                                 , ptr(Move(rval.ptr))
+	                                                 , type_name(Move(rval.type_name))
 	{ }
 
 	// Assignment operator, pointer must be reset.
@@ -62,7 +62,7 @@ public:
 	}
 
 	// Move operator, pointer must be reset.
-	SharedPtrHolder& operator = (SharedPtrHolder&& rval)
+	SharedPtrHolder& operator = (SharedPtrHolder&& rval) noexcept
 	{
 		ptr = Move(rval.ptr);
 		type_name = Move(rval.type_name);

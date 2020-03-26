@@ -273,9 +273,9 @@ public:
 	// Constructor, moves content of another array
 	//    @param copy - array to copy
 
-	BaseArray(BaseArray&& other) : arr(other.arr)
-	                             , num(other.num)
-	                             , reserved_elements(other.reserved_elements)
+	BaseArray(BaseArray&& other) noexcept : arr(other.arr)
+	                                      , num(other.num)
+	                                      , reserved_elements(other.reserved_elements)
 	{
 		other.arr = nullptr;
 		other.num = 0;
@@ -296,7 +296,7 @@ public:
 
 	// Assignment (move) operator, moves content of another array
 	//    @param other - array to move
-	BaseArray& operator = (BaseArray&& other)
+	BaseArray& operator = (BaseArray&& other) noexcept
 	{
 		// release memory
 		Empty();

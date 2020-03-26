@@ -422,7 +422,7 @@ public:
 	}
 
 	// Move constructor
-	AVLTree(AVLTree&& right) : root(right.root)
+	AVLTree(AVLTree&& right) noexcept : root(right.root)
 	{
 		right.root = nullptr;
 	}
@@ -435,7 +435,7 @@ public:
 	}
 
 	// Move operator
-	AVLTree& operator = (AVLTree&& right)
+	AVLTree& operator = (AVLTree&& right) noexcept
 	{
 		delete root;
 		root = right.root;

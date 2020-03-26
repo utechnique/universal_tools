@@ -41,7 +41,7 @@ public:
 	}
 
 	// Move constructor
-	Optional(Optional && copy) : has_value(copy.has_value)
+	Optional(Optional && copy) noexcept : has_value(copy.has_value)
 	{
 		if (has_value)
 		{

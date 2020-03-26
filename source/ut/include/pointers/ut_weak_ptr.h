@@ -40,15 +40,15 @@ public:
 	{}
 
 	// Move constructor. Moves referencer object. Reference count doesn't change here.
-	WeakPtr(WeakPtr&& rval) : object(rval.object)
-	                        , referencer(Move(rval.referencer))
+	WeakPtr(WeakPtr&& rval) noexcept : object(rval.object)
+	                                 , referencer(Move(rval.referencer))
 	{}
 
 	// Move constructor, takes derived type.
 	template<typename Drv, thread_safety::Mode drv_mode,
 	         typename = typename EnableIf<SharedPtrType::template IsConvertible<Drv, drv_mode>::value>::Type>
-	WeakPtr(WeakPtr<Drv, drv_mode>&& rval) : object(rval.object)
-	                                       , referencer(Move(rval.referencer))
+	WeakPtr(WeakPtr<Drv, drv_mode>&& rval) noexcept : object(rval.object)
+	                                                , referencer(Move(rval.referencer))
 	{}
 
 	// Constructor from shared pointer.
@@ -74,7 +74,7 @@ public:
 	}
 
 	// Move operator. Behaves exactly as assign operator (with full-copy behaviour).
-	WeakPtr& operator=(WeakPtr&& rval)
+	WeakPtr& operator=(WeakPtr&& rval) noexcept
 	{
 		Reset< WeakPtr<ObjectType, thread_safety_mode> >(rval);
 		return *this;
@@ -83,7 +83,7 @@ public:
 	// Move operator. Takes derived type.
 	template<typename Drv, thread_safety::Mode drv_mode>
 	typename EnableIf<SharedPtrType::template IsConvertible<Drv, drv_mode>::value, WeakPtr&>::Type
-		operator=(WeakPtr<Drv, drv_mode>&& rval)
+		operator=(WeakPtr<Drv, drv_mode>&& rval) noexcept
 	{
 		Reset< WeakPtr<ObjectType, thread_safety_mode> >(rval);
 		return *this;

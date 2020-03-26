@@ -86,7 +86,7 @@ public:
 	// Move constructor uses placement new and ut::Move() internally.
 	// 'constexpr' specifier is used with visual studio only
 	// because gcc expects constructor to be empty for 'constexpr'.
-	Result(Result&& right) : has_result(right.has_result)
+	Result(Result&& right) noexcept : has_result(right.has_result)
 	{
 		if (has_result)
 		{
@@ -121,7 +121,7 @@ public:
 	}
 
 	// Move operator
-	Result& operator = (Result&& right)
+	Result& operator = (Result&& right) noexcept
 	{
 		// destroy existing object
 		Destruct();
@@ -259,7 +259,7 @@ public:
 	{}
 
 	// Move constructor
-	constexpr Result(Result&& rval) : Base(ut::Move(rval))
+	constexpr Result(Result&& rval) noexcept : Base(ut::Move(rval))
 	{}
 
 	// Function to check if object was constructed with void type or @A
