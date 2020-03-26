@@ -80,15 +80,15 @@ public:
 	{}
 
 	// Move constructor. Moves referencer object. Reference count doesn't change here.
-	SharedPtr(SharedPtr&& rval) : object(rval.object)
-	                            , referencer(Move(rval.referencer))
+	SharedPtr(SharedPtr&& rval) noexcept : object(rval.object)
+	                                     , referencer(Move(rval.referencer))
 	{}
 
 	// Move constructor, takes derived type.
 	template<typename Drv, thread_safety::Mode drv_mode, typename DrvDel,
 	         typename = typename EnableIf<IsConvertible<Drv, drv_mode>::value>::Type>
-	SharedPtr(SharedPtr<Drv, drv_mode, DrvDel>&& rval) : object(rval.object)
-	                                                   , referencer(Move(rval.referencer))
+	SharedPtr(SharedPtr<Drv, drv_mode, DrvDel>&& rval) noexcept : object(rval.object)
+	                                                            , referencer(Move(rval.referencer))
 	{}
 
 	// Assign operator. Reference count to the old object is decreased by 1 here, and
@@ -109,7 +109,7 @@ public:
 	}
 
 	// Move operator. Behaves exactly as assign operator (with full-copy behaviour).
-	SharedPtr& operator=(SharedPtr&& rval)
+	SharedPtr& operator=(SharedPtr&& rval) noexcept
 	{
 		Reset(rval);
 		return *this;
@@ -118,7 +118,7 @@ public:
 	// Move operator. Takes derived type.
 	template<typename Drv, thread_safety::Mode drv_mode, typename DrvDel>
 	typename EnableIf<IsConvertible<Drv, drv_mode>::value, SharedPtr&>::Type
-		operator=(SharedPtr<Drv, drv_mode, DrvDel>&& rval)
+		operator=(SharedPtr<Drv, drv_mode, DrvDel>&& rval) noexcept
 	{
 		Reset(rval);
 		return *this;

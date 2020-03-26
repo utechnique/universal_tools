@@ -238,10 +238,10 @@ public:
 	}
 
 	// Move constructor
-	BaseTree(BaseTree&& other) : data(Move(other.data))
-	                           , parent(other.parent)
-	                           , id(other.id)
-	                           , child_nodes(Move(other.child_nodes))
+	BaseTree(BaseTree&& other) noexcept : data(Move(other.data))
+	                                    , parent(other.parent)
+	                                    , id(other.id)
+	                                    , child_nodes(Move(other.child_nodes))
 	{
 		ResetChildsId();
 	}
@@ -258,7 +258,7 @@ public:
 	}
 
 	// Move operator
-	BaseTree& operator = (BaseTree&& other)
+	BaseTree& operator = (BaseTree&& other) noexcept
 	{
 		data = Move(other.data);
 		parent = other.parent;

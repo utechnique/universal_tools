@@ -40,7 +40,7 @@ public:
 	{}
 
 	// Move constructor
-	Pair(Pair && copy) : first(Move(copy.first)), second(Move(copy.second))
+	Pair(Pair && copy) noexcept : first(Move(copy.first)), second(Move(copy.second))
 	{}
 
 	// Assignment operator
@@ -52,7 +52,7 @@ public:
 	}
 
 	// Move operator
-	Pair& operator = (Pair && copy)
+	Pair& operator = (Pair && copy) noexcept
 	{
 		first = Move(copy.first);
 		second = Move(copy.second);
@@ -83,7 +83,7 @@ public:
 	{}
 
 	// Move constructor
-	Pair(Pair && copy) : first(copy.first), second(Move(copy.second))
+	Pair(Pair && copy) noexcept : first(copy.first), second(Move(copy.second))
 	{}
 
 	// managed objects
@@ -115,7 +115,7 @@ public:
 	{}
 
 	// Move constructor
-	Pair(Pair && copy) : first(Move(copy.first)), second(copy.second)
+	Pair(Pair && copy) noexcept : first(Move(copy.first)), second(copy.second)
 	{}
 
 	// managed objects

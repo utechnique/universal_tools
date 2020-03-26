@@ -45,14 +45,14 @@ public:
 	// Move constructor
 	//    @param other - another ut::UniquePtr object to copy from
 	//                  @other will be discarded after copying
-	UniquePtr(UniquePtr&& other) : pointer(other.Discard())
+	UniquePtr(UniquePtr&& other) noexcept : pointer(other.Discard())
 	{}
 
 	// Move constructor, takes derived type.
 	//    @param other - another ut::UniquePtr object to copy from
 	//                   @other will be discarded after copying
 	template<typename Drv, typename Del, typename = typename EnableIf<IsBaseOf<T, Drv>::value>::Type>
-	UniquePtr(UniquePtr<Drv, Del>&& other) : pointer(other.Discard())
+	UniquePtr(UniquePtr<Drv, Del>&& other) noexcept : pointer(other.Discard())
 	{}
 
 	// Destructor, deletes @pointer object
@@ -67,7 +67,7 @@ public:
 	// Move operator
 	//    @param other - another ut::UniquePtr object to move data from
 	//                   @other will be discarded after copying
-	UniquePtr& operator = (UniquePtr&& other)
+	UniquePtr& operator = (UniquePtr&& other) noexcept
 	{
 		Switch(other.Discard());
 		return *this;
@@ -77,7 +77,7 @@ public:
 	//    @param copy - another ut::UniquePtr object to move data from
 	//                  @other will be discarded after copying
 	template<typename Drv, typename Del>
-	typename EnableIf<IsBaseOf<T, Drv>::value, UniquePtr&>::Type operator = (UniquePtr<Drv, Del>&& other)
+	typename EnableIf<IsBaseOf<T, Drv>::value, UniquePtr&>::Type operator = (UniquePtr<Drv, Del>&& other) noexcept
 	{
 		Switch(other.Discard());
 		return *this;
@@ -151,11 +151,14 @@ public:
 	// Replaces managed object with new one (@ptr object)
 	// old object is deleted
 	//    @param ptr - old @pointer
-	void Switch(ElementType* ptr = nullptr)
+	void Switch(ElementType* ptr = nullptr) noexcept
 	{
 		if (ptr != pointer)
 		{
-			GetDeleter()(pointer);
+			if (pointer != nullptr)
+			{
+				GetDeleter()(pointer);
+			}
 			pointer = ptr;
 		}
 	}

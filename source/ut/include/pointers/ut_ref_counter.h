@@ -276,7 +276,7 @@ public:
 
 	// Move constructor, just copies a pointer to the reference controller
 	// without incrementing reference count.
-	SharedReferencer(SharedReferencer&& rval) : controller(rval.controller)
+	SharedReferencer(SharedReferencer&& rval) noexcept : controller(rval.controller)
 	{
 		rval.controller = nullptr;
 	}
@@ -356,7 +356,7 @@ public:
 
 	// Move constructor, just copies a pointer to the reference controller
 	// without incrementing reference count.
-	WeakReferencer(WeakReferencer&& rval) : controller(rval.controller)
+	WeakReferencer(WeakReferencer&& rval) noexcept : controller(rval.controller)
 	{
 		rval.controller = nullptr;
 	}

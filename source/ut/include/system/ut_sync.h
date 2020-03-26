@@ -24,8 +24,8 @@ public:
 	Synchronized() {}
 
 	// Move constructor
-	Synchronized(Synchronized&& other) : object(Move(other.object))
-	                                   , m(Move(other.m))
+	Synchronized(Synchronized&& other) noexcept : object(Move(other.object))
+	                                            , m(Move(other.m))
 	{}
 
 	// Constructor, @object is explicitly copied from @copy
@@ -35,7 +35,7 @@ public:
 	Synchronized(T&& rval) : object(Move(rval)) {}
 
 	// Move operator
-	Synchronized& operator = (Synchronized&& other)
+	Synchronized& operator = (Synchronized&& other) noexcept
 	{
 		object = Move(other.object);
 		m = Move(other.m);
@@ -116,7 +116,7 @@ public:
 	SyncRW(const T& copy) : object(copy) {}
 
 	// Move constructor, @object is explicitly copied from @copy
-	SyncRW(T&& rval) : object(Move(rval)) {}
+	SyncRW(T&& rval) noexcept : object(Move(rval)) {}
 
 	// Assignment operator, @object is safely extracted from @copy
 	SyncRW& operator = (SyncRW& copy)
