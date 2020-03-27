@@ -12,28 +12,23 @@ function utGenerateWorkspace()
     configurations { "Debug", "Release" }
     -- location
     location(BUILD_TARGET)
-    -- platfrom
-    if os.istarget("Linux") then
-        if os.is64bit() then
-            platforms { "x64" }
-        else
-            platforms { "x32" }
-        end
-    else
-        platforms { "x32", "x64" }
-    end
+    -- ISA platfrom
+	if X86 then
+		platforms { "x32" }
+	end
+	if X64 then
+		platforms { "x64" }
+	end
     
     -- multithreaded compiling
     flags { "MultiProcessorCompile" }
     
     -- cpp standard
-    if LINUX then
-        if CPP_STANDARD >= 2014 then
-            cppdialect "C++14"
-        elseif CPP_STANDARD >= 2011 then
-            cppdialect "C++11"
-        end
-    end
+	if CPP_STANDARD >= 2014 then
+		cppdialect "C++14"
+	elseif CPP_STANDARD >= 2011 then
+		cppdialect "C++11"
+	end
     
     -- standard libraries
     if WINDOWS then
@@ -72,7 +67,4 @@ function utGenerateWorkspace()
     
     filter "platforms:x64"
         defines { "UT_X64" }
-        
-    filter "platforms:ARM"
-        defines { "UT_ARM" }
 end

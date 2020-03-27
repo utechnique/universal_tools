@@ -16,3 +16,39 @@ newoption
     trigger = "build_all",
     description = "Builds Everything."	
 }
+
+newoption
+{
+    trigger = "windows",
+    description = "Target platform is MS Windows."	
+}
+
+newoption
+{
+    trigger = "linux",
+    description = "Target platform is Linux."	
+}
+
+newoption
+{
+    trigger = "msvc",
+    description = "Using Microsoft Visual C++ compiler."	
+}
+
+newoption
+{
+    trigger = "gcc",
+    description = "Using GNU Compiler Collection."	
+}
+
+newoption
+{
+    trigger = "x86",
+    description = "Using x86 instruction set."	
+}
+
+newoption
+{
+    trigger = "x64",
+    description = "Using x86_64(AMD64) instruction set."	
+}

@@ -4,9 +4,21 @@ BUILD_ALL = _OPTIONS["build_all"]
 BUILD_SAMPLES = BUILD_ALL or _OPTIONS["build_samples"]
 BUILD_APP = BUILD_ALL or _OPTIONS["build_app"]
 
+-- processor instruction set architecture
+X64 = _OPTIONS["x64"]
+X86 = _OPTIONS["x86"]
+if not X64 and not X86 then
+	X64 = true
+	X86 = true
+end
+
+-- compilers
+MSVC = _OPTIONS["msvc"] or _ACTION == "vs2015" or _ACTION == "vs2013" or _ACTION == "vs2010" or _ACTION == "vs2008"
+GCC = _OPTIONS["gcc"] or _ACTION == "gmake"
+
 -- target platform
-WINDOWS = _ACTION == "vs2015" or _ACTION == "vs2013" or _ACTION == "vs2010" or _ACTION == "vs2008"
-LINUX = _ACTION == "gmake"
+WINDOWS = _OPTIONS["windows"] or MSVC
+LINUX = _OPTIONS["linux"] or GCC
 
 -- buildname
 BUILD_TARGET = _ACTION
@@ -34,7 +46,7 @@ end
 
 -- link options
 DBG_LINK_OPTIONS = {}
-if LINUX then
+if GCC then
     table.insert(DBG_LINK_OPTIONS, "-rdynamic")
 end
 
