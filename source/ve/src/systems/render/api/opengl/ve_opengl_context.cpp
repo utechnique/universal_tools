@@ -9,9 +9,13 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformContext::PlatformContext(OpenGLContext opengl_context) : OpenGLContext(ut::Move(opengl_context))
+PlatformContext::PlatformContext(OpenGLDummyWindow::UniquePtr window) : dummy_window(ut::Move(window))
 {
-	MakeCurrent();
+	ut::Optional<ut::Error> apply_error = dummy_window->ApplyContext();
+	if (apply_error)
+	{
+		throw ut::Error(apply_error.Move());
+	}
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 }
@@ -23,7 +27,7 @@ PlatformContext::~PlatformContext()
 }
 
 // Move constructor.
-PlatformContext::PlatformContext(PlatformContext&& other) noexcept : OpenGLContext(ut::Move(other))
+PlatformContext::PlatformContext(PlatformContext&& other) noexcept : dummy_window(ut::Move(other.dummy_window))
                                                                    , framebuffer(other.framebuffer)
 {
 	other.framebuffer = GL_FALSE;
@@ -33,7 +37,7 @@ PlatformContext::PlatformContext(PlatformContext&& other) noexcept : OpenGLConte
 PlatformContext& PlatformContext::operator =(PlatformContext&& other) noexcept
 {
 	//Destroy();
-	OpenGLContext::operator=(ut::Move(other));
+	dummy_window = ut::Move(other.dummy_window);
 	framebuffer = other.framebuffer;
 	return *this;
 }
@@ -67,43 +71,6 @@ void Context::ClearTarget(Target& target, float* color)
 
 	// clear
 	glClear(GL_COLOR_BUFFER_BIT);
-}
-
-// Presents a rendered image to the user.
-//    @param display - reference to the display to show image on.
-//    @param vsync - 'true' to enable vertical synchronization.
-void Context::Present(Display& display, bool vsync)
-{
-	// switch context using window's hdc
-	MakeCurrent(display.window);
-
-	// enable srgb
-	glEnable(GL_FRAMEBUFFER_SRGB);
-
-	// set backbuffer as a destination and texture of the
-	// render target as a source
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glDrawBuffer(GL_FRONT);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, display.target.buffer.gl_tex_id, 0);
-	glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-	// copy buffer
-	glBlitFramebuffer(0, 0, display.GetWidth(), display.GetHeight(),
-	                  0, 0, display.GetWidth(), display.GetHeight(),
-	                  GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-	// swap back and front buffers and draw
-	if (vsync)
-	{
-		SwapBuffers(display.window.context);
-	}
-
-	// set context back to windowless mode
-	MakeCurrent();
-
-	// disable srgb
-	glDisable(GL_FRAMEBUFFER_SRGB);
 }
 
 //----------------------------------------------------------------------------//

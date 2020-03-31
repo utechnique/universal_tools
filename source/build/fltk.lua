@@ -25,6 +25,20 @@ FLTK_PLATFORM_DEF = WINDOWS and FLTK_WINDOWS_DEF or {}
 
 FLTK_LIBS = LINUX and { "X11", "dl" } or {}
 
+if OPENGL then
+	FLTK_GL_SRC = 
+	{
+		"../contrib/fltk/src/Fl_Gl_Choice.cxx",
+		"../contrib/fltk/src/Fl_Gl_Device_Plugin.cxx",
+		"../contrib/fltk/src/Fl_Gl_Overlay.cxx",
+		"../contrib/fltk/src/Fl_Gl_Window.cxx",
+		"../contrib/fltk/src/gl_draw.cxx",
+		"../contrib/fltk/src/gl_start.cxx",
+	}
+else
+	FLTK_GL_SRC = {} 
+end
+
 function utFLTK()    
     -- fltk
     utStaticLibProj
@@ -204,6 +218,8 @@ function utFLTK()
             "../contrib/fltk/src/xutf8/utf8Wrap.c",
             "../contrib/fltk/src/xutf8/keysym2Ucs.c",
             "../contrib/fltk/src/fl_utf.c",
+			-- opengl source files
+			FLTK_GL_SRC
         },
     }
 end

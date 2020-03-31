@@ -10,23 +10,22 @@
 //----------------------------------------------------------------------------//
 #if VE_OPENGL
 //----------------------------------------------------------------------------//
-#include "ut.h"
+#include "systems/ui/desktop/ve_desktop_viewport.h"
 //----------------------------------------------------------------------------//
-// Platform-specific headers.
-#if UT_WINDOWS
-#include <windows.h>
-#elif UT_UNIX
+#if UT_UNIX
 #include <GL/glx.h>
 #endif
-//----------------------------------------------------------------------------//
-// OpenGL main header.
-#include <GL/gl.h>
 //----------------------------------------------------------------------------//
 // Extension interfaces.
 #if UT_WINDOWS
 #include "wglext.h"
+#elif UT_UNIX
+#include "glxext.h"
 #endif
 #include "glext.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Minimum opengl version that is supported by VE.
 static const int skMinimumOpenGLVersionMajor = 4;
@@ -41,6 +40,9 @@ __m(glDeleteFramebuffers)\
 __m(glBindFramebuffer)\
 __m(glFramebufferTexture)\
 __m(glDrawBuffers)\
+__m(glFenceSync)\
+__m(glDeleteSync)\
+__m(glClientWaitSync)\
 
 //----------------------------------------------------------------------------//
 // Calling convention for OpenGL functions.
@@ -63,6 +65,9 @@ typedef void(VE_GLAPI*glBindFramebufferPtr) (GLenum target, GLuint framebuffer);
 typedef void(VE_GLAPI*glFramebufferTexturePtr) (GLenum target, GLenum attachment,
                                                 GLuint texture, GLint level);
 typedef void(VE_GLAPI*glDrawBuffersPtr) (GLsizei n, const GLenum *bufs);
+typedef GLsync(VE_GLAPI*glFenceSyncPtr) (GLenum condition, GLbitfield flags);
+typedef void(VE_GLAPI*glDeleteSyncPtr) (GLsync sync);
+typedef GLenum(VE_GLAPI*glClientWaitSyncPtr) (GLsync sync, GLbitfield flags, GLuint64 timeout);
 
 //----------------------------------------------------------------------------//
 // Declare all opengl functions.
@@ -70,101 +75,102 @@ typedef void(VE_GLAPI*glDrawBuffersPtr) (GLsizei n, const GLenum *bufs);
 VE_ENUM_OPENGL_ENTRYPOINTS(VE_OPENGL_DECLARE_FUNCTION_PTR)
 
 //----------------------------------------------------------------------------//
-// OpenGLWindow is a wrapper around platform-specific widget associated with
-// OpenGL context.
-struct OpenGLWindow
-{
-	// Constructor.
+// Platform-specific handle to an opengl context.
 #if UT_WINDOWS
-	//    @param hwnd - window handle
-	//    @param hdc - handle to a device context for the client area of @window
-	//    @param ownership - set 'true' to destroy window in destructor
-	OpenGLWindow(HWND hwnd, bool ownership = false);
+typedef HGLRC OpenGLContextHandle;
 #elif UT_LINUX
-	OpenGLWindow();
+typedef GLXContext OpenGLContextHandle;
 #endif
-
-	// Destructor.
-	~OpenGLWindow();
-
-	// Move constructor.
-	OpenGLWindow(OpenGLWindow&& other) noexcept;
-
-	// Move operator.
-	OpenGLWindow& operator =(OpenGLWindow&& other) noexcept;
-
-	// Copying is prohibited.
-	OpenGLWindow(const OpenGLWindow&) = delete;
-	OpenGLWindow& operator =(const OpenGLWindow&) = delete;
-
-	// Platform-specific members.
-#if UT_WINDOWS
-	HWND handle;
-	HDC context;
-	bool window_ownership;
-#elif UT_UNIX
-
-#else
-#error OpenGLWindow is not implemented.
-#endif
-
-private:
-	// Destroys managed window if has ownership.
-	void Destroy();
-};
 
 //----------------------------------------------------------------------------//
-// OpenGLContext is a wrapper around platform-specific OpenGL context.
-class OpenGLContext
+// OpenGl context needs a window (windows os) or display (X11) for drawing
+// stuff. ve::render::OpenGLDummyWindow class provides a simple window that
+// has no purpose other than just hosting a context.
+class OpenGLDummyWindow : public Fl_Window
 {
 public:
 	// Constructor.
-	OpenGLContext(HGLRC context_handle, OpenGLWindow dummy_wnd);
+	OpenGLDummyWindow();
 
-	// Destructor.
-	~OpenGLContext();
+	// Destructor. Platform-specific resources are destroyed here.
+	~OpenGLDummyWindow();
 
-	// Move constructor.
-	OpenGLContext(OpenGLContext&& other) noexcept;
+	// Initializes global-space opengl functions and an opengl context for
+	// rendering in VE. This method is called from Fl_Window::draw() between
+	// gl_start() and gl_finish(). It's a place where one can steal current
+	// context from fltk and use it as a parent for a new one. Initialization
+	// code is platform-specific.
+	ut::Optional<ut::Error> Initialize(OpenGLContextHandle shared_context);
 
-	// Move operator.
-	OpenGLContext& operator =(OpenGLContext&& other) noexcept;
+	// Returns current opengl context or error if something failed.
+	ut::Result<OpenGLContextHandle, ut::Error> GetCurrentContext();
 
 	// Makes managed OpenGL context the calling thread's current rendering context.
-	// Uses provided window for drawing.
-	void MakeCurrent(OpenGLWindow& opengl_window);
+	//    @return - optional error if failed to set context.
+	ut::Optional<ut::Error> ApplyContext();
 
-	// Makes managed OpenGL context the calling thread's current rendering context.
-	// Uses managed window for drawing.
-	inline void MakeCurrent()
+	// Resets OpenGL context in a current thread.
+	//    @return - optional error if failed to reset context.
+	ut::Optional<ut::Error> ResetContext();
+
+	// Returns true if opengl context was created and initialized.
+	// This function is thread-safe.
+	bool IsInitialized();
+
+	// The only purpose for draw() method is to make fltk create an opengl context.
+	// Then this context can be used as a shared parent for our context so that
+	// we could draw opengl stuff in other windows (that have own context).
+	void draw() override;
+
+	// Copying and moving is prohibited.
+	OpenGLDummyWindow(const OpenGLDummyWindow&) = delete;
+	OpenGLDummyWindow& operator =(const OpenGLDummyWindow&) = delete;
+	OpenGLDummyWindow(OpenGLDummyWindow&&) = delete;
+	OpenGLDummyWindow& operator =(OpenGLDummyWindow&&) = delete;
+
+	// OpenGL window can be created and/or deleted only in fltk thread.
+	class Deleter
 	{
-		MakeCurrent(window);
-	}
+	public:
+		void operator()(OpenGLDummyWindow* viewport) const;
+	};
+	
+	// Helper smart pointer for managing dummy window.
+	typedef ut::UniquePtr<OpenGLDummyWindow, Deleter> UniquePtr;
 
-	// Copying is prohibited.
-	OpenGLContext(const OpenGLContext&) = delete;
-	OpenGLContext& operator =(const OpenGLContext&) = delete;
-
-protected:
-	// OpenGL context.
-	HGLRC opengl_context;
-
-	// Window associated with opengl context.
-	OpenGLWindow window;
-};
-
-// Sets correct pixel format for the window associated with OpenGL context.
+private:
+	// Platform-specific data.
 #if UT_WINDOWS
-ut::Optional<ut::Error> SetOpenGLViewportPixelFormat(HDC hdc);
+	HWND hwnd;
+	HDC hdc;
+#elif UT_LINUX
+	Display* display;
 #endif
 
-// Creates platform-specific OpenGL context.
-ut::Result<OpenGLContext, ut::Error> CreateOpenGLContext();
+	// OpenGL context that is associated with the current window.
+	OpenGLContextHandle opengl_context;
 
-// Platform-specific check for the desired OpenGL version and initialization
-// of the entry points for OpenGL functions.
-ut::Optional<ut::Error> InitOpenGLPlatform();
+	// This boolean variable is set to 'true' when @opengl_context is initialized.
+	ut::Atomic<bool> initialized;
+};
 
+//----------------------------------------------------------------------------//
+// Creates new opengl context for the current thread. Synchronizes with fltk
+// to make different windows(viewports) accessible for this context.
+OpenGLDummyWindow::UniquePtr CreateOpenGLDummyWindow();
+
+//----------------------------------------------------------------------------//
+// Helper class to lock fltk thread in current scope.
+class FltkScopeLock
+{
+public:
+	FltkScopeLock();
+	~FltkScopeLock();
+};
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
+END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 #endif // VE_OPENGL
 //----------------------------------------------------------------------------//

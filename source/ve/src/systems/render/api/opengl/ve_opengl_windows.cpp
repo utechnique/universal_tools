@@ -3,116 +3,12 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/api/opengl/ve_opengl_platform.h"
 //----------------------------------------------------------------------------//
-#if VE_OPENGL
+#if VE_OPENGL && UT_WINDOWS
 //----------------------------------------------------------------------------//
-// Constructor.
-//    @param hwnd - window handle
-//    @param hdc - handle to a device context for the client area of @window
-//    @param ownership - set 'true' to destroy window in destructor
-OpenGLWindow::OpenGLWindow(HWND hwnd, bool ownership) : handle(hwnd)
-                                                      , context(GetDC(hwnd))
-                                                      , window_ownership(ownership)
-{
-	// check if context was extracted correctly
-	if (!context)
-	{
-		throw ut::Error(ut::error::fail, "Failed to create DC for OpenGL window.");
-	}
-
-	// all windows must have the same pixel format
-	ut::Optional<ut::Error> pixel_format_error = SetOpenGLViewportPixelFormat(context);
-	if (pixel_format_error)
-	{
-		throw ut::Error(ut::error::fail, "Failed to set pixel format for OpenGL window.");
-	}
-}
-
-// Destructor.
-OpenGLWindow::~OpenGLWindow()
-{
-	Destroy();
-}
-
-// Move constructor.
-OpenGLWindow::OpenGLWindow(OpenGLWindow&& other) noexcept : handle(other.handle)
-                                                          , context(other.context)
-                                                          , window_ownership(other.window_ownership)
-{
-	other.handle = nullptr;
-	other.context = nullptr;
-	other.window_ownership = false;
-}
-
-// Move operator.
-OpenGLWindow& OpenGLWindow::operator =(OpenGLWindow&& other) noexcept
-{
-	Destroy();
-	handle = other.handle;
-	context = other.context;
-	window_ownership = other.window_ownership;
-	other.handle = nullptr;
-	other.context = nullptr;
-	other.window_ownership = false;
-	return *this;
-}
-
-// Destroys managed window if has ownership.
-void OpenGLWindow::Destroy()
-{
-	if (context != nullptr)
-	{
-		ReleaseDC(handle, context);
-	}
-
-	if (window_ownership && handle != nullptr)
-	{
-		DestroyWindow(handle);
-	}
-}
-
+#include "FL/x.H" // to get fltk window handle
 //----------------------------------------------------------------------------//
-// Constructor.
-OpenGLContext::OpenGLContext(HGLRC context_handle,
-                             OpenGLWindow dummy_wnd) : opengl_context(context_handle)
-                                                     , window(ut::Move(dummy_wnd))
-{}
-
-// Destructor.
-OpenGLContext::~OpenGLContext()
-{
-	if (opengl_context != nullptr)
-	{
-		wglDeleteContext(opengl_context);
-	}
-}
-
-// Move constructor.
-OpenGLContext::OpenGLContext(OpenGLContext&& other) noexcept : opengl_context(other.opengl_context)
-	                                                         , window(ut::Move(other.window))
-{
-	other.opengl_context = nullptr;
-}
-
-// Move operator.
-OpenGLContext& OpenGLContext::operator =(OpenGLContext&& other) noexcept
-{
-	opengl_context = other.opengl_context;
-	window = ut::Move(other.window);
-	other.opengl_context = nullptr;
-	return *this;
-}
-
-// Makes managed OpenGL context the calling thread's current rendering context.
-// Uses provided window for drawing.
-void OpenGLContext::MakeCurrent(OpenGLWindow& another_window)
-{
-	BOOL make_curr_result = wglMakeCurrent(another_window.context, opengl_context);
-	if (!make_curr_result)
-	{
-		make_curr_result = wglMakeCurrent(nullptr, nullptr);
-	}
-}
-
+START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Define all opengl functions.
 #define VE_OPENGL_DEFINE_FUNCTION_PTR(__f) __f##Ptr __f = nullptr;
@@ -133,106 +29,69 @@ if (__f == nullptr) return ut::Error(ut::error::not_supported, #__f);
 // constraints imposed by the API version.
 static PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = nullptr;
 
-// Window procedure for dummy opengl window.
-LRESULT CALLBACK DummyOpenGLWindowProc(HWND hWnd, DWORD Message, WPARAM wParam, LPARAM lParam)
+//----------------------------------------------------------------------------//
+// Constructor.
+OpenGLDummyWindow::OpenGLDummyWindow() : Fl_Window(0, 0, 1, 1)
+                                       , hwnd(0)
+                                       , hdc(0)
+                                       , opengl_context(0)
+                                       , initialized(false)
+{}
+
+// Destructor. Windows resources are destroyed here.
+OpenGLDummyWindow::~OpenGLDummyWindow()
 {
-	return DefWindowProc(hWnd, Message, wParam, lParam);
+	// device context
+	if (hdc)
+	{
+		ReleaseDC(hwnd, hdc);
+	}
+
+	// OpenGL context
+	if (opengl_context)
+	{
+		wglDeleteContext(opengl_context);
+	}
 }
 
-// Creates simple hidden window to associate 'windowless' context with it.
-ut::Result<OpenGLWindow, ut::Error> CreateOpenGLDummyWindow()
+// Initializes global-space opengl functions and an opengl context for
+// rendering in VE. This method is called from Fl_Window::draw() between
+// gl_start() and gl_finish(). It's a place where one can steal current
+// context from fltk and use it as a parent for a new one. Initialization
+// code is specific for Windows OS.
+ut::Optional<ut::Error> OpenGLDummyWindow::Initialize(OpenGLContextHandle shared_context)
 {
-	// register a dummy window class.
-	const TCHAR* dummy_wnd_class_name = TEXT("dummy_opengl_window");
-	static bool initialized_dummy_wnd_class = false;
-	if (!initialized_dummy_wnd_class)
+	// get a handle of the current window it will be needed in destructor
+	hwnd = fl_xid(this);
+	if (!hwnd)
 	{
-		WNDCLASS wc;
-		initialized_dummy_wnd_class = true;
-		ZeroMemory(&wc, sizeof(WNDCLASS));
-		wc.style = CS_OWNDC;
-		wc.lpfnWndProc = reinterpret_cast<WNDPROC>(DummyOpenGLWindowProc);
-		wc.hbrBackground = (HBRUSH)(COLOR_MENUTEXT);
-		wc.lpszClassName = dummy_wnd_class_name;
-		ATOM class_atom = ::RegisterClass(&wc);
-		if (!class_atom)
-		{
-			return ut::MakeError(ut::Error(ut::error::fail, "Failed to register class of the dummy window."));
-		}
+		return ut::Error(ut::error::fail, "fl_xid() failed.");
 	}
 
-	// create a dummy window
-	HWND dummy_wnd = CreateWindowEx(
-		WS_EX_WINDOWEDGE,
-		dummy_wnd_class_name,
-		NULL,
-		WS_POPUP,
-		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-		NULL, NULL, NULL, NULL);
-	if (!dummy_wnd)
+	// get windows device context it is needed for wglMakeCurrent() function
+	hdc = wglGetCurrentDC();
+	if (!hdc)
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, "Failed to create dummy window."));
+		return ut::Error(ut::error::fail, "GetDC() failed.");
 	}
 
-	// success
-	return OpenGLWindow(dummy_wnd, true);
-}
-
-// Creates simple context using no attributes.
-ut::Result<OpenGLContext, ut::Error> CreateDummyOpenGLContext()
-{
-	// create dummy window
-	ut::Result<OpenGLWindow, ut::Error> dummy_window_result = CreateOpenGLDummyWindow();
-	if (!dummy_window_result)
+	// make shared context current so that wglCreateContextAttribsARB() could be loaded
+	if (!wglMakeCurrent(hdc, shared_context))
 	{
-		return ut::MakeError(dummy_window_result.MoveAlt());
+		return ut::Error(ut::error::fail, "wglMakeCurrent() failed.");
 	}
 
-	// create opengl context
-	HGLRC opengl_context = wglCreateContext(dummy_window_result.GetResult().context);
-	if (!opengl_context)
+	// load 'wglCreateContextAttribsARB' function
+	wglCreateContextAttribsARB = reinterpret_cast<PFNWGLCREATECONTEXTATTRIBSARBPROC>(wglGetProcAddress("wglCreateContextAttribsARB"));
+	if (!wglCreateContextAttribsARB)
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, "Failed to create dummy wgl context."));
+		return ut::Error(ut::error::fail, "Failed to load wglCreateContextAttribsARB() function.");
 	}
 
-	// success
-	return OpenGLContext(opengl_context, dummy_window_result.MoveResult());
-}
-
-// Sets correct pixel format for the window associated with OpenGL context.
-ut::Optional<ut::Error> SetOpenGLViewportPixelFormat(HDC hdc)
-{
-	// pixel format descriptor for the context
-	PIXELFORMATDESCRIPTOR pixel_format_desc;
-	ZeroMemory(&pixel_format_desc, sizeof(pixel_format_desc));
-	pixel_format_desc.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-	pixel_format_desc.nVersion = 1;
-	pixel_format_desc.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-	pixel_format_desc.iPixelType = PFD_TYPE_RGBA;
-	pixel_format_desc.cColorBits = 32;
-	pixel_format_desc.cDepthBits = 0;
-	pixel_format_desc.cStencilBits = 0;
-	pixel_format_desc.iLayerType = PFD_MAIN_PLANE;
-
-	// set the pixel format and create the context
-	ut::int32 PixelFormat = ChoosePixelFormat(hdc, &pixel_format_desc);
-	if (!PixelFormat || !SetPixelFormat(hdc, PixelFormat, &pixel_format_desc))
+	// reset shared context so that we could create a new (final) one
+	if (!wglMakeCurrent(nullptr, nullptr))
 	{
-		return ut::Error(ut::error::fail);
-	}
-
-	// success
-	return ut::Optional<ut::Error>();
-}
-
-// Creates platform-specific OpenGL context.
-ut::Result<OpenGLContext, ut::Error> CreateOpenGLContext()
-{
-	// create dummy window
-	ut::Result<OpenGLWindow, ut::Error> dummy_window_result = CreateOpenGLDummyWindow();
-	if (!dummy_window_result)
-	{
-		return ut::MakeError(dummy_window_result.MoveAlt());
+		return ut::Error(ut::error::fail, "wglMakeCurrent(0,0) failed.");
 	}
 
 	// debug options
@@ -242,8 +101,8 @@ ut::Result<OpenGLContext, ut::Error> CreateOpenGLContext()
 	int dbg_flag = 0;
 #endif
 
-	// context attributes
-	int AttribList[] =
+	// context attributes (must include minor and major version)
+	int attrib_list[] =
 	{
 		WGL_CONTEXT_MAJOR_VERSION_ARB, skMinimumOpenGLVersionMajor,
 		WGL_CONTEXT_MINOR_VERSION_ARB, skMinimumOpenGLVersionMinor,
@@ -253,75 +112,67 @@ ut::Result<OpenGLContext, ut::Error> CreateOpenGLContext()
 	};
 
 	// create opengl context
-	HGLRC opengl_context = wglCreateContextAttribsARB(dummy_window_result.GetResult().context, nullptr, AttribList);
+	opengl_context = wglCreateContextAttribsARB(hdc, shared_context, attrib_list);
 	if (!opengl_context)
 	{
 		ut::String desc = "Failed to create OpenGL context, version ";
 		desc += ut::Print(skMinimumOpenGLVersionMajor) + ut::String(".") + ut::Print(skMinimumOpenGLVersionMinor);
 		desc += " is not supported.";
-		return ut::MakeError(ut::Error(ut::error::not_supported, ut::Move(desc)));
+		return ut::Error(ut::error::not_supported, ut::Move(desc));
 	}
 
-	// success
-	return OpenGLContext(opengl_context, dummy_window_result.MoveResult());
-}
-
-// Platform-specific check for the desired OpenGL version and initialization
-// of the entry points for OpenGL functions.
-ut::Optional<ut::Error> InitOpenGLPlatform()
-{
-	static bool initialized = false;
-	if (!initialized)
+	// apply context so that we could load opengl functions
+	ut::Optional<ut::Error> apply_error = ApplyContext();
+	if (apply_error)
 	{
-		// function 'wglCreateContextAttribsARB' must be loaded before creating actual context
-		if (!wglCreateContextAttribsARB)
-		{
-			// create dummy context
-			ut::Result<OpenGLContext, ut::Error> dummy_context_result = CreateDummyOpenGLContext();
-			if (!dummy_context_result)
-			{
-				return dummy_context_result.MoveAlt();
-			}
-
-			// apply dummy context
-			OpenGLContext& dummy_context = dummy_context_result.GetResult();
-			dummy_context.MakeCurrent();
-
-			// load 'wglCreateContextAttribsARB' function
-			wglCreateContextAttribsARB = reinterpret_cast<PFNWGLCREATECONTEXTATTRIBSARBPROC>(wglGetProcAddress("wglCreateContextAttribsARB"));
-			if (!wglCreateContextAttribsARB)
-			{
-				return ut::Error(ut::error::fail, "Failed to load wglGetProcAddress() function.");
-			}
-		}
-
-		// create real context to check opengl version
-		ut::Result<OpenGLContext, ut::Error> test_context_result = CreateOpenGLContext();
-		if (!test_context_result)
-		{
-			return test_context_result.MoveAlt();
-		}
-
-		// apply context
-		OpenGLContext& test_context = test_context_result.GetResult();
-		test_context.MakeCurrent();
-
-		// initialize all entry points required by render engine
-		VE_ENUM_OPENGL_ENTRYPOINTS(VE_OPENGL_INIT_FUNCTION)
-
-		// fully initialized
-		initialized = true;
+		return apply_error.Move();
 	}
 
-	// detach test context
-	wglMakeCurrent(nullptr, nullptr);
+	// initialize all entry points required by render engine
+	VE_ENUM_OPENGL_ENTRYPOINTS(VE_OPENGL_INIT_FUNCTION)
 
 	// success
 	return ut::Optional<ut::Error>();
 }
 
+// Returns current opengl context or error if something failed.
+ut::Result<OpenGLContextHandle, ut::Error> OpenGLDummyWindow::GetCurrentContext()
+{
+	OpenGLContextHandle handle = wglGetCurrentContext();
+	if (!handle)
+	{
+		return ut::MakeError(ut::Error(ut::error::fail, "wglGetCurrentContext() failed."));
+	}
+	return handle;
+}
+
+// Makes managed OpenGL context the calling thread's current rendering context.
+//    @return - optional error if failed to set context.
+ut::Optional<ut::Error> OpenGLDummyWindow::ApplyContext()
+{
+	if (!wglMakeCurrent(hdc, opengl_context))
+	{
+		return ut::Error(ut::error::fail, "wglMakeCurrent() failed.");
+	}
+	return ut::Optional<ut::Error>();
+}
+
+// Resets OpenGL context in a current thread.
+//    @return - optional error if failed to reset context.
+ut::Optional<ut::Error> OpenGLDummyWindow::ResetContext()
+{
+	if (!wglMakeCurrent(nullptr, nullptr))
+	{
+		return ut::Error(ut::error::fail, "wglMakeCurrent(0,0) failed.");
+	}
+	return ut::Optional<ut::Error>();
+}
+
 //----------------------------------------------------------------------------//
-#endif // VE_OPENGL
+END_NAMESPACE(render)
+END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_OPENGL && UT_WINDOWS
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

@@ -2,9 +2,10 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_device.h"
-#include <FL/x.h> // to get viewport window descriptor
 //----------------------------------------------------------------------------//
 #if VE_DX11
+//----------------------------------------------------------------------------//
+#include "FL/x.H" // to get viewport window descriptor
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -173,7 +174,7 @@ ut::Result<Context, ut::Error> Device::CreateDeferredContext()
 // Creates platform-specific representation of the rendering area inside a UI viewport.
 //    @param viewport - reference to UI viewport containing rendering area.
 //    @return - new display object or error if failed.
-ut::Result<Display, ut::Error> Device::CreateDisplay(ui::Viewport& viewport)
+ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewport)
 {
 	// extract windows handle from the viewport widget
 	const HWND hwnd = fl_xid(&viewport);

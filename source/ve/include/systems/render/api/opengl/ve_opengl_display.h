@@ -5,6 +5,8 @@
 //----------------------------------------------------------------------------//
 #if VE_OPENGL
 //----------------------------------------------------------------------------//
+#include <FL/Fl_Gl_Window.H>
+//----------------------------------------------------------------------------//
 #include "systems/render/api/opengl/ve_opengl_platform.h"
 #include "systems/ui/desktop/ve_desktop_viewport.h"
 //----------------------------------------------------------------------------//
@@ -18,7 +20,7 @@ class PlatformDisplay
 	friend class Device;
 public:
 	// Constructor.
-	PlatformDisplay(OpenGLWindow opengl_window);
+	PlatformDisplay(Fl_Gl_Window* opengl_window);
 
 	// Move constructor.
 	PlatformDisplay(PlatformDisplay&& other) noexcept;
@@ -30,9 +32,9 @@ public:
 	PlatformDisplay(const PlatformDisplay&) = delete;
 	PlatformDisplay& operator =(const PlatformDisplay&) = delete;
 
-private:
+protected:
 	// Platform-specific window containing this display.
-	OpenGLWindow window;
+	Fl_Gl_Window* window;
 };
 
 //----------------------------------------------------------------------------//

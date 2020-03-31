@@ -19,24 +19,25 @@ public:
 	// Constructor, creates a new thread, then desired object is created.
 	// Constructor exits only after the object is fully initialized.
 	template<typename... Args>
-	BaseDedicatedThread(Args... args) : stop(false)
+	BaseDedicatedThread(Args... args) : stop(false), object_ptr(nullptr)
 	{
 		// create thread
 		auto thread_proc = ut::MemberFunction<BaseDedicatedThread, void(Args...)>(this, &BaseDedicatedThread::ThreadProcedure<Args...>);
 		ut::UniquePtr< ut::BaseTask<void> > thread_task = ut::MakeUnique< ut::Task<void(Args...)> >(ut::Move(thread_proc), ut::Forward<Args>(args)...);
 		thread = ut::MakeUnique<ut::Thread>(ut::Move(thread_task));
-
-		// wait until initialization of the object ends
-		ut::ScopeLock lock(initialization_mutex);
-		while (!ready)
-		{
-			initialization_idle.Wait(lock);
-		}
 	}
 
 	// Executes provided task in a thread associated with the managed object.
 	void Enqueue(DedicatedTask task)
 	{
+		// if this function was called inside a managed thread
+		// then just execute the task
+		if (thread->GetId() == ut::this_thread::GetId())
+		{
+			task(*object_ptr);
+			return;
+		}
+
 		// only one thread can call this function at once
 		ut::ScopeLock queue_lock(queue_mutex);
 
@@ -92,12 +93,6 @@ private:
 			// create object
 			ObjectType object(ut::Forward<Args>(args)...);
 
-			{ // inform main thread that object was constructed
-				ut::ScopeLock lock(initialization_mutex);
-				ready = true;
-			}
-			initialization_idle.WakeOne();
-
 			// process tasks
 			while (ProcessTask(object));
 		}
@@ -141,10 +136,6 @@ private:
 
 	// dedicated thread
 	ut::UniquePtr<ut::Thread> thread;
-
-	// synchronization objects for the dedicated thread
-	ut::Mutex initialization_mutex;
-	ut::ConditionVariable initialization_idle;
 	
 	// indicates if object was initialized
 	bool ready;
@@ -153,6 +144,9 @@ private:
 	ut::Mutex queue_mutex;
 	ut::Mutex task_mutex;
 	ut::ConditionVariable task_idle;
+
+	// pointer to the managed object
+	ObjectType* object_ptr;
 
 	// bool variable indicating when to stop thread
 	bool stop;

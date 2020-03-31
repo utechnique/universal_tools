@@ -5,6 +5,8 @@
 //----------------------------------------------------------------------------//
 #include "ve_system.h"
 #include "ve_dedicated_thread.h"
+#include "ve_ui_platform.h"
+#include "ve_ui_viewport.h"
 //----------------------------------------------------------------------------//
 #define VE_DESKTOP 1
 //----------------------------------------------------------------------------//
@@ -26,12 +28,31 @@ public:
 	// When ui exits.
 	void ConnectExitSignalSlot(ut::Function<void()> slot); 
 
+	// One can start iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::UniquePtr<Viewport> >::Iterator BeginViewports();
+
+	// One can end iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::UniquePtr<Viewport> >::Iterator EndViewports();
+
+	// One can start iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::UniquePtr<Viewport> >::ConstIterator BeginViewports() const;
+
+	// One can end iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::UniquePtr<Viewport> >::ConstIterator EndViewports() const;
+
 protected:
 	// signals
 	ut::Signal<void()> exit_signal;
 
 	// title of the application
 	static const char* skTitle;
+
+	// viewports are windows showing visual part of environment to user
+	ut::Array< ut::UniquePtr<Viewport> > viewports;
 };
 
 //----------------------------------------------------------------------------//

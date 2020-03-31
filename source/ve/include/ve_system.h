@@ -109,7 +109,7 @@ protected:
 		template<typename Component>
 		Component& Get()
 		{
-			return *components.Get<Component*>();
+			return *components.template Get<Component*>();
 		}
 
 		// id of the entity

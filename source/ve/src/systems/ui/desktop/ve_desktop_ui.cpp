@@ -96,22 +96,20 @@ ut::String DesktopCfg::GenerateFullPath()
 
 //----------------------------------------------------------------------------//
 // Constructor.
-DesktopFrontend::DesktopFrontend(ut::SharedPtr<render::Device::Thread> in_render_thread) : render_thread(ut::Move(in_render_thread))
+DesktopFrontend::DesktopFrontend() : fltk_ready(false)
 {
 	fltk_thread = ut::MakeUnique<ut::Thread>([this] { this->Run(); });
+	ut::ScopeLock lock(fltk_mutex);
+	while (!fltk_ready)
+	{
+		fltk_cvar.Wait(lock);
+	}
 }
 
 //----------------------------------------------------------------------------->
 // Destructor
 DesktopFrontend::~DesktopFrontend()
-{
-	// close all viewports
-	const size_t display_count = viewports.GetNum();
-	for (size_t i = 0; i < display_count; i++)
-	{
-		render_thread->Enqueue([&](render::Device& device) { CloseRenderDisplay(device, viewports[i].first); });
-	}
-}
+{}
 
 //----------------------------------------------------------------------------->
 // Initialization.
@@ -147,12 +145,18 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 
 	// create render area
 	Viewport::Id viewport_id = viewport_id_generator.Generate();
-	ut::UniquePtr<Viewport> viewport;
-	viewport = ut::MakeUnique<Viewport>(viewport_id, "1", 0, 0, window->w(), window->h());
-	auto resize_callback = ut::MemberFunction<DesktopFrontend, void(Viewport::Id, ut::uint32, ut::uint32)>(this, &DesktopFrontend::ResizeRenderDisplay);
-	viewport->ConnectResizeSignalSlot(ut::Move(resize_callback));
+	ut::UniquePtr<DesktopViewport> viewport;
+	viewport = ut::MakeUnique<DesktopViewport>(viewport_id, "1", 0, 0, window->w(), window->h());
 	viewport->show();
+
+	// adjust main window
 	window->resizable(viewport.Get());
+
+	// add viewport to the map
+	if (!viewports.Add(ut::Move(viewport)))
+	{
+		return ut::Error(ut::error::out_of_memory);
+	}
 
 	// finish main window
 	window->end();
@@ -160,14 +164,11 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	// show main window
 	window->show(0, nullptr);
 
-	// add viewport to the map
-	if (!viewports.Insert(viewport_id, ut::Move(viewport)))
-	{
-		return ut::Error(ut::error::out_of_memory);
+	{ // inform main thread that everything is ready
+		ut::ScopeLock lock(fltk_mutex);
+		fltk_ready = true;
 	}
-
-	// register viewport in render thread
-	render_thread->Enqueue([this, viewport_id](render::Device& device) { this->RegisterRenderDisplay(device, viewport_id); });
+	fltk_cvar.WakeOne();
 
 	// success
 	return ut::Optional<ut::Error>();
@@ -195,6 +196,10 @@ void DesktopFrontend::Run()
 	// unlock fltk to gracefully exit
 	Fl::unlock();
 
+	// viewports are created in the fltk thread,
+	// so they must be deleted there too
+	viewports.Empty();
+
 	// save config file
 	SaveCfg();
 
@@ -216,59 +221,6 @@ void DesktopFrontend::SaveCfg()
 
 	// save to file
 	cfg.Save();
-}
-
-//----------------------------------------------------------------------------->
-// Creates ve::render::Display for the viewport with specified id
-// in render thread.
-//    @param device - reference to render device.
-//    @param id - identifier of the viewport to register.
-void DesktopFrontend::RegisterRenderDisplay(render::Device& device, Viewport::Id id)
-{
-	ut::Optional<ut::UniquePtr<Viewport>&> viewport = viewports.Find(id);
-	if (!viewport)
-	{
-		throw ut::Error(ut::error::not_found);
-	}
-
-	ut::UniquePtr<Viewport>& viewport_ptr = viewport.Get();
-	ut::Optional<ut::Error> add_error = device.AddViewport(viewport_ptr.GetRef());
-	if (add_error)
-	{
-		throw ut::Error(add_error.Move());
-	}
-}
-
-//----------------------------------------------------------------------------->
-// Closes ve::render::Display object associated with specified
-// viewport in render thread.
-//    @param device - reference to render device.
-//    @param id - identifier of the viewport to close.
-void DesktopFrontend::CloseRenderDisplay(render::Device& device, Viewport::Id id)
-{
-	ut::Optional<ut::UniquePtr<Viewport>&> viewport = viewports.Find(id);
-	if (!viewport)
-	{
-		throw ut::Error(ut::error::not_found);
-	}
-
-	device.RemoveViewport(id);
-}
-
-//----------------------------------------------------------------------------->
-// Sends a request to the render thread to resize desired display.
-//    @param id - id of the viewport to resize.
-//    @param width - new width in pixels.
-//    @param height - new height in pixels.
-void DesktopFrontend::ResizeRenderDisplay(Viewport::Id id, ut::uint32 width, ut::uint32 height)
-{
-	render_thread->Enqueue([&](render::Device& device) {
-		ut::Optional<ut::Error> resize_error = device.ResizeViewport(id, width, height);
-		if (resize_error)
-		{
-			throw ut::Error(resize_error.Move());
-		}
-	});
 }
 
 //----------------------------------------------------------------------------//

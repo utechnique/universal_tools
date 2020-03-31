@@ -47,7 +47,7 @@
  * OpenGL, and FLTK will be smaller.
  */
 
-#define HAVE_GL 0
+#define HAVE_GL 1
 
 /*
  * HAVE_GL_GLU_H:

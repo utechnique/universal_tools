@@ -24,6 +24,34 @@ void Frontend::ConnectExitSignalSlot(ut::Function<void()> slot)
 	exit_signal.Connect(slot);
 }
 
+// One can start iterating viewports by calling this function.
+//    @return - viewport iterator, elements can be modified.
+ut::Array< ut::UniquePtr<Viewport> >::Iterator Frontend::BeginViewports()
+{
+	return viewports.Begin();
+}
+
+// One can end iterating viewports by calling this function.
+//    @return - viewport iterator, elements can be modified.
+ut::Array< ut::UniquePtr<Viewport> >::Iterator Frontend::EndViewports()
+{
+	return viewports.End();
+}
+
+// One can start iterating viewports by calling this function.
+//    @return - viewport iterator, elements can be modified.
+ut::Array< ut::UniquePtr<Viewport> >::ConstIterator Frontend::BeginViewports() const
+{
+	return viewports.Begin();
+}
+
+// One can end iterating viewports by calling this function.
+//    @return - viewport iterator, elements can be modified.
+ut::Array< ut::UniquePtr<Viewport> >::ConstIterator Frontend::EndViewports() const
+{
+	return viewports.End();
+}
+
 //----------------------------------------------------------------------------//
 // Constructor.
 Backend::Backend(ut::SharedPtr<Frontend::Thread> in_frontend_thread) : System("ui")

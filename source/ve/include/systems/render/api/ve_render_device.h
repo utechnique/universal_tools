@@ -7,14 +7,14 @@
 #include "systems/render/api/ve_render_context.h"
 #include "systems/render/api/ve_render_target.h"
 #include "systems/render/api/ve_render_display.h"
-#include "systems/render/api/ve_render_viewport_manager.h"
+#include "systems/ui/desktop/ve_desktop_viewport.h"
 #include "ve_dedicated_thread.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // ve::render::Device class creates rendering resources.
-class Device : private PlatformDevice, public ViewportManager
+class Device : private PlatformDevice
 {
 public:
 	// Type of a special thread for rendering.
@@ -52,7 +52,11 @@ public:
 	// Creates platform-specific representation of the rendering area inside a UI viewport.
 	//    @param viewport - reference to UI viewport containing rendering area.
 	//    @return - new display object or error if failed.
-	ut::Result<Display, ut::Error> CreateDisplay(ui::Viewport& viewport) override;
+	ut::Result<Display, ut::Error> CreateDisplay(ui::DesktopViewport& viewport);
+
+	// Deletes all render resources associated with provided display.
+	//    @return - optional error if failed.
+	ut::Optional<ut::Error> CloseDisplay(Display& display);
 
 	// Resizes buffers associated with rendering area inside a UI viewport.
 	//    @param display - reference to display object.
@@ -61,7 +65,7 @@ public:
 	//    @return - optional ut::Error if failed.
 	ut::Optional<ut::Error> ResizeDisplay(Display& display,
 	                                      ut::uint32 width,
-	                                      ut::uint32 height) override;
+	                                      ut::uint32 height);
 
 	// Main context.
 	Context context;

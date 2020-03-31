@@ -30,7 +30,7 @@ public:
 	PlatformDisplay(const PlatformDisplay&) = delete;
 	PlatformDisplay& operator =(const PlatformDisplay&) = delete;
 
-private:
+protected:
 	ut::ComPtr<IDXGISwapChain> dxgi_swapchain;
 };
 

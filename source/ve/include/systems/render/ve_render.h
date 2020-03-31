@@ -5,19 +5,31 @@
 //----------------------------------------------------------------------------//
 #include "ve_system.h"
 #include "ve_render_api.h"
+#include "ve_render_viewport_mgr.h"
+#include "systems/ui/ve_ui.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 
-class Renderer : public System
+class Renderer : public System, public ViewportManager
 {
 public:
-	Renderer(ut::SharedPtr<Device::Thread> render_thread) : System("render")
-	                                                      , thread(ut::Move(render_thread))
+	// Constructor.
+	Renderer(ut::SharedPtr<Device::Thread> in_render_thread,
+	         ut::SharedPtr<ui::Frontend::Thread> in_ui_thread) : System("render")
+	                                                           , ViewportManager(in_render_thread)
+	                                                           , render_thread(ut::Move(in_render_thread))
+		                                                       , ui_thread(ut::Move(in_ui_thread))
 	{
+		UT_ASSERT(ui_thread);
 		UT_ASSERT(render_thread);
-		it = 0;
+
+		// ask render thread to create display, but the task must be scheduled from the ui thread
+		// to synchronize them both
+		ui_thread->Enqueue([this](ui::Frontend& frontend) {this->OpenViewports(frontend); });
+
+
 	}
 
 	// Draws all renderable components.
@@ -25,34 +37,49 @@ public:
 	//              or ut::Error if system encountered fatal error.
 	System::Result Update()
 	{
-		auto draw_proc = ut::MemberFunction<Renderer, void(Device&)>(this, &Renderer::DrawEnvironment);
-		thread->Enqueue(draw_proc);
+		// render scene
+		render_thread->Enqueue([this](render::Device& device) { this->DrawEnvironment(device); });
+
+		// present result to user
+		ui_thread->Enqueue([this](ui::Frontend&) { this->UpdateViewports(); });
+
 		return CmdArray();
 	}
 
+
+
+private:
+
 	void DrawEnvironment(Device& device)
 	{
-		ut::Optional<Display&> display_result = device.GetDisplay(0);
-		if (!display_result)
+		ut::ScopeLock viewport_lock(viewport_guard);
+
+		if (viewports.GetNum() == 0)
 		{
 			return;
 		}
 
-		Display& display = display_result.Get();
+		Display& display = viewports.GetFirst().Get<Display>();
+		ui::DesktopViewport& viewport = viewports.GetFirst().Get<ui::DesktopViewport&>();
 
-		bool swap_col = it % 100 < 50;
-		float color[4] = { swap_col ? 1.0f : 0.0f, swap_col ? 1.0f : 1.0f, 0.0f, 0.0f };
-		//float color[4] = { 0.5f, 0.5f, 0.5f, 0.0f };
+
+
+		static int it = 0;
+		it++;
+		bool swap_col = it % 10000 < 5000;
+		float color[4] = { swap_col ? 1.0f : 0.0f, 1.0f, 0.0f, 0.0f };
 		device.context.ClearTarget(display.target, color);
 
-		device.context.Present(display, true);
-
-		it++;
+#if VE_OPENGL
+		GLsync fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		glFlush();
+		//glClientWaitSync(fence, 0, GL_TIMEOUT_IGNORED);
+		glDeleteSync(fence);
+#endif
 	}
 
-private:
-	int it;
-	ut::SharedPtr<Device::Thread> thread;
+	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
+	ut::SharedPtr<Device::Thread> render_thread;
 };
 
 //----------------------------------------------------------------------------//

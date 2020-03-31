@@ -2,37 +2,14 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_device.h"
-#include <FL/x.h> // to get viewport window descriptor
 //----------------------------------------------------------------------------//
 #if VE_OPENGL
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Creates main context for the current thread and initializes OpenGL functions.
-Context InitializeGLAndCreateContext()
-{
-	// load opengl functions
-	ut::Optional<ut::Error> init_error = InitOpenGLPlatform();
-	if (init_error)
-	{
-		throw ut::Error(init_error.Move());
-	}
-
-	// create platform-specific opengl context
-	ut::Result<OpenGLContext, ut::Error> context_result = CreateOpenGLContext();
-	if (!context_result)
-	{
-		throw ut::Error(context_result.MoveAlt());
-	}
-
-	// success
-	return Context(PlatformContext(context_result.MoveResult()));
-}
-
-//----------------------------------------------------------------------------//
 // Constructor.
-Device::Device() : context(InitializeGLAndCreateContext())
+Device::Device() : context(CreateOpenGLDummyWindow())
 {}
 
 // Move constructor.
@@ -66,11 +43,8 @@ ut::Result<Context, ut::Error> Device::CreateDeferredContext()
 // Creates platform-specific representation of the rendering area inside a UI viewport.
 //    @param viewport - reference to UI viewport containing rendering area.
 //    @return - new display object or error if failed.
-ut::Result<Display, ut::Error> Device::CreateDisplay(ui::Viewport& viewport)
+ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewport)
 {
-	// extract windows handle from the viewport widget
-	const HWND hwnd = fl_xid(&viewport);
-
 	// get size of the viewport
 	const ut::uint32 width = static_cast<ut::uint32>(viewport.w());
 	const ut::uint32 height = static_cast<ut::uint32>(viewport.h());
@@ -84,9 +58,10 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::Viewport& viewport)
 
 	// create render target that will be associated with provided viewport
 	Target target(PlatformRenderTarget(), texture.MoveResult());
+	viewport.AttachDisplayBuffer(target.buffer.gl_tex_id);
 
 	// success
-	return Display(PlatformDisplay(OpenGLWindow(hwnd)), ut::Move(target), width, height);
+	return Display(PlatformDisplay(&viewport), ut::Move(target), width, height);
 }
 
 // Resizes buffers associated with rendering area inside a UI viewport.

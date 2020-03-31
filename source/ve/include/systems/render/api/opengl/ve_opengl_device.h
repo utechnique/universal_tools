@@ -14,7 +14,7 @@ START_NAMESPACE(render)
 class PlatformDevice
 {
 protected:
-
+	
 };
 
 //----------------------------------------------------------------------------//

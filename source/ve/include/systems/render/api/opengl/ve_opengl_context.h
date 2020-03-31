@@ -11,12 +11,12 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // OpenGL context.
-class PlatformContext : public OpenGLContext
+class PlatformContext
 {
 	friend class Device;
 public:
 	// Constructor.
-	PlatformContext(OpenGLContext opengl_context);
+	PlatformContext(OpenGLDummyWindow::UniquePtr window);
 
 	// Destructor.
 	~PlatformContext();
@@ -37,6 +37,8 @@ protected:
 private:
 	// Destroys managed objects.
 	void Destroy();
+
+	OpenGLDummyWindow::UniquePtr dummy_window;
 };
 
 //----------------------------------------------------------------------------//
