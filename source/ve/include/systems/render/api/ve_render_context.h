@@ -30,6 +30,11 @@ public:
 
 	// Set all the elements in a render target to one value.
 	void ClearTarget(Target& target, float* color);
+
+	// Presents a rendered image to the user.
+	//    @param display - reference to the display to show image on.
+	//    @param vsync - 'true' to enable vertical synchronization.
+	void Present(Display& display, bool vsync);
 };
 
 //----------------------------------------------------------------------------//

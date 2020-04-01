@@ -30,10 +30,6 @@ public:
 	Display(const Display&) = delete;
 	Display& operator =(const Display&) = delete;
 
-	// Presents a rendered image to the user.
-	//    @param vsync - 'true' to enable vertical synchronization.
-	void Present(bool vsync);
-
 	// Returns width of the display in pixels.
 	ut::uint32 GetWidth() const;
 

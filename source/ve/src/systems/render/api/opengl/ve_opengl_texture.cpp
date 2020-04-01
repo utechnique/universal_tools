@@ -9,38 +9,14 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformTexture::PlatformTexture(GLuint opengl_texture) : gl_tex_id(opengl_texture)
+PlatformTexture::PlatformTexture(GlRc<gl::texture>::Handle gl_tex_id) : GlRc<gl::texture>(gl_tex_id)
 {}
 
-// Destructor.
-PlatformTexture::~PlatformTexture()
-{
-	Destroy();
-}
-
 // Move constructor.
-PlatformTexture::PlatformTexture(PlatformTexture&& other) noexcept : gl_tex_id(other.gl_tex_id)
-{
-	other.gl_tex_id = GL_FALSE;
-}
+PlatformTexture::PlatformTexture(PlatformTexture&& other) noexcept = default;
 
 // Move operator.
-PlatformTexture& PlatformTexture::operator =(PlatformTexture&& other) noexcept
-{
-	//Destroy();
-	gl_tex_id = other.gl_tex_id;
-	other.gl_tex_id = GL_FALSE;
-	return *this;
-}
-
-// Destroys managed object.
-void PlatformTexture::Destroy()
-{
-	if (gl_tex_id != GL_FALSE)
-	{
-		glDeleteTextures(1, &gl_tex_id);
-	}
-}
+PlatformTexture& PlatformTexture::operator =(PlatformTexture&& other) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

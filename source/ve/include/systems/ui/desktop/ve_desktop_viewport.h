@@ -8,21 +8,13 @@
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
 #include <FL/Fl.H>
-#if VE_DX11
 #include <FL/Fl_Window.H>
-typedef Fl_Window FltkRenderWidget;
-#elif VE_OPENGL
-#include <FL/gl.h>
-#include <FL/Fl_Gl_Window.H>
-#include "glext.h"
-typedef Fl_Gl_Window FltkRenderWidget;
-#endif
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
 // ve::ui::DestopViewport is a viewport for desktop applications.
-class DesktopViewport : public Viewport, public FltkRenderWidget
+class DesktopViewport : public Viewport, public Fl_Window
 {
 public:
 	// Every viewport must have unique id.
@@ -40,26 +32,7 @@ public:
 	// Destructors, close signal is triggered here.
     ~DesktopViewport();
 
-#if VE_OPENGL
-	// Attaches texture buffer from a render display to this viewport.
-	//    @param src_id - id of the texture associated with display.
-	void AttachDisplayBuffer(GLuint src_id);
-#endif
-
 private:
-#if VE_OPENGL
-	// temporal framebuffer is used to blit texture to user
-	GLuint framebuffer;
-
-	// texture buffer that is associated with this viewport
-	GLuint src_buffer;
-
-	// true if viewport has a texture attached to it
-	ut::Atomic<bool> display_attached;
-
-	// Shows a display texture to user.
-	void draw() override;
-#endif
 
 	// Overriden virtual function of the base class (Fl_Window).
 	// Resize signal is triggered here.

@@ -12,6 +12,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/ui/desktop/ve_desktop_viewport.h"
 //----------------------------------------------------------------------------//
+#include <GL/gl.h>
 #if UT_UNIX
 #include <GL/glx.h>
 #endif
@@ -75,97 +76,124 @@ typedef GLenum(VE_GLAPI*glClientWaitSyncPtr) (GLsync sync, GLbitfield flags, GLu
 VE_ENUM_OPENGL_ENTRYPOINTS(VE_OPENGL_DECLARE_FUNCTION_PTR)
 
 //----------------------------------------------------------------------------//
-// Platform-specific handle to an opengl context.
-#if UT_WINDOWS
-typedef HGLRC OpenGLContextHandle;
-#elif UT_LINUX
-typedef GLXContext OpenGLContextHandle;
-#endif
-
-//----------------------------------------------------------------------------//
-// OpenGl context needs a window (windows os) or display (X11) for drawing
-// stuff. ve::render::OpenGLDummyWindow class provides a simple window that
-// has no purpose other than just hosting a context.
-class OpenGLDummyWindow : public Fl_Window
+// OpenGLWindow is a wrapper around platform-specific widget associated with
+// OpenGL context.
+class OpenGLWindow
 {
 public:
 	// Constructor.
-	OpenGLDummyWindow();
+	//    @param window - reference to the fltk window handle
+	//    @param ownership - set 'true' to destroy window in destructor
+	OpenGLWindow(Fl_Window& window, bool ownership = false);
 
-	// Destructor. Platform-specific resources are destroyed here.
-	~OpenGLDummyWindow();
+	// Platform-specific constructor.
+#if UT_WINDOWS
+	//    @param window_handle - HWND handle.
+	//    @param ownership - set 'true' to destroy window in destructor
+	OpenGLWindow(HWND window_handle, bool ownership = false);
+#elif UT_LINUX
+	//    @param Display - pointer to X11 server.
+	//    @param window_handle - X11 window handle.
+	//    @param ownership - set 'true' to destroy window in destructor
+	OpenGLWindow(Display* display_ptr, Window window_handle, bool ownership = false);
+#endif
 
-	// Initializes global-space opengl functions and an opengl context for
-	// rendering in VE. This method is called from Fl_Window::draw() between
-	// gl_start() and gl_finish(). It's a place where one can steal current
-	// context from fltk and use it as a parent for a new one. Initialization
-	// code is platform-specific.
-	ut::Optional<ut::Error> Initialize(OpenGLContextHandle shared_context);
+	// Destructor.
+	~OpenGLWindow();
 
-	// Returns current opengl context or error if something failed.
-	ut::Result<OpenGLContextHandle, ut::Error> GetCurrentContext();
+	// Move constructor.
+	OpenGLWindow(OpenGLWindow&& other) noexcept;
 
-	// Makes managed OpenGL context the calling thread's current rendering context.
-	//    @return - optional error if failed to set context.
-	ut::Optional<ut::Error> ApplyContext();
+	// Move operator.
+	OpenGLWindow& operator =(OpenGLWindow&& other) noexcept;
 
-	// Resets OpenGL context in a current thread.
-	//    @return - optional error if failed to reset context.
-	ut::Optional<ut::Error> ResetContext();
+	// Copying is prohibited.
+	OpenGLWindow(const OpenGLWindow&) = delete;
+	OpenGLWindow& operator =(const OpenGLWindow&) = delete;
 
-	// Returns true if opengl context was created and initialized.
-	// This function is thread-safe.
-	bool IsInitialized();
+	// Exchanges the front and back buffers.
+	void SwapBuffer(bool vsync);
 
-	// The only purpose for draw() method is to make fltk create an opengl context.
-	// Then this context can be used as a shared parent for our context so that
-	// we could draw opengl stuff in other windows (that have own context).
-	void draw() override;
-
-	// Copying and moving is prohibited.
-	OpenGLDummyWindow(const OpenGLDummyWindow&) = delete;
-	OpenGLDummyWindow& operator =(const OpenGLDummyWindow&) = delete;
-	OpenGLDummyWindow(OpenGLDummyWindow&&) = delete;
-	OpenGLDummyWindow& operator =(OpenGLDummyWindow&&) = delete;
-
-	// OpenGL window can be created and/or deleted only in fltk thread.
-	class Deleter
-	{
-	public:
-		void operator()(OpenGLDummyWindow* viewport) const;
-	};
-	
-	// Helper smart pointer for managing dummy window.
-	typedef ut::UniquePtr<OpenGLDummyWindow, Deleter> UniquePtr;
-
-private:
-	// Platform-specific data.
+	// Platform-specific members.
 #if UT_WINDOWS
 	HWND hwnd;
 	HDC hdc;
-#elif UT_LINUX
+	bool window_ownership;
+#elif UT_UNIX
 	Display* display;
+	Window handle;
+	bool window_ownership;
+#else
+#error OpenGLWindow is not implemented.
 #endif
 
-	// OpenGL context that is associated with the current window.
-	OpenGLContextHandle opengl_context;
-
-	// This boolean variable is set to 'true' when @opengl_context is initialized.
-	ut::Atomic<bool> initialized;
+private:
+#if UT_WINDOWS
+	// Sets correct pixel format for the window associated with OpenGL context.
+	ut::Optional<ut::Error> SetCompatiblePixelFormat();
+#endif
+	// Destroys managed window if has ownership.
+	void Destroy();
 };
 
 //----------------------------------------------------------------------------//
-// Creates new opengl context for the current thread. Synchronizes with fltk
-// to make different windows(viewports) accessible for this context.
-OpenGLDummyWindow::UniquePtr CreateOpenGLDummyWindow();
+// OpenGLContext is a wrapper around platform-specific OpenGL context.
+class OpenGLContext
+{
+public:
+	// Platform-specific handle to OpenGL context.
+#if UT_WINDOWS
+	typedef HGLRC Handle;
+#elif UT_LINUX
+	typedef GLXContext Handle;
+#endif
+
+	// Constructor.
+	OpenGLContext(Handle context_handle, OpenGLWindow dummy_wnd);
+
+	// Destructor.
+	~OpenGLContext();
+
+	// Move constructor.
+	OpenGLContext(OpenGLContext&& other) noexcept;
+
+	// Move operator.
+	OpenGLContext& operator =(OpenGLContext&& other) noexcept;
+
+	// Makes managed OpenGL context the calling thread's current rendering context.
+	// Uses provided window for drawing.
+	ut::Optional<ut::Error> MakeCurrent(OpenGLWindow& opengl_window);
+
+	// Makes managed OpenGL context the calling thread's current rendering context.
+	// Uses managed window for drawing.
+	inline ut::Optional<ut::Error> MakeCurrent()
+	{
+		return MakeCurrent(window);
+	}
+
+	// Copying is prohibited.
+	OpenGLContext(const OpenGLContext&) = delete;
+	OpenGLContext& operator =(const OpenGLContext&) = delete;
+
+protected:
+	// OpenGL context.
+	Handle opengl_context;
+
+	// Window associated with opengl context.
+	OpenGLWindow window;
+};
+
+// Creates platform-specific OpenGL context and initializes global
+// gl functions.
+OpenGLContext CreateGLContextAndInitPlatform();
 
 //----------------------------------------------------------------------------//
 // Helper class to lock fltk thread in current scope.
-class FltkScopeLock
+class UiScopeLock
 {
 public:
-	FltkScopeLock();
-	~FltkScopeLock();
+	UiScopeLock();
+	~UiScopeLock();
 };
 
 //----------------------------------------------------------------------------//

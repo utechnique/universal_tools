@@ -116,8 +116,8 @@ ut::Optional<ut::Error> PlatformDevice::ExtractBackBufferTextureAndView(IDXGISwa
 
 //----------------------------------------------------------------------------//
 // Constructor.
-Device::Device() : PlatformDevice(CreateDX11Device())
-                 , context(GetMainContext())
+Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : PlatformDevice(CreateDX11Device())
+                                                                , context(GetMainContext())
 {}
 
 // Move constructor.

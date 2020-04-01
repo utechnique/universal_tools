@@ -28,8 +28,6 @@ public:
 		// ask render thread to create display, but the task must be scheduled from the ui thread
 		// to synchronize them both
 		ui_thread->Enqueue([this](ui::Frontend& frontend) {this->OpenViewports(frontend); });
-
-
 	}
 
 	// Draws all renderable components.
@@ -37,22 +35,18 @@ public:
 	//              or ut::Error if system encountered fatal error.
 	System::Result Update()
 	{
+        // execute viewport-related task in this thread
+        ExecuteViewportTasks();
+
 		// render scene
 		render_thread->Enqueue([this](render::Device& device) { this->DrawEnvironment(device); });
-
-		// present result to user
-		ui_thread->Enqueue([this](ui::Frontend&) { this->UpdateViewports(); });
-
 		return CmdArray();
 	}
 
-
-
 private:
-
 	void DrawEnvironment(Device& device)
 	{
-		ut::ScopeLock viewport_lock(viewport_guard);
+        ut::ScopeLock viewport_lock(viewport_guard);
 
 		if (viewports.GetNum() == 0)
 		{
@@ -62,20 +56,13 @@ private:
 		Display& display = viewports.GetFirst().Get<Display>();
 		ui::DesktopViewport& viewport = viewports.GetFirst().Get<ui::DesktopViewport&>();
 
-
-
 		static int it = 0;
 		it++;
 		bool swap_col = it % 10000 < 5000;
 		float color[4] = { swap_col ? 1.0f : 0.0f, 1.0f, 0.0f, 0.0f };
 		device.context.ClearTarget(display.target, color);
 
-#if VE_OPENGL
-		GLsync fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-		glFlush();
-		//glClientWaitSync(fence, 0, GL_TIMEOUT_IGNORED);
-		glDeleteSync(fence);
-#endif
+		device.context.Present(display, false);
 	}
 
 	ut::SharedPtr<ui::Frontend::Thread> ui_thread;

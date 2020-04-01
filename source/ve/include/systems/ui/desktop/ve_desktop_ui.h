@@ -47,6 +47,26 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+// ve::ui::MainWindow is the top-most window, container for all other
+// windows.
+class MainWindow : public Fl_Window
+{
+public:
+    // Constructor.
+    MainWindow(int x, int y,
+               int w, int h,
+               const char* title,
+               ut::Atomic<bool>& ini_ref);
+
+    // Overriden handle method. Frontend thread starts only after this
+	// method receives focus event message.
+    int handle(int event) override;
+
+private:
+    ut::Atomic<bool>& initialized;
+};
+
+//----------------------------------------------------------------------------//
 // ve::ui::DesktopFrontend class implements user interface for desktop systems.
 class DesktopFrontend : public Frontend
 {
@@ -67,18 +87,18 @@ public:
 	void SaveCfg();
 
 private:
-	// synchronization primitives to detect when widgets
-	// are initialized in fltk thread
-	bool fltk_ready;
-	ut::Mutex fltk_mutex;
-	ut::ConditionVariable fltk_cvar;
+	// Synchronization variable to detect when widgets
+	// are initialized in fltk thread. It's triggered only when
+	// the main window receives focus. It's the only point where
+	// all possible fltk resources are guaranteed to be initialized.
+	ut::Atomic<bool> window_ready;
 
 	// fltk is single threaded, thus all widgets must be created and
 	// processed in a separate thread
 	ut::UniquePtr<ut::Thread> fltk_thread;
 
 	// main window
-	ut::UniquePtr<Fl_Window> window;
+	ut::UniquePtr<MainWindow> window;
 
 	// Id-generator is used to generate unique identifiers for viewports.
 	IdGenerator<Viewport::Id> viewport_id_generator;

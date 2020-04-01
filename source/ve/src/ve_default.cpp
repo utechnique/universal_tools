@@ -11,12 +11,12 @@ START_NAMESPACE(ve)
 // Generates default pipeline tree.
 Pipeline GenDefaultPipeline()
 {
-	// create render thread
-	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>();
-
 	// create ui window
 	ut::UniquePtr<ui::Frontend> ui_frontend = ut::MakeUnique<ui::DesktopFrontend>();
 	ut::SharedPtr<ui::Frontend::Thread> ui_frontend_thread = ut::MakeShared<ui::Frontend::Thread>(ut::Move(ui_frontend));
+
+    // create render thread
+	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>(ui_frontend_thread);
 
 	// build a pipeline
 	Pipeline pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread));

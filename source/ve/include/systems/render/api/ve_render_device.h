@@ -8,6 +8,7 @@
 #include "systems/render/api/ve_render_target.h"
 #include "systems/render/api/ve_render_display.h"
 #include "systems/ui/desktop/ve_desktop_viewport.h"
+#include "systems/ui/ve_ui.h"
 #include "ve_dedicated_thread.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -21,7 +22,7 @@ public:
 	typedef DedicatedThread<Device> Thread;
 
 	// Constructor.
-	Device();
+	Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend);
 
 	// Move constructor.
 	Device(Device&&) noexcept;
@@ -53,10 +54,6 @@ public:
 	//    @param viewport - reference to UI viewport containing rendering area.
 	//    @return - new display object or error if failed.
 	ut::Result<Display, ut::Error> CreateDisplay(ui::DesktopViewport& viewport);
-
-	// Deletes all render resources associated with provided display.
-	//    @return - optional error if failed.
-	ut::Optional<ut::Error> CloseDisplay(Display& display);
 
 	// Resizes buffers associated with rendering area inside a UI viewport.
 	//    @param display - reference to display object.

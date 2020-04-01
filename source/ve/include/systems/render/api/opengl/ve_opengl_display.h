@@ -20,7 +20,7 @@ class PlatformDisplay
 	friend class Device;
 public:
 	// Constructor.
-	PlatformDisplay(Fl_Gl_Window* opengl_window);
+	PlatformDisplay(OpenGLWindow opengl_window);
 
 	// Move constructor.
 	PlatformDisplay(PlatformDisplay&& other) noexcept;
@@ -32,9 +32,9 @@ public:
 	PlatformDisplay(const PlatformDisplay&) = delete;
 	PlatformDisplay& operator =(const PlatformDisplay&) = delete;
 
-protected:
+private:
 	// Platform-specific window containing this display.
-	Fl_Gl_Window* window;
+	OpenGLWindow window;
 };
 
 //----------------------------------------------------------------------------//

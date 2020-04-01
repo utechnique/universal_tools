@@ -5,10 +5,117 @@
 //----------------------------------------------------------------------------//
 #if VE_OPENGL && UT_LINUX
 //----------------------------------------------------------------------------//
-#include "FL/x.H" // to get fltk display handle
+#include "FL/x.H" // to get fltk display
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
+//----------------------------------------------------------------------------//
+// Constructor.
+//    @param window - reference to the fltk window handle
+//    @param ownership - set 'true' to destroy window in destructor
+OpenGLWindow::OpenGLWindow(Fl_Window& window,
+                           bool ownership) : OpenGLWindow(fl_display,
+                                                          fl_xid(&window),
+                                                          ownership)
+{}
+
+// Constructor that is specific for X11 on Linux.
+//    @param Display - pointer to X11 server.
+//    @param window_handle - X11 window handle.
+//    @param ownership - set 'true' to destroy window in destructor
+OpenGLWindow::OpenGLWindow(Display* display_ptr,
+                           Window window_handle,
+                           bool ownership) : display(display_ptr)
+                                           , handle(window_handle)
+                                           , window_ownership(ownership)
+{}
+
+// Destructor.
+OpenGLWindow::~OpenGLWindow()
+{
+	Destroy();
+}
+
+// Move constructor.
+OpenGLWindow::OpenGLWindow(OpenGLWindow&& other) noexcept : handle(other.handle)
+                                                          , display(other.display)
+                                                          , window_ownership(other.window_ownership)
+{
+	other.window_ownership = false;
+}
+
+// Move operator.
+OpenGLWindow& OpenGLWindow::operator =(OpenGLWindow&& other) noexcept
+{
+	Destroy();
+	display = other.display;
+	handle = other.handle;
+	window_ownership = other.window_ownership;
+	other.window_ownership = false;
+	return *this;
+}
+
+// Exchanges the front and back buffers.
+void OpenGLWindow::SwapBuffer(bool vsync)
+{
+	if (vsync)
+	{
+		glXSwapBuffers(display, handle);
+	}
+}
+
+// Destroys managed window if has ownership.
+void OpenGLWindow::Destroy()
+{
+	if (window_ownership && handle)
+	{
+		XDestroyWindow(display, handle);
+	}
+}
+
+//----------------------------------------------------------------------------//
+// Constructor.
+OpenGLContext::OpenGLContext(Handle context_handle,
+                             OpenGLWindow dummy_wnd) : opengl_context(context_handle)
+                                                     , window(ut::Move(dummy_wnd))
+{}
+
+// Destructor.
+OpenGLContext::~OpenGLContext()
+{
+	if (opengl_context != nullptr)
+	{
+		glXDestroyContext(window.display, opengl_context);
+	}
+}
+
+// Move constructor.
+OpenGLContext::OpenGLContext(OpenGLContext&& other) noexcept : opengl_context(other.opengl_context)
+                                                             , window(ut::Move(other.window))
+{
+	other.opengl_context = nullptr;
+}
+
+// Move operator.
+OpenGLContext& OpenGLContext::operator =(OpenGLContext&& other) noexcept
+{
+	opengl_context = other.opengl_context;
+	window = ut::Move(other.window);
+	other.opengl_context = nullptr;
+	return *this;
+}
+
+// Makes managed OpenGL context the calling thread's current rendering context.
+// Uses provided window for drawing.
+ut::Optional<ut::Error> OpenGLContext::MakeCurrent(OpenGLWindow& another_window)
+{
+	if (!glXMakeCurrent(another_window.display, another_window.handle, opengl_context))
+	{
+		return ut::Error(ut::error::fail, "glXMakeCurrent() failed.");
+	}
+	return ut::Optional<ut::Error>();
+}
+
 //----------------------------------------------------------------------------//
 // Define all opengl functions.
 #define VE_OPENGL_DEFINE_FUNCTION_PTR(__f) __f##Ptr __f = nullptr;
@@ -18,7 +125,7 @@ VE_ENUM_OPENGL_ENTRYPOINTS(VE_OPENGL_DEFINE_FUNCTION_PTR)
 // Macro to initialize OpenGL function.
 #define VE_OPENGL_INIT_FUNCTION(__f) \
 __f = reinterpret_cast<__f##Ptr>(glXGetProcAddressARB(reinterpret_cast<const GLubyte*>(#__f))); \
-if (__f == nullptr) return ut::Error(ut::error::not_supported, #__f);
+if (__f == nullptr) throw ut::Error(ut::error::not_supported, #__f);
 
 //----------------------------------------------------------------------------//
 // If glXCreateContextAttribsARB succeeds, it initializes the context
@@ -29,7 +136,6 @@ if (__f == nullptr) return ut::Error(ut::error::not_supported, #__f);
 // context.
 static PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB = nullptr;
 
-//----------------------------------------------------------------------------//
 // Helper function to handle OpenGL errors.
 static bool g_opengl_error_occured = false;
 static int OpenGLErrorHandler(Display* dpy, XErrorEvent* ev)
@@ -42,11 +148,11 @@ static int OpenGLErrorHandler(Display* dpy, XErrorEvent* ev)
 static bool IsGLExtensionSupported(const char *ext_list, const char *extension)
 {
 	const char *start;
-	const char *place, *terminator;
+	const char *where, *terminator;
 
 	// Extension names should not have spaces.
-	place = strchr(extension, ' ');
-	if (place || *extension == '\0')
+	where = strchr(extension, ' ');
+	if (where || *extension == '\0')
 	{
 		return false;
 	}
@@ -56,15 +162,16 @@ static bool IsGLExtensionSupported(const char *ext_list, const char *extension)
 	// etc.
 	for (start = ext_list;;)
 	{
-		place = strstr(start, extension);
-		if (!place)
+		where = strstr(start, extension);
+
+		if (!where)
 		{
 			break;
 		}
 
-		terminator = place + strlen(extension);
+		terminator = where + strlen(extension);
 
-		if (place == start || *(place - 1) == ' ')
+		if (where == start || *(where - 1) == ' ')
 		{
 			if (*terminator == ' ' || *terminator == '\0')
 			{
@@ -78,45 +185,13 @@ static bool IsGLExtensionSupported(const char *ext_list, const char *extension)
 	return false;
 }
 
-//----------------------------------------------------------------------------//
-// Constructor.
-OpenGLDummyWindow::OpenGLDummyWindow() : Fl_Window(0, 0, 1, 1)
-                                       , display(nullptr)
-                                       , opengl_context(0)
-                                       , initialized(false)
-{}
-
-// Destructor. Platform-specific resources are destroyed here.
-OpenGLDummyWindow::~OpenGLDummyWindow()
+// Creates platform-specific OpenGL context.
+ut::Result<OpenGLContext, ut::Error> CreateOpenGLContext()
 {
-	if (display && opengl_context)
-	{
-		glXDestroyContext(display, opengl_context);
-	}
-}
+	// fltk window data
+	Display* display = fl_display;
 
-// Initializes global-space opengl functions and an opengl context for
-// rendering in VE. This method is called from Fl_Window::draw() between
-// gl_start() and gl_finish(). It's a place where one can steal current
-// context from fltk and use it as a parent for a new one. Initialization
-// code is specific for Linux OS.
-ut::Optional<ut::Error> OpenGLDummyWindow::Initialize(OpenGLContextHandle shared_context)
-{
-	// enable multithreading for xlib
-    Status x_thread_status = XInitThreads();
-    if(!x_thread_status)
-    {
-        return ut::Error(ut::error::fail, "XInitThreads() failed.");
-    }
-
-	// get a display from fltk
-	display = fl_display;
-	if (!display)
-	{
-		return ut::Error(ut::error::fail, "fl_display has invalid value.");
-	}
-
-	// get a matching FB config
+	// Get a matching FB config
 	static int visual_attribs[] =
 	{
 		GLX_X_RENDERABLE    , True,
@@ -126,9 +201,9 @@ ut::Optional<ut::Error> OpenGLDummyWindow::Initialize(OpenGLContextHandle shared
 		GLX_RED_SIZE        , 8,
 		GLX_GREEN_SIZE      , 8,
 		GLX_BLUE_SIZE       , 8,
-		GLX_ALPHA_SIZE      , 8,
-		GLX_DEPTH_SIZE      , 24,
-		GLX_STENCIL_SIZE    , 8,
+		//GLX_ALPHA_SIZE      , 8,
+		//GLX_DEPTH_SIZE      , 24,
+		//GLX_STENCIL_SIZE    , 8,
 		GLX_DOUBLEBUFFER    , True,
 		//GLX_SAMPLE_BUFFERS  , 1,
 		//GLX_SAMPLES         , 4,
@@ -140,7 +215,7 @@ ut::Optional<ut::Error> OpenGLDummyWindow::Initialize(OpenGLContextHandle shared
 	GLXFBConfig* fbc = glXChooseFBConfig(display, DefaultScreen(display), visual_attribs, &fbcount);
 	if (!fbc)
 	{
-		return ut::Error(ut::error::fail, "glXChooseFBConfig() failed.");
+		return ut::MakeError(ut::Error(ut::error::fail, "glXChooseFBConfig() failed."));
 	}
 
 	// pick the FB config/visual with the most samples per pixel
@@ -171,6 +246,36 @@ ut::Optional<ut::Error> OpenGLDummyWindow::Initialize(OpenGLContextHandle shared
 	// be sure to free the FBConfig list allocated by glXChooseFBConfig()
 	XFree(fbc);
 
+	// uncomment this section to create dummy window
+	/*
+	// create color map for dummy window
+	XVisualInfo *vi = glXGetVisualFromFBConfig(display, best_fbc);
+	XSetWindowAttributes swa;
+	Colormap cmap;
+	swa.colormap = cmap = XCreateColormap(display, RootWindow(display, vi->screen),
+	vi->visual, AllocNone);
+	swa.background_pixmap = None;
+	swa.border_pixel = 0;
+	swa.event_mask = StructureNotifyMask;
+
+	// create dummy window
+	Window window = XCreateWindow(display, RootWindow(display, vi->screen),
+        0, 0, 100, 100, 0, vi->depth, InputOutput,
+        vi->visual,
+        CWBorderPixel | CWColormap | CWEventMask, &swa);
+	if (!window)
+	{
+        return ut::MakeError(ut::Error(ut::error::fail, "Failed to create OpenGL dummy window."));
+	}
+
+	// done with the visual info data
+	XFree(vi);
+
+	// finish dummy window
+	XStoreName(display, window, "GL Dummy Window");
+	XMapWindow(display, window);
+    */
+
 	// Install an X error handler so the application won't exit if GL 3.0
 	// context allocation fails.
 	//
@@ -187,7 +292,7 @@ ut::Optional<ut::Error> OpenGLDummyWindow::Initialize(OpenGLContextHandle shared
 	bool arb_context_supported = IsGLExtensionSupported(glx_exts, "GLX_ARB_create_context");
 	if (!arb_context_supported)
 	{
-		return ut::Error(ut::error::not_supported, "glXCreateContextAttribsARB is not supported.");
+		return ut::MakeError(ut::Error(ut::error::not_supported, "glXCreateContextAttribsARB is not supported."));
 	}
 
 	// load glXCreateContextAttribsARB function
@@ -195,7 +300,7 @@ ut::Optional<ut::Error> OpenGLDummyWindow::Initialize(OpenGLContextHandle shared
 	glXCreateContextAttribsARB = reinterpret_cast<PFNGLXCREATECONTEXTATTRIBSARBPROC>(glXGetProcAddressARB(proc_name));
 	if (!glXCreateContextAttribsARB)
 	{
-		return ut::Error(ut::error::not_supported, "glXCreateContextAttribsARB not found.");
+		return ut::MakeError(ut::Error(ut::error::not_supported, "glXCreateContextAttribsARB not found."));
 	}
 
 	// context attributes (must include minor and major version)
@@ -208,58 +313,64 @@ ut::Optional<ut::Error> OpenGLDummyWindow::Initialize(OpenGLContextHandle shared
 	};
 
 	// finally opengl context can be created
-	opengl_context = glXCreateContextAttribsARB(display, best_fbc, shared_context, True, context_attribs);
+	GLXContext opengl_context = glXCreateContextAttribsARB(display, best_fbc, 0, True, context_attribs);
 
 	// sync to ensure any errors generated are processed.
 	XSync(display, False);
 	if (g_opengl_error_occured || !opengl_context)
 	{
-		return ut::Error(ut::error::fail, "glXCreateContextAttribsARB() failed (unsupported OpenGL version).");
+		return ut::MakeError(ut::Error(ut::error::fail, "glXCreateContextAttribsARB() failed (unsupported OpenGL version)."));
 	}
 
-    // restore the original error handler
+	// restore the original error handler
 	XSetErrorHandler(old_error_handler);
+
+	// initialize dummy window wrapper
+	OpenGLWindow dummy_window(display, None, true);
+
+	// success
+	return OpenGLContext(opengl_context, ut::Move(dummy_window));
+}
+
+// Creates platform-specific OpenGL context and initializes global
+// gl functions.
+OpenGLContext CreateGLContextAndInitPlatform()
+{
+    static bool initialized = false;
+	if (initialized)
+	{
+		throw ut::Error(ut::error::already_exists);
+	}
+
+    // Warning! FLTK must be initialized up to here!
+	UiScopeLock ui_lock;
+
+    // enable Xlib thread protection
+    XInitThreads();
+
+	// FBConfigs were added in GLX version 1.3
+	int glx_major, glx_minor;
+	if (!glXQueryVersion(fl_display, &glx_major, &glx_minor) ||
+		((glx_major == 1) && (glx_minor < 3)) || (glx_major < 1))
+	{
+		throw ut::Error(ut::error::not_supported, "GLX version is too old.");
+	}
 
 	// initialize all entry points required by render engine
 	VE_ENUM_OPENGL_ENTRYPOINTS(VE_OPENGL_INIT_FUNCTION)
 
-	// success
-	return ut::Optional<ut::Error>();
-}
-
-// Returns current opengl context or error if something failed.
-ut::Result<OpenGLContextHandle, ut::Error> OpenGLDummyWindow::GetCurrentContext()
-{
-	OpenGLContextHandle handle = glXGetCurrentContext();
-	if (!handle)
+    // create context
+	ut::Result<OpenGLContext, ut::Error> context = CreateOpenGLContext();
+	if (!context)
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, "glXGetCurrentContext() failed."));
+		throw ut::Error(context.MoveAlt());
 	}
-	return handle;
-}
 
-// Makes managed OpenGL context the calling thread's current rendering context.
-ut::Optional<ut::Error> OpenGLDummyWindow::ApplyContext()
-{
-	FltkScopeLock lock; // fltk thread must be locked, xlib isn't thread-safe
-    Window wnd = fl_xid(this);
-	if (!glXMakeCurrent(fl_display, None, opengl_context))
-	{
-		return ut::Error(ut::error::fail, "glXMakeCurrent() failed.");
-	}
-	return ut::Optional<ut::Error>();
-}
+    // fully initialized
+	initialized = true;
 
-// Resets OpenGL context in a current thread.
-//    @return - optional error if failed to reset context.
-ut::Optional<ut::Error> OpenGLDummyWindow::ResetContext()
-{
-	FltkScopeLock lock; // fltk thread must be locked, xlib isn't thread-safe
-	if (!glXMakeCurrent(display, None, None))
-	{
-		return ut::Error(ut::error::fail, "glXMakeCurrent(0,0) failed.");
-	}
-	return ut::Optional<ut::Error>();
+    // success
+	return context.MoveResult();
 }
 
 //----------------------------------------------------------------------------//

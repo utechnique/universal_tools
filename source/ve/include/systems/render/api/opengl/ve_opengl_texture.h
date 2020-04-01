@@ -6,21 +6,19 @@
 #if VE_OPENGL
 //----------------------------------------------------------------------------//
 #include "systems/render/api/opengl/ve_opengl_platform.h"
+#include "systems/render/api/opengl/ve_opengl_resource.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // OpenGL texture.
-class PlatformTexture
+class PlatformTexture : public GlRc<gl::texture>
 {
 	friend class Device;
 	friend class Context;
 public:
 	// Constructor.
-	PlatformTexture(GLuint opengl_texture);
-
-	// Destructor.
-	~PlatformTexture();
+	PlatformTexture(GlRc<gl::texture>::Handle gl_tex_id);
 
 	// Move constructor.
 	PlatformTexture(PlatformTexture&&) noexcept;
@@ -29,13 +27,6 @@ public:
 	// Copying is prohibited.
 	PlatformTexture(const PlatformTexture&) = delete;
 	PlatformTexture& operator =(const PlatformTexture&) = delete;
-
-protected:
-	GLuint gl_tex_id;
-
-private:
-	// Destroys managed object.
-	void Destroy();
 };
 
 //----------------------------------------------------------------------------//

@@ -18,13 +18,6 @@ PlatformDisplay::PlatformDisplay(PlatformDisplay&&) noexcept = default;
 // Move operator.
 PlatformDisplay& PlatformDisplay::operator =(PlatformDisplay&&) noexcept = default;
 
-// Presents a rendered image to the user.
-//    @param vsync - 'true' to enable vertical synchronization.
-void Display::Present(bool vsync)
-{
-	dxgi_swapchain->Present(vsync ? 1 : 0, 0);
-}
-
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)

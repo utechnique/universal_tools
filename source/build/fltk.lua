@@ -219,7 +219,7 @@ function utFLTK()
             "../contrib/fltk/src/xutf8/keysym2Ucs.c",
             "../contrib/fltk/src/fl_utf.c",
 			-- opengl source files
-			FLTK_GL_SRC
+			--FLTK_GL_SRC
         },
     }
 end

@@ -9,7 +9,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-Device::Device() : context(CreateOpenGLDummyWindow())
+Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : context(PlatformContext(CreateGLContextAndInitPlatform()))
 {}
 
 // Move constructor.
@@ -25,13 +25,13 @@ Device& Device::operator =(Device&&) noexcept = default;
 ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::uint32 width, ut::uint32 height)
 {
 	const GLenum gl_pixel_format = ConvertPixelFormatToOpenGL(format);
-	GLuint texture;
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	GLuint texture_handle;
+	glGenTextures(1, &texture_handle);
+	glBindTexture(GL_TEXTURE_2D, texture_handle);
 	glTexImage2D(GL_TEXTURE_2D, 0, gl_pixel_format, width, height, 0, gl_pixel_format, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	return Texture(texture, format);
+	return Texture(texture_handle, format);
 }
 
 // OpenGL doesn't support deferred contexts.
@@ -58,10 +58,9 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 
 	// create render target that will be associated with provided viewport
 	Target target(PlatformRenderTarget(), texture.MoveResult());
-	viewport.AttachDisplayBuffer(target.buffer.gl_tex_id);
 
 	// success
-	return Display(PlatformDisplay(&viewport), ut::Move(target), width, height);
+	return Display(PlatformDisplay(OpenGLWindow(viewport)), ut::Move(target), width, height);
 }
 
 // Resizes buffers associated with rendering area inside a UI viewport.
@@ -74,7 +73,7 @@ ut::Optional<ut::Error> Device::ResizeDisplay(Display& display,
                                               ut::uint32 height)
 {
 	// resize texture associated with display's render target
-	glBindTexture(GL_TEXTURE_2D, display.target.buffer.gl_tex_id);
+	glBindTexture(GL_TEXTURE_2D, display.target.buffer.GetGlHandle());
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
 	// update display size

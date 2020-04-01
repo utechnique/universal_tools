@@ -36,6 +36,14 @@ void Context::ClearTarget(Target& target, float* color)
 	}
 }
 
+// Presents a rendered image to the user.
+//    @param display - reference to the display to show image on.
+//    @param vsync - 'true' to enable vertical synchronization.
+void Context::Present(Display& display, bool vsync)
+{
+	display.dxgi_swapchain->Present(vsync ? 1 : 0, 0);
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)

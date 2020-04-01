@@ -3,41 +3,35 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#if VE_OPENGL
-//----------------------------------------------------------------------------//
-#include "systems/render/api/opengl/ve_opengl_platform.h"
-#include "systems/render/api/opengl/ve_opengl_resource.h"
+#include "systems/render/api/ve_render_device.h"
+#include "ve_dedicated_thread.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
-START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// OpenGL context.
-class PlatformContext : public OpenGLContext
+// Specialized version of the ve::DedicatedThread template for OpenGL device.
+// Xlib is not thread-safe and this means render thread must be isolated from
+// X11 calls. UI must idle when a task is being processed in the render thread.
+#if UT_LINUX && VE_OPENGL
+template<>
+class DedicatedThread<render::Device> : public BaseDedicatedThread<render::Device>
 {
-	friend class Device;
+	typedef BaseDedicatedThread<render::Device> Base;
 public:
 	// Constructor.
-	PlatformContext(OpenGLContext opengl_context);
+	template<typename... Args>
+	DedicatedThread(Args... args) : Base(ut::Forward<Args>(args)...)
+	{}
 
-	// Move constructor.
-	PlatformContext(PlatformContext&&) noexcept;
-
-	// Move operator.
-	PlatformContext& operator =(PlatformContext&&) noexcept;
-
-	// Copying is prohibited.
-	PlatformContext(const PlatformContext&) = delete;
-	PlatformContext& operator =(const PlatformContext&) = delete;
-
-protected:
-	GlRc<gl::framebuffer> framebuffer;
+	// Make a wrapper around Enqueue() method of the base class
+	void Enqueue(Base::DedicatedTask task)
+	{
+		Base::DedicatedTask wrap([&](render::Device& d) { Fl::lock(); task(d); Fl::unlock(); });
+		Base::Enqueue(ut::Move(wrap));
+	}
 };
-
-//----------------------------------------------------------------------------//
-END_NAMESPACE(render)
-END_NAMESPACE(ve)
-//----------------------------------------------------------------------------//
 #endif // VE_OPENGL
+//----------------------------------------------------------------------------//
+END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

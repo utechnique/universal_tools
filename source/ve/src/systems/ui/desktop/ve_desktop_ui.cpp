@@ -94,15 +94,36 @@ ut::String DesktopCfg::GenerateFullPath()
 	return ut::String(directories::skCfg) + ut::fsep + skFileName;
 }
 
+
 //----------------------------------------------------------------------------//
 // Constructor.
-DesktopFrontend::DesktopFrontend() : fltk_ready(false)
+MainWindow::MainWindow(int x, int y,
+                       int w, int h,
+                       const char* title,
+                       ut::Atomic<bool>& ini_ref) : Fl_Window(x, y, w, h, title)
+                                                  , initialized(ini_ref)
+{}
+
+// Overriden handle method.
+int MainWindow::handle(int event)
+{
+    if(event == FL_FOCUS)
+    {
+        initialized.Store(true);
+    }
+    return Fl_Window::handle(event);
+}
+
+//----------------------------------------------------------------------------//
+// Constructor.
+DesktopFrontend::DesktopFrontend() : window_ready(false)
 {
 	fltk_thread = ut::MakeUnique<ut::Thread>([this] { this->Run(); });
-	ut::ScopeLock lock(fltk_mutex);
-	while (!fltk_ready)
+
+	// wait until the main window appears on screen
+	while (!window_ready.Read())
 	{
-		fltk_cvar.Wait(lock);
+		ut::this_thread::Sleep(1);
 	}
 }
 
@@ -136,11 +157,12 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	Fl::scheme("plastic");
 
 	// create main window
-	window = ut::MakeUnique<Fl_Double_Window>(cfg.position_x,
-	                                          cfg.position_y,
-	                                          cfg.width,
-	                                          cfg.height,
-	                                          skTitle);
+	window = ut::MakeUnique<MainWindow>(cfg.position_x,
+	                                    cfg.position_y,
+	                                    cfg.width,
+	                                    cfg.height,
+	                                    skTitle,
+	                                    window_ready);
 	window->size_range(skMinWidth, skMinHeight);
 
 	// create render area
@@ -162,12 +184,6 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 
 	// show main window
 	window->show(0, nullptr);
-
-	{ // inform main thread that everything is ready
-		ut::ScopeLock lock(fltk_mutex);
-		fltk_ready = true;
-	}
-	fltk_cvar.WakeOne();
 
 	// success
 	return ut::Optional<ut::Error>();

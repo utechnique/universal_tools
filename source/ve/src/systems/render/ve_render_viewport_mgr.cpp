@@ -40,8 +40,8 @@ void ViewportManager::OpenViewports(ui::Frontend& frontend)
 		}
 
 		// connect signals
-		viewport.ConnectCloseSignalSlot([&](ui::Viewport::Id id) { CloseViewport(id); });
-		viewport.ConnectResizeSignalSlot([&](ui::Viewport::Id id, ut::uint32 w, ut::uint32 h) { ResizeViewport(id, w, h); });
+		viewport.ConnectCloseSignalSlot([this](ui::Viewport::Id id) { this->CloseViewport(id); });
+		viewport.ConnectResizeSignalSlot([this](ui::Viewport::Id id, ut::uint32 w, ut::uint32 h) { this->AddResizeTask(id, w, h); });
 
 		// newly created display is added to the map and can be
 		// used to display rendered images to user
@@ -52,16 +52,21 @@ void ViewportManager::OpenViewports(ui::Frontend& frontend)
 	}
 }
 
-// Maps contents of the render displays to associated ui viewports.
-void ViewportManager::UpdateViewports()
+// Executes all viewport tasks in the queue.
+void ViewportManager::ExecuteViewportTasks()
 {
-	ut::ScopeLock viewport_lock(viewport_guard);
-	const size_t count = viewports.GetNum();
-	for (size_t i = 0; i < count; i++)
-	{
-		render::Display& display = viewports[i].Get<render::Display>();
-		display.Present(false);
-	}
+    // copy tasks to the temp buffer
+    viewport_task_guard.Lock();
+    ut::Array< ut::UniquePtr< ut::BaseTask<void> > > task_buffer = ut::Move(viewport_tasks);
+    viewport_task_guard.Unlock();
+
+    // execute tasks
+    ut::ScopeLock lock(viewport_guard);
+    const size_t task_count = task_buffer.GetNum();
+    for (size_t i = 0; i < task_count; i++)
+    {
+        task_buffer[i]->Execute();
+    }
 }
 
 // Resizes a display associated with provided viewport.
@@ -79,18 +84,38 @@ void ViewportManager::ResizeViewport(ui::Viewport::Id id, ut::uint32 w, ut::uint
 	}
 }
 
-// Deletes render display associated with provided viewport and removes
-// this viewport from internal map.
+// Removes viewport from internal map and enqueues display for deletion in
+// render thread.
 //    @param id - id of the viewport to be closed.
 void ViewportManager::CloseViewport(ui::Viewport::Id id)
 {
-	ut::ScopeLock lock(viewport_guard);
+    ut::UniquePtr<render::Display> display_to_delete;
+
+	viewport_guard.Lock();
 	const size_t count = viewports.GetNum();
 	for (size_t i = count; i--;)
 	{
 		ui::DesktopViewport& viewport = viewports[i].Get<ui::DesktopViewport&>();
-		viewports.Remove(i);
+		if (viewport.GetId() == id)
+		{
+            display_to_delete = ut::MakeUnique<render::Display>(ut::Move(viewports[i].Get<render::Display>()));
+            viewports.Remove(i);
+            break;
+		}
 	}
+	viewport_guard.Unlock();
+
+    if (display_to_delete)
+    {
+        AddDeleteDisplayTask(ut::Move(display_to_delete));
+    }
+}
+
+// Sends render thread a request to delete provided display.
+//    @param id - unique pointer to the display to be deleted.
+void ViewportManager::DeleteDisplay(ut::UniquePtr<render::Display> display)
+{
+    render_thread->Enqueue([&](render::Device&) { display.Delete(); });
 }
 
 // Searches for a display associated with provided viewport id.
@@ -106,6 +131,33 @@ ut::Optional<render::Display&> ViewportManager::FindDisplay(ui::Viewport::Id id)
 		}
 	}
 	return ut::Optional<render::Display&>();
+}
+
+// Adds a new task to the queue. This task will be executed
+// in the next ProcessViewportTasks() call.
+void ViewportManager::AddViewportTask(ut::UniquePtr< ut::BaseTask<void> > task)
+{
+    ut::ScopeLock lock(viewport_task_guard);
+    if (!viewport_tasks.Add(ut::Move(task)))
+    {
+        throw ut::Error(ut::error::out_of_memory);
+    }
+}
+
+// Enqueues a resize task.
+void ViewportManager::AddResizeTask(ui::Viewport::Id id, ut::uint32 w, ut::uint32 h)
+{
+    auto resize_proc = ut::MemberFunction<ViewportManager, void(ui::Viewport::Id, ut::uint32, ut::uint32)>(this, &ViewportManager::ResizeViewport);
+
+    AddViewportTask(ut::MakeUnique< ut::Task<void(ui::Viewport::Id, ut::uint32, ut::uint32)> >(ut::Move(resize_proc), id, w, h));
+}
+
+// Enqueues a task to delete a display in render thread.
+//   @param display - unique pointer to the display to be deleted.
+void ViewportManager::AddDeleteDisplayTask(ut::UniquePtr<render::Display> display)
+{
+    auto delete_proc = ut::MemberFunction<ViewportManager, void(ut::UniquePtr<render::Display>)>(this, &ViewportManager::DeleteDisplay);
+    AddViewportTask(ut::MakeUnique< ut::Task<void(ut::UniquePtr<render::Display>)> >(ut::Move(delete_proc), ut::Move(display)));
 }
 
 //----------------------------------------------------------------------------//
