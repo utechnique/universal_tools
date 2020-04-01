@@ -48,7 +48,7 @@ DesktopViewport::~DesktopViewport()
 // Resize signal is triggered here.
 void DesktopViewport::resize(int x, int y, int w, int h)
 {
-	Fl_Window::resize(x, y, w, h);
+	FltkRenderWidget::resize(x, y, w, h);
 	resize_signal(id, w, h);
 }
 

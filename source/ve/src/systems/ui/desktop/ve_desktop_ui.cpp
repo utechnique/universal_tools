@@ -147,7 +147,6 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	Viewport::Id viewport_id = viewport_id_generator.Generate();
 	ut::UniquePtr<DesktopViewport> viewport;
 	viewport = ut::MakeUnique<DesktopViewport>(viewport_id, "1", 0, 0, window->w(), window->h());
-	viewport->show();
 
 	// adjust main window
 	window->resizable(viewport.Get());
