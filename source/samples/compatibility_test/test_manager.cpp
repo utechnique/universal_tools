@@ -4,6 +4,7 @@
 #include "test_manager.h"
 #include "containers_test.h"
 #include "string_test.h"
+#include "math_test.h"
 #include "file_test.h"
 #include "thread_test.h"
 #include "signal_test.h"
@@ -18,6 +19,7 @@ TestManager::TestManager()
 {
 	units.Add(ut::MakeUnique<ContainersTestUnit>());
 	units.Add(ut::MakeUnique<StringTestUnit>());
+	units.Add(ut::MakeUnique<MathTestUnit>());
 	units.Add(ut::MakeUnique<ThreadTestUnit>());
 	units.Add(ut::MakeUnique<SignalTestUnit>());
 	units.Add(ut::MakeUnique<NetTestUnit>());

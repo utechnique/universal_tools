@@ -3,12 +3,23 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-//  This file includes all needed standard c library header files
+#include "ut.h"
+#include "test_task.h"
+#include "test_unit.h"
 //----------------------------------------------------------------------------//
-#include <malloc.h>
-#include <string.h>
-#include <assert.h>
-#include <math.h>
+class MathTestUnit : public TestUnit
+{
+public:
+	MathTestUnit();
+};
+
+//----------------------------------------------------------------------------//
+class MatrixTask : public TestTask
+{
+public:
+	MatrixTask();
+	void Execute();
+};
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
