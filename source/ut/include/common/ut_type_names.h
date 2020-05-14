@@ -16,6 +16,12 @@ template <typename T> struct Type
 	static inline const char* Name() { return "data"; }
 };
 
+// Static array
+template <typename T, size_t size> struct Type<T[size]>
+{
+	static inline const char* Name() { return "static_array"; }
+};
+
 // Pointer types
 template <typename T> struct Type<T*>
 {

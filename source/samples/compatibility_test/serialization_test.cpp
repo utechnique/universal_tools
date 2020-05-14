@@ -362,6 +362,20 @@ SerializationTest::SerializationTest(bool in_alternate,
                                                              , fval(0.0f)
                                                              , str("void")
 {
+	// static array
+	for (size_t i = 0; i < 12; i++)
+	{
+		ival_arr[i] = 0;
+	}
+
+	for (size_t i = 0; i < 2; i++)
+	{
+		for (size_t j = 0; j < 2; j++)
+		{
+			ival_arr_2d[i][j] = 0;
+		}
+	}
+
 	// string array
 	ut::Array<ut::String> arr0;
 	ut::Array<ut::String> arr1;
@@ -410,6 +424,8 @@ SerializationTest::SerializationTest(bool in_alternate,
 void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 {
 	snapshot << ival;
+	snapshot << ival_arr;
+	snapshot << ival_arr_2d;
 	snapshot << ival2;
 	if (can_have_links)
 	{
@@ -696,6 +712,19 @@ void SharedTestLevel0::Reflect(ut::meta::Snapshot& snapshot)
 // (if loading will fail - parameters would have default values against changed ones)
 void ChangeSerializedObject(SerializationTest& object)
 {
+	for (size_t i = 0; i < 12; i++)
+	{
+		object.ival_arr[i] = static_cast<ut::int32>(i);
+	}
+
+	for (size_t i = 0; i < 2; i++)
+	{
+		for (size_t j = 0; j < 2; j++)
+		{
+			object.ival_arr_2d[i][j] = static_cast<ut::int32>(i*2 + j);
+		}
+	}
+
 	object.ival = -0x01234567;
 	object.uval = 0x0123456789ABCDEF;
 	object.bool_val = true;
@@ -782,6 +811,25 @@ void ChangeSerializedObject(SerializationTest& object)
 // note that ChangeSerializedObject() must be called before saving an object
 bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool linkage)
 {
+	for (size_t i = 0; i < 12; i++)
+	{
+		if (object.ival_arr[i] != static_cast<ut::int32>(i))
+		{
+			return false;
+		}
+	}
+
+	for (size_t i = 0; i < 2; i++)
+	{
+		for (size_t j = 0; j < 2; j++)
+		{
+			if (object.ival_arr_2d[i][j] != static_cast<ut::int32>(i * 2 + j))
+			{
+				return false;
+			}
+		}
+	}
+
 	if (object.ival != -0x01234567) return false;
 	if (object.uval != 0x0123456789ABCDEF) return false;
 	if (object.bool_val != true) return false;
