@@ -335,10 +335,16 @@ public:
 		return Sqrt(Dot(*this));
 	}
 
-	// Returns a pointer to the first element.
+	// Returns a const pointer to the first element.
 	const ElementType* GetData() const
 	{
 		return static_cast<const ElementType*>(table);
+	}
+
+	// Returns a pointer to the first element.
+	ElementType* GetData()
+	{
+		return static_cast<ElementType*>(table);
 	}
 
 	// Returns a constant reference to the named "X" element.
@@ -468,8 +474,25 @@ private:
 	ElementType table[size];
 };
 
+//----------------------------------------------------------------------------//
 // Vector is defined as a matrix with only one row.
-template<MatrixElementId dim> using Vector = Matrix<1, dim>;
+template<MatrixElementId dim, typename ElementType = float>
+using Vector = Matrix<1, dim, ElementType>;
+
+//----------------------------------------------------------------------------//
+// Specialized type name function for matrices
+template <MatrixElementId rows, MatrixElementId columns, typename ElementType>
+struct Type< Matrix<rows, columns, ElementType> >
+{
+	static inline const char* Name() { return "matrix"; }
+};
+
+// Specialized type name function for vectors
+template <MatrixElementId dim, typename ElementType>
+struct Type< Vector<dim, ElementType> >
+{
+	static inline const char* Name() { return "vector"; }
+};
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

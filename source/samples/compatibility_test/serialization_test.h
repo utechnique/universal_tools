@@ -230,6 +230,8 @@ public:
 	ut::int32 ival_arr[12];
 	ut::int32 ival_arr_2d[2][2];
 	ut::int32 ival2;
+	ut::Matrix<4, 4> matrix;
+	ut::Vector<3> vector;
 	ut::int32* ival_ptr;
 	ut::int32* void_ptr;
 	const ut::int32* ival_const_ptr;

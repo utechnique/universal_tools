@@ -352,6 +352,8 @@ SerializationTest::SerializationTest(bool in_alternate,
                                                              , can_have_links(in_can_have_links)
                                                              , ival(0)
                                                              , ival2(2)
+                                                             , matrix(0.0f)
+                                                             , vector(0.0f)
                                                              , ival_ptr(&ival)
                                                              , ival_const_ptr(&ival)
                                                              , void_ptr(nullptr)
@@ -427,6 +429,8 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << ival_arr;
 	snapshot << ival_arr_2d;
 	snapshot << ival2;
+	snapshot << matrix;
+	snapshot << vector;
 	if (can_have_links)
 	{
 		snapshot << ival_ptr;
@@ -725,6 +729,12 @@ void ChangeSerializedObject(SerializationTest& object)
 		}
 	}
 
+	object.matrix = ut::Matrix<4, 4>(0,  1,  2,  3,
+	                                 4,  5,  6,  7,
+	                                 8,  9,  10, 11,
+	                                 12, 13, 14, 15);
+	object.vector = ut::Vector<3>(0, 1, 2);
+
 	object.ival = -0x01234567;
 	object.uval = 0x0123456789ABCDEF;
 	object.bool_val = true;
@@ -828,6 +838,18 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 				return false;
 			}
 		}
+	}
+
+	if (object.matrix != ut::Matrix<4, 4>(0,  1,  2,  3,
+	                                      4,  5,  6,  7,
+	                                      8,  9,  10, 11,
+	                                      12, 13, 14, 15))
+	{
+		return false;
+	}
+	if (object.vector != ut::Vector<3>(0, 1, 2))
+	{
+		return false;
 	}
 
 	if (object.ival != -0x01234567) return false;
