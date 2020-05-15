@@ -35,8 +35,42 @@ public:
 		MatrixType& matrix = *static_cast<MatrixType*>(ptr);
 
 		// register all elements
-		Scalar(&elements)[rows*columns] = *reinterpret_cast<Scalar(*)[rows*columns]>(matrix.GetData());
-		snapshot << elements;
+		for (MatrixElementId i = 0; i < rows; i++)
+		{
+			for (MatrixElementId j = 0; j < columns; j++)
+			{
+				Optional<String> element_name = GetElementName(j);
+				if (element_name)
+				{
+					snapshot.Add(matrix(i, j), element_name.Move());
+				}
+				else
+				{
+					snapshot << matrix(i, j);
+				}
+			}
+		}
+	}
+
+private:
+	// Helper function to generate element's name (such as 'x', 'y', etc.)
+	Optional<String> GetElementName(MatrixElementId id)
+	{
+		// makes sense only for vectors
+		if (rows != 1)
+		{
+			return Optional<String>();
+		}
+
+		switch (id)
+		{
+			case 0: return String("x");
+			case 1: return String("y");
+			case 2: return String("z");
+			case 3: return String("w");
+		}
+
+		return Optional<String>();
 	}
 };
 

@@ -481,18 +481,26 @@ using Vector = Matrix<1, dim, Scalar>;
 
 //----------------------------------------------------------------------------//
 // Specialized type name function for matrices
-template <MatrixElementId rows, MatrixElementId columns, typename Scalar>
+template<MatrixElementId rows, MatrixElementId columns, typename Scalar>
 struct Type< Matrix<rows, columns, Scalar> >
 {
-	static inline const char* Name() { return "matrix"; }
+	static const String skName;
+	static inline const char* Name() { return skName.GetAddress(); }
 };
 
+template<MatrixElementId rows, MatrixElementId columns, typename Scalar>
+const String Type< Matrix<rows, columns, Scalar> >::skName = String("matrix") + Print(rows) + "x" + Print(columns);
+
 // Specialized type name function for vectors
-template <MatrixElementId dim, typename Scalar>
+template<MatrixElementId dim, typename Scalar>
 struct Type< Vector<dim, Scalar> >
 {
-	static inline const char* Name() { return "vector"; }
+	static const String skName;
+	static inline const char* Name() { return skName.GetAddress(); }
 };
+
+template<MatrixElementId dim, typename Scalar>
+const String Type< Vector<dim, Scalar> >::skName = String("vector") + Print(dim);
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
