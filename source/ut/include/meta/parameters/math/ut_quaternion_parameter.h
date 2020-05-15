@@ -5,26 +5,25 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "meta/ut_meta_parameter.h"
-#include "math/ut_matrix.h"
+#include "math/ut_quaternion.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
 // ut::Parameter<Matrix> is a template specialization for matrices.
-template<MatrixElementId rows, MatrixElementId columns, typename Scalar>
-class Parameter< Matrix<rows, columns, Scalar> > : public BaseParameter
+template<typename Scalar>
+class Parameter< Quaternion<Scalar> > : public BaseParameter
 {
-	typedef Matrix<rows, columns, Scalar> MatrixType;
 public:
 	// Constructor
 	//    @param p - pointer to the managed matrix (vector)
-	Parameter(MatrixType* p) : BaseParameter(p)
+	Parameter(Quaternion<Scalar>* p) : BaseParameter(p)
 	{ }
 
 	// Returns the name of the managed type
 	String GetTypeName() const
 	{
-		return BaseParameter::DeduceTypeName<MatrixType>();
+		return BaseParameter::DeduceTypeName< Quaternion<Scalar> >();
 	}
 
 	// Registers children into reflection tree.
@@ -32,11 +31,13 @@ public:
 	void Reflect(Snapshot& snapshot)
 	{
 		// get array reference from pointer
-		MatrixType& matrix = *static_cast<MatrixType*>(ptr);
+		Quaternion<Scalar>& quaternion = *static_cast<Quaternion<Scalar>*>(ptr);
 
 		// register all elements
-		Scalar(&elements)[rows*columns] = *reinterpret_cast<Scalar(*)[rows*columns]>(matrix.GetData());
-		snapshot << elements;
+		snapshot.Add(quaternion.r, "r");
+		snapshot.Add(quaternion.i, "i");
+		snapshot.Add(quaternion.j, "j");
+		snapshot.Add(quaternion.k, "k");
 	}
 };
 

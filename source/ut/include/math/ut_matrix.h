@@ -11,9 +11,9 @@ START_NAMESPACE(ut)
 // Type of element's index inside a matrix.
 typedef uint32 MatrixElementId;
 
-// ut::Matrix is a complete template class for matrices. It can represent both
-// matrix and vector (as a matrix with only one row).
-template<MatrixElementId rows, MatrixElementId columns, typename ElementType = float>
+// ut::Matrix is a complete template class for matrices with custom static size.
+// It can represent both matrix and vector (as a matrix with only one row).
+template<MatrixElementId rows, MatrixElementId columns, typename Scalar = float>
 class Matrix
 {
 private:
@@ -25,10 +25,10 @@ public:
 	static Matrix MakeIdentity()
 	{
 		static_assert(rows == columns, "Only square matrix can be identity.");
-		Matrix out(static_cast<ElementType>(0));
+		Matrix out(static_cast<Scalar>(0));
 		for (MatrixElementId i = 0; i < columns; i++)
 		{
-			out(i, i) = static_cast<ElementType>(1);
+			out(i, i) = static_cast<Scalar>(1);
 		}
 		return out;
 	}
@@ -39,7 +39,7 @@ public:
 
 	// Constructor. Elements are initialized with
 	// values from the provided array.
-	Matrix(ElementType data[size])
+	Matrix(Scalar data[size])
 	{
 		for (MatrixElementId i = 0; i < size; i++)
 		{
@@ -48,7 +48,7 @@ public:
 	}
 
 	// Constructor. All elements are initialized with a scalar value.
-	explicit Matrix(ElementType scalar)
+	explicit Matrix(Scalar scalar)
 	{
 		for (MatrixElementId i = 0; i < size; i++)
 		{
@@ -58,16 +58,16 @@ public:
 
 	// Constructor. Initializes elements from the provided arguments.
 	// Number of arguments must be exactly the same as number of elements in this matrix.
-	// Each argument must be convertible to @ElementType.
+	// Each argument must be convertible to @Scalar.
 	template<typename... Elements>
 	Matrix(Elements... elements)
 	{
 		// convert all arguments to the desired type
-		ElementType args[]{ static_cast<ElementType>(elements)... };
+		Scalar args[]{ static_cast<Scalar>(elements)... };
 
 		// check if number of provided arguments is exactly
 		// the same as number of elements in the matrix
-		static_assert(sizeof(args) / sizeof(ElementType) == size, "Invalid number of arguments");
+		static_assert(sizeof(args) / sizeof(Scalar) == size, "Invalid number of arguments");
 		
 		// set elements
 		for (MatrixElementId i = 0; i < size; i++)
@@ -86,7 +86,7 @@ public:
 	}
 
 	// Assignment operator, all elements are set to the provided scalar value.
-	Matrix& operator = (ElementType scalar)
+	Matrix& operator = (Scalar scalar)
 	{
 		for (MatrixElementId i = 0; i < size; i++)
 		{
@@ -109,7 +109,7 @@ public:
 	//    @param row - index of the row desired element belongs to.
 	//    @param column - index of the column desired element belongs to.
 	//    @return - constant reference to the desired element.
-	const ElementType& operator()(MatrixElementId row, MatrixElementId column) const
+	const Scalar& operator()(MatrixElementId row, MatrixElementId column) const
 	{
 		UT_ASSERT(row * column < size);
 		return table[row*columns + column];
@@ -119,7 +119,7 @@ public:
 	//    @param row - index of the row desired element belongs to.
 	//    @param column - index of the column desired element belongs to.
 	//    @return - reference to the desired element.
-	ElementType& operator()(MatrixElementId row, MatrixElementId column)
+	Scalar& operator()(MatrixElementId row, MatrixElementId column)
 	{
 		UT_ASSERT(row * column < size);
 		return table[row*columns + column];
@@ -157,7 +157,7 @@ public:
 	// Changes sign of every element in the matrix.
 	Matrix operator - () const
 	{
-		Matrix<rows, columns, ElementType> out;
+		Matrix<rows, columns, Scalar> out;
 		for (MatrixElementId i = 0; i < size; i++)
 		{
 			out.table[i] = -table[i];
@@ -206,7 +206,7 @@ public:
 	// Multiplication operator accepts only square matrices, where side of the
 	// provided matrix must be equal to the number of columns in the current
 	// one. Use Muliple() method to multiply matrices with custom size.
-	Matrix operator * (const Matrix<columns, columns, ElementType>& right) const
+	Matrix operator * (const Matrix<columns, columns, Scalar>& right) const
 	{
 		return Multiply<columns>(right);
 	}
@@ -214,14 +214,14 @@ public:
 	// Multiplies current matrix with the provided one. Number of columns in
 	// current matrix must be equel to number of rows in the provided matrix.
 	template<MatrixElementId right_columns>
-	Matrix<rows, right_columns, ElementType> Multiply(const Matrix<columns, right_columns, ElementType>& right) const
+	Matrix<rows, right_columns, Scalar> Multiply(const Matrix<columns, right_columns, Scalar>& right) const
 	{
-		Matrix<rows, right_columns, ElementType> out;
+		Matrix<rows, right_columns, Scalar> out;
 		for (int i = 0; i < rows; i++)
 		{
 			for (int j = 0; j < right_columns; j++)
 			{
-				ElementType sum = static_cast<ElementType>(0);
+				Scalar sum = static_cast<Scalar>(0);
 				for (int k = 0; k < columns; k++)
 				{
 					sum += (*this)(i, k) * right(k, j);
@@ -233,9 +233,9 @@ public:
 	}
 
 	// Returns a transposed matrix.
-	Matrix<columns, rows, ElementType> Transpose() const
+	Matrix<columns, rows, Scalar> Transpose() const
 	{
-		Matrix<columns, rows, ElementType> out;
+		Matrix<columns, rows, Scalar> out;
 		for (MatrixElementId i = 0; i < columns; i++)
 		{
 			for (MatrixElementId j = 0; j < rows; j++)
@@ -270,11 +270,11 @@ public:
 			{
 				if (P[i] == j)
 				{
-					out(i, j) = static_cast<ElementType>(1);
+					out(i, j) = static_cast<Scalar>(1);
 				}
 				else
 				{
-					out(i, j) = static_cast<ElementType>(0);
+					out(i, j) = static_cast<Scalar>(0);
 				}
 
 				for (MatrixElementId k = 0; k < i; k++)
@@ -298,9 +298,9 @@ public:
 	}
 
 	// Returns dot product.
-	ElementType Dot(const Matrix& other) const
+	Scalar Dot(const Matrix& other) const
 	{
-		ElementType out = static_cast<ElementType>(0);
+		Scalar out = static_cast<Scalar>(0);
 		for (MatrixElementId i = 0; i < size; i++)
 		{
 			out += table[i] * other.table[i];
@@ -321,7 +321,7 @@ public:
 	Matrix Normalize() const
 	{
 		Matrix out;
-		ElementType len = Length();
+		Scalar len = Length();
 		for (MatrixElementId i = 0; i < size; i++)
 		{
 			out.table[i] /= len;
@@ -330,74 +330,74 @@ public:
 	}
 
 	// Returns length of the vector.
-	ElementType Length() const
+	Scalar Length() const
 	{
 		return Sqrt(Dot(*this));
 	}
 
 	// Returns a const pointer to the first element.
-	const ElementType* GetData() const
+	const Scalar* GetData() const
 	{
-		return static_cast<const ElementType*>(table);
+		return static_cast<const Scalar*>(table);
 	}
 
 	// Returns a pointer to the first element.
-	ElementType* GetData()
+	Scalar* GetData()
 	{
-		return static_cast<ElementType*>(table);
+		return static_cast<Scalar*>(table);
 	}
 
 	// Returns a constant reference to the named "X" element.
-	const ElementType& X() const
+	const Scalar& X() const
 	{
 		static_assert(columns >= 1, "There is no element with such name.");
 		return table[0];
 	}
 
 	// Returns a reference to the named "X" element.
-	ElementType& X()
+	Scalar& X()
 	{
 		static_assert(columns >= 1, "There is no element with such name.");
 		return table[0];
 	}
 
 	// Returns a constant reference to the named "Y" element.
-	const ElementType& Y() const
+	const Scalar& Y() const
 	{
 		static_assert(columns >= 2, "There is no element with such name.");
 		return table[1];
 	}
 
 	// Returns a reference to the named "Y" element.
-	ElementType& Y()
+	Scalar& Y()
 	{
 		static_assert(columns >= 2, "There is no element with such name.");
 		return table[1];
 	}
 
 	// Returns a constant reference to the named "Z" element.
-	const ElementType& Z() const
+	const Scalar& Z() const
 	{
 		static_assert(columns >= 3, "There is no element with such name.");
 		return table[2];
 	}
 
 	// Returns a reference to the named "Z" element.
-	ElementType& Z()
+	Scalar& Z()
 	{
 		static_assert(columns >= 3, "There is no element with such name.");
 		return table[2];
 	}
 
 	// Returns a constant reference to the named "W" element.
-	const ElementType& W() const
+	const Scalar& W() const
 	{
 		static_assert(columns >= 4, "There is no element with such name.");
 		return table[3];
 	}
 
 	// Returns a reference to the named "W" element.
-	ElementType& W()
+	Scalar& W()
 	{
 		static_assert(columns >= 4, "There is no element with such name.");
 		return table[3];
@@ -409,7 +409,7 @@ private:
 	{
 		for (int j = 0; j < columns; j++)
 		{
-			ElementType temp = (*this)(row1, j);
+			Scalar temp = (*this)(row1, j);
 			(*this)(row1, j) = (*this)(row2, j);
 			(*this)(row2, j) = temp;
 		}
@@ -429,12 +429,12 @@ private:
 
 		for (i = 0; i < rows; i++)
 		{
-			ElementType pivot_abs = static_cast<ElementType>(0);
+			Scalar pivot_abs = static_cast<Scalar>(0);
 			Optional<MatrixElementId> pivot_row;
 
 			for (MatrixElementId r = i; r < rows; r++)
 			{
-				ElementType abs_val = Abs(C(r, i));
+				Scalar abs_val = Abs(C(r, i));
 				if (abs_val > pivot_abs)
 				{
 					pivot_abs = abs_val;
@@ -442,7 +442,7 @@ private:
 				}
 			}
 
-			if (pivot_abs < Precision<ElementType>::epsilon)
+			if (pivot_abs < Precision<Scalar>::epsilon)
 			{
 				//degenerate matrix
 				return Optional<Matrix>();
@@ -471,25 +471,25 @@ private:
 	}
 
 	// Elements
-	ElementType table[size];
+	Scalar table[size];
 };
 
 //----------------------------------------------------------------------------//
 // Vector is defined as a matrix with only one row.
-template<MatrixElementId dim, typename ElementType = float>
-using Vector = Matrix<1, dim, ElementType>;
+template<MatrixElementId dim, typename Scalar = float>
+using Vector = Matrix<1, dim, Scalar>;
 
 //----------------------------------------------------------------------------//
 // Specialized type name function for matrices
-template <MatrixElementId rows, MatrixElementId columns, typename ElementType>
-struct Type< Matrix<rows, columns, ElementType> >
+template <MatrixElementId rows, MatrixElementId columns, typename Scalar>
+struct Type< Matrix<rows, columns, Scalar> >
 {
 	static inline const char* Name() { return "matrix"; }
 };
 
 // Specialized type name function for vectors
-template <MatrixElementId dim, typename ElementType>
-struct Type< Vector<dim, ElementType> >
+template <MatrixElementId dim, typename Scalar>
+struct Type< Vector<dim, Scalar> >
 {
 	static inline const char* Name() { return "vector"; }
 };

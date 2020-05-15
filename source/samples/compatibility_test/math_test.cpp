@@ -6,6 +6,7 @@
 MathTestUnit::MathTestUnit() : TestUnit("MATH")
 {
 	tasks.Add(ut::MakeUnique<MatrixTask>());
+	tasks.Add(ut::MakeUnique<QuaternionTask>());
 }
 
 //----------------------------------------------------------------------------//
@@ -169,6 +170,39 @@ void MatrixTask::Execute()
 		failed_test_counter.Increment();
 		return;
 	}
+
+	report += "Success";
+}
+
+//----------------------------------------------------------------------------//
+QuaternionTask::QuaternionTask() : TestTask("Quaternion")
+{ }
+
+void QuaternionTask::Execute()
+{
+	ut::Quaternion<float> q_0 = ut::Quaternion<float>::MakeFromAngleAndAxis(45.0f, ut::Vector<3>(1, 0, 0));
+	ut::Quaternion<float> q_1 = ut::Quaternion<float>::MakeFromAngles(ut::Vector<3>(45, 30, 60));
+	q_0 *= q_1;
+	q_0 = q_0 * q_1;
+
+	bool b = q_0 != q_1;
+
+	q_0 = q_0.Invert();
+	
+	q_0 = q_0.Normalize();
+
+	ut::Vector<3> vec3(0, 1, 0);
+	q_0 = q_0 * vec3;
+	vec3 = q_0.Rotate(vec3);
+
+	ut::Matrix<3, 3> m3x3 = q_0.ToTransform<3>();
+	ut::Matrix<4, 4> m4x4 = q_0.ToTransform<4>();
+
+	float angle = q_0.GetAngle();
+	vec3 = q_0.GetAxis();
+
+	ut::Quaternion<double> q_d = ut::Quaternion<double>::MakeFromAngles(ut::Vector<3, double>(45, 30, 60));
+	q_d = q_d * q_d;
 
 	report += "Success";
 }
