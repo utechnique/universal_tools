@@ -13,6 +13,7 @@
 #include "error/ut_error.h"
 #include "dbg/ut_dbg.h"
 #include "system/ut_system.h"
+#include "math/ut_math.h"
 #include "integrity/ut_integrity.h"
 #include "encryption/ut_encryption.h"
 #include "meta/ut_meta.h"

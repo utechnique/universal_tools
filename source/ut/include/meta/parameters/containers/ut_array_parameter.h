@@ -15,7 +15,7 @@ class Parameter< Array<T> > : public BaseParameter
 {
 public:
 	// Constructor
-	//    @param p - pointer to the managed string
+	//    @param p - pointer to the managed array
 	Parameter(Array<T>* p) : BaseParameter(p)
 	{ }
 
