@@ -882,7 +882,7 @@ public:
 
 	// Constructor, moves content of another array
 	//    @param copy - array to copy
-	Array(Array&& other) : Base(Move(other))
+	Array(Array&& other) noexcept : Base(Move(other))
 	{}
 
 	// Assignment operator
@@ -895,7 +895,7 @@ public:
 
 	// Assignment (move) operator, moves content of another array
 	//    @param copy - array to copy
-	Array& operator = (Array&& other)
+	Array& operator = (Array&& other) noexcept
 	{
 		return static_cast<Array&>(Base::operator = (Move(other)));
 	}
