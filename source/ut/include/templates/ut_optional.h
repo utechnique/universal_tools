@@ -71,7 +71,7 @@ public:
 	}
 
 	// Assignment (move) operator
-	Optional& operator = (Optional&& other)
+	Optional& operator = (Optional&& other) noexcept
 	{
 		if (has_value && other.has_value) // both objects are already constructed
 		{
