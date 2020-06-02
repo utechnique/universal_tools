@@ -42,6 +42,12 @@ public:
 		slots.Add(Move(f));
 	}
 
+	// Deletes all slots.
+	void Reset()
+	{
+		slots.Empty();
+	}
+
 protected:
 	// Array of slots. Google 'Signals and slots' and 'observer' pattern.
 	Array< Function<Signature> > slots;
