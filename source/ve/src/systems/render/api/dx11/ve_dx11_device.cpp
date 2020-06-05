@@ -66,6 +66,7 @@ ID3D11Device* CreateDX11Device()
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformDevice::PlatformDevice(ID3D11Device* device_ptr) : d3d11_device(device_ptr)
+                                                         , immediate_context(ut::MakeUnique<Context>(GetMainContext()))
 {
 	// create dxgi factory
 	IDXGIFactory1* gi_factory_ptr;
@@ -117,7 +118,6 @@ ut::Optional<ut::Error> PlatformDevice::ExtractBackBufferTextureAndView(IDXGISwa
 //----------------------------------------------------------------------------//
 // Constructor.
 Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : PlatformDevice(CreateDX11Device())
-                                                                , context(GetMainContext())
 {}
 
 // Move constructor.
@@ -134,12 +134,18 @@ ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::u
 {
 	ID3D11Texture2D* tex2d = nullptr;
 
+	ImageInfo image_info;
+	image_info.format = format;
+	image_info.width = width;
+	image_info.height = height;
+	image_info.depth = 1;
+
 	D3D11_TEXTURE2D_DESC desc;
-	desc.Width = width;
-	desc.Height = height;
+	desc.Width = image_info.width;
+	desc.Height = image_info.height;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	desc.Format = ConvertPixelFormatToDX11(format);
+	desc.Format = ConvertPixelFormatToDX11(image_info.format);
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 	desc.Usage = D3D11_USAGE_DEFAULT;
@@ -156,19 +162,7 @@ ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::u
 
 	PlatformTexture platform_texture(tex2d, nullptr);
 
-	return Texture(ut::Move(platform_texture), format);
-}
-
-// OpenGL doesn't support deferred contexts.
-ut::Result<Context, ut::Error> Device::CreateDeferredContext()
-{
-	ID3D11DeviceContext *deferred_context;
-	HRESULT result = d3d11_device->CreateDeferredContext(0, &deferred_context);
-	if (FAILED(result))
-	{
-		return ut::MakeError(ut::error::fail);
-	}
-	return PlatformContext(deferred_context);
+	return Texture(ut::Move(platform_texture), image_info);
 }
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
@@ -183,13 +177,19 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	const ut::uint32 width = static_cast<ut::uint32>(viewport.w());
 	const ut::uint32 height = static_cast<ut::uint32>(viewport.h());
 
+	// initialize target backbuffer info
+	ImageInfo backbuffer_info;
+	backbuffer_info.format = pixel::r8g8b8a8_srgb;
+	backbuffer_info.width = width;
+	backbuffer_info.height = height;
+
 	// initialize swapchain description
 	DXGI_SWAP_CHAIN_DESC swapchain_desc;
 	ZeroMemory(&swapchain_desc, sizeof(swapchain_desc));
 	swapchain_desc.BufferCount = 1;
 	swapchain_desc.BufferDesc.Width = width;
 	swapchain_desc.BufferDesc.Height = height;
-	swapchain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	swapchain_desc.BufferDesc.Format = ConvertPixelFormatToDX11(backbuffer_info.format);
 	swapchain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapchain_desc.OutputWindow = hwnd;
 	swapchain_desc.Windowed = TRUE;
@@ -215,51 +215,166 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 		return ut::MakeError(extract_error.Move());
 	}
 
+	// initialize render target info
+	RenderTargetInfo target_info;
+	target_info.usage = RenderTargetInfo::usage_present;
+
 	// create render target that will be associated with provided viewport
-	Texture texture(PlatformTexture(backbuffer, nullptr), pixel::r8g8b8a8_srgb);
-	Target target(PlatformRenderTarget(rtv, nullptr), ut::Move(texture));
+	Texture texture(PlatformTexture(backbuffer, nullptr), backbuffer_info);
+	Target target(PlatformRenderTarget(rtv, nullptr), ut::Move(texture), target_info);
+
+	// dx11 does swapping manually, so there is only one buffer available for engine
+	ut::Array<Target> display_targets;
+	if (!display_targets.Add(ut::Move(target)))
+	{
+		return ut::MakeError(ut::error::out_of_memory);
+	}
 
 	// success
-	return Display(PlatformDisplay(swapchain), ut::Move(target), width, height);
+	return Display(PlatformDisplay(swapchain), ut::Move(display_targets), width, height);
 }
 
-// Resizes buffers associated with rendering area inside a UI viewport.
-//    @param display - reference to display object.
-//    @param width - new width of the display in pixels.
-//    @param width - new height of the display in pixels.
-//    @return - optional ut::Error if failed.
-ut::Optional<ut::Error> Device::ResizeDisplay(Display& display,
-                                              ut::uint32 width,
-                                              ut::uint32 height)
+// Creates an empty command buffer.
+//    @param cmd_buffer_info - reference to the information about
+//                             the command buffer to be created.
+//    @return - new command buffer or error if failed.
+ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBufferInfo& cmd_buffer_info)
 {
-	// release references to backbuffer resources
-	display.target.rtv.Delete();
-	display.target.buffer.tex2d.Delete();
+	return CmdBuffer(PlatformCmdBuffer(), cmd_buffer_info);
+}
 
-	// Create new backbuffer
-	HRESULT hr = display.dxgi_swapchain->ResizeBuffers(1, width, height,
-	                                                   DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
-	                                                   DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-	if (FAILED(hr))
+// Creates render pass object.
+//    @param in_color_slots - array of color slots.
+//    @param in_depth_stencil_slot - optional depth stencil slot.
+//    @return - new render pass or error if failed.
+ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTargetSlot> in_color_slots,
+                                                           ut::Optional<RenderTargetSlot> in_depth_stencil_slot)
+{
+	return RenderPass(PlatformRenderPass(), ut::Move(in_color_slots), ut::Move(in_depth_stencil_slot));
+}
+
+// Creates framebuffer. All targets must have the same width and height.
+//    @param render_pass - const reference to the renderpass to be bound to.
+//    @param color_targets - array of references to the colored render
+//                           targets to be bound to a render pass.
+//    @param depth_stencil_target - optional reference to the depth-stencil
+//                                  target to be bound to a render pass.
+//    @return - new framebuffer or error if failed.
+ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& render_pass,
+	                                                         ut::Array< ut::Ref<Target> > color_targets,
+	                                                         ut::Optional<Target&> depth_stencil_target)
+{
+	// determine width and heights of the framebuffer in pixels
+	ut::uint32 width;
+	ut::uint32 height;
+	if (color_targets.GetNum() != 0)
 	{
-		return ut::Error(ut::error::fail, ut::Print(hr) + " SwapChain->ResizeBuffers() failed. ");
+		const Target& color_target = color_targets.GetFirst();
+		width = color_target.buffer.GetInfo().width;
+		height = color_target.buffer.GetInfo().height;
+	}
+	else if (depth_stencil_target)
+	{
+		const Target& ds_target = depth_stencil_target.Get();
+		width = ds_target.buffer.GetInfo().width;
+		height = ds_target.buffer.GetInfo().height;
+	}
+	else
+	{
+		return ut::MakeError(ut::Error(ut::error::invalid_arg, "DirectX 11: no targets for the framebuffer."));
 	}
 
-	// extract texture and rtv from the swapchain to be able to construct ve::render::Target object.
-	ID3D11Texture2D* backbuffer;
-	ID3D11RenderTargetView* rtv;
-	ut::Optional<ut::Error> extract_error = ExtractBackBufferTextureAndView(display.dxgi_swapchain.Get(), backbuffer, rtv);
-	if (extract_error)
+	// check width and height of the color targets
+	const size_t color_target_count = color_targets.GetNum();
+	for (size_t i = 0; i < color_target_count; i++)
 	{
-		return extract_error.Move();
+		const ImageInfo& img_info = color_targets[i]->buffer.GetInfo();
+		if (img_info.width != width || img_info.height != height)
+		{
+			return ut::MakeError(ut::Error(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer."));
+		}
 	}
 
-	// save new references
-	Texture texture(PlatformTexture(backbuffer, nullptr), pixel::r8g8b8a8_srgb);
-	display.target = Target(PlatformRenderTarget(rtv, nullptr), ut::Move(texture));
+	// check width and height of the depth target
+	if (depth_stencil_target)
+	{
+		const ImageInfo& img_info = depth_stencil_target.Get().buffer.GetInfo();
+		if (img_info.width != width || img_info.height != height)
+		{
+			return ut::MakeError(ut::Error(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer."));
+		}
+	}
+
+	// initialize info
+	FramebufferInfo info(width, height);
 
 	// success
-	return ut::Optional<ut::Error>();
+	return Framebuffer(PlatformFramebuffer(), info, ut::Move(color_targets), ut::Move(depth_stencil_target));
+}
+
+// Resets all command buffers created with CmdBufferInfo::usage_once flag
+// enabled. This call is required before re-recording such command buffers.
+// Usualy it's called once per frame.
+void Device::ResetDynamicCmdPool()
+{}
+
+// Resets given command buffer. This command buffer must be created without
+// CmdBufferInfo::usage_once flag (use ResetCmdPool() instead).
+//    @param cmd_buffer - reference to the buffer to be reset.
+void Device::ResetCmdBuffer(CmdBuffer& cmd_buffer)
+{}
+
+// Records commands by calling a provided function.
+//    @param cmd_buffer - reference to the buffer to record commands to.
+//    @param function - function containing commands to record.
+//    @param render_pass - optional reference to the current renderpass,
+//                         this parameter applies only for secondary buffer
+//                         with CmdBufferInfo::usage_inside_render_pass flag
+//                         enabled, othwerwise it's ignored.
+//    @param framebuffer - optional reference to the current framebuffer,
+//                         this parameter applies only for secondary buffer
+//                         with CmdBufferInfo::usage_inside_render_pass flag
+//                         enabled, othwerwise it's ignored.
+void Device::Record(CmdBuffer& cmd_buffer,
+	                ut::Function<void(Context&)> function,
+	                ut::Optional<RenderPass&> render_pass,
+	                ut::Optional<Framebuffer&> framebuffer)
+{
+	cmd_buffer.proc = function;
+}
+
+// Submits a command buffer to a queue. Also it's possible to enqueue presentation
+// for displays used in the provided command buffer. Presentation is supported
+// only for command buffers created with CmdBufferInfo::usage_once flag.
+//    @param cmd_buffer - reference to the command buffer to enqueue.
+//    @param present_queue - array of references to displays waiting for their
+//                           buffer to be presented to user. Pass empty array
+//                           if @cmd_buffer has no CmdBufferInfo::usage_once flag.
+void Device::Submit(CmdBuffer& cmd_buffer,
+	                ut::Array< ut::Ref<Display> > present_queue)
+{
+	if (!cmd_buffer.proc)
+	{
+		throw ut::Error(ut::error::invalid_arg, "DirectX 11: command buffer has no recorded commands.");
+	}
+
+	// execute recorded function
+	ut::Function<void(Context&)>& procedure = cmd_buffer.proc.Get();
+	procedure(immediate_context.GetRef());
+
+	// present
+	const size_t present_count = present_queue.GetNum();
+	for (size_t i = 0; i < present_count; i++)
+	{
+		present_queue[i]->dxgi_swapchain->Present(1, 0);
+	}
+}
+
+// Call this function to wait on the host for the completion of all
+// queue operations for all queues on this device.
+void Device::WaitIdle()
+{
+	// dx11 manages resources safely, no need to wait
 }
 
 //----------------------------------------------------------------------------//

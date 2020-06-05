@@ -343,10 +343,7 @@ OpenGLContext CreateGLContextAndInitPlatform()
 	}
 
     // Warning! FLTK must be initialized up to here!
-	UiScopeLock ui_lock;
-
-    // enable Xlib thread protection
-    XInitThreads();
+	ui::DisplayScopeLock ui_lock;
 
 	// FBConfigs were added in GLX version 1.3
 	int glx_major, glx_minor;

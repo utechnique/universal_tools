@@ -15,8 +15,12 @@ namespace pixel
 	enum Format
 	{
 		unknown,
+		r8g8b8,
+		b8g8r8,
 		r8g8b8a8,
+		b8g8r8a8,
 		r8g8b8a8_srgb,
+		b8g8r8a8_srgb,
 	};
 }
 

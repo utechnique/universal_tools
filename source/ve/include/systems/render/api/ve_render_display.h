@@ -12,12 +12,12 @@ START_NAMESPACE(render)
 // ve::render::Display is a rendering area inside a UI viewport (widget/window).
 class Display : public PlatformDisplay
 {
-	friend class Context;
 	friend class Device;
+	friend class Context;
 public:
 	// Constructor.
 	Display(PlatformDisplay platform_display,
-	        Target display_target,
+	        ut::Array<Target> display_targets,
 	        ut::uint32 w, ut::uint32 h);
 
 	// Move constructor.
@@ -36,10 +36,25 @@ public:
 	// Returns height of the display in pixels.
 	ut::uint32 GetHeight() const;
 
-	// Render target associated with this display.
-	Target target;
+	// Returns target representing a view of one of the buffers
+	// in a swapchain.
+	//    @param buffer_id - id of the swapchain buffer.
+	//    @return - reference to the render target.
+	Target& GetTarget(ut::uint32 buffer_id);
 
+	// Returns the id of the buffer that is ready to be
+	// filled in the current frame.
+	ut::uint32 GetCurrentBufferId() const;
+
+	// Returns a number of buffers in the associated swapchain.
+	ut::uint32 GetBufferCount() const;
 private:
+	// Render targets associated with buffers of this display.
+	ut::Array<Target> targets;
+
+	// Id of the buffer that is ready to be filled in the current frame.
+	ut::uint32 current_buffer_id;
+
 	// Width of the display in pixels.
 	ut::uint32 width;
 

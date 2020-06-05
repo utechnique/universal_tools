@@ -11,7 +11,7 @@ START_NAMESPACE(ve)
 // Specialized version of the ve::DedicatedThread template for OpenGL device.
 // Xlib is not thread-safe and this means render thread must be isolated from
 // X11 calls. UI must idle when a task is being processed in the render thread.
-#if UT_LINUX && VE_OPENGL
+#if 0//UT_LINUX && (VE_OPENGL || VE_VULKAN)
 template<>
 class DedicatedThread<render::Device> : public BaseDedicatedThread<render::Device>
 {

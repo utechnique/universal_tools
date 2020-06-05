@@ -8,11 +8,12 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 Display::Display(PlatformDisplay platform_display,
-                 Target display_target,
+                 ut::Array<Target> display_targets,
                  ut::uint32 w, ut::uint32 h) : PlatformDisplay(ut::Move(platform_display))
-                                             , target(ut::Move(display_target))
+                                             , targets(ut::Move(display_targets))
                                              , width(w)
                                              , height(h)
+                                             , current_buffer_id(0)
 {}
 
 // Move constructor.
@@ -31,6 +32,28 @@ ut::uint32 Display::GetWidth() const
 ut::uint32 Display::GetHeight() const
 {
 	return height;
+}
+
+// Returns target representing a view of one of the buffers
+// in a swapchain.
+//    @param buffer_id - id of the swapchain buffer.
+//    @return - reference to the render target.
+Target& Display::GetTarget(ut::uint32 buffer_id)
+{
+	return targets[buffer_id];
+}
+
+// Returns the id of the buffer that is ready to be
+// filled in the current frame.
+ut::uint32 Display::GetCurrentBufferId() const
+{
+	return current_buffer_id;
+}
+
+// Returns a number of buffers in the associated swapchain.
+ut::uint32 Display::GetBufferCount() const
+{
+	return static_cast<ut::uint32>(targets.GetNum());
 }
 
 //----------------------------------------------------------------------------//

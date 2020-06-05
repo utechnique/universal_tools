@@ -53,6 +53,12 @@ public:
 	GlRc(Handle in_rc = 0) : rc(in_rc)
 	{}
 
+	// Destructor
+	~GlRc()
+	{
+		Delete();
+	}
+
 	// Move constructor.
 	GlRc(GlRc&& other) noexcept : rc(other.rc)
 	{

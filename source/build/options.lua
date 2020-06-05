@@ -64,3 +64,9 @@ newoption
     trigger = "dx11",
     description = "Uses dx11 to render graphics."
 }
+
+newoption
+{
+    trigger = "vulkan",
+    description = "Uses vulkan to render graphics."
+}

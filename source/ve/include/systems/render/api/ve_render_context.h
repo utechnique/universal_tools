@@ -5,6 +5,8 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_platform.h"
 #include "systems/render/api/ve_render_target.h"
+#include "systems/render/api/ve_render_pass.h"
+#include "systems/render/api/ve_render_framebuffer.h"
 #include "systems/render/api/ve_render_display.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -28,13 +30,24 @@ public:
 	Context(const Context&) = delete;
 	Context& operator =(const Context&) = delete;
 
-	// Set all the elements in a render target to one value.
-	void ClearTarget(Target& target, float* color);
+	// Begin a new render pass.
+	//    @param render_pass - reference to the render pass object.
+	//    @param framebuffer - reference to the framebuffer to be bound.
+	//    @param render_area - reference to the rectangle representing
+	//                         rendering area in pixels.
+	//    @param color_clear_values - array of colors to clear color
+	//                                render targets with.
+	//    @param depth_clear_value - value to clear depth buffer with.
+	//    @param stencil_clear_value - value to clear stencil buffer with.
+	void BeginRenderPass(RenderPass& render_pass,
+	                     Framebuffer& framebuffer,
+	                     const ut::Rect<ut::uint32>& render_area,
+	                     const ut::Array< ut::Color<4> >& color_clear_values,
+	                     float depth_clear_value = 1.0f,
+	                     ut::uint32 stencil_clear_value = 0);
 
-	// Presents a rendered image to the user.
-	//    @param display - reference to the display to show image on.
-	//    @param vsync - 'true' to enable vertical synchronization.
-	void Present(Display& display, bool vsync);
+	// End current render pass.
+	void EndRenderPass();
 };
 
 //----------------------------------------------------------------------------//

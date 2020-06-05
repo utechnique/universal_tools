@@ -11,6 +11,9 @@
 #include "systems/render/api/dx11/ve_dx11_texture.h"
 #include "systems/render/api/dx11/ve_dx11_render_target.h"
 #include "systems/render/api/dx11/ve_dx11_display.h"
+#include "systems/render/api/dx11/ve_dx11_cmd_buffer.h"
+#include "systems/render/api/dx11/ve_dx11_render_pass.h"
+#include "systems/render/api/dx11/ve_dx11_framebuffer.h"
 //----------------------------------------------------------------------------//
 #endif // VE_DX11
 //----------------------------------------------------------------------------//

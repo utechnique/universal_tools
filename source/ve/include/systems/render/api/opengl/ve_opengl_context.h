@@ -30,7 +30,15 @@ public:
 	PlatformContext& operator =(const PlatformContext&) = delete;
 
 protected:
-	GlRc<gl::framebuffer> framebuffer;
+	// Present request is a delayed presentation task that is executed later during
+	// ve::render::Device::Submit() call.
+	struct PresentRequest
+	{
+		GlRc<gl::framebuffer>::Handle framebuffer;
+		GLenum attachment_id;
+	};
+
+	ut::Map<GlRc<gl::texture>::Handle, PresentRequest> present_queue;
 };
 
 //----------------------------------------------------------------------------//

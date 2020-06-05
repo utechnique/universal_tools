@@ -21,6 +21,13 @@ constexpr T Max(T first, T second)
 	return first > second ? first : second;
 }
 
+// Clamps value.
+template<typename T>
+constexpr T Clamp(T value, T min, T max)
+{
+	return Min(Max(value, min), max);
+}
+
 // Computes the absolute value of the given number.
 template<typename T>
 constexpr T Abs(T a)

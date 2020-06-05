@@ -1,0 +1,109 @@
+//----------------------------------------------------------------------------//
+//---------------------------------|  V  E  |---------------------------------//
+//----------------------------------------------------------------------------//
+#pragma once
+//----------------------------------------------------------------------------//
+#include "systems/ui/ve_ui.h"
+#include "systems/render/ve_render_api.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ve)
+START_NAMESPACE(render)
+//----------------------------------------------------------------------------//
+// ve::render::ViewportManager is a helper class processing events of UI
+// viewports associated with rendering. It manages render resources helping
+// display to present its contents.
+class ViewportManager
+{
+public:
+	// Construcot.
+	ViewportManager(ut::SharedPtr<Device::Thread> in_render_thread);
+
+	// Destructor.
+	~ViewportManager();
+
+	// Move constructor.
+	ViewportManager(ViewportManager&&);
+
+	// Copying is prohibited.
+	ViewportManager(const ViewportManager&) = delete;
+
+	// Initializes internal array of display/viewport pairs with one
+	// provided by UI frontend.
+	//    @param frontend - reference to ui::Frontend object.
+	void OpenViewports(ui::Frontend& frontend);
+
+	// Synchronizes all viewport events. Must be called after previous frame is
+	// finished and before the next one starts.
+	void SyncViewportEvents();
+
+protected:
+	// Type of the container with ui viewport reference
+	// and all associated rendering resources.
+	typedef ut::Container<ui::PlatformViewport&,
+	                      Display,
+	                      RenderPass,
+	                      ut::Array<Framebuffer> > ViewportContainer;
+
+	// Array of viewports
+	ut::Array<ViewportContainer> viewports;
+
+private:
+	// Viewport tasks are executed once per frame in a special synchronization
+	// member function - SyncViewportEvents(). Thus all task issuers must wait until
+	// the task is finished. That's why all viewport tasks contain synchronization
+	// primitives to synchronize manager and issuers: mutex, condition variable and a
+	// boolean flag signalizing that the task is done.
+	typedef ut::UniquePtr< ut::BaseTask<void> > ViewportTaskPtr;
+	typedef ut::Container<ViewportTaskPtr, ut::Mutex&, ut::ConditionVariable&, bool&> ViewportTask;
+
+	// Creates a new display and all associated render resources for the
+	// provided viewport.
+	//    @param device - reference to the render device.
+	//    @param viewport - reference to the viewport.
+	//    @return - container with all render resources, or error if failed.
+	ut::Result<ViewportContainer, ut::Error> CreateDisplay(Device& device, ui::PlatformViewport& viewport);
+
+    // Resizes a display associated with provided viewport.
+	//    @param id - id of the viewport whose render display must be resized.
+	//    @param w - new width of render display in pixels.
+	//    @param h - new height of render display in pixels.
+	void ResizeViewport(ui::Viewport::Id id, ut::uint32 w, ut::uint32 h);
+
+	// Removes viewport from internal map and destroys render resources.
+	//    @param id - id of the viewport to be closed.
+	void CloseViewport(ui::Viewport::Id id);
+
+	// Enqueues a task and waits for completion.
+	void EnqueueViewportTask(ut::UniquePtr< ut::BaseTask<void> > task);
+
+	// Enqueue a ResizeViewport() member function call and wait for completion
+	//    @param id - id of the viewport whose render display must be resized.
+	//    @param w - new width of render display in pixels.
+	//    @param h - new height of render display in pixels.
+	void EnqueueViewportResize(ui::Viewport::Id id, ut::uint32 w, ut::uint32 h);
+
+	// Enqueue a CloseViewport() member function call and wait for completion
+	// in the synchronization point.
+	//    @param id - id of the viewport to be closed.
+	void EnqueueViewportClosure(ui::Viewport::Id id);
+
+	// Searches for a viewport container associated with provided viewport id.
+	//    @return - id of the container in the @viewports array.
+	ut::Optional<size_t> FindViewport(ui::Viewport::Id id);
+
+	// Render thread is needed to operate with render displays
+	// associated with managed viewports.
+	ut::SharedPtr<Device::Thread> render_thread;
+
+	// array of viewport tasks, only two functions are allowed to interact with
+    // it in a safe maner: EnqueueViewportTask() to add task, and
+	// SyncViewportEvents() to execute all tasks and clear the array
+	ut::Synchronized< ut::Array<ViewportTask> > viewport_tasks;
+};
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
+END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//

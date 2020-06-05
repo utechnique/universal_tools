@@ -136,6 +136,11 @@ DesktopFrontend::~DesktopFrontend()
 // Initialization.
 ut::Optional<ut::Error> DesktopFrontend::Initialize()
 {
+    // enable multithreading for XLib
+#if VE_X11
+    XInitThreads();
+#endif
+
 	// get configuration copy
 	DesktopCfg cfg;
 	ut::Optional<ut::Error> load_error = cfg.Load();

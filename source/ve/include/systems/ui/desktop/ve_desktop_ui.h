@@ -3,13 +3,12 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/ui/ve_ui.h"
+#include "systems/ui/ve_ui_frontend.h"
 #include "systems/ui/desktop/ve_desktop_viewport.h"
 #include "ve_id_generator.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
-#include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -109,6 +108,9 @@ private:
 	// Minimum height of the window
 	static const ut::uint32 skMinHeight;
 };
+
+// Desktop is the current UI frontend.
+typedef DesktopFrontend PlatformFrontend;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ui)

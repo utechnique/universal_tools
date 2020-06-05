@@ -9,6 +9,7 @@
 #include "math/ut_trigonometry.h"
 #include "math/ut_matrix.h"
 #include "math/ut_quaternion.h"
+#include "math/ut_rect.h"
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

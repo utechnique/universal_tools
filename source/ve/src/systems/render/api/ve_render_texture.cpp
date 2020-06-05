@@ -8,8 +8,8 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 Texture::Texture(PlatformTexture platform_texture,
-                 pixel::Format pixel_format) : PlatformTexture(ut::Move(platform_texture))
-                                             , format(pixel_format)
+                 const ImageInfo& image_info) : PlatformTexture(ut::Move(platform_texture))
+                                              , info(image_info)
 {}
 
 // Move constructor.
@@ -17,12 +17,6 @@ Texture::Texture(Texture&&) noexcept = default;
 
 // Move operator.
 Texture& Texture::operator =(Texture&&) noexcept = default;
-
-// Returns pixel format of the texture, see ve::render::pixel::Format.
-pixel::Format Texture::GetFormat() const
-{
-	return format;
-}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

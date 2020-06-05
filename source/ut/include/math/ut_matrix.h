@@ -361,6 +361,18 @@ public:
 		return table[0];
 	}
 
+	// Returns a constant reference to the named "R" element.
+	const Scalar& R() const
+	{
+		return X();
+	}
+
+	// Returns a reference to the named "R" element.
+	Scalar& R()
+	{
+		return X();
+	}
+
 	// Returns a constant reference to the named "Y" element.
 	const Scalar& Y() const
 	{
@@ -373,6 +385,18 @@ public:
 	{
 		static_assert(columns >= 2, "There is no element with such name.");
 		return table[1];
+	}
+
+	// Returns a constant reference to the named "G" element.
+	const Scalar& G() const
+	{
+		return Y();
+	}
+
+	// Returns a reference to the named "G" element.
+	Scalar& G()
+	{
+		return Y();
 	}
 
 	// Returns a constant reference to the named "Z" element.
@@ -389,6 +413,18 @@ public:
 		return table[2];
 	}
 
+	// Returns a constant reference to the named "B" element.
+	const Scalar& B() const
+	{
+		return Z();
+	}
+
+	// Returns a reference to the named "B" element.
+	Scalar& B()
+	{
+		return Z();
+	}
+
 	// Returns a constant reference to the named "W" element.
 	const Scalar& W() const
 	{
@@ -401,6 +437,18 @@ public:
 	{
 		static_assert(columns >= 4, "There is no element with such name.");
 		return table[3];
+	}
+
+	// Returns a constant reference to the named "A" element.
+	const Scalar& A() const
+	{
+		return W();
+	}
+
+	// Returns a reference to the named "A" element.
+	Scalar& A()
+	{
+		return W();
 	}
 
 private:
@@ -478,6 +526,10 @@ private:
 // Vector is defined as a matrix with only one row.
 template<MatrixElementId dim, typename Scalar = float>
 using Vector = Matrix<1, dim, Scalar>;
+
+// Color is a vector too.
+template<MatrixElementId dim, typename Scalar = float>
+using Color = Vector<dim, Scalar>;
 
 //----------------------------------------------------------------------------//
 // Specialized type name function for matrices

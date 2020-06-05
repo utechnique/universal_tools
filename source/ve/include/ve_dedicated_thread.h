@@ -92,6 +92,7 @@ private:
 		{
 			// create object
 			ObjectType object(ut::Forward<Args>(args)...);
+			object_ptr = &object;
 
 			// process tasks
 			while (ProcessTask(object));

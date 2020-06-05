@@ -13,8 +13,12 @@ GLenum ConvertPixelFormatToOpenGL(pixel::Format format)
 {
 	switch (format)
 	{
+	case pixel::r8g8b8: return GL_RGB;
+	case pixel::b8g8r8: return GL_BGR;
 	case pixel::r8g8b8a8: return GL_RGBA;
+	case pixel::b8g8r8a8: return GL_BGRA;
 	case pixel::r8g8b8a8_srgb: return GL_RGBA;
+	case pixel::b8g8r8a8_srgb: return GL_BGRA;
 	}
 	return GL_COLOR_INDEX;
 }
@@ -24,7 +28,10 @@ pixel::Format ConvertPixelFormatFromOpenGL(GLenum format)
 {
 	switch (format)
 	{
+	case GL_RGB: return pixel::r8g8b8;
+	case GL_BGR: return pixel::b8g8r8;
 	case GL_RGBA: return pixel::r8g8b8a8;
+	case GL_BGRA: return pixel::b8g8r8a8;
 	case GL_SRGB_ALPHA: return pixel::r8g8b8a8_srgb;
 	}
 	return pixel::unknown;

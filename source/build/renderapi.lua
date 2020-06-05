@@ -1,14 +1,18 @@
 -- check what render api is supported by platform
 OPENGL = _OPTIONS["opengl"]
 DX11 = _OPTIONS["dx11"]
+VULKAN = _OPTIONS["vulkan"]
 
 -- only one render api can be used
-if OPENGL and DX11 then
+if OPENGL then
     DX11 = false
+	VULKAN = false
+elseif DX11 then
+	VULKAN = false
 end
 
 -- check if at least one of the render api is supported by platform
-SUPPORTS_3D = OPENGL or DX11
+SUPPORTS_3D = OPENGL or DX11 or VULKAN
 
 -- include directories for render api
 RENDER_INCLUDE_DIRS = {}
@@ -55,4 +59,21 @@ elseif DX11 then
 	
 	-- macros
     table.insert(RENDER_DEFS, "VE_DX11")
+
+elseif VULKAN then
+	
+	if WINDOWS then
+		-- include directories
+		table.insert(RENDER_INCLUDE_DIRS, "$(VULKAN_SDK)\\Include")
+		
+		-- libraries
+		table.insert(RENDER_LIB_DIRS_32, "$(VULKAN_SDK)\\Lib32")
+		table.insert(RENDER_LIB_DIRS_64, "$(VULKAN_SDK)\\Lib")
+		table.insert(RENDER_LIBS, "vulkan-1.lib")
+	elseif LINUX then
+		table.insert(RENDER_LIBS, "vulkan")
+	end	
+	
+	-- macros
+    table.insert(RENDER_DEFS, "VE_VULKAN")
 end

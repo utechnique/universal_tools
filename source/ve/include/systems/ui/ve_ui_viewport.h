@@ -3,13 +3,12 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut.h"
 #include "systems/ui/ve_ui_platform.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
-// ve::ui::Viewport is a special UI window hosting 3D rendering context.
+// ve::ui::Viewport is a special UI window hosting drawable surface.
 class Viewport
 {
 public:
@@ -33,6 +32,9 @@ public:
 
 	// Connects provided function with signal that is triggered in destructor.
 	void ConnectCloseSignalSlot(ut::Function<void(Id id)> slot);
+
+	// Resets all signals.
+	void ResetSignals();
 
 	// Returns unique identifier of the viewport.
 	Id GetId() const;

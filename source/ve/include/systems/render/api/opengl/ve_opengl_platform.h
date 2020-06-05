@@ -10,12 +10,13 @@
 //----------------------------------------------------------------------------//
 #if VE_OPENGL
 //----------------------------------------------------------------------------//
-#include "systems/ui/desktop/ve_desktop_viewport.h"
+#include "systems/ui/ve_ui.h"
 //----------------------------------------------------------------------------//
 #include <GL/gl.h>
 #if UT_UNIX
 #include <GL/glx.h>
 #endif
+
 //----------------------------------------------------------------------------//
 // Extension interfaces.
 #if UT_WINDOWS
@@ -24,6 +25,7 @@
 #include "glxext.h"
 #endif
 #include "glext.h"
+
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -31,6 +33,13 @@ START_NAMESPACE(render)
 // Minimum opengl version that is supported by VE.
 static const int skMinimumOpenGLVersionMajor = 4;
 static const int skMinimumOpenGLVersionMinor = 1;
+
+// Maximum number of color attachments that can be bound to pipeline at once.
+const ut::uint32 skMaxGlColorAttachments = 16;
+
+// Returns OpenGl id of the color attachment using the given
+// value from 0 to skMaxGlColorAttachments.
+GLenum GetColorAttachmentId(ut::uint32 id);
 
 //----------------------------------------------------------------------------//
 // List of OpenGL extension functions.
@@ -44,6 +53,7 @@ __m(glDrawBuffers)\
 __m(glFenceSync)\
 __m(glDeleteSync)\
 __m(glClientWaitSync)\
+__m(glClearBufferfv)\
 
 //----------------------------------------------------------------------------//
 // Calling convention for OpenGL functions.
@@ -69,6 +79,7 @@ typedef void(VE_GLAPI*glDrawBuffersPtr) (GLsizei n, const GLenum *bufs);
 typedef GLsync(VE_GLAPI*glFenceSyncPtr) (GLenum condition, GLbitfield flags);
 typedef void(VE_GLAPI*glDeleteSyncPtr) (GLsync sync);
 typedef GLenum(VE_GLAPI*glClientWaitSyncPtr) (GLsync sync, GLbitfield flags, GLuint64 timeout);
+typedef void(VE_GLAPI*glClearBufferfvPtr) (GLenum buffer, GLint drawbuffer, const GLfloat * value);
 
 //----------------------------------------------------------------------------//
 // Declare all opengl functions.
@@ -81,6 +92,7 @@ VE_ENUM_OPENGL_ENTRYPOINTS(VE_OPENGL_DECLARE_FUNCTION_PTR)
 class OpenGLWindow
 {
 public:
+#if VE_FLTK
 	// Constructor.
 	//    @param window - reference to the fltk window handle
 	//    @param ownership - set 'true' to destroy window in destructor
@@ -91,12 +103,13 @@ public:
 	//    @param window_handle - HWND handle.
 	//    @param ownership - set 'true' to destroy window in destructor
 	OpenGLWindow(HWND window_handle, bool ownership = false);
-#elif UT_LINUX
+#elif UT_LINUX && VE_X11
 	//    @param Display - pointer to X11 server.
 	//    @param window_handle - X11 window handle.
 	//    @param ownership - set 'true' to destroy window in destructor
 	OpenGLWindow(Display* display_ptr, Window window_handle, bool ownership = false);
 #endif
+#endif // VE_FLTK
 
 	// Destructor.
 	~OpenGLWindow();
@@ -144,7 +157,7 @@ public:
 	// Platform-specific handle to OpenGL context.
 #if UT_WINDOWS
 	typedef HGLRC Handle;
-#elif UT_LINUX
+#elif UT_LINUX && VE_X11
 	typedef GLXContext Handle;
 #endif
 
@@ -186,15 +199,6 @@ protected:
 // Creates platform-specific OpenGL context and initializes global
 // gl functions.
 OpenGLContext CreateGLContextAndInitPlatform();
-
-//----------------------------------------------------------------------------//
-// Helper class to lock fltk thread in current scope.
-class UiScopeLock
-{
-public:
-	UiScopeLock();
-	~UiScopeLock();
-};
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

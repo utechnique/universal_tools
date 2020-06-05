@@ -40,6 +40,8 @@ protected:
 	
 	ut::ComPtr<ID3D11Device> d3d11_device;
 	ut::ComPtr<IDXGIFactory1> gi_factory;
+
+	ut::UniquePtr<class Context> immediate_context;
 };
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

@@ -11,14 +11,12 @@ START_NAMESPACE(render)
 // Constructor.
 PlatformContext::PlatformContext(OpenGLContext opengl_context) : OpenGLContext(ut::Move(opengl_context))
 {
-	UiScopeLock ui_lock;
+	ui::DisplayScopeLock ui_lock;
 	ut::Optional<ut::Error> apply_error = MakeCurrent();
 	if (apply_error)
 	{
 		throw ut::Error(apply_error.Move());
 	}
-	glGenFramebuffers(1, &framebuffer.GetGlHandle());
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.GetGlHandle());
 }
 
 // Move constructor.
@@ -33,64 +31,73 @@ PlatformContext& PlatformContext::operator =(PlatformContext&& other) noexcept =
 Context::Context(PlatformContext platform_context) : PlatformContext(ut::Move(platform_context))
 {}
 
-// Set all the elements in a render target to one value.
-void Context::ClearTarget(Target& target, float* color)
+// Begin a new render pass.
+//    @param render_pass - reference to the render pass object.
+//    @param framebuffer - reference to the framebuffer to be bound.
+//    @param render_area - reference to the rectangle representing
+//                         rendering area in pixels.
+//    @param color_clear_values - array of colors to clear color
+//                                render targets with.
+//    @param depth_clear_value - value to clear depth buffer with.
+//    @param stencil_clear_value - value to clear stencil buffer with.
+void Context::BeginRenderPass(RenderPass& render_pass,
+	                          Framebuffer& framebuffer,
+	                          const ut::Rect<ut::uint32>& render_area,
+	                          const ut::Array< ut::Color<4> >& color_clear_values,
+	                          float depth_clear_value,
+	                          ut::uint32 stencil_clear_value)
 {
+	// validate arguments
+	UT_ASSERT(color_clear_values.GetNum() <= render_pass.color_slots.GetNum());
+	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_targets.GetNum());
+	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_target : !framebuffer.depth_stencil_target);
+
+	// bind framebuffer
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer.GetGlHandle());
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target.buffer.GetGlHandle(), 0);
 
-	// set the list of draw buffers.
-	GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-	glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
-
-	// set clear color
-	glClearColor(color[0], color[1], color[2], color[3]);
-
-	// clear
-	glClear(GL_COLOR_BUFFER_BIT);
-}
-
-// Presents a rendered image to the user.
-//    @param display - reference to the display to show image on.
-//    @param vsync - 'true' to enable vertical synchronization.
-void Context::Present(Display& display, bool vsync)
-{
-	// switch context using window's hdc
-	ut::Optional<ut::Error> make_current_error = MakeCurrent(display.window);
-	if (make_current_error)
+	// set draw buffers
+	GLenum draw_buffers[skMaxGlColorAttachments];
+	const ut::uint32 color_attachment_count = static_cast<ut::uint32>(framebuffer.color_targets.GetNum());
+	for (ut::uint32 i = 0; i < color_attachment_count; i++)
 	{
-		throw ut::Error(make_current_error.Move());
+		// set draw buffer
+		const GLuint color_attachment_id = GetColorAttachmentId(i);
+		draw_buffers[i] = color_attachment_id;
+
+		// if framebuffer has at least one present surface as a draw buffer, then
+		// it must be added to a present queue
+		if (framebuffer.color_targets[i]->GetInfo().usage == RenderTargetInfo::usage_present)
+		{
+			PresentRequest present_request;
+			present_request.framebuffer = framebuffer.GetGlHandle();
+			present_request.attachment_id = color_attachment_id;
+			if (!present_queue.Insert(framebuffer.color_targets[i]->buffer.GetGlHandle(), present_request))
+			{
+				throw ut::Error(ut::error::out_of_memory);
+			}
+		}
+	}
+	glDrawBuffers(color_attachment_count, draw_buffers);
+	
+	// clear color buffer
+	const ut::uint32 clear_value_count = static_cast<ut::uint32>(color_clear_values.GetNum());
+	for (ut::uint32 i = 0; i < clear_value_count; i++)
+	{
+		draw_buffers[i] = GetColorAttachmentId(i);
+
+		glClearBufferfv(GL_COLOR, static_cast<GLint>(i), color_clear_values[i].GetData());
 	}
 
-	// enable srgb
-	glEnable(GL_FRAMEBUFFER_SRGB);
-
-	// set backbuffer as a destination and texture of the
-	// render target as a source
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glDrawBuffer(GL_FRONT);
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.GetGlHandle());
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, display.target.buffer.GetGlHandle(), 0);
-	glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-	// copy buffer
-	glBlitFramebuffer(0, 0, display.GetWidth(), display.GetHeight(),
-	                  0, 0, display.GetWidth(), display.GetHeight(),
-	                  GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-	// swap back and front buffers and draw
-	display.window.SwapBuffer(vsync);
-
-	// set context back to windowless mode
-	make_current_error = MakeCurrent();
-	if (make_current_error)
+	// clear depth
+	if (framebuffer.depth_stencil_target)
 	{
-		throw ut::Error(make_current_error.Move());
+		glClearDepth(depth_clear_value);
 	}
-
-	// disable srgb
-	glDisable(GL_FRAMEBUFFER_SRGB);
 }
+
+// End current render pass.
+void Context::EndRenderPass()
+{}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

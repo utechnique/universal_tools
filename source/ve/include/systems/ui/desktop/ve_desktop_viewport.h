@@ -7,7 +7,6 @@
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
-#include <FL/Fl.H>
 #include <FL/Fl_Window.H>
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -38,6 +37,9 @@ private:
 	// Resize signal is triggered here.
 	void resize(int x, int y, int w, int h) override;
 };
+
+// UI viewport for the current platform.
+typedef DesktopViewport PlatformViewport;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ui)

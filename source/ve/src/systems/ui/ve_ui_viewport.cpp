@@ -32,6 +32,13 @@ void Viewport::ConnectCloseSignalSlot(ut::Function<void(Id id)> slot)
 	close_signal.Connect(ut::Move(slot));
 }
 
+// Resets all signals.
+void Viewport::ResetSignals()
+{
+	resize_signal.Reset();
+	close_signal.Reset();
+}
+
 // Returns unique identifier of the viewport.
 Viewport::Id Viewport::GetId() const
 {
