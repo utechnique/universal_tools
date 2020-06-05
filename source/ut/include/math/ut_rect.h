@@ -3,14 +3,28 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "math/ut_precision.h"
-#include "math/ut_cmp.h"
-#include "math/ut_pow.h"
-#include "math/ut_trigonometry.h"
 #include "math/ut_matrix.h"
-#include "math/ut_quaternion.h"
-#include "math/ut_rect.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ut)
+//----------------------------------------------------------------------------//
+// 2D rectangle.
+template<typename Scalar = ut::uint32>
+struct Rect
+{
+	Rect()
+	{}
 
+	Rect(Scalar offset_x, Scalar offset_y,
+	     Scalar width, Scalar height) : offset(offset_x, offset_y)
+	                                  , extent(width, height)
+	{}
+
+	Vector<2, Scalar> offset;
+	Vector<2, Scalar> extent;
+};
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
