@@ -4,6 +4,7 @@
 #include "system/ut_thread.h"
 #include "system/ut_memory.h"
 #include "error/ut_error.h"
+#include "dbg/ut_exception.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
@@ -267,9 +268,10 @@ inline Optional<Error> Thread::Start()
 // Entry function for the new thread, calls @task->Execute() internally.
 THREAD_PROCEDURE Thread::Entry(BaseTask<void>* proc)
 {
-	if (proc != nullptr)
+	UT_ASSERT(proc != nullptr);
+	if (CatchExceptions([=]() { proc->Execute(); }))
 	{
-		proc->Execute();
+		exit(0);
 	}
 	return NULL;
 }
