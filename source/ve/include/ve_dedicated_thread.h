@@ -88,20 +88,12 @@ private:
 	template<typename... Args>
 	void ThreadProcedure(Args... args)
 	{
-		try
-		{
-			// create object
-			ObjectType object(ut::Forward<Args>(args)...);
-			object_ptr = &object;
+		// create object
+		ObjectType object(ut::Forward<Args>(args)...);
+		object_ptr = &object;
 
-			// process tasks
-			while (ProcessTask(object));
-		}
-		catch (const ut::Error& error)
-		{
-			ut::log << error.GetDesc() << ut::cret;
-			exit(0);
-		}
+		// process tasks
+		while (ProcessTask(object));
 	}
 
 	// Takes task from the queue and processes it in the current thread.
