@@ -88,10 +88,18 @@ Optional<Error> Log::Write(const void* ptr, size_t size, size_t count)
 	ScopeLock sl(mutex);
 	if (file.IsOpened())
 	{
+		// write to the buffer
 		Optional<Error> file_write_error = file.Write(ptr, size, count);
 		if (file_write_error)
 		{
 			return file_write_error;
+		}
+
+		// and immediately flush
+		ut::Optional<ut::Error> flush_error = file.Flush();
+		if (flush_error)
+		{
+			return flush_error;
 		}
 	}
 
