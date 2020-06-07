@@ -33,6 +33,12 @@ PlatformDevice::PlatformDevice() : instance(CreateVulkanInstance())
 	static_cmd_pool = CreateCmdPool(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 }
 
+// Destructor.
+PlatformDevice::~PlatformDevice()
+{
+	vkDeviceWaitIdle(device.GetVkHandle());
+}
+
 // Move constructor.
 PlatformDevice::PlatformDevice(PlatformDevice&&) noexcept = default;
 
@@ -476,8 +482,9 @@ ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::u
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
 //    @param viewport - reference to UI viewport containing rendering area.
+//    @param vsync - boolean whether to enable vertical synchronization or not.
 //    @return - new display object or error if failed.
-ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewport)
+ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewport, bool vsync)
 {
 	// surface of the display
 	VkSurfaceKHR surface;
@@ -634,6 +641,24 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 	// the FIFO present mode is guaranteed by the spec to be supported
 	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
+	// check if immediate mode is supported
+	if (!vsync)
+	{
+		// switch back to vsync enabled state until it's known
+		// that immediate mode is supported
+		vsync = true;
+
+		// iterate all modes to find immediate one
+		for (uint32_t i = 0; i < present_mode_count; i++)
+		{
+			if (present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
+			{
+				present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+				vsync = false;
+			}
+		}
+	}
+
 	// Determine the number of VkImage's to use in the swap chain.
 	// We need to acquire only 1 presentable image at at time.
 	// Asking for minImageCount images ensures that we can acquire
@@ -772,7 +797,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 	PlatformDisplay platform_display(instance.GetVkHandle(), device.GetVkHandle(), surface, swap_chain, image_count);
 
 	// create final display object
-	Display out_display(ut::Move(platform_display), ut::Move(targets), width, height);
+	Display out_display(ut::Move(platform_display), ut::Move(targets), width, height, vsync);
 
 	// retreive first buffer id to be filled
 	out_display.current_buffer_id = out_display.AcquireNextBuffer();
@@ -1242,16 +1267,18 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 		throw ut::Error(ut::error::invalid_arg, "Render: only dynamic command buffers support present.");
 	}
 
-	VkSemaphore wait_sempahores[skMaxVkSwapchainPresent];
-	VkSemaphore signal_sempahores[skMaxVkSwapchainPresent];
-
+	VkSemaphore wait_semaphores[skMaxVkSwapchainPresent];
+	VkSemaphore signal_semaphores[skMaxVkSwapchainPresent];
 	
 	for (ut::uint32 i = 0; i < display_count; i++)
 	{
-		ut::uint32 swap_id = present_queue[i]->swap_count;
-		const ut::uint32 current_buffer_id = present_queue[i]->current_buffer_id;
-		wait_sempahores[i] = present_queue[i]->availability_semaphores[swap_id].GetVkHandle();
-		signal_sempahores[i] = present_queue[i]->present_ready_semaphores[current_buffer_id].GetVkHandle();
+		Display& display = present_queue[i].Get();
+
+		ut::uint32 swap_id = display.swap_count;
+		wait_semaphores[i] = display.availability_semaphores[swap_id].GetVkHandle();
+
+		const ut::uint32 current_buffer_id = display.current_buffer_id;
+		signal_semaphores[i] = display.present_ready_semaphores[current_buffer_id].GetVkHandle();
 	}
 
 	const VkCommandBuffer cmd_bufs[] = { cmd_buffer.buffer.GetVkHandle() };
@@ -1260,12 +1287,12 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 	submit_info[0].pNext = nullptr;
 	submit_info[0].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info[0].waitSemaphoreCount = display_count;
-	submit_info[0].pWaitSemaphores = wait_sempahores;
+	submit_info[0].pWaitSemaphores = wait_semaphores;
 	submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
 	submit_info[0].commandBufferCount = 1;
 	submit_info[0].pCommandBuffers = cmd_bufs;
 	submit_info[0].signalSemaphoreCount = display_count;
-	submit_info[0].pSignalSemaphores = signal_sempahores;
+	submit_info[0].pSignalSemaphores = signal_semaphores;
 
 	// get fence of the dynamic buffer
 	VkFence fence = VK_NULL_HANDLE;
@@ -1300,7 +1327,7 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 		present.pSwapchains = swapchains;
 		present.pImageIndices = swapchain_buffer_indices;
 		present.waitSemaphoreCount = display_count;
-		present.pWaitSemaphores = signal_sempahores;
+		present.pWaitSemaphores = signal_semaphores;
 		present.pResults = nullptr;
 
 		// present

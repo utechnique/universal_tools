@@ -26,7 +26,13 @@ DesktopViewport::DesktopViewport(Id viewport_id,
 // Destructors, close signal is triggered here.
 DesktopViewport::~DesktopViewport()
 {
-    close_signal(id);
+	CloseSignal();
+}
+
+// Forces viewport to make closure signal.
+void DesktopViewport::CloseSignal()
+{
+	close_signal(id);
 }
 
 // Overriden virtual function of the base class (Fl_Window).

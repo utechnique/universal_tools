@@ -2,6 +2,7 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_viewport_mgr.h"
+#include "systems/render/engine/ve_render_cfg.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -104,8 +105,12 @@ void ViewportManager::SyncViewportEvents()
 ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::CreateDisplay(Device& device,
                                                                                          ui::PlatformViewport& viewport)
 {
+	// load config file
+	Config<Settings> config;
+	config.Load();
+
 	// create display for the viewport in the render thread
-	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport);
+	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport, config->vsync);
 	if (!display_result)
 	{
 		return ut::MakeError(display_result.MoveAlt());

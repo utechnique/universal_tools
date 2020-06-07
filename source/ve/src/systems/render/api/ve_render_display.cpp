@@ -9,11 +9,14 @@ START_NAMESPACE(render)
 // Constructor.
 Display::Display(PlatformDisplay platform_display,
                  ut::Array<Target> display_targets,
-                 ut::uint32 w, ut::uint32 h) : PlatformDisplay(ut::Move(platform_display))
-                                             , targets(ut::Move(display_targets))
-                                             , width(w)
-                                             , height(h)
-                                             , current_buffer_id(0)
+                 ut::uint32 display_width,
+                 ut::uint32 display_height,
+                 bool vertical_sync) : PlatformDisplay(ut::Move(platform_display))
+                                     , targets(ut::Move(display_targets))
+                                     , width(display_width)
+                                     , height(display_height)
+                                     , current_buffer_id(0)
+                                     , vsync(vertical_sync)
 {}
 
 // Move constructor.

@@ -29,7 +29,7 @@ RenderSystem::RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread,
 // Destructor. Engine is destructed in the render thread.
 RenderSystem::~RenderSystem()
 {
-	render_thread->Enqueue([&](Device& device) { ut::this_thread::Sleep(2000); device.WaitIdle(); engine.Delete(); });
+	render_thread->Enqueue([&](Device& device) { device.WaitIdle(); engine.Delete(); });
 }
 
 // Draws all renderable components.

@@ -9,6 +9,23 @@ START_NAMESPACE(render)
 // Constructor.
 Engine::Engine(Device& device, ViewportManager viewport_mgr) : ViewportManager(ut::Move(viewport_mgr))
 {
+	// load configuration file
+	ut::Optional<ut::Error> load_cfg_error = config.Load();
+	if (load_cfg_error)
+	{
+		const ut::error::Code error_code = load_cfg_error.Get().GetCode();
+		if (error_code == ut::error::no_such_file)
+		{
+			ut::log << "Render config file is absent. Using default configuration..." << ut::cret;
+			config.Save();
+		}
+		else
+		{
+			ut::log << "Fatal error while loading render config file." << ut::cret;
+			throw load_cfg_error.Move();
+		}
+	}
+
 	// fill command buffer info
 	CmdBufferInfo cmd_buffer_info;
 	cmd_buffer_info.usage = CmdBufferInfo::usage_once;

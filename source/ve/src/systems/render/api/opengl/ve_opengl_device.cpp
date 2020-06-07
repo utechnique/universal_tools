@@ -24,11 +24,13 @@ PlatformDevice& PlatformDevice::operator =(PlatformDevice&&) noexcept = default;
 //    @param src_attachment_id - id of the attachment in @src_framebuffer.
 //    @param width - width of the backbuffer in pixels.
 //    @param height - height of the backbuffer in pixels.
+//    @param vsync - whether to use vertical synchronization.
 void PlatformDevice::Present(OpenGLWindow& window,
                              GlRc<gl::framebuffer>::Handle src_framebuffer,
                              GLenum src_attachment_id,
                              GLint width,
-                             GLint height)
+                             GLint height,
+                             bool vsync)
 {
     // lock UI thread - singlethreaded UI like X11 can't present
     // simultaneously with processing other UI events
@@ -57,7 +59,7 @@ void PlatformDevice::Present(OpenGLWindow& window,
 		              GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
 	// swap back and front buffers and draw
-	window.SwapBuffer(true);
+	window.SwapBuffer(vsync);
 
 	// set context back to windowless mode
 	make_current_error = context->MakeCurrent();
@@ -105,8 +107,9 @@ ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::u
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
 //    @param viewport - reference to UI viewport containing rendering area.
+//    @param vsync - boolean whether to enable vertical synchronization or not.
 //    @return - new display object or error if failed.
-ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewport)
+ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewport, bool vsync)
 {
 	// get size of the viewport
 	const ut::uint32 width = static_cast<ut::uint32>(viewport.w());
@@ -133,7 +136,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 	}
 
 	// success
-	return Display(PlatformDisplay(OpenGLWindow(viewport)), ut::Move(display_targets), width, height);
+	return Display(PlatformDisplay(OpenGLWindow(viewport)), ut::Move(display_targets), width, height, vsync);
 }
 
 // Creates an empty command buffer.
@@ -315,7 +318,8 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 			        request.Get().framebuffer,
 			        request.Get().attachment_id,
 			        static_cast<GLint>(display.GetWidth()),
-			        static_cast<GLint>(display.GetHeight()));
+			        static_cast<GLint>(display.GetHeight()),
+			        display.vsync);
 
 			// only one present per display
 			break;

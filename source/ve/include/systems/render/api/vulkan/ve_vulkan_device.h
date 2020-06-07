@@ -19,8 +19,11 @@ class Display;
 class PlatformDevice
 {
 public:
-	// Constructor
+	// Constructor.
 	PlatformDevice();
+
+	// Destructor.
+	~PlatformDevice();
 
 	// Move constructor.
 	PlatformDevice(PlatformDevice&&) noexcept;

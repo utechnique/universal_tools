@@ -15,6 +15,7 @@ START_NAMESPACE(ui)
 // ve::ui::DestopViewport is a viewport for desktop applications.
 class DesktopViewport : public Viewport, public Fl_Window
 {
+	friend class DesktopFrontend;
 public:
 	// Every viewport must have unique id.
 	typedef ut::uint32 Id;
@@ -32,6 +33,8 @@ public:
     ~DesktopViewport();
 
 private:
+	// Forces viewport to call closure signal.
+	void CloseSignal();
 
 	// Overriden virtual function of the base class (Fl_Window).
 	// Resize signal is triggered here.

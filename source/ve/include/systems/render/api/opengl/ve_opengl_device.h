@@ -39,11 +39,13 @@ public:
 	//    @param src_attachment_id - id of the attachment in @src_framebuffer.
 	//    @param width - width of the backbuffer in pixels.
 	//    @param height - height of the backbuffer in pixels.
+	//    @param vsync - whether to use vertical synchronization.
 	void Present(OpenGLWindow& window,
 	             GlRc<gl::framebuffer>::Handle src_framebuffer,
 	             GLenum src_attachment_id,
 	             GLint width,
-	             GLint height);
+	             GLint height,
+	             bool vsync);
 
 protected:
 	ut::UniquePtr<Context> context;

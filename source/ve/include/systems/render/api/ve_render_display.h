@@ -18,7 +18,9 @@ public:
 	// Constructor.
 	Display(PlatformDisplay platform_display,
 	        ut::Array<Target> display_targets,
-	        ut::uint32 w, ut::uint32 h);
+	        ut::uint32 display_width,
+	        ut::uint32 display_height,
+	        bool vertical_sync);
 
 	// Move constructor.
 	Display(Display&&) noexcept;
@@ -60,6 +62,9 @@ private:
 
 	// Height of the display in pixels.
 	ut::uint32 height;
+
+	// Whether vertical synchronization is enabled for this display.
+	bool vsync;
 };
 
 //----------------------------------------------------------------------------//

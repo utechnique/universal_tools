@@ -2,7 +2,7 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/ui/desktop/ve_desktop_ui.h"
-#include "ve_default.h"
+#include "systems/ui/desktop/ve_desktop_ui_cfg.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -14,86 +14,6 @@ const ut::uint32 DesktopFrontend::skMinWidth = 320;
 
 // Minimum height of the window
 const ut::uint32 DesktopFrontend::skMinHeight = 320;
-
-// Default local file path to the configuration file.
-const char* DesktopCfg::skFileName = "ui.json";
-
-//----------------------------------------------------------------------------//
-// Constructor, default values are set here.
-DesktopCfg::DesktopCfg()
-{
-	position_x = 0;
-	position_y = 0;
-	width = 640;
-	height = 480;
-}
-
-// Registers data into reflection tree.
-//    @param snapshot - reference to the reflection tree
-void DesktopCfg::Reflect(ut::meta::Snapshot& snapshot)
-{
-	snapshot.Add(position_x, "position_x");
-	snapshot.Add(position_y, "position_y");
-	snapshot.Add(width, "width");
-	snapshot.Add(height, "height");
-}
-
-// Saves to file.
-ut::Optional<ut::Error> DesktopCfg::Save()
-{
-	// create cfg directory if it doesn't exist
-	ut::CreateFolder(directories::skCfg);
-
-	// open file for writing
-	ut::File cfg_file;
-	ut::Optional<ut::Error> open_error = cfg_file.Open(GenerateFullPath(),
-	                                                   ut::file_access_write);
-	if (open_error)
-	{
-		return open_error;
-	}
-	else
-	{
-		ut::JsonDoc json_doc;
-		ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(*this);
-		cfg_file << (json_doc << cfg_snapshot);
-		cfg_file.Close();
-		ut::log << "UI Cfg file was updated." << ut::cret;
-	}
-
-	// success
-	return ut::Optional<ut::Error>();
-}
-
-// Loads from file.
-ut::Optional<ut::Error> DesktopCfg::Load()
-{
-	// open file
-	ut::File cfg_file;
-	ut::Optional<ut::Error> open_cfg_error = cfg_file.Open(GenerateFullPath(),
-	                                                       ut::file_access_read);
-	if (open_cfg_error)
-	{
-		return ut::Error(ut::error::no_such_file);
-	}
-
-	// deserialize cfg from the text document
-	ut::JsonDoc json_doc;
-	ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(*this);
-	cfg_file >> json_doc >> cfg_snapshot;
-	cfg_file.Close();
-	ut::log << "Loaded UI config file " << skFileName << "." << ut::cret;
-
-	// success
-	return ut::Optional<ut::Error>();
-}
-
-// Generates full local path to the configuration file.
-ut::String DesktopCfg::GenerateFullPath()
-{
-	return ut::String(directories::skCfg) + ut::fsep + skFileName;
-}
-
 
 //----------------------------------------------------------------------------//
 // Constructor.
@@ -142,7 +62,7 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 #endif
 
 	// get configuration copy
-	DesktopCfg cfg;
+	Config<Settings> cfg;
 	ut::Optional<ut::Error> load_error = cfg.Load();
 	if (load_error)
 	{
@@ -162,13 +82,14 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	Fl::scheme("plastic");
 
 	// create main window
-	window = ut::MakeUnique<MainWindow>(cfg.position_x,
-	                                    cfg.position_y,
-	                                    cfg.width,
-	                                    cfg.height,
+	window = ut::MakeUnique<MainWindow>(cfg->position_x,
+	                                    cfg->position_y,
+	                                    cfg->width,
+	                                    cfg->height,
 	                                    skTitle,
 	                                    window_ready);
 	window->size_range(skMinWidth, skMinHeight);
+	window->callback(DesktopFrontend::OnCloseCallback, this);
 
 	// create render area
 	Viewport::Id viewport_id = viewport_id_generator.Generate();
@@ -231,16 +152,43 @@ void DesktopFrontend::Run()
 // Saves current ui configuration to the file.
 void DesktopFrontend::SaveCfg()
 {
-	DesktopCfg cfg;
+	Config<Settings> cfg;
 
 	// main window parameters
-	cfg.position_x = window->x();
-	cfg.position_y = window->y();
-	cfg.width = window->w();
-	cfg.height = window->h();
+	cfg->position_x = window->x();
+	cfg->position_y = window->y();
+	cfg->width = window->w();
+	cfg->height = window->h();
 
 	// save to file
 	cfg.Save();
+}
+
+//----------------------------------------------------------------------------->
+// Exit callback that is called before closing the main window.
+void DesktopFrontend::OnCloseCallback(Fl_Widget* widget, void* data)
+{
+	UT_ASSERT(widget != nullptr);
+	UT_ASSERT(data != nullptr);
+	DesktopFrontend* frontend = static_cast<DesktopFrontend*>(data);
+
+	frontend->Close();
+	widget->hide();
+}
+
+//----------------------------------------------------------------------------->
+// Destroys internal resources before closing.
+void DesktopFrontend::Close()
+{
+	// make viewports to call signal slots before their windows got destroyed
+	const size_t viewport_count = viewports.GetNum();
+	for (size_t i = 0; i < viewport_count; i++)
+	{
+		UT_ASSERT(viewports[i]);
+		DesktopViewport& viewport = static_cast<DesktopViewport&>(viewports[i].GetRef());
+		viewport.CloseSignal();
+		viewport.ResetSignals();
+	}
 }
 
 //----------------------------------------------------------------------------//

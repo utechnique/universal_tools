@@ -14,38 +14,6 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
-// ve::ui::DesktopCfg is a class to save/load options and
-// preferences for ui widgets.
-class DesktopCfg : public ut::meta::Reflective
-{
-public:
-	// Constructor, default values are set here.
-	DesktopCfg();
-
-	// Registers data into reflection tree.
-	//    @param snapshot - reference to the reflection tree
-	void Reflect(ut::meta::Snapshot& snapshot);
-
-	// Saves to file.
-	ut::Optional<ut::Error> Save();
-
-	// Loads from file.
-	ut::Optional<ut::Error> Load();
-
-	// Generates full local path to the configuration file.
-	static ut::String GenerateFullPath();
-
-	// data
-	ut::uint32 position_x; // left coordinate of the window
-	ut::uint32 position_y; // top coordinate of the window
-	ut::uint32 width; // width of the window
-	ut::uint32 height; // height of the window
-
-	// default file path to the configuration file
-	static const char* skFileName;
-};
-
-//----------------------------------------------------------------------------//
 // ve::ui::MainWindow is the top-most window, container for all other
 // windows.
 class MainWindow : public Fl_Window
@@ -86,6 +54,12 @@ public:
 	void SaveCfg();
 
 private:
+	// Exit callback that is called before closing the main window.
+	static void OnCloseCallback(Fl_Widget* widget, void* data);
+
+	// Destroys internal resources before closing.
+	void Close();
+
 	// Synchronization variable to detect when widgets
 	// are initialized in fltk thread. It's triggered only when
 	// the main window receives focus. It's the only point where

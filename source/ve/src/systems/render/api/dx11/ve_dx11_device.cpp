@@ -5,8 +5,6 @@
 //----------------------------------------------------------------------------//
 #if VE_DX11
 //----------------------------------------------------------------------------//
-#include "FL/x.H" // to get viewport window descriptor
-//----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
@@ -167,8 +165,9 @@ ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::u
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
 //    @param viewport - reference to UI viewport containing rendering area.
+//    @param vsync - boolean whether to enable vertical synchronization or not.
 //    @return - new display object or error if failed.
-ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewport)
+ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewport, bool vsync)
 {
 	// extract windows handle from the viewport widget
 	const HWND hwnd = fl_xid(&viewport);
@@ -231,7 +230,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	}
 
 	// success
-	return Display(PlatformDisplay(swapchain), ut::Move(display_targets), width, height);
+	return Display(PlatformDisplay(swapchain), ut::Move(display_targets), width, height, vsync);
 }
 
 // Creates an empty command buffer.
@@ -366,7 +365,8 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 	const size_t present_count = present_queue.GetNum();
 	for (size_t i = 0; i < present_count; i++)
 	{
-		present_queue[i]->dxgi_swapchain->Present(1, 0);
+		Display& display = present_queue[i].Get();
+		display.dxgi_swapchain->Present(display.vsync ? 1 : 0, 0);
 	}
 }
 

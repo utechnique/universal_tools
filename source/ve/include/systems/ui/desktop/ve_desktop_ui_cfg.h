@@ -3,36 +3,38 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/render/ve_render_api.h"
-#include "ve_render_cfg.h"
-#include "ve_render_viewport_mgr.h"
+#include "systems/ui/ve_ui_platform.h"
+#include "ve_config.h"
+//----------------------------------------------------------------------------//
+#if VE_DESKTOP
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
-START_NAMESPACE(render)
+START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
-// ve::render::Engine is a class that can render (visualize) entities.
-class Engine : public ViewportManager
+// ve::ui::Settings is a class containing options and
+// preferences for the desktop ui widgets.
+class Settings : public ut::meta::Reflective
 {
 public:
-	// Constructor.
-	Engine(Device& device, ViewportManager viewport_mgr);
+	// Constructor, default values are set here.
+	Settings();
 
-	// Renders the whole environment to the internal images and presents
-	// the result to user.
-	void ProcessNextFrame(Device& device);
+	// Registers data into reflection tree.
+	//    @param snapshot - reference to the reflection tree
+	void Reflect(ut::meta::Snapshot& snapshot);
 
-	// Function for recording all commands needed to draw current frame.
-	void RecordFrameCommands(Context& context);
-
-private:
-	ut::UniquePtr<render::CmdBuffer> cmd_buffer;
-	ut::Array< ut::Color<4> > backbuffer_clear_values;
-	Config<Settings> config;
+	// data
+	ut::uint32 position_x; // left coordinate of the window
+	ut::uint32 position_y; // top coordinate of the window
+	ut::uint32 width; // width of the window
+	ut::uint32 height; // height of the window
 };
 
 //----------------------------------------------------------------------------//
-END_NAMESPACE(render)
+END_NAMESPACE(ui)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_DESKTOP
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
