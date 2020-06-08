@@ -117,7 +117,7 @@ private:
 		uint32 writers;
 		uint32 read_waiters;
 		uint32 write_waiters;
-	}
+	};
 #else
 	#error ut::RWLock::Data is not implemented
 #endif

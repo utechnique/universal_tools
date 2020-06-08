@@ -81,7 +81,7 @@ Optional<Error> Mutex::Create()
 #if UT_WINDOWS
 	InitializeCriticalSection(&cs.Get());
 #elif UT_UNIX
-	int result = pthread_mutex_init(&mutex.Get(), NULL);
+	int result = pthread_mutex_init(&cs.Get(), NULL);
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));

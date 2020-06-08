@@ -108,7 +108,7 @@ void RWLock::Lock(Access access)
 			if (data->readers || data->writers)
 			{
 				data->write_waiters++;
-				do pthread_cond_wait(&data->write, &lock);
+				do pthread_cond_wait(&data->write, &data->lock);
 				while (data->readers || data->writers);
 				data->write_waiters--;
 			}
