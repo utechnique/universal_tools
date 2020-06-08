@@ -33,14 +33,14 @@ Optional<Error> Server::Run()
 	Optional<Error> bind_error = socket->Bind();
 	if (bind_error)
 	{
-		return Error(bind_error.Get().GetCode(), "Failed to bind server socket.");
+		return Error(bind_error->GetCode(), "Failed to bind server socket.");
 	}
 	
 	// start listening clients
 	Optional<ut::Error> listen_error = socket->Listen();
 	if (listen_error)
 	{
-		return Error(listen_error.Get().GetCode(), "Server socket failed to listen connections.");
+		return Error(listen_error->GetCode(), "Server socket failed to listen connections.");
 	}
 
 	// activate host

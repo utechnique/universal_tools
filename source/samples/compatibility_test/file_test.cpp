@@ -42,19 +42,19 @@ void CreateFolderTask::Execute()
 	{
 		if (create_dir_error_0)
 		{
-			report += ut::String("failed 0:\n") + create_dir_error_0.Get().GetDesc();
+			report += ut::String("failed 0:\n") + create_dir_error_0->GetDesc();
 		}
 		else if (create_dir_error_1)
 		{
-			report += ut::String("failed 1:\n") + create_dir_error_1.Get().GetDesc();
+			report += ut::String("failed 1:\n") + create_dir_error_1->GetDesc();
 		}
 		else if (create_dir_error_2)
 		{
-			report += ut::String("failed 2:\n") + create_dir_error_2.Get().GetDesc();
+			report += ut::String("failed 2:\n") + create_dir_error_2->GetDesc();
 		}
 		else
 		{
-			report += ut::String("failed 3:\n") + create_dir_error_3.Get().GetDesc();
+			report += ut::String("failed 3:\n") + create_dir_error_3->GetDesc();
 		}
 
 		failed_test_counter.Increment();
@@ -77,7 +77,7 @@ void CreateFileTask::Execute()
 	ut::Optional<ut::Error> open_error = file.Open(g_test_dir + mbfn, ut::file_access_write);
 	if (open_error)
 	{
-		report += ut::String("failed to open a file:\n") + open_error.Get().GetDesc();
+		report += ut::String("failed to open a file:\n") + open_error->GetDesc();
 	}
 	file << "hello";
 
@@ -109,15 +109,15 @@ void CopyFileTask::Execute()
 	{
 		if (copy_error_0)
 		{
-			report += ut::String("failed:\n") + copy_error_0.Get().GetDesc();
+			report += ut::String("failed:\n") + copy_error_0->GetDesc();
 		}
 		else if (copy_error_1)
 		{
-			report += ut::String("failed:\n") + copy_error_1.Get().GetDesc();
+			report += ut::String("failed:\n") + copy_error_1->GetDesc();
 		}
 		else
 		{
-			report += ut::String("failed:\n") + copy_error_2.Get().GetDesc();
+			report += ut::String("failed:\n") + copy_error_2->GetDesc();
 		}
 		failed_test_counter.Increment();
 	}
@@ -138,7 +138,7 @@ void RenameFileTask::Execute()
 	}
 	else
 	{
-		report += ut::String("failed:\n") + rename_error.Get().GetDesc();
+		report += ut::String("failed:\n") + rename_error->GetDesc();
 		failed_test_counter.Increment();
 	}
 }
@@ -158,7 +158,7 @@ void RemoveDirectoryTask::Execute()
 	}
 	else
 	{
-		report += ut::String("failed:\n") + remove_error.Get().GetDesc();
+		report += ut::String("failed:\n") + remove_error->GetDesc();
 		failed_test_counter.Increment();
 	}
 }
@@ -185,7 +185,7 @@ void BinaryFileOpsTask::Execute()
 	{
 		if (open_error)
 		{
-			report += ut::String("failed:\n") + open_error.Get().GetDesc();
+			report += ut::String("failed:\n") + open_error->GetDesc();
 		}
 		else
 		{
@@ -211,7 +211,7 @@ void FileTestCleanupTask::Execute()
 	}
 	else
 	{
-		report += ut::String("failed:\n") + remove_error.Get().GetDesc();
+		report += ut::String("failed:\n") + remove_error->GetDesc();
 		failed_test_counter.Increment();
 	}
 }

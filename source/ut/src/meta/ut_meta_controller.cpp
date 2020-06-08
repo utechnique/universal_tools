@@ -504,7 +504,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 	if (uniforms.id)
 	{
 		size_t id = static_cast<size_t>(uniforms.id.Get());
-		Optional<Error> add_link_error = linker->AddLink(node.Get().data.parameter, id);
+		Optional<Error> add_link_error = linker->AddLink(node->data.parameter, id);
 		if (add_link_error)
 		{
 			return MakeError(add_link_error.Move());
@@ -1191,7 +1191,7 @@ Optional<Snapshot&> Controller::FindSiblingNode(Snapshot& node, const Optional<S
 	Optional<Snapshot&> parent = node.GetParent();
 	if (parent)
 	{
-		Optional<Snapshot&> find_result = parent.Get().FindChildByName(name.Get());
+		Optional<Snapshot&> find_result = parent->FindChildByName(name.Get());
 		if (find_result)
 		{
 			return find_result;
