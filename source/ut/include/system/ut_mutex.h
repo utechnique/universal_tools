@@ -54,7 +54,7 @@ private:
 	void Destroy();
 
 	// platform-specific critical section object
-	ut::Optional<PlatformCriticalSection> cs;
+	ut::Optional<PlatformCriticalSection> platform_cs;
 };
 
 //----------------------------------------------------------------------------//

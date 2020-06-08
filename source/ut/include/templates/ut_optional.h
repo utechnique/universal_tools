@@ -41,12 +41,13 @@ public:
 	}
 
 	// Move constructor
-	Optional(Optional && copy) noexcept : has_value(copy.has_value)
+	Optional(Optional&& other) noexcept : has_value(other.has_value)
 	{
 		if (has_value)
 		{
-			new (&value)ValueType(ut::Move(copy.value));
+			new (&value)ValueType(ut::Move(other.value));
 		}
+		other.Empty();
 	}
 
 	// Assignment operator
@@ -87,6 +88,8 @@ public:
 		}
 
 		has_value = other.has_value;
+
+		other.Empty();
 
 		return *this;
 	}

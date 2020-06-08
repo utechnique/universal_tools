@@ -6,7 +6,7 @@
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // Default constructor, platform-specific object is constructed here
-ConditionVariable::ConditionVariable()
+ConditionVariable::ConditionVariable() : platform_cv(PlatformCvType())
 {
 	Optional<Error> creation_error = Create();
 	if (creation_error)
@@ -17,17 +17,15 @@ ConditionVariable::ConditionVariable()
 
 //----------------------------------------------------------------------------->
 // Move constructor
-ConditionVariable::ConditionVariable(ConditionVariable&& other) noexcept : platform_cv(other.platform_cv.Move())
-{
-	other.platform_cv = ut::Optional<PlatformCvType>();
-}
+ConditionVariable::ConditionVariable(ConditionVariable&& other) noexcept : platform_cv(Move(other.platform_cv))
+{}
+
 //----------------------------------------------------------------------------->
 // Move operator
 ConditionVariable& ConditionVariable::operator = (ConditionVariable&& other) noexcept
 {
 	Destroy();
-	platform_cv = other.platform_cv.Move();
-	other.platform_cv = ut::Optional<PlatformCvType>();
+	platform_cv = Move(other.platform_cv);
 	return *this;
 }
 
@@ -46,9 +44,9 @@ ConditionVariable::~ConditionVariable()
 void ConditionVariable::Wait(ScopeLock& lock)
 {
 #if UT_WINDOWS
-	SleepConditionVariableCS(&platform_cv.Get(), &lock.mutex.cs.Get(), INFINITE);
+	SleepConditionVariableCS(&platform_cv.Get(), &lock.mutex.platform_cs.Get(), INFINITE);
 #elif UT_UNIX
-	pthread_cond_wait(&platform_cv.Get(), &lock.mutex.cs.Get());
+	pthread_cond_wait(&platform_cv.Get(), &lock.mutex.platform_cs.Get());
 #else
 #error ut::ConditionVariable::Wait() is not implemented
 #endif

@@ -6,7 +6,7 @@
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // Default constructor, platform-specific object is constructed here
-Mutex::Mutex()
+Mutex::Mutex() : platform_cs(PlatformCriticalSection())
 {
 	Optional<Error> creation_error = Create();
 	if (creation_error)
@@ -17,17 +17,15 @@ Mutex::Mutex()
 
 //----------------------------------------------------------------------------->
 // Move constructor
-Mutex::Mutex(Mutex&& other) noexcept : cs(other.cs.Move())
-{
-	other.cs = ut::Optional<PlatformCriticalSection>();
-}
+Mutex::Mutex(Mutex&& other) noexcept : platform_cs(Move(other.platform_cs))
+{}
+
 //----------------------------------------------------------------------------->
 // Move operator
 Mutex& Mutex::operator = (Mutex&& other) noexcept
 {
 	Destroy();
-	cs = other.cs.Move();
-	other.cs = ut::Optional<PlatformCriticalSection>();
+	platform_cs = Move(other.platform_cs);
 	return *this;
 }
 
@@ -44,9 +42,9 @@ Mutex::~Mutex()
 void Mutex::Lock()
 {
 #if UT_WINDOWS
-	EnterCriticalSection(&cs.Get());
+	EnterCriticalSection(&platform_cs.Get());
 #elif UT_UNIX
-	pthread_mutex_lock(&cs.Get());
+	pthread_mutex_lock(&platform_cs.Get());
 #else
 	#error ut::Mutex::Lock() is not implemented
 #endif
@@ -58,9 +56,9 @@ void Mutex::Lock()
 void Mutex::Unlock()
 {
 #if UT_WINDOWS
-	LeaveCriticalSection(&cs.Get());
+	LeaveCriticalSection(&platform_cs.Get());
 #elif UT_UNIX
-	pthread_mutex_unlock(&cs.Get());
+	pthread_mutex_unlock(&platform_cs.Get());
 #else
 	#error ut::Mutex::Unlock() is not implemented
 #endif
@@ -79,9 +77,9 @@ void Mutex::Sync()
 Optional<Error> Mutex::Create()
 {
 #if UT_WINDOWS
-	InitializeCriticalSection(&cs.Get());
+	InitializeCriticalSection(&platform_cs.Get());
 #elif UT_UNIX
-	int result = pthread_mutex_init(&cs.Get(), NULL);
+	int result = pthread_mutex_init(&platform_cs.Get(), NULL);
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
@@ -96,12 +94,12 @@ Optional<Error> Mutex::Create()
 // Destroys platform-specific 'mutex' object
 void Mutex::Destroy()
 {
-	if (cs)
+	if (platform_cs)
 	{
 #if UT_WINDOWS
-		DeleteCriticalSection(&cs.Get());
+		DeleteCriticalSection(&platform_cs.Get());
 #elif UT_UNIX
-		pthread_mutex_destroy(&cs.Get());
+		pthread_mutex_destroy(&platform_cs.Get());
 #else
 #error ut::Mutex::Destroy() is not implemented
 #endif

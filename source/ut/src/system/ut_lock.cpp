@@ -52,18 +52,15 @@ RWLock::RWLock() : data(PlatformData())
 
 //----------------------------------------------------------------------------->
 // Move constructor
-RWLock::RWLock(RWLock&& other) noexcept : data(other.data.Move())
-{
-	other.data = ut::Optional<PlatformData>();
-}
+RWLock::RWLock(RWLock&& other) noexcept : data(Move(other.data))
+{}
 
 //----------------------------------------------------------------------------->
 // Move operator
 RWLock& RWLock::operator = (RWLock&& other) noexcept
 {
 	Destroy();
-	data = other.data.Move();
-	other.data = ut::Optional<PlatformData>();
+	data = Move(other.data);
 	return *this;
 }
 
