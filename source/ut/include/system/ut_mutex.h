@@ -10,19 +10,18 @@ START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // ut::Mutex class is a synchronization primitive that can be used to protect
 // shared data from being simultaneously accessed by multiple threads.
-class Mutex
+class Mutex : public NonCopyable
 {
 	friend class ConditionVariable;
 public:
 	// Default constructor, platform-specific object is constructed here
 	Mutex();
 
-	// Copy constructor, creates new 'mutex' object, nothing is really copied
-	Mutex(const Mutex& copy);
+	// Move constructor
+	Mutex(Mutex&& other) noexcept;
 
-	// Assignment operator, creates new 'mutex' object,
-	// nothing is really copied, old @mutex object is deleted
-	Mutex& operator = (const Mutex &copy);
+	// Move operator
+	Mutex& operator = (Mutex&& other) noexcept;
 
 	// Destructor, platform-specific object is destructed here
 	~Mutex();
@@ -39,20 +38,23 @@ public:
 	void Sync();
 
 private:
-	// Creates platform-specific 'mutex' object, should be inline
+	// Platform-specific mutex type
+#if UT_WINDOWS
+	typedef CRITICAL_SECTION PlatformCriticalSection;
+#elif UT_UNIX
+	typedef pthread_mutex_t PlatformCriticalSection;
+#else
+#error ut::Mutex::PlatformMutexType is not implemented
+#endif
+
+	// Creates platform-specific 'mutex' object
 	Optional<Error> Create();
 
-	// Destroys platform-specific 'mutex' object, should be inline
+	// Destroys platform-specific 'mutex' object
 	void Destroy();
 
-	// variable named 'mutex' is platform-specific mutex object
-#if UT_WINDOWS
-	CRITICAL_SECTION cs;
-#elif UT_UNIX
-	pthread_mutex_t mutex; // using pthread library to obtain linux mutex
-#else
-	#error ut::Mutex is not implemented
-#endif
+	// platform-specific critical section object
+	ut::Optional<PlatformCriticalSection> cs;
 };
 
 //----------------------------------------------------------------------------//

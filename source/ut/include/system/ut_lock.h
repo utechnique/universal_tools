@@ -31,6 +31,10 @@ public:
 	//    @in_mutex - mutex to lock
 	ScopeLock(Mutex& in_mutex);
 
+	// Scope lock can't be moved.
+	ScopeLock(ScopeLock&&) = delete;
+	ScopeLock& operator = (ScopeLock&&) = delete;
+
 	// Destructor, @mutex is unlocked here
 	~ScopeLock();
 
@@ -51,8 +55,11 @@ public:
 	// Linux realization uses two conditional variables and a mutex
 	RWLock();
 
-	// Copy constructor, creates new 'RWLock' object, nothing is really copied
-	RWLock(const RWLock& copy);
+	// Move constructor
+	RWLock(RWLock&& other) noexcept;
+
+	// Move operator
+	RWLock& operator = (RWLock&& other) noexcept;
 
 	// Destructor, platform-specific synchronization primitives are destructed here
 	~RWLock();
@@ -74,42 +81,55 @@ public:
 	void Unlock(Access access);
 
 private:
-	// Creates synchronization objects
-	Optional<Error> Create();
-
+	// Platform-specific RW lock data type
 #if UT_WINDOWS
+	struct PlatformData
+	{
+		// @writer_event is used to wait writer before locking
+		HANDLE writer_event;
+
+		// @no_readers_event is set when @readers_count is null
+		// this event signals, that writer can write
+		HANDLE no_readers_event;
+
+		// @readers_count is used for counting readers
+		int readers_count;
+
+		// @writer_lock is a windows crytical section object for writers
+		CRITICAL_SECTION writer_lock;
+
+		// @writer_lock is a windows crytical section object for readers
+		CRITICAL_SECTION reader_lock;
+	};
+
 	// Windows-specific function, increases number of readers by one
 	void IncrementReaderCount();
 
 	// Windows-specific function, decreases number of readers by one
 	void DecrementReaderCount();
-
-	// @writer_event is used to wait writer before locking
-	HANDLE writer_event;
-
-	// @no_readers_event is set when @readers_count is null
-	// this event signals, that writer can write
-	HANDLE no_readers_event;
-
-	// @readers_count is used for counting readers
-	int readers_count;
-
-	// @writer_lock is a windows crytical section object for writers
-	CRITICAL_SECTION writer_lock;
-
-	// @writer_lock is a windows crytical section object for readers
-	CRITICAL_SECTION reader_lock;
 #elif UT_UNIX
-	pthread_mutex_t lock;
-	pthread_cond_t read;
-	pthread_cond_t write;
-	uint32 readers;
-	uint32 writers;
-	uint32 read_waiters;
-	uint32 write_waiters;
+	struct PlatformData
+	{
+		pthread_mutex_t lock;
+		pthread_cond_t read;
+		pthread_cond_t write;
+		uint32 readers;
+		uint32 writers;
+		uint32 read_waiters;
+		uint32 write_waiters;
+	}
 #else
-	#error ut::RWLock is not implemented
+	#error ut::RWLock::Data is not implemented
 #endif
+
+	// Creates synchronization objects
+	Optional<Error> Create();
+
+	// Destroys platform-specific data
+	void Destroy();
+
+	// Platform-specific data
+	ut::Optional<PlatformData> data;
 };
 
 //----------------------------------------------------------------------------//

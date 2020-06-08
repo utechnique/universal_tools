@@ -14,27 +14,20 @@ Mutex::Mutex()
 		throw creation_error.Move();
 	}
 }
+
 //----------------------------------------------------------------------------->
-// Copy constructor, creates new 'mutex' object
-Mutex::Mutex(const Mutex& copy)
+// Move constructor
+Mutex::Mutex(Mutex&& other) noexcept : cs(other.cs.Move())
 {
-	Optional<Error> creation_error = Create();
-	if (creation_error)
-	{
-		throw creation_error.Move();
-	}
+	other.cs = ut::Optional<PlatformCriticalSection>();
 }
 //----------------------------------------------------------------------------->
-// Assignment operator, creates new 'mutex' object,
-// nothing is really copied, old @mutex object is deleted
-Mutex& Mutex::operator = (const Mutex& copy)
+// Move operator
+Mutex& Mutex::operator = (Mutex&& other) noexcept
 {
 	Destroy();
-	Optional<Error> creation_error = Create();
-	if (creation_error)
-	{
-		throw creation_error.Move();
-	}
+	cs = other.cs.Move();
+	other.cs = ut::Optional<PlatformCriticalSection>();
 	return *this;
 }
 
@@ -51,9 +44,9 @@ Mutex::~Mutex()
 void Mutex::Lock()
 {
 #if UT_WINDOWS
-	EnterCriticalSection(&cs);
+	EnterCriticalSection(&cs.Get());
 #elif UT_UNIX
-	pthread_mutex_lock(&mutex);
+	pthread_mutex_lock(&cs.Get());
 #else
 	#error ut::Mutex::Lock() is not implemented
 #endif
@@ -65,9 +58,9 @@ void Mutex::Lock()
 void Mutex::Unlock()
 {
 #if UT_WINDOWS
-	LeaveCriticalSection(&cs);
+	LeaveCriticalSection(&cs.Get());
 #elif UT_UNIX
-	pthread_mutex_unlock(&mutex);
+	pthread_mutex_unlock(&cs.Get());
 #else
 	#error ut::Mutex::Unlock() is not implemented
 #endif
@@ -83,12 +76,12 @@ void Mutex::Sync()
 
 //----------------------------------------------------------------------------->
 // Creates platform-specific 'mutex' object
-inline Optional<Error> Mutex::Create()
+Optional<Error> Mutex::Create()
 {
 #if UT_WINDOWS
-	InitializeCriticalSection(&cs);
+	InitializeCriticalSection(&cs.Get());
 #elif UT_UNIX
-	int result = pthread_mutex_init(&mutex, NULL);
+	int result = pthread_mutex_init(&mutex.Get(), NULL);
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
@@ -101,15 +94,18 @@ inline Optional<Error> Mutex::Create()
 
 //----------------------------------------------------------------------------->
 // Destroys platform-specific 'mutex' object
-inline void Mutex::Destroy()
+void Mutex::Destroy()
 {
+	if (cs)
+	{
 #if UT_WINDOWS
-	DeleteCriticalSection(&cs);
+		DeleteCriticalSection(&cs.Get());
 #elif UT_UNIX
-	pthread_mutex_destroy(&mutex);
+		pthread_mutex_destroy(&cs.Get());
 #else
-	#error ut::Mutex::Destroy() is not implemented
+#error ut::Mutex::Destroy() is not implemented
 #endif
+	}
 }
 
 //----------------------------------------------------------------------------//

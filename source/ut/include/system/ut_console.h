@@ -31,6 +31,10 @@ private:
 	Console();
 
 public:
+	// Console can't be moved
+	Console(Console&&) = delete;
+	Console& operator = (Console&&) = delete;
+
 	// Destructor, calls Close() internally
 	~Console();
 
