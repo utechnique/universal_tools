@@ -13,7 +13,7 @@ Engine::Engine(Device& device, ViewportManager viewport_mgr) : ViewportManager(u
 	ut::Optional<ut::Error> load_cfg_error = config.Load();
 	if (load_cfg_error)
 	{
-		const ut::error::Code error_code = load_cfg_error.Get().GetCode();
+		const ut::error::Code error_code = load_cfg_error->GetCode();
 		if (error_code == ut::error::no_such_file)
 		{
 			ut::log << "Render config file is absent. Using default configuration..." << ut::cret;

@@ -66,7 +66,7 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	ut::Optional<ut::Error> load_error = cfg.Load();
 	if (load_error)
 	{
-		const ut::error::Code error_code = load_error.Get().GetCode();
+		const ut::error::Code error_code = load_error->GetCode();
 		if (error_code == ut::error::no_such_file)
 		{
 			ut::log << "UI config file is absent. Using default configuration..." << ut::cret;
@@ -123,7 +123,7 @@ void DesktopFrontend::Run()
 	ut::Optional<ut::Error> init_error = Initialize();
 	if (init_error)
 	{
-		ut::log << init_error.Get().GetDesc() + ut::cret;
+		ut::log << init_error->GetDesc() + ut::cret;
 		throw ut::Error(init_error.Move());
 	}
 

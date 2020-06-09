@@ -74,10 +74,10 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	ID3D11DepthStencilView* dsv = nullptr;
 	if (framebuffer.depth_stencil_target)
 	{
-		dsv = framebuffer.depth_stencil_target.Get().dsv.Get();
+		dsv = framebuffer.depth_stencil_target->dsv.Get();
 
 		// clear depth and stencil
-		if (render_pass.depth_stencil_slot.Get().load_op == RenderTargetSlot::load_clear)
+		if (render_pass.depth_stencil_slot->load_op == RenderTargetSlot::load_clear)
 		{
 			d3d11_context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
 			                                     depth_clear_value, stencil_clear_value);

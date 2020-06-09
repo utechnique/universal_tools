@@ -203,7 +203,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	// check width and height of the depth target
 	if (depth_stencil_target)
 	{
-		const ImageInfo& img_info = depth_stencil_target.Get().buffer.GetInfo();
+		const ImageInfo& img_info = depth_stencil_target->buffer.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "OpenGL: different width/height for the framebuffer."));
@@ -239,7 +239,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	{
 		glFramebufferTexture(GL_FRAMEBUFFER_EXT,
 		                     GL_DEPTH_ATTACHMENT,
-		                     depth_stencil_target.Get().buffer.GetGlHandle(),
+		                     depth_stencil_target->buffer.GetGlHandle(),
 		                     0);
 	}
 
@@ -315,8 +315,8 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 
 			// copy framebuffer contents to the display and swap buffers
 			Present(display.window,
-			        request.Get().framebuffer,
-			        request.Get().attachment_id,
+			        request->framebuffer,
+			        request->attachment_id,
 			        static_cast<GLint>(display.GetWidth()),
 			        static_cast<GLint>(display.GetHeight()),
 			        display.vsync);

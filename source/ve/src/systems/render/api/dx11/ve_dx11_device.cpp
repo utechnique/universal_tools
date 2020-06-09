@@ -297,7 +297,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	// check width and height of the depth target
 	if (depth_stencil_target)
 	{
-		const ImageInfo& img_info = depth_stencil_target.Get().buffer.GetInfo();
+		const ImageInfo& img_info = depth_stencil_target->buffer.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer."));

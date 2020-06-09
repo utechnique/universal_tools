@@ -19,7 +19,7 @@ void LaunchVirtualEnvironment()
 	if (exit_error)
 	{
 		ut::log << "Exited with error:" << ut::cret;
-		ut::log << exit_error.Get().GetDesc();
+		ut::log << exit_error->GetDesc();
 	}
 	else
 	{

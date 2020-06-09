@@ -178,7 +178,7 @@ ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(con
 			score += 1;
 		}
 
-		if (!top_scored_device || score > top_scored_device.Get().second)
+		if (!top_scored_device || score > top_scored_device->second)
 		{
 			top_scored_device = ut::Pair<VkPhysicalDevice, ut::uint32>(devices[i], score);
 		}		
@@ -186,7 +186,7 @@ ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(con
 
 	if (top_scored_device)
 	{
-		return top_scored_device.Get().first;
+		return top_scored_device->first;
 	}
 
 	return ut::Optional<VkPhysicalDevice>();
@@ -357,7 +357,7 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 	queue_info.pNext = nullptr;
 	queue_info.queueCount = 1;
 	queue_info.pQueuePriorities = queue_priorities;
-	queue_info.queueFamilyIndex = main_queue_family.Get().id;
+	queue_info.queueFamilyIndex = main_queue_family->id;
 
 	// get device extensions
 	ut::Array<const char*> extensions = GetDeviceVkInstanceExtensions();
@@ -395,7 +395,7 @@ VkRc<vk::queue> PlatformDevice::CreateQueue(vulkan_queue::FamilyType family_type
 		throw ut::Error(ut::error::not_supported, "Vulkan: queue type is not supported.");
 	}
 
-	const uint32_t family_id = family.Get().id;
+	const uint32_t family_id = family->id;
 
 	VkQueue queue;
 	vkGetDeviceQueue(device.GetVkHandle(), family_id, queue_id, &queue);
@@ -416,7 +416,7 @@ VkRc<vk::cmd_pool> PlatformDevice::CreateCmdPool(VkCommandPoolCreateFlags flags)
 	VkCommandPoolCreateInfo cmd_pool_info = {};
 	cmd_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	cmd_pool_info.pNext = nullptr;
-	cmd_pool_info.queueFamilyIndex = main_queue_family.Get().id;
+	cmd_pool_info.queueFamilyIndex = main_queue_family->id;
 	cmd_pool_info.flags = flags;
 
 	VkCommandPool out_cmd_pool;
@@ -1211,8 +1211,8 @@ void Device::Record(CmdBuffer& cmd_buffer,
 		{
 			if (render_pass && framebuffer)
 			{
-				cmd_buf_inheritance_info.renderPass = render_pass.Get().render_pass.GetVkHandle();
-				cmd_buf_inheritance_info.framebuffer = framebuffer.Get().framebuffer.GetVkHandle();
+				cmd_buf_inheritance_info.renderPass = render_pass->render_pass.GetVkHandle();
+				cmd_buf_inheritance_info.framebuffer = framebuffer->framebuffer.GetVkHandle();
 			}
 			else
 			{
