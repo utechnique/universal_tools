@@ -29,6 +29,9 @@ struct CmdSignalCombiner
 class Command : public meta::Reflective, public Polymorphic
 {
 public:
+	// Virtual destructor.
+	virtual ~Command() = default;
+
 	// Serializes members of the command.
 	//    @param stream - meta stream to serialize members in.
 	virtual void Reflect(class meta::Snapshot& snapshot) = 0;

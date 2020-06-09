@@ -36,7 +36,7 @@ Optional<Error> WriteLinkTask::Execute(Linker& linker)
 	}
 
 	// write id
-	return linker.WriteLinkId(state, dst_link.Get().id);
+	return linker.WriteLinkId(state, dst_link->id);
 }
 
 //----------------------------------------------------------------------------//
@@ -72,7 +72,7 @@ Optional<Error> ReadLinkTask::Execute(Linker& linker)
 	{
 		// add log event
 		String error_desc = "Couldn't find linked parameter with id \"";
-		error_desc += Print(src_result.Get().id) + "\" by id: " + Print(destination_id);
+		error_desc += Print(src_result->id) + "\" by id: " + Print(destination_id);
 
 		// exit
 		return Error(error::not_found, error_desc);
@@ -116,7 +116,7 @@ Optional<Error> ReadSharedPtrLinkTask::Execute(Linker& linker)
 	{
 		// add log event
 		String error_desc = "Couldn't find shared linked parameter with id \"";
-		error_desc += Print(src_result.Get().id) + "\" by id: " + Print(destination_id);
+		error_desc += Print(src_result->id) + "\" by id: " + Print(destination_id);
 
 		// exit
 		return Error(error::not_found, error_desc);

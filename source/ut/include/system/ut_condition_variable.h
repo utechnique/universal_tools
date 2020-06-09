@@ -17,12 +17,11 @@ public:
 	// Default constructor, platform-specific object is constructed here
 	ConditionVariable();
 
-	// Copy constructor, creates new synchronization object, nothing is really copied
-	ConditionVariable(const ConditionVariable& copy);
+	// Move constructor
+	ConditionVariable(ConditionVariable&& other) noexcept;
 
-	// Assignment operator, creates new synchronization object,
-	// nothing is really copied, old object is deleted
-	ConditionVariable& operator = (const ConditionVariable &copy);
+	// Move operator
+	ConditionVariable& operator = (ConditionVariable&& other) noexcept;
 
 	// Destructor, platform-specific object is destructed here
 	~ConditionVariable();
@@ -56,6 +55,15 @@ public:
 	void WakeAll();
 
 private:
+	// Platform-specific type of th condition variable
+#if UT_WINDOWS
+	typedef CONDITION_VARIABLE PlatformCvType;
+#elif UT_UNIX
+	typedef pthread_cond_t PlatformCvType;
+#else
+#error ut::ConditionVariable::PlatformCvType is not implemented
+#endif
+
 	// Creates platform-specific synchronization object
 	Optional<Error> Create();
 
@@ -63,13 +71,7 @@ private:
 	void Destroy();
 
 	// variable named 'cv' is platform-specific synchronization object
-#if UT_WINDOWS
-	CONDITION_VARIABLE cv;
-#elif UT_UNIX
-	pthread_cond_t cv;
-#else
-#error ut::ConditionVariable is not implemented
-#endif
+	ut::Optional<PlatformCvType> platform_cv;
 };
 
 //----------------------------------------------------------------------------//

@@ -41,12 +41,13 @@ public:
 	}
 
 	// Move constructor
-	Optional(Optional && copy) noexcept : has_value(copy.has_value)
+	Optional(Optional&& other) noexcept : has_value(other.has_value)
 	{
 		if (has_value)
 		{
-			new (&value)ValueType(ut::Move(copy.value));
+			new (&value)ValueType(ut::Move(other.value));
 		}
+		other.Empty();
 	}
 
 	// Assignment operator
@@ -88,6 +89,8 @@ public:
 
 		has_value = other.has_value;
 
+		other.Empty();
+
 		return *this;
 	}
 
@@ -121,11 +124,10 @@ public:
 		return *this;
 	}
 
-	// Function to check if object contains something
-	//    @return - 'true' if object owns a value
-	constexpr bool HasValue() const
+	// Inheritance operator, provides access to the owned object.
+	ValueType* operator -> ()
 	{
-		return has_value;
+		return &value;
 	}
 
 	// Comparison operator does the same as HasValue() function
@@ -133,6 +135,13 @@ public:
 	constexpr bool operator == (bool b) const
 	{
 		return has_value == b;
+	}
+
+	// Function to check if object contains something
+	//    @return - 'true' if object owns a value
+	constexpr bool HasValue() const
+	{
+		return has_value;
 	}
 
 	// Use this function to get reference to the value (if present)
@@ -210,6 +219,12 @@ public:
 	// This constructor copies @t into @value, and sets @has_value to 'true'
 	constexpr Optional(T& t) : Base(&t)
 	{}
+
+	// Inheritance operator, provides access to the owned object.
+	T* operator -> ()
+	{
+		return Base::Get();
+	}
 
 	// Use this function to get reference to the value (if present)
 	//    @return - @value reference

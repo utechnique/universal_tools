@@ -23,7 +23,7 @@ void PerformTest()
 	ut::Optional<ut::Error> log_error = ut::log.Start(g_test_dir + "log.txt", true);
 	if (log_error)
 	{
-		ut::console << "[ERROR] Failed to start log:\n" << log_error.Get().GetDesc();
+		ut::console << "[ERROR] Failed to start log:\n" << log_error->GetDesc();
 	}
 
 	// run test and handle exceptions

@@ -138,6 +138,10 @@ public:
 	//    @return - ut::Error if encountered an error
 	Optional<Error> Read(void* ptr, size_t size, size_t count);
 
+	// Synchronizes the associated stream buffer with file.
+	//    @return - error code if failed
+	Optional<Error> Flush();
+
 	// Returns size of the stream buffer or error if failed
 	Result<size_t, Error> GetSize();
 

@@ -320,7 +320,7 @@ public:
 	// Returns normalized vector
 	Matrix Normalize() const
 	{
-		Matrix out;
+		Matrix out(*this);
 		Scalar len = Length();
 		for (MatrixElementId i = 0; i < size; i++)
 		{

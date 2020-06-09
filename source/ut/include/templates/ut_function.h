@@ -64,6 +64,8 @@ protected:
 public:
 	Invoker(FunctionPtr ptr = nullptr) : function(ptr) {}
 
+	virtual ~Invoker() = default;
+
 	virtual R Invoke(Arguments... arguments) const
 	{
 		return function(Forward<Arguments>(arguments)...);

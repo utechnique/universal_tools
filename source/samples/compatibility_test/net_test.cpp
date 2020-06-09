@@ -207,7 +207,7 @@ void ServerTestJob::Execute()
 		if (bind_error)
 		{
 			ut::String err_str("    server socket bind failed:\n");
-			err_str += bind_error.Get().GetDesc() + "\n";
+			err_str += bind_error->GetDesc() + "\n";
 			report += err_str;
 			failed_test_counter.Increment();
 		}
@@ -221,7 +221,7 @@ void ServerTestJob::Execute()
 		if (listen_error)
 		{
 			ut::String err_str("    server socket listening failed:\n");
-			err_str += listen_error.Get().GetDesc() + "\n";
+			err_str += listen_error->GetDesc() + "\n";
 			report += err_str;
 			failed_test_counter.Increment();
 		}

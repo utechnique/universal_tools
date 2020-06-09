@@ -18,6 +18,9 @@ START_NAMESPACE(net)
 class Action
 {
 public:
+	// Virtual destructor.
+	virtual ~Action() = default;
+
 	// Executes an action. Must be implemented by child classes.
 	//    @param connection - connection executing current action.
 	//    @return - error if failed.

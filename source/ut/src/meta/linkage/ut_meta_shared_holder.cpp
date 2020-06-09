@@ -18,10 +18,6 @@ void* SharedPtrHolderBase::GetAddress()
 	return address;
 }
 
-// Virtual destructor.
-SharedPtrHolderBase::~SharedPtrHolderBase()
-{}
-
 //----------------------------------------------------------------------------//
 END_NAMESPACE(meta)
 END_NAMESPACE(ut)

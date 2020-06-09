@@ -153,7 +153,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 		if (open_xml_error)
 		{
 			report += "Saving xml file: failed. ";
-			report += open_xml_error.Get().GetDesc() + ut::CRet();
+			report += open_xml_error->GetDesc() + ut::CRet();
 			failed_test_counter.Increment();
 		}
 		else
@@ -177,7 +177,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 		if (open_json_error)
 		{
 			report += "Saving json file: failed. ";
-			report += open_json_error.Get().GetDesc() + ut::CRet();
+			report += open_json_error->GetDesc() + ut::CRet();
 			failed_test_counter.Increment();
 		}
 		else
@@ -201,7 +201,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 		if (open_binary_error)
 		{
 			report += "Saving binary file: failed. ";
-			report += open_binary_error.Get().GetDesc() + ut::CRet();
+			report += open_binary_error->GetDesc() + ut::CRet();
 			failed_test_counter.Increment();
 			return false;
 		}
@@ -211,7 +211,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 			if (save_error)
 			{
 				report += "Saving binary file: failed. ";
-				report += save_error.Get().GetDesc() + ut::CRet();
+				report += save_error->GetDesc() + ut::CRet();
 				failed_test_counter.Increment();
 				return false;
 			}
@@ -225,7 +225,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 	if (save_error)
 	{
 		report += ut::String("Failed to save binary object.") + ut::CRet();
-		report += save_error.Get().GetDesc();
+		report += save_error->GetDesc();
 		failed_test_counter.Increment();
 		return false;
 	}
@@ -271,7 +271,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 	if (load_error)
 	{
 		report += ut::String("Failed to load binary object:") + ut::CRet();
-		report += load_error.Get().GetDesc() + ut::CRet();
+		report += load_error->GetDesc() + ut::CRet();
 		failed_test_counter.Increment();
 		return false;
 	}

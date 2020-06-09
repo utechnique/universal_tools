@@ -47,8 +47,8 @@ public:
 	// Returns size of the stream buffer or error if failed
 	virtual Result<size_t, Error> GetSize() = 0;
 
-	// ut::Stream is a polymorphic type
-	virtual ~BaseStream() {};
+	// Virtual destructor.
+	virtual ~BaseStream() = default;
 };
 
 //----------------------------------------------------------------------------//

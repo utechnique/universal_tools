@@ -14,6 +14,7 @@ public:
 	void Execute();
 	ut::String GetName();
 	ut::String GetReport();
+	virtual ~TestUnit() = default;
 
 protected:
 	ut::String name;

@@ -21,7 +21,7 @@ void XmlTask::Execute()
 	if (parse_error)
 	{
 		report += "failed to parse file test xml document: \n";
-		report += parse_error.Get().GetDesc();
+		report += parse_error->GetDesc();
 		failed_test_counter.Increment();
 		return; // exit
 	}
@@ -35,7 +35,7 @@ void XmlTask::Execute()
 	if (save_error)
 	{
 		report += "Failed to save test xml document: ";
-		report += save_error.Get().GetDesc();
+		report += save_error->GetDesc();
 		failed_test_counter.Increment();
 	}
 	else
@@ -67,7 +67,7 @@ void JsonTask::Execute()
 	if (parse_error)
 	{
 		report += "failed to parse file test json document: \n";
-		report += parse_error.Get().GetDesc();
+		report += parse_error->GetDesc();
 		failed_test_counter.Increment();
 		return; // exit
 	}
@@ -81,7 +81,7 @@ void JsonTask::Execute()
 	if (save_error)
 	{
 		report += "Failed to save test json document: ";
-		report += save_error.Get().GetDesc();
+		report += save_error->GetDesc();
 		failed_test_counter.Increment();
 	}
 	else
@@ -115,7 +115,7 @@ void JsonTask::Execute()
 			if (save_error)
 			{
 				report += "Failed to convert test json document: ";
-				report += save_error.Get().GetDesc();
+				report += save_error->GetDesc();
 				failed_test_counter.Increment();
 			}
 			else

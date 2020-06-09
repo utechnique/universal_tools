@@ -26,6 +26,10 @@ public:
 	// Destructor, closes @file if it's opened
 	~Log();
 
+	// Log can't be moved
+	Log(Log&&) = delete;
+	Log& operator = (Log&&) = delete;
+
 	// Opens @file for logging
 	//    @param filename - path to the log file
 	//    @param console_mirror - set 'true' if you want all events

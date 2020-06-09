@@ -58,8 +58,8 @@ public:
 	OutputStream& operator << (const char* str);
 	OutputStream& operator << (const String& str);
 
-	// ut::Stream is a polymorphic type
-	virtual ~OutputStream() {};
+	// Virtual destructor.
+	virtual ~OutputStream() = default;
 };
 
 //----------------------------------------------------------------------------//

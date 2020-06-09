@@ -23,9 +23,12 @@ class Controller;
 class BaseParameter : public Reflective
 {
 public:
-	// Constructor
+	// Constructor.
 	//    @param p - pointer to the serializable data
 	BaseParameter(void* p);
+
+	// Virtual destructor.
+	virtual ~BaseParameter() = default;
 
 	// Registers children into reflection tree.
 	//    @param snapshot - reference to the reflection tree

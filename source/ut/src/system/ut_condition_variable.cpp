@@ -6,7 +6,7 @@
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // Default constructor, platform-specific object is constructed here
-ConditionVariable::ConditionVariable()
+ConditionVariable::ConditionVariable() : platform_cv(PlatformCvType())
 {
 	Optional<Error> creation_error = Create();
 	if (creation_error)
@@ -16,26 +16,16 @@ ConditionVariable::ConditionVariable()
 }
 
 //----------------------------------------------------------------------------->
-// Copy constructor, creates new synchronization object, nothing is really copied
-ConditionVariable::ConditionVariable(const ConditionVariable& copy)
-{
-	Optional<Error> creation_error = Create();
-	if (creation_error)
-	{
-		throw creation_error.Move();
-	}
-}
+// Move constructor
+ConditionVariable::ConditionVariable(ConditionVariable&& other) noexcept : platform_cv(Move(other.platform_cv))
+{}
+
 //----------------------------------------------------------------------------->
-// Assignment operator, creates new synchronization object,
-// nothing is really copied, old object is deleted
-ConditionVariable& ConditionVariable::operator = (const ConditionVariable& copy)
+// Move operator
+ConditionVariable& ConditionVariable::operator = (ConditionVariable&& other) noexcept
 {
 	Destroy();
-	Optional<Error> creation_error = Create();
-	if (creation_error)
-	{
-		throw creation_error.Move();
-	}
+	platform_cv = Move(other.platform_cv);
 	return *this;
 }
 
@@ -54,9 +44,9 @@ ConditionVariable::~ConditionVariable()
 void ConditionVariable::Wait(ScopeLock& lock)
 {
 #if UT_WINDOWS
-	SleepConditionVariableCS(&cv, &lock.mutex.cs, INFINITE);
+	SleepConditionVariableCS(&platform_cv.Get(), &lock.mutex.platform_cs.Get(), INFINITE);
 #elif UT_UNIX
-	pthread_cond_wait(&cv, &lock.mutex.mutex);
+	pthread_cond_wait(&platform_cv.Get(), &lock.mutex.platform_cs.Get());
 #else
 #error ut::ConditionVariable::Wait() is not implemented
 #endif
@@ -68,9 +58,9 @@ void ConditionVariable::Wait(ScopeLock& lock)
 void ConditionVariable::WakeOne()
 {
 #if UT_WINDOWS
-	WakeConditionVariable(&cv);
+	WakeConditionVariable(&platform_cv.Get());
 #elif UT_UNIX
-	pthread_cond_signal(&cv);
+	pthread_cond_signal(&platform_cv.Get());
 #else
 #error ut::ConditionVariable::WakeOne() is not implemented
 #endif
@@ -81,9 +71,9 @@ void ConditionVariable::WakeOne()
 void ConditionVariable::WakeAll()
 {
 #if UT_WINDOWS
-	WakeAllConditionVariable(&cv);
+	WakeAllConditionVariable(&platform_cv.Get());
 #elif UT_UNIX
-	pthread_cond_broadcast(&cv);
+	pthread_cond_broadcast(&platform_cv.Get());
 #else
 #error ut::ConditionVariable::WakeAll() is not implemented
 #endif
@@ -91,12 +81,12 @@ void ConditionVariable::WakeAll()
 
 //----------------------------------------------------------------------------->
 // Creates platform-specific 'mutex' object
-inline Optional<Error> ConditionVariable::Create()
+Optional<Error> ConditionVariable::Create()
 {
 #if UT_WINDOWS
-	InitializeConditionVariable(&cv);
+	InitializeConditionVariable(&platform_cv.Get());
 #elif UT_UNIX
-	int result = pthread_cond_init(&cv, NULL);
+	int result = pthread_cond_init(&platform_cv.Get(), NULL);
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
@@ -109,15 +99,18 @@ inline Optional<Error> ConditionVariable::Create()
 
 //----------------------------------------------------------------------------->
 // Destroys platform-specific 'mutex' object
-inline void ConditionVariable::Destroy()
+void ConditionVariable::Destroy()
 {
+	if (platform_cv)
+	{
 #if UT_WINDOWS
-	// nothing to do
+		// nothing to do
 #elif UT_UNIX
-	pthread_cond_destroy(&cv);
+		pthread_cond_destroy(&platform_cv.Get());
 #else
 #error ut::ConditionVariable::Destroy() is not implemented
 #endif
+	}
 }
 
 //----------------------------------------------------------------------------//

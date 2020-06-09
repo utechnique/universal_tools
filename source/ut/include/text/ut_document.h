@@ -24,6 +24,9 @@ public:
 	// Default constructor
 	Document();
 
+	// Virtual destructor.
+	virtual ~Document() = default;
+
 	// Parses raw text
 	//    @param doc - string with a text to be parsed
 	//    @return - ut::Error if encountered an error

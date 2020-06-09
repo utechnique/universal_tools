@@ -23,6 +23,7 @@ class Polymorphic
 {
 public:
 	virtual const class DynamicType& Identify() const = 0;
+	virtual ~Polymorphic() = default;
 };
 
 // ut::DynamicType is an abstract parent class to create unknown

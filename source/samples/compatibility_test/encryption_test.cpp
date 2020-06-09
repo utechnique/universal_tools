@@ -82,7 +82,7 @@ void AesTask::Execute()
 	if (decryption_error)
 	{
 		report += ut::String("ERROR. Failed to decrypt AES128 buffer.") + ut::cret;
-		report += decryption_error.Get().GetDesc() + ut::cret;
+		report += decryption_error->GetDesc() + ut::cret;
 		failed_test_counter.Increment();
 	}
 

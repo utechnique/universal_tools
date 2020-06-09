@@ -641,6 +641,24 @@ Optional<Error> File::Read(void* ptr, size_t size, size_t count)
 	return Optional<Error>();
 }
 
+// Synchronizes the associated stream buffer with file.
+//    @return - error code if failed
+Optional<Error> File::Flush()
+{
+	if (f == nullptr)
+	{
+		return ut::Error(ut::error::empty);
+	}
+
+	int flush_error = fflush(f);
+	if (flush_error != 0)
+	{
+		return ut::Error(ConvertErrno(flush_error));
+	}
+
+	return Optional<Error>();
+}
+
 //----------------------------------------------------------------------------->
 // Returns size of the stream buffer or error if failed
 Result<size_t, Error> File::GetSize()

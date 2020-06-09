@@ -16,7 +16,7 @@ class BaseTask
 {
 public:
 	virtual ReturnType Execute() = 0;
-	virtual ~BaseTask() {}
+	virtual ~BaseTask() = default;
 };
 
 // ut::Task is a template class that is capable to hold desired function and

@@ -28,13 +28,21 @@ ScopeLock::~ScopeLock()
 // Constructor, critical sections and condition variables are initialize here
 // Windows realization uses two critical sections and two conditional variables
 // Linux realization uses two conditional variables and a mutex
-RWLock::RWLock()
-#if UT_WINDOWS
-	: readers_count(0), writer_event(nullptr), no_readers_event(nullptr)
-#elif UT_UNIX
-	: readers(0), writers(0), read_waiters(0), write_waiters(0)
-#endif
+RWLock::RWLock() : data(PlatformData())
 {
+#if UT_WINDOWS
+	data->readers_count = 0;
+	data->writer_event = nullptr;
+	data->no_readers_event = nullptr;
+#elif UT_UNIX
+	data->readers = 0;
+	data->writers = 0;
+	data->read_waiters = 0;
+	data->write_waiters = 0;
+#else
+#error ut::RWLock::RWLock() is not implemented
+#endif
+
 	Optional<Error> creation_error = Create();
 	if (creation_error)
 	{
@@ -43,37 +51,24 @@ RWLock::RWLock()
 }
 
 //----------------------------------------------------------------------------->
-// Copy constructor, creates new 'RWLock' object, nothing is really copied
-RWLock::RWLock(const RWLock& copy)
-#if UT_WINDOWS
-	: readers_count(0), writer_event(nullptr), no_readers_event(nullptr)
-#elif UT_UNIX
-	: readers(0), writers(0), read_waiters(0), write_waiters(0)
-#endif
+// Move constructor
+RWLock::RWLock(RWLock&& other) noexcept : data(Move(other.data))
+{}
+
+//----------------------------------------------------------------------------->
+// Move operator
+RWLock& RWLock::operator = (RWLock&& other) noexcept
 {
-	Optional<Error> creation_error = Create();
-	if (creation_error)
-	{
-		throw creation_error.Move();
-	}
+	Destroy();
+	data = Move(other.data);
+	return *this;
 }
 
 //----------------------------------------------------------------------------->
 // Destructor, platform-specific synchronization primitives are destructed here
 RWLock::~RWLock(void)
 {
-#if UT_WINDOWS
-	DeleteCriticalSection(&writer_lock);
-	DeleteCriticalSection(&reader_lock);
-	CloseHandle(writer_event);
-	CloseHandle(no_readers_event);
-#elif UT_UNIX
-	pthread_mutex_destroy(&lock);
-	pthread_cond_destroy(&read);
-	pthread_cond_destroy(&write);
-#else
-	#error ut::RWLock destructor is not implemented
-#endif
+	Destroy();
 }
 
 //----------------------------------------------------------------------------->
@@ -96,25 +91,26 @@ void RWLock::Unlock(void)
 //                    see ut::Access for details
 void RWLock::Lock(Access access)
 {
+	UT_ASSERT(data);
 	if (access == access_write)
 	{
 		#if UT_WINDOWS
-			EnterCriticalSection(&writer_lock);
-			WaitForSingleObject(writer_event, INFINITE);
-			ResetEvent(writer_event);
-			WaitForSingleObject(no_readers_event, INFINITE);
-			LeaveCriticalSection(&writer_lock);
+			EnterCriticalSection(&data->writer_lock);
+			WaitForSingleObject(data->writer_event, INFINITE);
+			ResetEvent(data->writer_event);
+			WaitForSingleObject(data->no_readers_event, INFINITE);
+			LeaveCriticalSection(&data->writer_lock);
 		#elif UT_UNIX
-			pthread_mutex_lock(&lock);
-			if (readers || writers)
+			pthread_mutex_lock(&data->lock);
+			if (data->readers || data->writers)
 			{
-				write_waiters++;
-				do pthread_cond_wait(&write, &lock);
-				while (readers || writers);
-				write_waiters--;
+				data->write_waiters++;
+				do pthread_cond_wait(&data->write, &data->lock);
+				while (data->readers || data->writers);
+				data->write_waiters--;
 			}
-			writers = 1;
-			pthread_mutex_unlock(&lock);
+			data->writers = 1;
+			pthread_mutex_unlock(&data->lock);
 		#else
 			#error ut::RWLock::Lock() is not implemented
 		#endif
@@ -125,9 +121,9 @@ void RWLock::Lock(Access access)
 			bool keep_loop = true;
 			while (keep_loop)
 			{
-				WaitForSingleObject(writer_event, INFINITE);
+				WaitForSingleObject(data->writer_event, INFINITE);
 				IncrementReaderCount();
-				if (WaitForSingleObject(writer_event, 0) != WAIT_OBJECT_0)
+				if (WaitForSingleObject(data->writer_event, 0) != WAIT_OBJECT_0)
 				{
 					DecrementReaderCount();
 				}
@@ -137,16 +133,16 @@ void RWLock::Lock(Access access)
 				}
 			}
 		#elif UT_UNIX
-			pthread_mutex_lock(&lock);
-			if (writers || write_waiters)
+			pthread_mutex_lock(&data->lock);
+			if (data->writers || data->write_waiters)
 			{
-				read_waiters++;
-				do pthread_cond_wait(&read, &lock);
-				while (writers || write_waiters);
-				read_waiters--;
+				data->read_waiters++;
+				do pthread_cond_wait(&data->read, &data->lock);
+				while (data->writers || data->write_waiters);
+				data->read_waiters--;
 			}
-			readers++;
-			pthread_mutex_unlock(&lock);
+			data->readers++;
+			pthread_mutex_unlock(&data->lock);
 		#else
 			#error ut::RWLock::Lock() is not implemented
 		#endif
@@ -163,22 +159,23 @@ void RWLock::Lock(Access access)
 //                    see ut::Access for details
 void RWLock::Unlock(Access access)
 {
+	UT_ASSERT(data);
 	if (access == access_write)
 	{
 		#if UT_WINDOWS
-			SetEvent(writer_event);
+			SetEvent(data->writer_event);
 		#elif UT_UNIX
-			pthread_mutex_lock(&lock);
-			writers = 0;
-			if (write_waiters)
+			pthread_mutex_lock(&data->lock);
+			data->writers = 0;
+			if (data->write_waiters)
 			{
-				pthread_cond_signal(&write);
+				pthread_cond_signal(&data->write);
 			}
-			else if (read_waiters)
+			else if (data->read_waiters)
 			{
-				pthread_cond_broadcast(&read);
+				pthread_cond_broadcast(&data->read);
 			}
-			pthread_mutex_unlock(&lock);
+			pthread_mutex_unlock(&data->lock);
 		#else
 			#error ut::RWLock::Unlock() is not implemented
 		#endif
@@ -188,13 +185,13 @@ void RWLock::Unlock(Access access)
 		#if UT_WINDOWS
 			DecrementReaderCount();
 		#elif UT_UNIX
-			pthread_mutex_lock(&lock);
-			readers--;
-			if (write_waiters)
+			pthread_mutex_lock(&data->lock);
+			data->readers--;
+			if (data->write_waiters)
 			{
-				pthread_cond_signal(&write);
+				pthread_cond_signal(&data->write);
 			}
-			pthread_mutex_unlock(&lock);
+			pthread_mutex_unlock(&data->lock);
 		#else
 			#error ut::RWLock::Unlock() is not implemented
 		#endif
@@ -210,34 +207,34 @@ void RWLock::Unlock(Access access)
 inline Optional<Error> RWLock::Create()
 {
 #if UT_WINDOWS
-	writer_event = CreateEvent(NULL, TRUE, TRUE, NULL);
-	if (writer_event == NULL)
+	data->writer_event = CreateEvent(NULL, TRUE, TRUE, NULL);
+	if (data->writer_event == NULL)
 	{
 		return Error(ConvertWinSysErr(GetLastError()));
 	}
 
-	no_readers_event = CreateEvent(NULL, TRUE, TRUE, NULL);
-	if (no_readers_event == NULL)
+	data->no_readers_event = CreateEvent(NULL, TRUE, TRUE, NULL);
+	if (data->no_readers_event == NULL)
 	{
 		return Error(ConvertWinSysErr(GetLastError()));
 	}
 
-	InitializeCriticalSection(&writer_lock);
-	InitializeCriticalSection(&reader_lock);
+	InitializeCriticalSection(&data->writer_lock);
+	InitializeCriticalSection(&data->reader_lock);
 #elif UT_UNIX
-	int result = pthread_mutex_init(&lock, NULL);
+	int result = pthread_mutex_init(&data->lock, nullptr);
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
 	}
 
-	result = pthread_cond_init(&read, NULL);
+	result = pthread_cond_init(&data->read, nullptr);
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
 	}
 
-	result = pthread_cond_init(&write, NULL);
+	result = pthread_cond_init(&data->write, nullptr);
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
@@ -249,14 +246,33 @@ inline Optional<Error> RWLock::Create()
 }
 
 //----------------------------------------------------------------------------->
+// Destroys platform-specific data
+void RWLock::Destroy()
+{
+	PlatformData& platform_data = data.Get();
+#if UT_WINDOWS
+	DeleteCriticalSection(&data->writer_lock);
+	DeleteCriticalSection(&data->reader_lock);
+	CloseHandle(data->writer_event);
+	CloseHandle(data->no_readers_event);
+#elif UT_UNIX
+	pthread_mutex_destroy(&data->lock);
+	pthread_cond_destroy(&data->read);
+	pthread_cond_destroy(&data->write);
+#else
+#error ut::RWLock::Destroy() is not implemented
+#endif
+}
+
+//----------------------------------------------------------------------------->
 // Windows-specific function, increases number of readers by one
 #if UT_WINDOWS
 void RWLock::IncrementReaderCount()
 {
-	EnterCriticalSection(&reader_lock);
-	readers_count++;
-	ResetEvent(no_readers_event);
-	LeaveCriticalSection(&reader_lock);
+	EnterCriticalSection(&data->reader_lock);
+	data->readers_count++;
+	ResetEvent(data->no_readers_event);
+	LeaveCriticalSection(&data->reader_lock);
 }
 #endif // UT_WINDOWS
 
@@ -265,13 +281,13 @@ void RWLock::IncrementReaderCount()
 #if UT_WINDOWS
 void RWLock::DecrementReaderCount()
 {
-	EnterCriticalSection(&reader_lock);
-	readers_count--;
-	if (readers_count <= 0)
+	EnterCriticalSection(&data->reader_lock);
+	data->readers_count--;
+	if (data->readers_count <= 0)
 	{
-		SetEvent(no_readers_event);
+		SetEvent(data->no_readers_event);
 	}
-	LeaveCriticalSection(&reader_lock);
+	LeaveCriticalSection(&data->reader_lock);
 }
 #endif // UT_WINDOWS
 
