@@ -75,11 +75,6 @@ uint32 GetNumberOfProcessors()
 Job::Job() : exit_request(false)
 {}
 
-//---------------------------------------------------------------------------->
-// Destructor is virtual, ut::Job is polymorphic type
-Job::~Job()
-{}
-
 //----------------------------------------------------------------------------->
 // Safely sets exit_request to 'true', can be called from another thread
 void Job::Exit()

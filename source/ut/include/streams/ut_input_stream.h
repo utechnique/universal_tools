@@ -53,9 +53,8 @@ public:
 	//    @return - line that was read from the stream, or error if failure occurred
 	Result<String, Error> GetLine();
 
-
-	// ut::Stream is a polymorphic type
-	virtual ~InputStream() {};
+	// Virtual destructor.
+	virtual ~InputStream() = default;
 };
 
 //----------------------------------------------------------------------------//

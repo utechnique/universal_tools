@@ -19,6 +19,9 @@ class Snapshot;
 class Reflective
 {
 public:
+	// Virtual destructor.
+	virtual ~Reflective() = default;
+
 	// Registers parameters to the reflection tree.
 	virtual void Reflect(Snapshot& snapshot) = 0;
 

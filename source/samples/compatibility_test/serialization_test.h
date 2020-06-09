@@ -59,6 +59,8 @@ public:
 	void Reflect(ut::meta::Snapshot& snapshot);
 
 	float fval;
+
+	virtual ~TestBase() = default;
 };
 
 //----------------------------------------------------------------------------//
@@ -70,6 +72,8 @@ public:
 	virtual void Reflect(ut::meta::Snapshot& snapshot);
 
 	ut::String base_str;
+
+	virtual ~ReflectiveBase() = default;
 };
 
 //----------------------------------------------------------------------------//
@@ -81,6 +85,8 @@ public:
 	virtual void Reflect(ut::meta::Snapshot& snapshot);
 
 	ut::String base_str;
+
+	virtual ~ReflectiveBaseAlt() = default;
 };
 
 //----------------------------------------------------------------------------//
@@ -93,6 +99,8 @@ public:
 
 	ut::int32  ival;
 	ut::uint32 uval;
+
+	virtual ~PolymorphicA() = default;
 };
 
 //----------------------------------------------------------------------------//
@@ -105,6 +113,8 @@ public:
 
 	ut::String  str;
 	ut::uint16 uval;
+
+	virtual ~PolymorphicB() = default;
 };
 
 //----------------------------------------------------------------------------//
@@ -116,6 +126,8 @@ public:
 	void Reflect(ut::meta::Snapshot& snapshot);
 
 	ut::String str_c;
+
+	virtual ~PolymorphicC() = default;
 };
 
 //----------------------------------------------------------------------------//
@@ -127,6 +139,8 @@ public:
 	void Reflect(ut::meta::Snapshot& snapshot);
 
 	ut::int16 ival16_d;
+
+	virtual ~PolymorphicD() = default;
 };
 
 //----------------------------------------------------------------------------//
@@ -138,6 +152,8 @@ public:
 	void Reflect(ut::meta::Snapshot& snapshot);
 
 	ut::String str_e;
+
+	virtual ~PolymorphicE() = default;
 };
 
 //----------------------------------------------------------------------------//
@@ -150,6 +166,8 @@ public:
 
 	ut::int32  ival;
 	ut::uint32 uval;
+
+
 };
 
 //----------------------------------------------------------------------------//

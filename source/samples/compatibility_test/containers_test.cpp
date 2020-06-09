@@ -827,17 +827,17 @@ void PairTask::Execute()
 SmartPtrTask::SmartPtrTask() : TestTask("Smart pointers")
 { }
 
-struct TestBase
+struct ContainerTestBase
 {
 	int a;
 };
 
-struct TestDerived : public TestBase
+struct ContainerTestDerived : public ContainerTestBase
 {
 	int b;
 };
 
-struct TestAnother
+struct ContainerTestAnother
 {
 	int a;
 };
@@ -845,9 +845,9 @@ struct TestAnother
 void SmartPtrTask::Execute()
 {
 	// must be compilable
-	ut::UniquePtr<TestAnother> other = ut::MakeUnique<TestAnother>();
-	ut::UniquePtr<TestDerived> derived = ut::MakeUnique<TestDerived>();
-	ut::UniquePtr<TestBase> base(ut::Move(derived));
+	ut::UniquePtr<ContainerTestAnother> other = ut::MakeUnique<ContainerTestAnother>();
+	ut::UniquePtr<ContainerTestDerived> derived = ut::MakeUnique<ContainerTestDerived>();
+	ut::UniquePtr<ContainerTestBase> base(ut::Move(derived));
 	base = ut::Move(derived);
 
 	// must be non-compilable
@@ -855,14 +855,14 @@ void SmartPtrTask::Execute()
 	//base = ut::Move(other);
 
 	// must be compilable
-	ut::SharedPtr<TestAnother, ut::thread_safety::on> sh_other_safe = ut::MakeSafeShared<TestAnother>();
-	ut::SharedPtr<TestDerived, ut::thread_safety::on> sh_derived_safe = ut::MakeSafeShared<TestDerived>();
-	ut::SharedPtr<TestBase, ut::thread_safety::on> sh_base_safe(ut::Move(sh_derived_safe));
+	ut::SharedPtr<ContainerTestAnother, ut::thread_safety::on> sh_other_safe = ut::MakeSafeShared<ContainerTestAnother>();
+	ut::SharedPtr<ContainerTestDerived, ut::thread_safety::on> sh_derived_safe = ut::MakeSafeShared<ContainerTestDerived>();
+	ut::SharedPtr<ContainerTestBase, ut::thread_safety::on> sh_base_safe(ut::Move(sh_derived_safe));
 	sh_base_safe = ut::Move(sh_derived_safe);
 
-	ut::SharedPtr<TestAnother, ut::thread_safety::off> sh_other_unsafe = ut::MakeUnsafeShared<TestAnother>();
-	ut::SharedPtr<TestDerived, ut::thread_safety::off> sh_derived_unsafe = ut::MakeUnsafeShared<TestDerived>();
-	ut::SharedPtr<TestBase, ut::thread_safety::off> sh_base_unsafe(ut::Move(sh_derived_unsafe));
+	ut::SharedPtr<ContainerTestAnother, ut::thread_safety::off> sh_other_unsafe = ut::MakeUnsafeShared<ContainerTestAnother>();
+	ut::SharedPtr<ContainerTestDerived, ut::thread_safety::off> sh_derived_unsafe = ut::MakeUnsafeShared<ContainerTestDerived>();
+	ut::SharedPtr<ContainerTestBase, ut::thread_safety::off> sh_base_unsafe(ut::Move(sh_derived_unsafe));
 	sh_base_unsafe = ut::Move(sh_derived_unsafe);
 
 	// must be non-compilable
@@ -875,15 +875,15 @@ void SmartPtrTask::Execute()
 	*/
 
 	// must be compilable
-	ut::WeakPtr<TestAnother, ut::thread_safety::on> wk_other_safe;
-	ut::WeakPtr<TestDerived, ut::thread_safety::on> wk_derived_safe;
-	ut::WeakPtr<TestBase, ut::thread_safety::on> wk_base_safe = wk_derived_safe;
+	ut::WeakPtr<ContainerTestAnother, ut::thread_safety::on> wk_other_safe;
+	ut::WeakPtr<ContainerTestDerived, ut::thread_safety::on> wk_derived_safe;
+	ut::WeakPtr<ContainerTestBase, ut::thread_safety::on> wk_base_safe = wk_derived_safe;
 	wk_base_safe = ut::Move(wk_derived_safe);
 	wk_base_safe = sh_derived_safe;
 
-	ut::WeakPtr<TestAnother, ut::thread_safety::off> wk_other_unsafe;
-	ut::WeakPtr<TestDerived, ut::thread_safety::off> wk_derived_unsafe;
-	ut::WeakPtr<TestBase, ut::thread_safety::off> wk_base_unsafe = wk_derived_unsafe;
+	ut::WeakPtr<ContainerTestAnother, ut::thread_safety::off> wk_other_unsafe;
+	ut::WeakPtr<ContainerTestDerived, ut::thread_safety::off> wk_derived_unsafe;
+	ut::WeakPtr<ContainerTestBase, ut::thread_safety::off> wk_base_unsafe = wk_derived_unsafe;
 	wk_base_unsafe = ut::Move(wk_derived_unsafe);
 	wk_base_unsafe = sh_derived_unsafe;
 

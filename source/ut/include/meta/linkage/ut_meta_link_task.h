@@ -20,6 +20,7 @@ class LinkTask
 {
 public:
 	virtual Optional<Error> Execute(Linker& linker) = 0;
+	virtual ~LinkTask() = default;
 };
 
 //----------------------------------------------------------------------------//

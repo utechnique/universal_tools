@@ -794,57 +794,44 @@ protected:
 	//    @return - 'true' if successful, 'false' if not enough memory
 	bool Realloc()
 	{
-		if (EnoughReservedPlace())
+		if (num)
 		{
-			return true;
-		}
-		else
-		{
-			if (num)
+			bool needs_realloc = num >= reserved_elements || num <= reserved_elements / 4;
+
+			if (needs_realloc)
 			{
-				bool needs_realloc = num >= reserved_elements || num <= reserved_elements / 4;
+				// reserve double size of elements
+				reserved_elements = num * 2;
 
-				if (needs_realloc)
+				ElementType* pmem = (ElementType*)realloc(arr, sizeof(ElementType) * reserved_elements);
+				if (pmem)
 				{
-					// reserve double size of elements
-					reserved_elements = num * 2;
-
-					ElementType* pmem = (ElementType*)realloc(arr, sizeof(ElementType) * reserved_elements);
-					if (pmem)
-					{
-						arr = pmem;
-						return true;
-					}
-					else
-					{
-						return false;
-					}
+					arr = pmem;
+					return true;
 				}
 				else
 				{
-					// reserved space is still enough for new elements
-					return true;
+					return false;
 				}
 			}
 			else
 			{
-				if (arr)
-				{
-					free(arr);
-				}
-
-				arr = nullptr;
-				reserved_elements = 0;
-
+				// reserved space is still enough for new elements
 				return true;
 			}
 		}
-	}
+		else
+		{
+			if (arr)
+			{
+				free(arr);
+			}
 
-	// Checks if @number is out of the available reserved space
-	bool EnoughReservedPlace() const
-	{
-		return num > reserved_elements ? false : true;
+			arr = nullptr;
+			reserved_elements = 0;
+
+			return true;
+		}
 	}
 
 	// memory block allocated for the array

@@ -70,7 +70,7 @@ public:
 	Job();
 
 	// Destructor is virtual, ut::Job is polymorphic type
-	virtual ~Job();
+	virtual ~Job() = default;
 
 	// Safely sets exit_request to 'true', can be called from another thread
 	virtual void Exit();

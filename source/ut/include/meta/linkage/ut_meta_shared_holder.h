@@ -25,6 +25,9 @@ public:
 	//    @param in_address - address of the managed ut::SharedPtr object.
 	SharedPtrHolderBase(void* in_address);
 
+	// Virtual destructor.
+	virtual ~SharedPtrHolderBase() = default;
+
 	// Returns address of the managed ut::SharedPtr object.
 	void* GetAddress();
 
@@ -42,9 +45,6 @@ public:
 	//    @return - ut::Error if failed.
 	virtual Optional<Error> Load(Controller& controller,
 	                             const String& name) = 0;
-
-	// Virtual destructor.
-	virtual ~SharedPtrHolderBase();
 
 protected:
 	// Address of the managed ut::SharedPtr object.
