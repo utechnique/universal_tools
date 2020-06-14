@@ -39,6 +39,19 @@ typedef uint32 dword;
 typedef uint64 qword;
 
 //----------------------------------------------------------------------------//
+// Checks whether template argument is an integral type.
+template<typename NumericType>
+struct IsIntegral
+{
+	static constexpr bool value = true;
+};
+
+// ut::IsIntegral returns false for floating point types.
+template<> struct IsIntegral<float> { static constexpr bool value = false; };
+template<> struct IsIntegral<double> { static constexpr bool value = false; };
+template<> struct IsIntegral<long double> { static constexpr bool value = false; };
+
+//----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
