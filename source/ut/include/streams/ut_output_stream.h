@@ -6,12 +6,34 @@
 #include "common/ut_common.h"
 #include "error/ut_error.h"
 #include "streams/ut_base_stream.h"
+#include "system/ut_mutex.h"
+#include "system/ut_time.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // ut::OutputStream is an abstract parent class for output streams.
 class OutputStream : public BaseStream
 {
+private:
+	// ut::OutputStream::Locked is a helper class to lock
+	// insertion '<<' sequence to make it thread-safe.
+	class Locked
+	{
+	public:
+		Locked(OutputStream& output_stream, Mutex& insertion_mutex);
+		~Locked();
+
+		template<typename Arg>
+		OutputStream& operator << (Arg arg)
+		{
+			return stream << arg;
+		}
+
+	private:
+		OutputStream& stream;
+		Mutex& mutex;
+	};
+
 public:
 	// Writes an array of @count elements, each one with a size of @size bytes,
 	// from the block of memory pointed by @ptr to the current position
@@ -57,9 +79,16 @@ public:
 	OutputStream& operator << (void* val);
 	OutputStream& operator << (const char* str);
 	OutputStream& operator << (const String& str);
+	OutputStream& operator << (const time::Counter& timestamp);
 
 	// Virtual destructor.
 	virtual ~OutputStream() = default;
+
+	// Locks '<<' insertion sequence.
+	Locked Lock();
+
+private:
+	Mutex insertion_mutex;
 };
 
 //----------------------------------------------------------------------------//

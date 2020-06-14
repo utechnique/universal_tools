@@ -2,9 +2,24 @@
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "streams/ut_output_stream.h"
+#include "system/ut_lock.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
+// Constructor.
+OutputStream::Locked::Locked(OutputStream& output_stream,
+                             Mutex& insertion_mutex) : stream(output_stream)
+		                                             , mutex(insertion_mutex)
+{
+	mutex.Lock();
+}
+
+// Destructor.
+OutputStream::Locked::~Locked()
+{
+	mutex.Unlock();
+}
+
 // Synchronizes the associated stream buffer with its controlled output sequence.
 //    @return - error code if failed
 Optional<Error> OutputStream::Flush()
@@ -35,6 +50,12 @@ Optional<Error> OutputStream::MoveCursor(stream::Cursor offset,
 Result<size_t, Error> OutputStream::GetSize()
 {
 	return MakeError(error::not_implemented);
+}
+
+// Locks '<<' insertion sequence.
+OutputStream::Locked OutputStream::Lock()
+{
+	return Locked(*this, insertion_mutex);
 }
 
 // Operator '<<' applied to an output stream is known as insertion operator.
@@ -119,6 +140,33 @@ OutputStream& OutputStream::operator << (const String& str)
 	return *this;
 }
 
+OutputStream& OutputStream::operator << (const time::Counter& timestamp)
+{
+	ut::uint64 ns = timestamp.GetTime<time::nanoseconds, ut::uint64>();
+
+	ut::uint64 days = time::Convert<time::nanoseconds, time::days>(ns);
+	ns -= time::Convert<time::days, time::nanoseconds>(days);
+
+	ut::uint64 hours = time::Convert<time::nanoseconds, time::hours>(ns);
+	ns -= time::Convert<time::hours, time::nanoseconds>(hours);
+
+	ut::uint64 minutes = time::Convert<time::nanoseconds, time::minutes>(ns);
+	ns -= time::Convert<time::minutes, time::nanoseconds>(minutes);
+
+	ut::uint64 seconds = time::Convert<time::nanoseconds, time::seconds>(ns);
+	ns -= time::Convert<time::seconds, time::nanoseconds>(seconds);
+
+	ut::uint64 milliseconds = time::Convert<time::nanoseconds, time::milliseconds>(ns);
+	ns -= time::Convert<time::milliseconds, time::nanoseconds>(milliseconds);
+
+	*this << "[";
+	if (days != 0)
+	{
+		*this << days << "d ";
+	}
+
+	return *this << hours << ":" << minutes << ":" << seconds << ":" << milliseconds << "]";
+}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

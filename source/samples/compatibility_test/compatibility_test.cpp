@@ -23,26 +23,26 @@ void PerformTest()
 	ut::Optional<ut::Error> log_error = ut::log.Start(g_test_dir + "log.txt", true);
 	if (log_error)
 	{
-		ut::console << "[ERROR] Failed to start log:\n" << log_error->GetDesc();
+		ut::console << "[ERROR] Failed to start log:" << ut::cret << log_error->GetDesc();
 	}
 
 	// run test and handle exceptions
 	if (ut::CatchExceptions(RunTest))
 	{
-		ut::log << "\n[ERROR] Exception catched.\n";
+		ut::log << ut::cret << "[ERROR] Exception catched." << ut::cret;
 	}
 
 	// finish
-	ut::log << "\n[EXIT] Test finished. Press any key to exit.\n";
+	ut::log << ut::cret << ut::log.timestamp << "[EXIT] Test finished. Press any key to exit." << ut::cret;
 
 	// wait for input before exit
 	ut::Result<ut::String, ut::Error> input_result = ut::console.GetLine();
 
 	// show input
-	ut::log << "\n[INPUT] You entered: " << input_result.GetResult() << ". Waiting a second before exit..";
+	ut::log << ut::cret << "[INPUT] You entered: " << input_result.GetResult() << ". Waiting a second before exit..";
 
 	// wait before exit
-	ut::this_thread::Sleep(1500);
+	ut::this_thread::Sleep<ut::time::seconds>(1);
 
 	// finish logging
 	ut::log.End();
