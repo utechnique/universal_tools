@@ -12,19 +12,6 @@ START_NAMESPACE(ut)
 // current thread.
 namespace this_thread
 {
-	// Blocks the execution of the current thread for at least the specified @ms
-	//    @param ms - milliseconds to wait
-	void Sleep(uint32 ms)
-	{
-#if UT_WINDOWS
-		::Sleep(ms);
-#elif UT_UNIX
-		usleep(ms*1e+3);
-#else
-#error ut::this_thread::Sleep() is not implemented
-#endif
-	}
-
 	// Provides a hint to the implementation to reschedule the execution of
 	// threads, allowing other threads to run.
 	void Yield()
