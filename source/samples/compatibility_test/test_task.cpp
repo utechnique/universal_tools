@@ -18,6 +18,7 @@ ut::String TestTask::GetName()
 
 ut::String TestTask::GetReport()
 {
+	ut::ScopeLock lock(mutex);
 	return report;
 }
 

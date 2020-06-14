@@ -9,6 +9,7 @@
 #include "system/ut_mutex.h"
 #include "system/ut_lock.h"
 #include "system/ut_atomic.h"
+#include "system/ut_time.h"
 #include "templates/ut_task.h"
 //----------------------------------------------------------------------------//
 #if UT_WINDOWS
@@ -41,9 +42,19 @@ START_NAMESPACE(ut)
 // current thread.
 namespace this_thread
 {
-	// Blocks the execution of the current thread for at least the specified @ms
+	// Blocks the execution of the current thread for at least the specified @time
 	//    @param ms - milliseconds to wait
-	void Sleep(uint32 ms);
+	template<time::Units units = time::milliseconds>
+	void Sleep(uint32 time)
+	{
+#if UT_WINDOWS
+		::Sleep(time::Convert<units, time::milliseconds>(time));
+#elif UT_UNIX
+		usleep(time::Convert<units, time::microseconds>(time));
+#else
+#error ut::this_thread::Sleep() is not implemented
+#endif
+	}
 
 	// Provides a hint to the implementation to reschedule the execution of
 	// threads, allowing other threads to run.

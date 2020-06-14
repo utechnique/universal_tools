@@ -17,6 +17,7 @@ public:
 protected:
 	ut::String name;
 	ut::String report;
+	ut::Mutex mutex;
 };
 
 typedef ut::UniquePtr<TestTask> TestTaskPtr;

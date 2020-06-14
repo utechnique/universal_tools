@@ -16,6 +16,7 @@
 #include "system/ut_cmdline.h"
 #include "system/ut_memory.h"
 #include "system/ut_console.h"
+#include "system/ut_time.h"
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

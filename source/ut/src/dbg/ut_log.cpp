@@ -14,8 +14,8 @@ Log log;
 // class ut::Log                                                              //
 //----------------------------------------------------------------------------//
 // Constructor, does nothing
-Log::Log() : console_reflection(false)
-{ }
+Log::Log() : console_reflection(false), timestamp(counter)
+{}
 
 //----------------------------------------------------------------------------->
 // Destructor, closes @file if it's opened
@@ -35,6 +35,9 @@ Log::~Log()
 Optional<Error> Log::Start(const String& filename, bool console_mirror)
 {
 	ScopeLock sl(mutex);
+
+	counter.Start();
+
 	if (file.IsOpened())
 	{
 		return Error(error::already_exists);
@@ -52,6 +55,9 @@ Optional<Error> Log::Start(const String& filename, bool console_mirror)
 Optional<Error> Log::End()
 {
 	ScopeLock sl(mutex);
+
+	counter.Stop();
+
 	if (file.IsOpened())
 	{
 		console_reflection = false;
@@ -105,6 +111,14 @@ Optional<Error> Log::Write(const void* ptr, size_t size, size_t count)
 
 	// success
 	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Places timestamp and returns a reference to this log object.
+Log& Log::Timestamped()
+{
+	*this << timestamp;
+	return *this;
 }
 
 //----------------------------------------------------------------------------//

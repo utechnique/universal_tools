@@ -9,6 +9,7 @@
 #include "streams/ut_output_stream.h"
 #include "streams/ut_file.h"
 #include "system/ut_mutex.h"
+#include "system/ut_time.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
@@ -49,9 +50,19 @@ public:
 	//    @return - error if file wasn't opened
 	Optional<Error> Write(const void* ptr, size_t size, size_t count);
 
+	// Places timestamp and returns a reference to this log object.
+	Log& Timestamped();
+
+	// Const reference to the time counter. Use this counter to place
+	// a timestamp in the output '<<' operator sequence.
+	const time::Counter& timestamp;
+
 private:
 	// txt file for logging
 	File file;
+
+	// timer to record time of the event
+	time::Counter counter;
 
 	// used to reflect logging to the console
 	bool console_reflection;

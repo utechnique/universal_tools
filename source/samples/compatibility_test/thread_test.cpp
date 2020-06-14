@@ -19,8 +19,18 @@ void ThreadProcTask::Execute()
 {
 	ut::Thread thread([this] { this->report += "Hello from another thread. Success.\n"; });
 
-	ut::UniquePtr< ut::BaseTask<void> > task = ut::MakeUnique< ut::Task<void()> >([this] { this->report += "Hello from another thread 2. Success.\n"; });
+	ut::UniquePtr< ut::BaseTask<void> > task = ut::MakeUnique< ut::Task<void()> >([this] { ut::ScopeLock lock(this->mutex); this->report += "Hello from another thread 2. Success.\n"; });
 	ut::Thread thread2(ut::Move(task));
+
+	static const size_t log_thread_count = 0;
+	ut::Array< ut::UniquePtr<ut::Thread> > log_threads(log_thread_count);
+	for (size_t i = 0; i < log_thread_count; i++)
+	{
+		ut::UniquePtr< ut::BaseTask<void> > log_task = ut::MakeUnique< ut::Task<void()> >([this] {
+			ut::log.Lock() << 1 << 2 << 3 << 4;
+		});
+		log_threads[i] = ut::MakeUnique<ut::Thread>(ut::Move(log_task));
+	}
 }
 
 //----------------------------------------------------------------------------//
