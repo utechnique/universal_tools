@@ -27,22 +27,22 @@ public:
 	ut::uint32 depth;
 };
 
-// ve::render::Texture interface manages texel data, which is structured memory.
-class Texture : public PlatformTexture
+// ve::render::Image interface manages texel data, which is structured memory.
+class Image : public PlatformImage
 {
 public:
 	// context is default-constructible
-	Texture(PlatformTexture platform_texture, const ImageInfo& image_info);
+	Image(PlatformImage platform_img, const ImageInfo& img_info);
 
 	// Move constructor.
-	Texture(Texture&&) noexcept;
+	Image(Image&&) noexcept;
 
 	// Move operator.
-	Texture& operator =(Texture&&) noexcept;
+	Image& operator =(Image&&) noexcept;
 
 	// Copying is prohibited.
-	Texture(const Texture&) = delete;
-	Texture& operator =(const Texture&) = delete;
+	Image(const Image&) = delete;
+	Image& operator =(const Image&) = delete;
 
 	// Returns a const reference to the object with
 	// information about this image.

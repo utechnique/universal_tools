@@ -4,7 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_platform.h"
-#include "systems/render/api/ve_render_texture.h"
+#include "systems/render/api/ve_render_image.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -40,7 +40,7 @@ class Target : public PlatformRenderTarget
 public:
 	// Constructor.
 	Target(PlatformRenderTarget platform_target,
-	       Texture texture,
+	       Image image,
 	       const RenderTargetInfo& target_info);
 
 	// Move constructor.
@@ -53,15 +53,15 @@ public:
 	Target(const Target&) = delete;
 	Target& operator =(const Target&) = delete;
 
-	// Texture buffer associated with render target.
-	Texture buffer;
-
 	// Returns a const reference to the object with
 	// information about this render target.
 	const RenderTargetInfo& GetInfo() const
 	{
 		return info;
 	}
+
+	// Image associated with render target.
+	Image image;
 
 private:
 	RenderTargetInfo info;

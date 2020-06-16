@@ -71,7 +71,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 			PresentRequest present_request;
 			present_request.framebuffer = framebuffer.GetGlHandle();
 			present_request.attachment_id = color_attachment_id;
-			if (!present_queue.Insert(framebuffer.color_targets[i]->buffer.GetGlHandle(), present_request))
+			if (!present_queue.Insert(framebuffer.color_targets[i]->image.GetGlHandle(), present_request))
 			{
 				throw ut::Error(ut::error::out_of_memory);
 			}

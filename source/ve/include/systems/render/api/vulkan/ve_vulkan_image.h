@@ -3,55 +3,41 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#if VE_DX11
+#if VE_VULKAN
 //----------------------------------------------------------------------------//
-#include "ut.h"
-#include <d3d11.h>
+#include "systems/render/api/vulkan/ve_vulkan_resource.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// DirectX 11 texture.
-class PlatformTexture
+// Vulkan image.
+class PlatformImage
 {
 	friend class Device;
 	friend class Context;
 public:
-	// Constructor, accepts 1d texture.
-	explicit PlatformTexture(ID3D11Texture1D* t1d_ptr,
-	                         ID3D11ShaderResourceView* srv_ptr);
-
-	// Constructor, accepts 2d texture.
-	explicit PlatformTexture(ID3D11Texture2D* t2d_ptr,
-	                         ID3D11ShaderResourceView* srv_ptr);
-
-	// Constructor, accepts 3d texture.
-	explicit PlatformTexture(ID3D11Texture3D* t3d_ptr,
-	                         ID3D11ShaderResourceView* srv_ptr);
+	// Constructor.
+	explicit PlatformImage();
 
 	// Move constructor.
-	PlatformTexture(PlatformTexture&&) noexcept;
+	PlatformImage(PlatformImage&&) noexcept;
 
 	// Move operator.
-	PlatformTexture& operator =(PlatformTexture&&) noexcept;
+	PlatformImage& operator =(PlatformImage&&) noexcept;
 
 	// Copying is prohibited.
-	PlatformTexture(const PlatformTexture&) = delete;
-	PlatformTexture& operator =(const PlatformTexture&) = delete;
+	PlatformImage(const PlatformImage&) = delete;
+	PlatformImage& operator =(const PlatformImage&) = delete;
 
 private:
-	ut::ComPtr<ID3D11ShaderResourceView> srv;
-	ut::ComPtr<ID3D11Texture1D>			 tex1d;
-	ut::ComPtr<ID3D11Texture2D>			 tex2d;
-	ut::ComPtr<ID3D11Texture3D>			 tex3d;
-	ut::ComPtr<ID3D11Texture2D>			 stage2d;
+
 };
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
-#endif // VE_DX11
+#endif // VE_VULKAN
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

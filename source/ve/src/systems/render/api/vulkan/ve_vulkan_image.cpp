@@ -1,28 +1,28 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_texture.h"
+#include "systems/render/api/ve_render_image.h"
 //----------------------------------------------------------------------------//
-#if VE_OPENGL
+#if VE_VULKAN
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformTexture::PlatformTexture(GlRc<gl::texture>::Handle gl_tex_id) : GlRc<gl::texture>(gl_tex_id)
+PlatformImage::PlatformImage()
 {}
 
 // Move constructor.
-PlatformTexture::PlatformTexture(PlatformTexture&& other) noexcept = default;
+PlatformImage::PlatformImage(PlatformImage&&) noexcept = default;
 
 // Move operator.
-PlatformTexture& PlatformTexture::operator =(PlatformTexture&& other) noexcept = default;
+PlatformImage& PlatformImage::operator =(PlatformImage&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
-#endif // VE_OPENGL
+#endif // VE_VULKAN
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

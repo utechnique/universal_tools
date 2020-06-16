@@ -8,9 +8,9 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 Target::Target(PlatformRenderTarget platform_target,
-               Texture texture,
+               Image target_img,
                const RenderTargetInfo& target_info) : PlatformRenderTarget(ut::Move(platform_target))
-                                                    , buffer(ut::Move(texture))
+                                                    , image(ut::Move(target_img))
                                                     , info(target_info)
 {}
 

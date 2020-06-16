@@ -11,22 +11,22 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// OpenGL texture.
-class PlatformTexture : public GlRc<gl::texture>
+// OpenGL image.
+class PlatformImage : public GlRc<gl::texture>
 {
 	friend class Device;
 	friend class Context;
 public:
 	// Constructor.
-	PlatformTexture(GlRc<gl::texture>::Handle gl_tex_id);
+	PlatformImage(GlRc<gl::texture>::Handle gl_tex_id);
 
 	// Move constructor.
-	PlatformTexture(PlatformTexture&&) noexcept;
-	PlatformTexture& operator =(PlatformTexture&&) noexcept;
+	PlatformImage(PlatformImage&&) noexcept;
+	PlatformImage& operator =(PlatformImage&&) noexcept;
 
 	// Copying is prohibited.
-	PlatformTexture(const PlatformTexture&) = delete;
-	PlatformTexture& operator =(const PlatformTexture&) = delete;
+	PlatformImage(const PlatformImage&) = delete;
+	PlatformImage& operator =(const PlatformImage&) = delete;
 };
 
 //----------------------------------------------------------------------------//

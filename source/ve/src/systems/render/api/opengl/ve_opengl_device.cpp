@@ -84,25 +84,18 @@ Device::Device(Device&&) noexcept = default;
 Device& Device::operator =(Device&&) noexcept = default;
 
 // Creates new texture.
-//    @param width - width of the texture in pixels.
-//    @param height - height of the texture in pixels.
-//    @return - new texture object of error if failed.
-ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::uint32 width, ut::uint32 height)
+//    @param info - reference to the ImageInfo object describing an image.
+//    @return - new image object of error if failed.
+ut::Result<Image, ut::Error> Device::CreateImage(const ImageInfo& info)
 {
-	ImageInfo img_info;
-	img_info.format = format;
-	img_info.width = width;
-	img_info.height = height;
-	img_info.depth = 1;
-
-	const GLenum gl_pixel_format = ConvertPixelFormatToOpenGL(img_info.format);
+	const GLenum gl_pixel_format = ConvertPixelFormatToOpenGL(info.format);
 	GLuint texture_handle;
 	glGenTextures(1, &texture_handle);
 	glBindTexture(GL_TEXTURE_2D, texture_handle);
-	glTexImage2D(GL_TEXTURE_2D, 0, gl_pixel_format, img_info.width, img_info.height, 0, gl_pixel_format, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, gl_pixel_format, info.width, info.height, 0, gl_pixel_format, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	return Texture(texture_handle, img_info);
+	return Image(texture_handle, info);
 }
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
@@ -116,7 +109,13 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 	const ut::uint32 height = static_cast<ut::uint32>(viewport.h());
 
 	// create texture (backbuffer) for the render target
-	ut::Result<Texture, ut::Error> texture = CreateTexture(pixel::r8g8b8a8, width, height);
+	ImageInfo img_info;
+	img_info.format = pixel::r8g8b8a8;
+	img_info.width = width;
+	img_info.height = height;
+	img_info.depth = 1;
+
+	ut::Result<Image, ut::Error> texture = CreateImage(img_info);
 	if (!texture)
 	{
 		return ut::MakeError(texture.MoveAlt());
@@ -175,14 +174,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	if (color_targets.GetNum() != 0)
 	{
 		const Target& color_target = color_targets.GetFirst();
-		width = color_target.buffer.GetInfo().width;
-		height = color_target.buffer.GetInfo().height;
+		width = color_target.image.GetInfo().width;
+		height = color_target.image.GetInfo().height;
 	}
 	else if (depth_stencil_target)
 	{
 		const Target& ds_target = depth_stencil_target.Get();
-		width = ds_target.buffer.GetInfo().width;
-		height = ds_target.buffer.GetInfo().height;
+		width = ds_target.image.GetInfo().width;
+		height = ds_target.image.GetInfo().height;
 	}
 	else
 	{
@@ -193,7 +192,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	const size_t color_target_count = color_targets.GetNum();
 	for (size_t i = 0; i < color_target_count; i++)
 	{
-		const ImageInfo& img_info = color_targets[i]->buffer.GetInfo();
+		const ImageInfo& img_info = color_targets[i]->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "OpenGL: different width/height for the framebuffer."));
@@ -203,7 +202,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	// check width and height of the depth target
 	if (depth_stencil_target)
 	{
-		const ImageInfo& img_info = depth_stencil_target->buffer.GetInfo();
+		const ImageInfo& img_info = depth_stencil_target->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "OpenGL: different width/height for the framebuffer."));
@@ -230,7 +229,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	{
 		glFramebufferTexture(GL_FRAMEBUFFER,
 		                     GetColorAttachmentId(i),
-		                     color_targets[i]->buffer.GetGlHandle(),
+		                     color_targets[i]->image.GetGlHandle(),
 		                     0);
 	}
 
@@ -239,7 +238,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	{
 		glFramebufferTexture(GL_FRAMEBUFFER_EXT,
 		                     GL_DEPTH_ATTACHMENT,
-		                     depth_stencil_target->buffer.GetGlHandle(),
+		                     depth_stencil_target->image.GetGlHandle(),
 		                     0);
 	}
 
@@ -306,7 +305,7 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 		for (size_t target_id = 0; target_id < buffer_count; target_id++)
 		{
 			// search for the present request by backbuffer id
-			const GlRc<gl::texture>::Handle buffer_handle = display.targets[target_id].buffer.GetGlHandle();
+			const GlRc<gl::texture>::Handle buffer_handle = display.targets[target_id].image.GetGlHandle();
 			ut::Optional<PlatformContext::PresentRequest&> request = context->present_queue.Find(buffer_handle);
 			if (!request)
 			{

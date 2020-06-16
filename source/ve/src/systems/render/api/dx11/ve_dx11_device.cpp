@@ -125,25 +125,18 @@ Device::Device(Device&&) noexcept = default;
 Device& Device::operator =(Device&&) noexcept = default;
 
 // Creates new texture.
-//    @param width - width of the texture in pixels.
-//    @param height - height of the texture in pixels.
-//    @return - new texture object of error if failed.
-ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::uint32 width, ut::uint32 height)
+//    @param info - reference to the ImageInfo object describing an image.
+//    @return - new image object of error if failed.
+ut::Result<Image, ut::Error> Device::CreateImage(const ImageInfo& info)
 {
 	ID3D11Texture2D* tex2d = nullptr;
 
-	ImageInfo image_info;
-	image_info.format = format;
-	image_info.width = width;
-	image_info.height = height;
-	image_info.depth = 1;
-
 	D3D11_TEXTURE2D_DESC desc;
-	desc.Width = image_info.width;
-	desc.Height = image_info.height;
+	desc.Width = info.width;
+	desc.Height = info.height;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	desc.Format = ConvertPixelFormatToDX11(image_info.format);
+	desc.Format = ConvertPixelFormatToDX11(info.format);
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 	desc.Usage = D3D11_USAGE_DEFAULT;
@@ -158,9 +151,9 @@ ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::u
 		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(hr) + " CreateTexture2D failed. "));
 	}
 
-	PlatformTexture platform_texture(tex2d, nullptr);
+	PlatformImage platform_img(tex2d, nullptr);
 
-	return Texture(ut::Move(platform_texture), image_info);
+	return Image(ut::Move(platform_img), info);
 }
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
@@ -219,7 +212,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	target_info.usage = RenderTargetInfo::usage_present;
 
 	// create render target that will be associated with provided viewport
-	Texture texture(PlatformTexture(backbuffer, nullptr), backbuffer_info);
+	Image texture(PlatformImage(backbuffer, nullptr), backbuffer_info);
 	Target target(PlatformRenderTarget(rtv, nullptr), ut::Move(texture), target_info);
 
 	// dx11 does swapping manually, so there is only one buffer available for engine
@@ -269,14 +262,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	if (color_targets.GetNum() != 0)
 	{
 		const Target& color_target = color_targets.GetFirst();
-		width = color_target.buffer.GetInfo().width;
-		height = color_target.buffer.GetInfo().height;
+		width = color_target.image.GetInfo().width;
+		height = color_target.image.GetInfo().height;
 	}
 	else if (depth_stencil_target)
 	{
 		const Target& ds_target = depth_stencil_target.Get();
-		width = ds_target.buffer.GetInfo().width;
-		height = ds_target.buffer.GetInfo().height;
+		width = ds_target.image.GetInfo().width;
+		height = ds_target.image.GetInfo().height;
 	}
 	else
 	{
@@ -287,7 +280,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	const size_t color_target_count = color_targets.GetNum();
 	for (size_t i = 0; i < color_target_count; i++)
 	{
-		const ImageInfo& img_info = color_targets[i]->buffer.GetInfo();
+		const ImageInfo& img_info = color_targets[i]->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer."));
@@ -297,7 +290,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	// check width and height of the depth target
 	if (depth_stencil_target)
 	{
-		const ImageInfo& img_info = depth_stencil_target->buffer.GetInfo();
+		const ImageInfo& img_info = depth_stencil_target->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer."));

@@ -38,13 +38,9 @@ public:
 	Device& operator =(const Device&) = delete;
 
 	// Creates new texture.
-	//    @param format - texture format, see ve::render::pixel::Format.
-	//    @param width - width of the texture in pixels.
-	//    @param height - height of the texture in pixels.
-	//    @return - new texture object of error if failed.
-	ut::Result<Texture, ut::Error> CreateTexture(pixel::Format format,
-	                                             ut::uint32 width,
-	                                             ut::uint32 height);
+	//    @param info - reference to the ImageInfo object describing an image.
+	//    @return - new image object of error if failed.
+	ut::Result<Image, ut::Error> CreateImage(const ImageInfo& info);
 
 	// Creates platform-specific representation of the rendering area inside a UI viewport.
 	//    @param viewport - reference to UI viewport containing rendering area.

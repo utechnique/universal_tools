@@ -465,19 +465,12 @@ Device::Device(Device&&) noexcept = default;
 Device& Device::operator =(Device&&) noexcept = default;
 
 // Creates new texture.
-//    @param width - width of the texture in pixels.
-//    @param height - height of the texture in pixels.
-//    @return - new texture object of error if failed.
-ut::Result<Texture, ut::Error> Device::CreateTexture(pixel::Format format, ut::uint32 width, ut::uint32 height)
+//    @param info - reference to the ImageInfo object describing an image.
+//    @return - new image object of error if failed.
+ut::Result<Image, ut::Error> Device::CreateImage(const ImageInfo& info)
 {
-	ImageInfo info;
-	info.format = format;
-	info.width = width;
-	info.height = height;
-	info.depth = 1;
-
-	PlatformTexture platform_texture;
-	return Texture(ut::Move(platform_texture), info);
+	PlatformImage platform_texture;
+	return Image(ut::Move(platform_texture), info);
 }
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
@@ -779,14 +772,14 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		info.width = swapchain_extent.width;
 		info.height = swapchain_extent.height;
 		info.depth = 1;
-		Texture texture(PlatformTexture(), info);
+		Image image(PlatformImage(), info);
 
 		// initialize render target info
 		RenderTargetInfo target_info;
 		target_info.usage = RenderTargetInfo::usage_present;
 
 		// create final target for the current buffer
-		Target target(ut::Move(platform_target), ut::Move(texture), target_info);
+		Target target(ut::Move(platform_target), ut::Move(image), target_info);
 		if (!targets.Add(ut::Move(target)))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
@@ -1028,14 +1021,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	if (color_targets.GetNum() != 0)
 	{
 		const Target& color_target = color_targets.GetFirst();
-		width = color_target.buffer.GetInfo().width;
-		height = color_target.buffer.GetInfo().height;
+		width = color_target.image.GetInfo().width;
+		height = color_target.image.GetInfo().height;
 	}
 	else if (depth_stencil_target)
 	{
 		const Target& ds_target = depth_stencil_target.Get();
-		width = ds_target.buffer.GetInfo().width;
-		height = ds_target.buffer.GetInfo().height;
+		width = ds_target.image.GetInfo().width;
+		height = ds_target.image.GetInfo().height;
 	}
 	else
 	{
@@ -1050,7 +1043,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 		const Target& color_target = color_targets[i];
 
 		// check width and height
-		const ImageInfo& img_info = color_target.buffer.GetInfo();
+		const ImageInfo& img_info = color_target.image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));
@@ -1069,7 +1062,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 		const Target& ds_target = depth_stencil_target.Get();
 
 		// check width and height
-		const ImageInfo& img_info = ds_target.buffer.GetInfo();
+		const ImageInfo& img_info = ds_target.image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));

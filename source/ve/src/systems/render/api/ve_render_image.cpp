@@ -1,28 +1,26 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_texture.h"
-//----------------------------------------------------------------------------//
-#if VE_VULKAN
+#include "systems/render/api/ve_render_image.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformTexture::PlatformTexture()
+Image::Image(PlatformImage platform_img,
+             const ImageInfo& img_info) : PlatformImage(ut::Move(platform_img))
+                                        , info(img_info)
 {}
 
 // Move constructor.
-PlatformTexture::PlatformTexture(PlatformTexture&&) noexcept = default;
+Image::Image(Image&&) noexcept = default;
 
 // Move operator.
-PlatformTexture& PlatformTexture::operator =(PlatformTexture&&) noexcept = default;
+Image& Image::operator =(Image&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
-//----------------------------------------------------------------------------//
-#endif // VE_VULKAN
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
