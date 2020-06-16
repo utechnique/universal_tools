@@ -24,6 +24,9 @@ public:
 	//    @param system_name - name of the system.
 	System(ut::String system_name = ut::String("unnamed"));
 
+	// Virtual destructor.
+	virtual ~System() = default;
+
 	// Registers provided entity.
 	//    @param id - identifier of the entity.
 	//    @param entity - reference to the entity.
