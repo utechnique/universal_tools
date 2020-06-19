@@ -12,60 +12,161 @@ START_NAMESPACE(ut)
 // thread reads from it, the behavior is well-defined.
 template<typename T> class Atomic {};
 
-// Specialization of the ut::Atomic tempate for 'int32' type.
-template<> class Atomic<int32> : public NonCopyable
+// Helper class for signed values.
+template<typename SignedType>
+class AtomicSigned : public NonCopyable
 {
 public:
-	Atomic(int32 ini_val = 0) : var(ini_val)
+	AtomicSigned(SignedType ini_val = 0) : var(ini_val)
 	{}
 
-	inline int32 Increment()
+	inline SignedType Increment()
 	{
 		return atomics::interlocked::Increment(&var);
 	}
 
-	inline int32 Decrement()
+	inline SignedType Decrement()
 	{
 		return atomics::interlocked::Decrement(&var);
 	}
 
-	inline int32 Add(int32 amount)
+	inline SignedType Add(SignedType amount)
 	{
 		return atomics::interlocked::Add(&var, amount);
 	}
 
-	inline int32 Exchange(int32 exchange)
+	inline SignedType Exchange(SignedType exchange)
 	{
 		return atomics::interlocked::Exchange(&var, exchange);
 	}
 
-	inline int32 CompareExchange(int32 exchange, int32 comparand)
+	inline SignedType CompareExchange(SignedType exchange, SignedType comparand)
 	{
 		return atomics::interlocked::CompareExchange(&var, exchange, comparand);
 	}
 
-	inline int32 Read()
+	inline SignedType Read()
 	{
 		return atomics::interlocked::Read(&var);
 	}
 
-	inline void Store(int32 val)
+	inline void Store(SignedType val)
 	{
 		return atomics::interlocked::Store(&var, val);
 	}
 
-	int32 UnsafeRead()
+	SignedType UnsafeRead()
 	{
 		return var;
 	}
 
-	void UnsafeStore(int32 val)
+	void UnsafeStore(SignedType val)
 	{
 		var = val;
 	}
 
 private:
-	int32 var;
+	SignedType var;
+};
+
+// Helper class for unsigned values which must be reinterpreted from signed ones.
+template<typename SignedType, typename UnsignedType>
+class AtomicUnsigned : public NonCopyable
+{
+public:
+	AtomicUnsigned(UnsignedType ini_val = 0) : var(ini_val)
+	{}
+
+	inline UnsignedType Increment()
+	{
+		SignedType result = atomics::interlocked::Increment(reinterpret_cast<SignedType*>(&var));
+		return *reinterpret_cast<UnsignedType*>(&result);
+	}
+
+	inline UnsignedType Decrement()
+	{
+		SignedType result = atomics::interlocked::Decrement(reinterpret_cast<SignedType*>(&var));
+		return *reinterpret_cast<UnsignedType*>(&result);
+	}
+
+	inline UnsignedType Add(UnsignedType amount)
+	{
+		SignedType result = atomics::interlocked::Add(reinterpret_cast<SignedType*>(&var),
+		                                              *reinterpret_cast<SignedType*>(&amount));
+		return *reinterpret_cast<UnsignedType*>(&result);
+	}
+
+	inline UnsignedType Exchange(UnsignedType exchange)
+	{
+		SignedType result = atomics::interlocked::Exchange(reinterpret_cast<SignedType*>(&var),
+		                                                   *reinterpret_cast<SignedType*>(&exchange));
+		return *reinterpret_cast<UnsignedType*>(&result);
+	}
+
+	inline UnsignedType CompareExchange(UnsignedType exchange, UnsignedType comparand)
+	{
+		SignedType result = atomics::interlocked::CompareExchange(reinterpret_cast<SignedType*>(&var),
+		                                                          *reinterpret_cast<SignedType*>(&exchange),
+			                                                      *reinterpret_cast<SignedType*>(&comparand));
+		return *reinterpret_cast<UnsignedType*>(&result);
+	}
+
+	inline UnsignedType Read()
+	{
+		SignedType result = atomics::interlocked::Read(reinterpret_cast<SignedType*>(&var));
+		return *reinterpret_cast<UnsignedType*>(&result);
+	}
+
+	inline void Store(UnsignedType val)
+	{
+		atomics::interlocked::Store(reinterpret_cast<SignedType*>(&var),
+		                            *reinterpret_cast<SignedType*>(&val));
+	}
+
+	UnsignedType UnsafeRead()
+	{
+		return var;
+	}
+
+	void UnsafeStore(UnsignedType val)
+	{
+		var = val;
+	}
+
+private:
+	UnsignedType var;
+};
+
+// Specialization of the ut::Atomic tempate for 'int32' type.
+template<> class Atomic<int32> : public AtomicSigned<int32>
+{
+public:
+	Atomic(int32 ini_val = 0) : AtomicSigned<int32>(ini_val)
+	{}
+};
+
+// Specialization of the ut::Atomic tempate for 'uint32' type.
+template<> class Atomic<uint32> : public AtomicUnsigned<int32, uint32>
+{
+public:
+	Atomic(uint32 ini_val = 0) : AtomicUnsigned<int32, uint32>(ini_val)
+	{}
+};
+
+// Specialization of the ut::Atomic tempate for 'int64' type.
+template<> class Atomic<int64> : public AtomicSigned<int64>
+{
+public:
+	Atomic(int64 ini_val = 0) : AtomicSigned<int64>(ini_val)
+	{}
+};
+
+// Specialization of the ut::Atomic tempate for 'uint64' type.
+template<> class Atomic<uint64> : public AtomicUnsigned<int64, uint64>
+{
+public:
+	Atomic(uint64 ini_val = 0) : AtomicUnsigned<int64, uint64>(ini_val)
+	{}
 };
 
 // Specialization of the ut::Atomic tempate for 'bool' type.
