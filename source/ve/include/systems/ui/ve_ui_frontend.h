@@ -19,26 +19,26 @@ public:
 	typedef DedicatedThread< ut::UniquePtr<Frontend> > Thread;
 
 	// Destructor.
-	virtual ~Frontend() {};
+	virtual ~Frontend() = default;
 
 	// When ui exits.
 	void ConnectExitSignalSlot(ut::Function<void()> slot);
 
 	// One can start iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.
-	ut::Array< ut::UniquePtr<Viewport> >::Iterator BeginViewports();
+	virtual ut::Array< ut::Ref<Viewport> >::Iterator BeginViewports() = 0;
 
 	// One can end iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.
-	ut::Array< ut::UniquePtr<Viewport> >::Iterator EndViewports();
+	virtual ut::Array< ut::Ref<Viewport> >::Iterator EndViewports() = 0;
 
 	// One can start iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.
-	ut::Array< ut::UniquePtr<Viewport> >::ConstIterator BeginViewports() const;
+	virtual ut::Array< ut::Ref<Viewport> >::ConstIterator BeginViewports() const = 0;
 
 	// One can end iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.
-	ut::Array< ut::UniquePtr<Viewport> >::ConstIterator EndViewports() const;
+	virtual ut::Array< ut::Ref<Viewport> >::ConstIterator EndViewports() const = 0;
 
 protected:
 	// signals
@@ -46,9 +46,6 @@ protected:
 
 	// title of the application
 	static const char* skTitle;
-
-	// viewports are windows showing visual part of environment to user
-	ut::Array< ut::UniquePtr<Viewport> > viewports;
 };
 
 //----------------------------------------------------------------------------//

@@ -29,6 +29,19 @@ DesktopViewport::~DesktopViewport()
 	CloseSignal();
 }
 
+// Resizes UI widget if resizing is pending.
+void DesktopViewport::ResizeCanvas()
+{
+	if (resize_task)
+	{
+		Fl_Window::resize(resize_task->offset.X(),
+		                  resize_task->offset.Y(),
+		                  resize_task->extent.X(),
+		                  resize_task->extent.Y());
+		resize_task = ut::Optional< ut::Rect<int> >();
+	}
+}
+
 // Forces viewport to make closure signal.
 void DesktopViewport::CloseSignal()
 {
@@ -36,11 +49,18 @@ void DesktopViewport::CloseSignal()
 }
 
 // Overriden virtual function of the base class (Fl_Window).
-// Resize signal is triggered here.
+// Resize signal is triggered here to delegate resizing to the renderer.
 void DesktopViewport::resize(int x, int y, int w, int h)
 {
-	Fl_Window::resize(x, y, w, h);
+	// mark this viewport as needed to be resized
+	resize_task = ut::Rect<int>(x, y, w, h);
+
+	// call resize signal, note that some slots can call
+	// ResizeCanvas() function internally
 	resize_signal(id, w, h);
+
+	// resize ui area
+	ResizeCanvas();
 }
 
 //----------------------------------------------------------------------------//

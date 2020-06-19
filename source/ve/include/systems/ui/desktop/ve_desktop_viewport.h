@@ -27,10 +27,16 @@ public:
 	//    @param y - the initial vertical position of the window in pixels.
 	//    @param w - the initial width of the window in pixels.
 	//    @param h - the initial height of the window in pixels.
-	DesktopViewport(Id viewport_id, ut::String viewport_name, int x, int y, int w, int h);
+	DesktopViewport(Id viewport_id,
+	                ut::String viewport_name,
+	                int x, int y,
+	                int w, int h);
 
 	// Destructors, close signal is triggered here.
     ~DesktopViewport();
+
+	// Resizes UI widget if resizing is pending.
+	void ResizeCanvas();
 
 private:
 	// Forces viewport to call closure signal.
@@ -39,6 +45,10 @@ private:
 	// Overriden virtual function of the base class (Fl_Window).
 	// Resize signal is triggered here.
 	void resize(int x, int y, int w, int h) override;
+
+	// indicates if resize action is pending and represents a rect with new
+	// position and size of the window
+	ut::Optional< ut::Rect<int> > resize_task;
 };
 
 // UI viewport for the current platform.

@@ -23,11 +23,18 @@ public:
 	//    @param snapshot - reference to the reflection tree
 	void Reflect(ut::meta::Snapshot& snapshot);
 
-	// data
+	// color of the background
+	ut::Color<3, ut::uint32> background_color;
+
+	// main window
 	ut::uint32 position_x; // left coordinate of the window
 	ut::uint32 position_y; // top coordinate of the window
 	ut::uint32 width; // width of the window
 	ut::uint32 height; // height of the window
+
+	// size of the frame between viewports in pixels
+	ut::uint32 viewport_frame_size;
+
 };
 
 //----------------------------------------------------------------------------//

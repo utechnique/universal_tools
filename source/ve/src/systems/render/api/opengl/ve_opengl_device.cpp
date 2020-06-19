@@ -60,16 +60,6 @@ void PlatformDevice::Present(OpenGLWindow& window,
 
 	// swap back and front buffers and draw
 	window.SwapBuffer(vsync);
-
-	// set context back to windowless mode
-	make_current_error = context->MakeCurrent();
-	if (make_current_error)
-	{
-		throw ut::Error(make_current_error.Move());
-	}
-
-	// disable srgb
-	glDisable(GL_FRAMEBUFFER_SRGB);
 }
 
 //----------------------------------------------------------------------------//
@@ -296,6 +286,10 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 	ut::Function<void(Context&)>& procedure = cmd_buffer.proc.Get();
 	procedure(context.GetRef());
 
+	// indicates if vsync should be ignored even if
+	// it's enabled for a corresponding display
+    bool ignore_vsync = false;
+
 	// present
 	const ut::uint32 present_count = static_cast<ut::uint32>(present_queue.GetNum());
 	for (size_t display_id = 0; display_id < present_count; display_id++)
@@ -318,12 +312,30 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 			        request->attachment_id,
 			        static_cast<GLint>(display.GetWidth()),
 			        static_cast<GLint>(display.GetHeight()),
-			        display.vsync);
+			        ignore_vsync ? false : display.vsync);
+
+            // Xlib has a bug with multiple glxSwapBuffers calls - windows
+            // start flickering, thus only one display is allowed to have vsync
+#if UT_LINUX && VE_X11
+            if(display.vsync)
+            {
+                ignore_vsync = true;
+            }
+#endif
 
 			// only one present per display
 			break;
 		}
 	}
+
+    // set context back to windowless mode
+	ut::Optional<ut::Error> make_current_error = context->MakeCurrent();
+	if (make_current_error)
+	{
+		throw ut::Error(make_current_error.Move());
+	}
+
+    // clear present queue
 	context->present_queue.Empty();
 }
 

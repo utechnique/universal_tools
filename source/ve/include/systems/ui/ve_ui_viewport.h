@@ -25,16 +25,22 @@ public:
 	Viewport(Id viewport_id, ut::String viewport_name);
 
 	// ve::ui::Viewport is a polymorphic class, so it must have virtual destructor.
-	virtual ~Viewport();
+	virtual ~Viewport() = default;
+	
+	// Resizes UI widget if resizing is pending.
+	virtual void ResizeCanvas();
 
 	// Connects provided function with signal that is triggered on resize.
-	void ConnectResizeSignalSlot(ut::Function<void(Id id, ut::uint32 w, ut::uint32 h)> slot);
+	void ConnectResize(ut::Function<void(Id id, ut::uint32 w, ut::uint32 h)> slot);
 
 	// Connects provided function with signal that is triggered in destructor.
-	void ConnectCloseSignalSlot(ut::Function<void(Id id)> slot);
+	void ConnectClose(ut::Function<void(Id id)> slot);
 
 	// Resets all signals.
 	void ResetSignals();
+
+	// Returns 'true' if this viewport is currently active
+	bool IsActive();
 
 	// Returns unique identifier of the viewport.
 	Id GetId() const;
@@ -43,6 +49,9 @@ public:
 	const ut::String& GetName() const;
 
 protected:
+	// Indicates if this viewport is currently active
+	ut::Synchronized<bool> active;
+
 	// Name of the viewport.
 	const ut::String name;
 

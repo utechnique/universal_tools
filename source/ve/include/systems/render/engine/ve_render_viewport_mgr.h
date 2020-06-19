@@ -27,8 +27,7 @@ public:
 	// Copying is prohibited.
 	ViewportManager(const ViewportManager&) = delete;
 
-	// Initializes internal array of display/viewport pairs with one
-	// provided by UI frontend.
+	// Initializes internal array of viewport containers.
 	//    @param frontend - reference to ui::Frontend object.
 	void OpenViewports(ui::Frontend& frontend);
 
@@ -49,29 +48,29 @@ protected:
 
 private:
 	// Viewport tasks are executed once per frame in a special synchronization
-	// member function - SyncViewportEvents(). Thus all task issuers must wait until
-	// the task is finished. That's why all viewport tasks contain synchronization
-	// primitives to synchronize manager and issuers: mutex, condition variable and a
-	// boolean flag signalizing that the task is done.
-	typedef ut::UniquePtr< ut::BaseTask<void> > ViewportTaskPtr;
-	typedef ut::Container<ViewportTaskPtr, ut::Mutex&, ut::ConditionVariable&, bool&> ViewportTask;
+	// member function - SyncViewportEvents(). Thus all task issuers must wait
+	// until the task is finished.
+	typedef ut::UniquePtr< ut::BaseTask<void> > ViewportTask;
 
 	// Creates a new display and all associated render resources for the
 	// provided viewport.
 	//    @param device - reference to the render device.
 	//    @param viewport - reference to the viewport.
 	//    @return - container with all render resources, or error if failed.
-	ut::Result<ViewportContainer, ut::Error> CreateDisplay(Device& device, ui::PlatformViewport& viewport);
+	ut::Result<ViewportContainer, ut::Error> CreateDisplay(Device& device,
+	                                                       ui::PlatformViewport& viewport);
 
     // Resizes a display associated with provided viewport.
 	//    @param id - id of the viewport whose render display must be resized.
 	//    @param w - new width of render display in pixels.
 	//    @param h - new height of render display in pixels.
-	void ResizeViewport(ui::Viewport::Id id, ut::uint32 w, ut::uint32 h);
+	typedef void(ResizeFunction)(ui::Viewport::Id id, ut::uint32 w, ut::uint32 h);
+	ResizeFunction ResizeViewport;
 
 	// Removes viewport from internal map and destroys render resources.
 	//    @param id - id of the viewport to be closed.
-	void CloseViewport(ui::Viewport::Id id);
+	typedef void(CloseFunction)(ui::Viewport::Id id);
+	CloseFunction CloseViewport;
 
 	// Enqueues a task and waits for completion.
 	void EnqueueViewportTask(ut::UniquePtr< ut::BaseTask<void> > task);
@@ -80,12 +79,12 @@ private:
 	//    @param id - id of the viewport whose render display must be resized.
 	//    @param w - new width of render display in pixels.
 	//    @param h - new height of render display in pixels.
-	void EnqueueViewportResize(ui::Viewport::Id id, ut::uint32 w, ut::uint32 h);
+	void EnqueueResize(ui::Viewport::Id id, ut::uint32 w, ut::uint32 h);
 
 	// Enqueue a CloseViewport() member function call and wait for completion
 	// in the synchronization point.
 	//    @param id - id of the viewport to be closed.
-	void EnqueueViewportClosure(ui::Viewport::Id id);
+	void EnqueueClose(ui::Viewport::Id id);
 
 	// Searches for a viewport container associated with provided viewport id.
 	//    @return - id of the container in the @viewports array.
@@ -98,7 +97,10 @@ private:
 	// array of viewport tasks, only two functions are allowed to interact with
     // it in a safe maner: EnqueueViewportTask() to add task, and
 	// SyncViewportEvents() to execute all tasks and clear the array
-	ut::Synchronized< ut::Array<ViewportTask> > viewport_tasks;
+	ut::Array<ViewportTask> viewport_tasks;
+
+	// synchronization point to strictly synchronize viewport events
+	ut::SyncPoint sync_point;
 };
 
 //----------------------------------------------------------------------------//

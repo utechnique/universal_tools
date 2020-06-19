@@ -78,10 +78,28 @@ void Engine::RecordFrameCommands(Context& context)
 		static int it = 0;
 		it++;
 		bool swap_col = it % 100 < 50;
-		backbuffer_clear_values[0].R() = swap_col ? 1.0f : 0.0f;
-		backbuffer_clear_values[0].G() = swap_col ? 0.0f : 1.0f;
+		if (swap_col)
+		{
+			switch (i)
+			{
+			case 0: backbuffer_clear_values[0] = ut::Color<4>(1, 0, 0, 1); break;
+			case 1: backbuffer_clear_values[0] = ut::Color<4>(0, 1, 0, 1); break;
+			case 2: backbuffer_clear_values[0] = ut::Color<4>(0, 0, 1, 1); break;
+			case 3: backbuffer_clear_values[0] = ut::Color<4>(1, 1, 0, 1); break;
+			}
+		}
+		else
+		{
+			switch (i)
+			{
+			case 0: backbuffer_clear_values[0] = ut::Color<4>(0, 0, 1, 1); break;
+			case 1: backbuffer_clear_values[0] = ut::Color<4>(1, 0, 1, 1); break;
+			case 2: backbuffer_clear_values[0] = ut::Color<4>(1, 0, 0, 1); break;
+			case 3: backbuffer_clear_values[0] = ut::Color<4>(0, 1, 1, 1); break;
+			}
+		}
 
-		ut::Array<Framebuffer>& framebuffers = viewports.GetFirst().Get< ut::Array<Framebuffer> >();
+		ut::Array<Framebuffer>& framebuffers = viewports[i].Get< ut::Array<Framebuffer> >();
 
 		Framebuffer& framebuffer = framebuffers[display.GetCurrentBufferId()];
 		const FramebufferInfo& fb_info = framebuffer.GetInfo();

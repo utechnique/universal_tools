@@ -48,11 +48,6 @@ DesktopFrontend::DesktopFrontend() : window_ready(false)
 }
 
 //----------------------------------------------------------------------------->
-// Destructor
-DesktopFrontend::~DesktopFrontend()
-{}
-
-//----------------------------------------------------------------------------->
 // Initialization.
 ut::Optional<ut::Error> DesktopFrontend::Initialize()
 {
@@ -81,29 +76,27 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	// set scheme
 	Fl::scheme("plastic");
 
+	// set background color
+	Fl::background(cfg.background_color.R(),
+	               cfg.background_color.G(),
+	               cfg.background_color.B());
+
 	// create main window
-	window = ut::MakeUnique<MainWindow>(cfg->position_x,
-	                                    cfg->position_y,
-	                                    cfg->width,
-	                                    cfg->height,
+	window = ut::MakeUnique<MainWindow>(cfg.position_x,
+	                                    cfg.position_y,
+	                                    cfg.width,
+	                                    cfg.height,
 	                                    skTitle,
 	                                    window_ready);
 	window->size_range(skMinWidth, skMinHeight);
 	window->callback(DesktopFrontend::OnCloseCallback, this);
 
-	// create render area
-	Viewport::Id viewport_id = viewport_id_generator.Generate();
-	ut::UniquePtr<DesktopViewport> viewport;
-	viewport = ut::MakeUnique<DesktopViewport>(viewport_id, "1", 0, 0, window->w(), window->h());
+	// viewport container
+	viewport_area = ut::MakeUnique<ViewportArea>(cfg, 0, 0, window->w(), window->h());
+	viewports = viewport_area->GetViewports();
 
 	// adjust main window
-	window->resizable(viewport.Get());
-
-	// add viewport to the map
-	if (!viewports.Add(ut::Move(viewport)))
-	{
-		return ut::Error(ut::error::out_of_memory);
-	}
+	window->resizable(viewport_area.Get());
 
 	// finish main window
 	window->end();
@@ -153,15 +146,45 @@ void DesktopFrontend::Run()
 void DesktopFrontend::SaveCfg()
 {
 	Config<Settings> cfg;
+	cfg.Load();
 
 	// main window parameters
-	cfg->position_x = window->x();
-	cfg->position_y = window->y();
-	cfg->width = window->w();
-	cfg->height = window->h();
+	cfg.position_x = window->x();
+	cfg.position_y = window->y();
+	cfg.width = window->w();
+	cfg.height = window->h();
 
 	// save to file
 	cfg.Save();
+}
+
+//----------------------------------------------------------------------------->
+// One can start iterating viewports by calling this function.
+//    @return - viewport iterator, elements can be modified.
+ut::Array< ut::Ref<Viewport> >::Iterator DesktopFrontend::BeginViewports()
+{
+	return viewports.Begin();
+}
+
+// One can end iterating viewports by calling this function.
+//    @return - viewport iterator, elements can be modified.
+ut::Array< ut::Ref<Viewport> >::Iterator DesktopFrontend::EndViewports()
+{
+	return viewports.End();
+}
+
+// One can start iterating viewports by calling this function.
+//    @return - viewport iterator, elements can be modified.
+ut::Array< ut::Ref<Viewport> >::ConstIterator DesktopFrontend::BeginViewports() const
+{
+	return viewports.Begin();
+}
+
+// One can end iterating viewports by calling this function.
+//    @return - viewport iterator, elements can be modified.
+ut::Array< ut::Ref<Viewport> >::ConstIterator DesktopFrontend::EndViewports() const
+{
+	return viewports.End();
 }
 
 //----------------------------------------------------------------------------->
@@ -184,8 +207,7 @@ void DesktopFrontend::Close()
 	const size_t viewport_count = viewports.GetNum();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
-		UT_ASSERT(viewports[i]);
-		DesktopViewport& viewport = static_cast<DesktopViewport&>(viewports[i].GetRef());
+		DesktopViewport& viewport = static_cast<DesktopViewport&>(viewports[i].Get());
 		viewport.CloseSignal();
 		viewport.ResetSignals();
 	}

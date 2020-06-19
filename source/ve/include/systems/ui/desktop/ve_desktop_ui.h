@@ -5,7 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/ui/ve_ui_frontend.h"
 #include "systems/ui/desktop/ve_desktop_viewport.h"
-#include "ve_id_generator.h"
+#include "systems/ui/desktop/ve_viewport_area.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -41,9 +41,6 @@ public:
 	// Constructor.
 	DesktopFrontend();
 
-	// Destructor
-	~DesktopFrontend();
-
 	// Initialization.
 	ut::Optional<ut::Error> Initialize();
 
@@ -52,6 +49,22 @@ public:
 
 	// Saves current ui configuration to the file.
 	void SaveCfg();
+
+	// One can start iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::Ref<Viewport> >::Iterator BeginViewports();
+
+	// One can end iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::Ref<Viewport> >::Iterator EndViewports();
+
+	// One can start iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::Ref<Viewport> >::ConstIterator BeginViewports() const;
+
+	// One can end iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::Ref<Viewport> >::ConstIterator EndViewports() const;
 
 private:
 	// Exit callback that is called before closing the main window.
@@ -73,8 +86,11 @@ private:
 	// main window
 	ut::UniquePtr<MainWindow> window;
 
-	// Id-generator is used to generate unique identifiers for viewports.
-	IdGenerator<Viewport::Id> viewport_id_generator;
+	// container for all viewports
+	ut::UniquePtr<ViewportArea> viewport_area;
+
+	// array of viewport references
+	ut::Array< ut::Ref<Viewport> > viewports;
 
 	// Minimum width of the window
 	static const ut::uint32 skMinWidth;

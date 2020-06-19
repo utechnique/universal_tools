@@ -37,64 +37,52 @@ ViewportManager::~ViewportManager()
 // Move constructor.
 ViewportManager::ViewportManager(ViewportManager&&) = default;
 
-// Initializes internal array of display/viewport pairs with one
-// provided by UI frontend.
+// Initializes internal array of viewport containers.
 //    @param frontend - reference to ui::Frontend object.
 void ViewportManager::OpenViewports(ui::Frontend& frontend)
 {
-	ut::Array< ut::UniquePtr<ui::Viewport> >::Iterator start = frontend.BeginViewports();
-	ut::Array< ut::UniquePtr<ui::Viewport> >::Iterator end = frontend.EndViewports();
+	ut::Array< ut::Ref<ui::Viewport> >::Iterator start = frontend.BeginViewports();
+	ut::Array< ut::Ref<ui::Viewport> >::Iterator end = frontend.EndViewports();
 
-	for (ut::Array< ut::UniquePtr<ui::Viewport> >::Iterator iterator = start; iterator != end; iterator++)
+	for (ut::Array< ut::Ref<ui::Viewport> >::Iterator iterator = start; iterator != end; iterator++)
 	{
 		// convert iterator to the reference to desktop viewport
-		ut::UniquePtr<ui::Viewport>& viewport_ptr = *iterator;
-		ui::PlatformViewport& viewport = static_cast<ui::PlatformViewport&>(viewport_ptr.GetRef());
+		ut::Ref<ui::Viewport>& viewport_ptr = *iterator;
+		ui::PlatformViewport& viewport = static_cast<ui::PlatformViewport&>(viewport_ptr.Get());
 
 		// create render resources for the viewport
-		ut::Result<ViewportContainer, ut::Error> vp_container_result = ut::MakeError(ut::error::empty);
-		render_thread->Enqueue([&](Device& device) { vp_container_result = CreateDisplay(device, viewport); });
-		if (!vp_container_result)
+		ut::Result<ViewportContainer, ut::Error> result = ut::MakeError(ut::error::empty);
+		render_thread->Enqueue([&](Device& device) { result = CreateDisplay(device, viewport); });
+		if (!result)
 		{
-			throw ut::Error(vp_container_result.MoveAlt());
+			throw ut::Error(result.MoveAlt());
 		}
 
 		// newly created display is added to the map and can be
 		// used to display rendered images to user
-		if (!viewports.Add(vp_container_result.MoveResult()))
+		if (!viewports.Add(result.MoveResult()))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
 
 		// connect signals
-		viewport.ConnectCloseSignalSlot([this](ui::Viewport::Id id) { this->EnqueueViewportClosure(id); });
-		viewport.ConnectResizeSignalSlot([this](ui::Viewport::Id id, ut::uint32 w, ut::uint32 h) { this->EnqueueViewportResize(id, w, h); });
+		viewport.ConnectClose([&](ui::Viewport::Id id) { EnqueueClose(id); });
+		viewport.ConnectResize([&](ui::Viewport::Id id, ut::uint32 w, ut::uint32 h){ EnqueueResize(id, w, h); });
 	}
 }
 
 // Synchronizes all viewport events.
 void ViewportManager::SyncViewportEvents()
 {
-	// move tasks to the temp buffer
-	ut::Array<ViewportTask>& locked_tasks = viewport_tasks.Lock();
-	ut::Array<ViewportTask> temp_buffer(ut::Move(locked_tasks));
-	viewport_tasks.Unlock();
+	sync_point.Synchronize();
 
 	// execute all tasks
-	const size_t task_count = temp_buffer.GetNum();
+	const size_t task_count = viewport_tasks.GetNum();
 	for (size_t i = 0; i < task_count; i++)
 	{
-		ViewportTask& task = temp_buffer[i];
-
-		// execute task
-		task.Get<ViewportTaskPtr>()->Execute();
-
-		{ // inform issuer that task is done
-			ut::ScopeLock task_lock(task.Get<ut::Mutex&>());
-			task.Get<bool&>() = true;
-		}
-		task.Get<ut::ConditionVariable&>().WakeOne();
+		viewport_tasks[i]->Execute();
 	}
+	viewport_tasks.Empty();
 }
 
 // Creates a new display and all associated render resources for the
@@ -110,7 +98,7 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 	config.Load();
 
 	// create display for the viewport in the render thread
-	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport, config->vsync);
+	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport, config.vsync);
 	if (!display_result)
 	{
 		return ut::MakeError(display_result.MoveAlt());
@@ -145,7 +133,8 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 		color_targets.Add(display_result.GetResult().GetTarget(i));
 
 		// create framebuffer
-		ut::Result<Framebuffer, ut::Error> fb_result = device.CreateFramebuffer(rp_result.GetResult(), ut::Move(color_targets));
+		ut::Result<Framebuffer, ut::Error> fb_result = device.CreateFramebuffer(rp_result.GetResult(),
+		                                                                        ut::Move(color_targets));
 		if (!fb_result)
 		{
 			return ut::MakeError(fb_result.MoveAlt());
@@ -217,25 +206,9 @@ void ViewportManager::CloseViewport(ui::Viewport::Id id)
 // Enqueues a task and waits for completion.
 void ViewportManager::EnqueueViewportTask(ut::UniquePtr< ut::BaseTask<void> > task)
 {
-	// synchronization data
-	ut::Mutex mutex;
-	ut::ConditionVariable cvar;
-	bool done = false;
-
-	{ // add task to the queue
-		ut::Array<ViewportTask>& locked_tasks = viewport_tasks.Lock();
-		if (!locked_tasks.Add(ViewportTask(ut::Move(task), mutex, cvar, done)))
-		{
-			throw ut::Error(ut::error::out_of_memory);
-		}
-		viewport_tasks.Unlock();
-	}
-
-	// and wait completion
-	ut::ScopeLock wait_lock(mutex);
-	while (!done)
+	if (!viewport_tasks.Add(ut::Move(task)))
 	{
-		cvar.Wait(wait_lock);
+		throw ut::Error(ut::error::out_of_memory);
 	}
 }
 
@@ -243,19 +216,38 @@ void ViewportManager::EnqueueViewportTask(ut::UniquePtr< ut::BaseTask<void> > ta
 //    @param id - id of the viewport whose render display must be resized.
 //    @param w - new width of render display in pixels.
 //    @param h - new height of render display in pixels.
-void ViewportManager::EnqueueViewportResize(ui::Viewport::Id id, ut::uint32 w, ut::uint32 h)
+void ViewportManager::EnqueueResize(ui::Viewport::Id id, ut::uint32 w, ut::uint32 h)
 {
-	auto resize_proc = ut::MemberFunction<ViewportManager, void(ui::Viewport::Id, ut::uint32, ut::uint32)>(this, &ViewportManager::ResizeViewport);
-	EnqueueViewportTask(ut::MakeUnique< ut::Task<void(ui::Viewport::Id, ut::uint32, ut::uint32)> >(ut::Move(resize_proc), id, w, h));
+	// lock both current thread and render thread so that nothing could be rendered
+	// while UI canvas is being resized, otherwise UI can damage render display
+	// while resizing
+	ut::SyncPoint::Lock lock = sync_point.AcquireLock();
+
+	// check if viewport with provided id is present in the cache
+	ut::Optional<size_t> viewport_array_id = FindViewport(id);
+	if(!viewport_array_id)
+	{
+		return;
+	}
+
+	// manually resize UI area
+	ui::PlatformViewport& ui_widget = viewports[viewport_array_id.Get()].Get<ui::PlatformViewport&>();
+	ui_widget.ResizeCanvas();
+
+	// enqueue resize task, display will be resized in render
+	// thread right after the @lock will be released
+	auto resize_proc = ut::MemberFunction<ViewportManager, ResizeFunction>(this, &ViewportManager::ResizeViewport);
+	EnqueueViewportTask(ut::MakeUnique< ut::Task<ResizeFunction> >(ut::Move(resize_proc), id, w, h));
 }
 
 // Enqueue a CloseViewport() member function call and wait for completion
 // in the synchronization point.
 //    @param id - id of the viewport to be closed.
-void ViewportManager::EnqueueViewportClosure(ui::Viewport::Id id)
+void ViewportManager::EnqueueClose(ui::Viewport::Id id)
 {
-	auto close_proc = ut::MemberFunction<ViewportManager, void(ui::Viewport::Id)>(this, &ViewportManager::CloseViewport);
-	EnqueueViewportTask(ut::MakeUnique< ut::Task<void(ui::Viewport::Id)> >(ut::Move(close_proc), id));
+	ut::SyncPoint::Lock lock = sync_point.AcquireLock();
+	auto close_proc = ut::MemberFunction<ViewportManager, CloseFunction>(this, &ViewportManager::CloseViewport);
+	EnqueueViewportTask(ut::MakeUnique< ut::Task<CloseFunction> >(ut::Move(close_proc), id));
 }
 
 // Searches for a viewport container associated with provided viewport id.

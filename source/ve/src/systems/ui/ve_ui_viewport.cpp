@@ -12,22 +12,23 @@ START_NAMESPACE(ui)
 //    @param viewport_id - id associated with this viewport.
 //    @param viewport_name - name of the viewport.
 Viewport::Viewport(Id viewport_id,
-                   ut::String viewport_name) : id(viewport_id)
+                   ut::String viewport_name) : active(true)
+                                             , id(viewport_id)
                                              , name(ut::Move(viewport_name))
 {}
 
-// ve::ui::Viewport is a polymorphic class, so it must have virtual destructor.
-Viewport::~Viewport()
+// Resizes UI widget if resizing is pending.
+void Viewport::ResizeCanvas()
 {}
 
 // Connects provided function with signal that is triggered on resize.
-void Viewport::ConnectResizeSignalSlot(ut::Function<void(Id, ut::uint32, ut::uint32)> slot)
+void Viewport::ConnectResize(ut::Function<void(Id, ut::uint32, ut::uint32)> slot)
 {
 	resize_signal.Connect(ut::Move(slot));
 }
 
 // Connects provided function with signal that is triggered in destructor.
-void Viewport::ConnectCloseSignalSlot(ut::Function<void(Id id)> slot)
+void Viewport::ConnectClose(ut::Function<void(Id id)> slot)
 {
 	close_signal.Connect(ut::Move(slot));
 }
@@ -37,6 +38,12 @@ void Viewport::ResetSignals()
 {
 	resize_signal.Reset();
 	close_signal.Reset();
+}
+
+// Returns 'true' if this viewport is currently active
+bool Viewport::IsActive()
+{
+	return active.Get();
 }
 
 // Returns unique identifier of the viewport.

@@ -9,21 +9,9 @@ START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 // ve::Config is a class to save/load options and preferences.
 template<typename Properties>
-class Config
+class Config : public Properties
 {
 public:
-	// Inheritance operator, provides access to the owned object.
-	Properties* operator -> ()
-	{
-		return &properties;
-	}
-
-	// Inheritance operator, provides read access to the owned object.
-	const Properties* operator -> () const
-	{
-		return &properties;
-	}
-
 	// Saves to file.
 	ut::Optional<ut::Error> Save()
 	{
@@ -40,7 +28,7 @@ public:
 		else
 		{
 			ut::JsonDoc json_doc;
-			ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(properties,
+			ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(*this,
 																		  skName,
 																		  ut::meta::Info::CreatePure());
 			cfg_file << (json_doc << cfg_snapshot);
@@ -66,7 +54,7 @@ public:
 
 		// deserialize cfg from the text document
 		ut::JsonDoc json_doc;
-		ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(properties, skName);
+		ut::meta::Snapshot cfg_snapshot = ut::meta::Snapshot::Capture(*this, skName);
 		cfg_file >> json_doc >> cfg_snapshot;
 		cfg_file.Close();
 
@@ -82,9 +70,6 @@ public:
 
 	// name of the managed entity
 	static const char* skName;
-
-private:
-	Properties properties;
 };
 
 //----------------------------------------------------------------------------//

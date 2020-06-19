@@ -1261,6 +1261,7 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 	}
 
 	VkSemaphore wait_semaphores[skMaxVkSwapchainPresent];
+	VkPipelineStageFlags wait_stages[skMaxVkSwapchainPresent];
 	VkSemaphore signal_semaphores[skMaxVkSwapchainPresent];
 	
 	for (ut::uint32 i = 0; i < display_count; i++)
@@ -1269,19 +1270,19 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 
 		ut::uint32 swap_id = display.swap_count;
 		wait_semaphores[i] = display.availability_semaphores[swap_id].GetVkHandle();
+		wait_stages[i] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
 		const ut::uint32 current_buffer_id = display.current_buffer_id;
 		signal_semaphores[i] = display.present_ready_semaphores[current_buffer_id].GetVkHandle();
 	}
 
 	const VkCommandBuffer cmd_bufs[] = { cmd_buffer.buffer.GetVkHandle() };
-	VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	VkSubmitInfo submit_info[1] = {};
 	submit_info[0].pNext = nullptr;
 	submit_info[0].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submit_info[0].waitSemaphoreCount = display_count;
 	submit_info[0].pWaitSemaphores = wait_semaphores;
-	submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
+	submit_info[0].pWaitDstStageMask = wait_stages;
 	submit_info[0].commandBufferCount = 1;
 	submit_info[0].pCommandBuffers = cmd_bufs;
 	submit_info[0].signalSemaphoreCount = display_count;
