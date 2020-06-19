@@ -6,6 +6,10 @@
 #include "common/ut_common.h"
 #include "system/ut_mutex.h"
 #include "system/ut_lock.h"
+#include "system/ut_condition_variable.h"
+#include "system/ut_thread.h"
+#include "pointers/ut_shared_ptr.h"
+#include "pointers/ut_weak_ptr.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
@@ -290,6 +294,116 @@ private:
 	SyncRW<T>& sync;
 	T& object;
 	bool locked;
+};
+
+//----------------------------------------------------------------------------//
+// ut::SyncPoint is a class to synchronize different events from different
+// threads in one specific moment of time defined by ut::SyncPoint::Synchronize
+// function call. One can issue synchronization by calling
+// ut::SyncPoint::AcquireLock(), and it will wait for the next
+// ut::SyncPoint::Synchronize() call, on the other hand SyncPoint::Synchronize()
+// function will wait until the lock will be released.
+class SyncPoint
+{
+private:
+	// Id of the thread being synchronized with in the moment.
+	typedef Optional<ThreadId> OccupantId;
+
+	// Synchronization request.
+	class Request
+	{
+	public:
+		// Constructor.
+		Request(WeakPtr<OccupantId> in_occupant_thread);
+
+		// Move constructor.
+		Request(Request&&) noexcept;
+
+		// Copying is prohibited.
+		Request(const Request&) = delete;
+		Request& operator = (const Request&) = delete;
+
+		// Move assignment is prohibited.
+		Request& operator = (Request&&) = delete;
+
+		// Waits for the synchronization with ut::SyncPoint::Synchronize().
+		void Synchronize();
+
+		// Informs issuer that synchronization started and waits for the request
+		// to call ut::SyncPoint::Request::Finish().
+		void StartAndWaitCompletion(Mutex& occupant_mutex);
+
+		// Informs synchronization point that synchronization is over.
+		void Finish();
+
+	private:
+		// synchronization primitives
+		Mutex mutex;
+		ConditionVariable cvar;
+		bool active;
+
+		// id of the thread that issued a request
+		ThreadId thread_id;
+
+		// id of the current thread occupying synchronization
+		WeakPtr<OccupantId> occupant_thread;
+	};
+
+public:
+	// Lock that is returned by ut::SyncPoint::AcquireLock() is used to control
+	// time of the synchronization by issuer. One can call
+	// ut::SyncPoint::Lock::Release to finish synchronization.
+	class Lock
+	{
+	public:
+		// Constructor.
+		Lock(WeakPtr<Request> in_request);
+
+		// Move constructor.
+		Lock(Lock&& other) noexcept;
+
+		// Copying is prohibited.
+		Lock(const Lock&) = delete;
+		Lock& operator = (const Lock&) = delete;
+
+		// Move assignment is prohibited.
+		Lock& operator = (Lock&&) = delete;
+
+		// Destructor.
+		~Lock();
+
+		// Finishes synchronization process.
+		void Release();
+
+	private:
+		WeakPtr<Request> request;
+	};
+
+	// Constructor.
+	SyncPoint();
+
+	// Move constructor.
+	SyncPoint(SyncPoint&& other) noexcept;
+
+	// Copying is prohibited.
+	SyncPoint(const SyncPoint&) = delete;
+	SyncPoint& operator = (const SyncPoint&) = delete;
+
+	// Synchronizes all pending requests. This function is thread-safe.
+	void Synchronize();
+
+	// Waits for the synchronization with ut::SyncPoint::Synchronize()
+	// and returns a lock controlling synchronization time.
+	Lock AcquireLock();
+
+private:
+	// synchronization requests
+	Synchronized< Array< SharedPtr<Request, thread_safety::on> > > requests;
+
+	// occupant thread - is a thread being synchronized with in the moment,
+	// it must be cached to prevent dead lock in recursion cases
+	Mutex occupant_mutex;
+	SharedPtr<OccupantId> occupant_thread;
 };
 
 //----------------------------------------------------------------------------//
