@@ -14,6 +14,7 @@
 #include "meta/parameters/containers/ut_avltree_parameter.h"
 #include "meta/parameters/math/ut_matrix_parameter.h"
 #include "meta/parameters/math/ut_quaternion_parameter.h"
+#include "meta/parameters/math/ut_rect_parameter.h"
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

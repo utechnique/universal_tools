@@ -251,6 +251,7 @@ public:
 	ut::Matrix<4, 4> matrix;
 	ut::Vector<3> vector;
 	ut::Color<3, ut::byte> color;
+	ut::Rect<float> rect;
 	ut::Quaternion<double> quaternion;
 	ut::int32* ival_ptr;
 	ut::int32* void_ptr;

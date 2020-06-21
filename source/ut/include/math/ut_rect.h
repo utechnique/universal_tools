@@ -23,6 +23,13 @@ struct Rect
 	Vector<2, Scalar> extent;
 };
 
+// Specialized type name function for rect
+template <typename Scalar>
+struct Type< Rect<Scalar> >
+{
+	static inline const char* Name() { return "rect"; }
+};
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
