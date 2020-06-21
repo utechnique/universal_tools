@@ -97,10 +97,10 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	Fl::set_color(55, cfg.tab_color.R(), cfg.tab_color.G(), cfg.tab_color.B());
 
 	// create main window
-	window = ut::MakeUnique<MainWindow>(cfg.position_x,
-	                                    cfg.position_y,
-	                                    cfg.width,
-	                                    cfg.height,
+	window = ut::MakeUnique<MainWindow>(cfg.window.offset.X(),
+	                                    cfg.window.offset.Y(),
+	                                    cfg.window.extent.X(),
+	                                    cfg.window.extent.Y(),
 	                                    skTitle,
 	                                    window_ready);
 	window->size_range(skMinWidth, skMinHeight);
@@ -167,10 +167,10 @@ void DesktopFrontend::SaveCfg()
 	cfg.Load();
 
 	// main window parameters
-	cfg.position_x = window->x();
-	cfg.position_y = window->y();
-	cfg.width = window->w();
-	cfg.height = window->h();
+	cfg.window.offset.X() = window->x();
+	cfg.window.offset.Y() = window->y();
+	cfg.window.extent.X() = window->w();
+	cfg.window.extent.Y() = window->h();
 
 	// viewport parameters
 	cfg.layout_id = viewport_area->GetCurrentLayoutId();

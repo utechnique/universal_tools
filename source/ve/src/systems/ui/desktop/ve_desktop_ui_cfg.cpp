@@ -14,10 +14,7 @@ START_NAMESPACE(ui)
 Settings::Settings() : background_color(51, 51, 55)
                      , foreground_color(150, 150, 165)
                      , tab_color(80, 80, 88)
-                     , position_x(0)
-                     , position_y(0)
-                     , width(640)
-                     , height(480)
+                     , window(0, 0, 640, 480)
                      , viewport_frame_size(4)
                      , layout_id(0)
 {}
@@ -32,10 +29,7 @@ void Settings::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot.Add(tab_color, "tab_color");
 
 	// main window
-	snapshot.Add(position_x, "position_x");
-	snapshot.Add(position_y, "position_y");
-	snapshot.Add(width, "width");
-	snapshot.Add(height, "height");
+	snapshot.Add(window, "window");
 
 	// viewports
 	snapshot.Add(viewport_frame_size, "viewport_frame");

@@ -29,10 +29,7 @@ public:
 	ut::Color<3, ut::uint32> tab_color;
 
 	// main window
-	ut::uint32 position_x; // left coordinate of the window
-	ut::uint32 position_y; // top coordinate of the window
-	ut::uint32 width; // width of the window
-	ut::uint32 height; // height of the window
+	ut::Rect<ut::uint32> window;
 
 	// size of the frame between viewports in pixels
 	ut::uint32 viewport_frame_size;
