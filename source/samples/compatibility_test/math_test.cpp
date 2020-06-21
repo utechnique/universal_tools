@@ -171,6 +171,11 @@ void MatrixTask::Execute()
 		return;
 	}
 
+	// different tags assignment
+	ut::Matrix<1, 4> m1x4(0.0f);
+	ut::Vector<4> vec4_tag(0.0f);
+	vec4_tag = m1x4;
+
 	report += "Success";
 }
 

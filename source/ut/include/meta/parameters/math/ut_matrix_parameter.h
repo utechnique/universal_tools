@@ -10,11 +10,20 @@
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
-// ut::Parameter<Matrix> is a template specialization for matrices.
-template<MatrixElementId rows, MatrixElementId columns, typename Scalar>
-class Parameter< Matrix<rows, columns, Scalar> > : public BaseParameter
+// Returns name for the matrix elements. Some matrix types can have 'named'
+// elements such as 'x,y,z..' or 'r,g,b..'
+template<typename Tag>
+inline Optional<String> GetMatrixElementName(MatrixElementId id)
 {
-	typedef Matrix<rows, columns, Scalar> MatrixType;
+	return Optional<String>();
+}
+
+//----------------------------------------------------------------------------//
+// ut::Parameter<Matrix> is a template specialization for matrices.
+template<MatrixElementId rows, MatrixElementId columns, typename Scalar, typename Tag>
+class Parameter< Matrix<rows, columns, Scalar, Tag> > : public BaseParameter
+{
+	typedef Matrix<rows, columns, Scalar, Tag> MatrixType;
 public:
 	// Constructor
 	//    @param p - pointer to the managed matrix (vector)
@@ -39,7 +48,7 @@ public:
 		{
 			for (MatrixElementId j = 0; j < columns; j++)
 			{
-				Optional<String> element_name = GetElementName(j);
+				Optional<String> element_name = GetMatrixElementName<Tag>(j);
 				if (element_name)
 				{
 					snapshot.Add(matrix(i, j), element_name.Move());
@@ -51,28 +60,35 @@ public:
 			}
 		}
 	}
-
-private:
-	// Helper function to generate element's name (such as 'x', 'y', etc.)
-	Optional<String> GetElementName(MatrixElementId id)
-	{
-		// makes sense only for vectors
-		if (rows != 1)
-		{
-			return Optional<String>();
-		}
-
-		switch (id)
-		{
-			case 0: return String("x");
-			case 1: return String("y");
-			case 2: return String("z");
-			case 3: return String("w");
-		}
-
-		return Optional<String>();
-	}
 };
+
+// Specialization for vectors.
+template<> inline Optional<String> GetMatrixElementName<MatrixVertorTag>(MatrixElementId id)
+{
+	switch (id)
+	{
+	case 0: return String("x");
+	case 1: return String("y");
+	case 2: return String("z");
+	case 3: return String("w");
+	}
+
+	return Optional<String>();
+}
+
+// Specialization for colors.
+template<> inline Optional<String> GetMatrixElementName<MatrixColorTag>(MatrixElementId id)
+{
+	switch (id)
+	{
+	case 0: return String("r");
+	case 1: return String("g");
+	case 2: return String("b");
+	case 3: return String("a");
+	}
+
+	return Optional<String>();
+}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(meta)

@@ -354,6 +354,7 @@ SerializationTest::SerializationTest(bool in_alternate,
                                                              , ival2(2)
                                                              , matrix(0.0f)
                                                              , vector(0.0f)
+                                                             , color(0)
                                                              , quaternion(0.0f, 0.0f, 0.0f, 0.0f)
                                                              , ival_ptr(&ival)
                                                              , ival_const_ptr(&ival)
@@ -432,6 +433,7 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << ival2;
 	snapshot << matrix;
 	snapshot << vector;
+	snapshot << color;
 	snapshot << quaternion;
 	if (can_have_links)
 	{
@@ -736,6 +738,7 @@ void ChangeSerializedObject(SerializationTest& object)
 	                                 8,  9,  10, 11,
 	                                 12, 13, 14, 15);
 	object.vector = ut::Vector<3>(0, 1, 2);
+	object.color = ut::Color<3, ut::byte>(10, 11, 12);
 	object.quaternion = ut::Quaternion<double>(0.0f, 1.0f, 2.0f, 3.0f);
 
 	object.ival = -0x01234567;
@@ -851,6 +854,10 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 		return false;
 	}
 	if (object.vector != ut::Vector<3>(0, 1, 2))
+	{
+		return false;
+	}
+	if (object.color != ut::Color<3, ut::byte>(10, 11, 12))
 	{
 		return false;
 	}

@@ -5,15 +5,24 @@
 //----------------------------------------------------------------------------//
 #include "math/ut_cmp.h"
 #include "math/ut_pow.h"
+#include "templates/ut_more_than.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // Type of element's index inside a matrix.
 typedef uint32 MatrixElementId;
 
+// Matrix tags.
+struct MatrixGeneralTag {};
+struct MatrixVertorTag {};
+struct MatrixColorTag {};
+
 // ut::Matrix is a complete template class for matrices with custom static size.
 // It can represent both matrix and vector (as a matrix with only one row).
-template<MatrixElementId rows, MatrixElementId columns, typename Scalar = float>
+template<MatrixElementId rows,
+         MatrixElementId columns,
+         typename Scalar = float,
+         typename Tag = MatrixGeneralTag>
 class Matrix
 {
 private:
@@ -37,16 +46,6 @@ public:
 	Matrix()
 	{}
 
-	// Constructor. Elements are initialized with
-	// values from the provided array.
-	Matrix(Scalar data[size])
-	{
-		for (MatrixElementId i = 0; i < size; i++)
-		{
-			table[i] = data[i];
-		}
-	}
-
 	// Constructor. All elements are initialized with a scalar value.
 	explicit Matrix(Scalar scalar)
 	{
@@ -59,7 +58,7 @@ public:
 	// Constructor. Initializes elements from the provided arguments.
 	// Number of arguments must be exactly the same as number of elements in this matrix.
 	// Each argument must be convertible to @Scalar.
-	template<typename... Elements>
+	template<typename... Elements, typename Sfinae = typename EnableIf<MoreThan<1, Elements...>::value>::Type>
 	Matrix(Elements... elements)
 	{
 		// convert all arguments to the desired type
@@ -85,6 +84,17 @@ public:
 		}
 	}
 
+	// Copy constructor, accepts another tag.
+	template<typename OtherTag>
+	Matrix(const Matrix<rows, columns, Scalar, OtherTag>& copy)
+	{
+		const Scalar* copy_data = copy.GetData();
+		for (MatrixElementId i = 0; i < size; i++)
+		{
+			table[i] = copy_data[i];
+		}
+	}
+
 	// Assignment operator, all elements are set to the provided scalar value.
 	Matrix& operator = (Scalar scalar)
 	{
@@ -101,6 +111,18 @@ public:
 		for (MatrixElementId i = 0; i < size; i++)
 		{
 			table[i] = copy.table[i];
+		}
+		return *this;
+	}
+
+	// Assignment operator, accepts another tag.
+	template<typename OtherTag>
+	Matrix& operator = (const Matrix<rows, columns, Scalar, OtherTag>& copy)
+	{
+		const Scalar* copy_data = copy.GetData();
+		for (MatrixElementId i = 0; i < size; i++)
+		{
+			table[i] = copy_data[i];
 		}
 		return *this;
 	}
@@ -525,16 +547,16 @@ private:
 //----------------------------------------------------------------------------//
 // Vector is defined as a matrix with only one row.
 template<MatrixElementId dim, typename Scalar = float>
-using Vector = Matrix<1, dim, Scalar>;
+using Vector = Matrix<1, dim, Scalar, MatrixVertorTag>;
 
 // Color is a vector too.
 template<MatrixElementId dim, typename Scalar = float>
-using Color = Vector<dim, Scalar>;
+using Color = Matrix<1, dim, Scalar, MatrixColorTag>;
 
 //----------------------------------------------------------------------------//
 // Specialized type name function for matrices
 template<MatrixElementId rows, MatrixElementId columns, typename Scalar>
-struct Type< Matrix<rows, columns, Scalar> >
+struct Type< Matrix<rows, columns, Scalar, MatrixGeneralTag> >
 {
 	static const String skName;
 	static inline const char* Name() { return skName.GetAddress(); }
@@ -553,6 +575,17 @@ struct Type< Vector<dim, Scalar> >
 
 template<MatrixElementId dim, typename Scalar>
 const String Type< Vector<dim, Scalar> >::skName = String("vector") + Print(dim);
+
+// Specialized type name function for colors
+template<MatrixElementId dim, typename Scalar>
+struct Type< Color<dim, Scalar> >
+{
+	static const String skName;
+	static inline const char* Name() { return skName.GetAddress(); }
+};
+
+template<MatrixElementId dim, typename Scalar>
+const String Type< Color<dim, Scalar> >::skName = String("color") + Print(dim);
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
