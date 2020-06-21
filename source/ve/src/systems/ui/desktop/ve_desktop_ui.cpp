@@ -74,12 +74,27 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	}
 
 	// set scheme
-	Fl::scheme("plastic");
+	Fl::scheme("base");
 
-	// set background color
+	// set colors
 	Fl::background(cfg.background_color.R(),
 	               cfg.background_color.G(),
 	               cfg.background_color.B());
+
+	Fl::background2(cfg.background_color.R(),
+	                cfg.background_color.G(),
+	                cfg.background_color.B());
+
+	Fl::foreground(cfg.foreground_color.R(),
+	               cfg.foreground_color.G(),
+	               cfg.foreground_color.B());
+
+	Fl::set_color(FL_LIGHT3,
+	              static_cast<ut::byte>(cfg.foreground_color.R() * 0.7f),
+	              static_cast<ut::byte>(cfg.foreground_color.G() * 0.7f),
+	              static_cast<ut::byte>(cfg.foreground_color.B() * 0.7f));
+
+	Fl::set_color(55, cfg.tab_color.R(), cfg.tab_color.G(), cfg.tab_color.B());
 
 	// create main window
 	window = ut::MakeUnique<MainWindow>(cfg.position_x,
@@ -103,6 +118,9 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 
 	// show main window
 	window->show(0, nullptr);
+
+	// select layout
+	viewport_area->ChangeLayout(cfg.layout_id);
 
 	// success
 	return ut::Optional<ut::Error>();
@@ -153,6 +171,9 @@ void DesktopFrontend::SaveCfg()
 	cfg.position_y = window->y();
 	cfg.width = window->w();
 	cfg.height = window->h();
+
+	// viewport parameters
+	cfg.layout_id = viewport_area->GetCurrentLayoutId();
 
 	// save to file
 	cfg.Save();

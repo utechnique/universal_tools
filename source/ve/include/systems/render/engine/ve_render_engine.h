@@ -22,7 +22,7 @@ public:
 	void ProcessNextFrame(Device& device);
 
 	// Function for recording all commands needed to draw current frame.
-	void RecordFrameCommands(Context& context);
+	void RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportContainer> >& active_viewports);
 
 private:
 	ut::UniquePtr<render::CmdBuffer> cmd_buffer;

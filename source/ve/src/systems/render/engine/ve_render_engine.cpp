@@ -53,27 +53,38 @@ void Engine::ProcessNextFrame(Device& device)
 	// synchronize all viewport events here
 	SyncViewportEvents();
 
-	// generate an array of active displays
-	ut::Array< ut::Ref<Display> > display_array;
+	// get active viewports
+	ut::Array< ut::Ref<ViewportContainer> > active_viewports;
 	for (size_t i = 0; i < viewports.GetNum(); i++)
 	{
-		display_array.Add(viewports[i].Get<Display>());
+		ui::PlatformViewport& viewport = viewports[i].Get<ui::PlatformViewport&>();
+		if (viewport.IsActive())
+		{
+			active_viewports.Add(viewports[i]);
+		}
+	}
+
+	// generate an array of active displays
+	ut::Array< ut::Ref<Display> > display_array;
+	for (size_t i = 0; i < active_viewports.GetNum(); i++)
+	{
+		display_array.Add(active_viewports[i]->Get<Display>());
 	}
 
 	// record all commands for the current frame
-	device.Record(cmd_buffer.GetRef(), [this](Context& context) { this->RecordFrameCommands(context); });
+	device.Record(cmd_buffer.GetRef(), [&](Context& context) { RecordFrameCommands(context, active_viewports); });
 
 	// submit commands and enqueue display presentation
 	device.Submit(cmd_buffer.GetRef(), display_array);
 }
 
 // Function for recording all commands needed to draw current frame.
-void Engine::RecordFrameCommands(Context& context)
+void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportContainer> >& active_viewports)
 {
-	for (size_t i = 0; i < viewports.GetNum(); i++)
+	for (size_t i = 0; i < active_viewports.GetNum(); i++)
 	{
-		Display& display = viewports[i].Get<Display>();
-		RenderPass& rp = viewports[i].Get<RenderPass>();
+		Display& display = active_viewports[i]->Get<Display>();
+		RenderPass& rp = active_viewports[i]->Get<RenderPass>();
 
 		static int it = 0;
 		it++;
@@ -99,7 +110,7 @@ void Engine::RecordFrameCommands(Context& context)
 			}
 		}
 
-		ut::Array<Framebuffer>& framebuffers = viewports[i].Get< ut::Array<Framebuffer> >();
+		ut::Array<Framebuffer>& framebuffers = active_viewports[i]->Get< ut::Array<Framebuffer> >();
 
 		Framebuffer& framebuffer = framebuffers[display.GetCurrentBufferId()];
 		const FramebufferInfo& fb_info = framebuffer.GetInfo();

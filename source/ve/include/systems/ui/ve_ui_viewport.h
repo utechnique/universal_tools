@@ -42,6 +42,12 @@ public:
 	// Returns 'true' if this viewport is currently active
 	bool IsActive();
 
+	// Activates this viewport.
+	void Activate();
+
+	// Deactivates this viewport
+	void Deactivate();
+
 	// Returns unique identifier of the viewport.
 	Id GetId() const;
 

@@ -46,6 +46,18 @@ bool Viewport::IsActive()
 	return active.Get();
 }
 
+// Activates this viewport.
+void Viewport::Activate()
+{
+	active.Set(true);
+}
+
+// Deactivates this viewport
+void Viewport::Deactivate()
+{
+	active.Set(false);
+}
+
 // Returns unique identifier of the viewport.
 Viewport::Id Viewport::GetId() const
 {
