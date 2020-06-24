@@ -67,6 +67,34 @@ Optional<Error> CreateFolder(const String& folder);
 Result<uint32, Error> FileCheckSumAdler32(const String& filename);
 
 //----------------------------------------------------------------------------//
+// Reads a file into a byte array
+//    @param filename - path to the file
+//    @return - array of bytes or ut::Error if failed
+Result<Array<ut::byte>, Error> ReadFile(const String& filename);
+
+//----------------------------------------------------------------------------//
+// Writes provided data to file
+//    @param filename - path to the file
+//    @param data - pointer to the data to be written
+//    @param size - size of @data in bytes
+//    @return - a string or ut::Error if failed
+Optional<Error> WriteFile(const String& filename,
+                          const void* data,
+                          size_t size);
+
+//----------------------------------------------------------------------------//
+// Writes provided array to file
+//    @param filename - path to the file
+//    @param data - const reference to the array to be written
+template<typename ElementType>
+Optional<Error> WriteFile(const String& filename,
+                          const Array<ElementType>& data)
+{
+	return WriteFile(filename, data.GetAddress(), data.GetNum() * sizeof(ElementType));
+}
+
+
+//----------------------------------------------------------------------------//
 // ut::File is a wrapper around LibC file stream, data can be read / written
 // after the file is opened (using constructor or Open() function), file is
 // closed in destructor or Close() function. Use Close() function to release
@@ -77,18 +105,20 @@ public:
 	// Default constructor
     File();
 
-	// Copy constructor, doesn't copy anything, constructed file will
-	// not be opened even if @copy file was opened at the moment of copying
-	File(const File& copy);
-
-	// Assignment operator, doesn't copy anything, constructed file will
-	// not be opened even if @copy file was opened at the moment of copying
-	File& operator = (const File& copy);
-
 	// Constructor, opens file @filename
 	//    @param filename - path to the file
 	//    @param access - file access mode (see FileAccess enumeration)
 	File(const String& filename, FileAccess access);
+
+	// Move constructor.
+	File(File&& other) noexcept;
+
+	// Move operator.
+	File& operator = (File&& other) noexcept;
+
+	// Copying is prohibited.
+	File(const File&) = delete;
+	File& operator = (const File&) = delete;
 
 	// Destructor, closes the file (if it was previously opened)
 	~File();
