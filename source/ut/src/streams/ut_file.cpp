@@ -414,30 +414,88 @@ Result<uint32, Error> FileCheckSumAdler32(const String& filename)
 }
 
 //----------------------------------------------------------------------------//
+// Reads a file into a byte array.
+//    @param filename - path to the file.
+//    @return - array of bytes or ut::Error if failed.
+Result<Array<ut::byte>, Error> ReadFile(const String& filename)
+{
+	// open a file
+	File file;
+	Optional<Error> open_file_error = file.Open(filename, file_access_read);
+	if (open_file_error)
+	{
+		return MakeError(open_file_error.Move());
+	}
+
+	// get file size
+	Result<size_t, Error> get_size_result = file.GetSize();
+	if (!get_size_result)
+	{
+		return MakeError(get_size_result.MoveAlt());
+	}
+	size_t file_size = get_size_result.GetResult();
+
+	// read file contents
+	Array<ut::byte> data(file_size);
+	Optional<Error> read_error = file.Read(data.GetAddress(), 1, file_size);
+	if (read_error)
+	{
+		return MakeError(read_error.Move());
+	}
+
+	// close the file
+	Optional<Error> close_error = file.Close();
+	if (close_error)
+	{
+		return MakeError(close_error.Move());
+	}
+
+	// success
+	return data;
+}
+
+//----------------------------------------------------------------------------//
+// Writes provided data to file
+//    @param filename - path to the file
+//    @param data - pointer to the data to be written
+//    @param size - size of @data in bytes
+//    @return - a string or ut::Error if failed
+Optional<Error> WriteFile(const String& filename,
+                          const void* data,
+                          size_t size)
+{
+	// open a file
+	File file;
+	Optional<Error> opt_error = file.Open(filename, file_access_write);
+	if (opt_error)
+	{
+		return opt_error;
+	}
+
+	// write data
+	opt_error = file.Write(data, 1, size);
+	if (opt_error)
+	{
+		return opt_error;
+	}
+
+	// close
+	opt_error = file.Close();
+	if (opt_error)
+	{
+		return opt_error;
+	}
+
+	// success
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------//
 // class ut::File                                                             //
 //----------------------------------------------------------------------------//
 // Default constructor
 File::File() : f(nullptr)
-{
-}
-
-//----------------------------------------------------------------------------//
-// Copy constructor, doesn't copy anything, constructed file will
-// not be opened even if @copy file was opened at the moment of copying
-File::File(const File& copy) : f(nullptr)
-{
-
-}
-
-//----------------------------------------------------------------------------//
-// Assignment operator, doesn't copy anything, constructed file will
-// not be opened even if @copy file was opened at the moment of copying
-File& File::operator = (const File& copy)
-{
-	f = nullptr;
-	path.SetEmpty();
-	return *this;
-}
+{}
 
 //----------------------------------------------------------------------------->
 // Constructor, opens file @filename
@@ -450,6 +508,23 @@ File::File(const String& filename, FileAccess access) : f(nullptr)
 	{
 		throw open_error.Move();
 	}
+}
+
+//----------------------------------------------------------------------------->
+// Move constructor.
+File::File(File&& other) noexcept : f(other.f)
+{
+	other.f = nullptr;
+}
+
+//----------------------------------------------------------------------------->
+// Move operator.
+File& File::operator = (File&& other) noexcept
+{
+	Close();
+	f = other.f;
+	other.f = nullptr;
+	return *this;
 }
 
 //----------------------------------------------------------------------------->
@@ -497,7 +572,7 @@ Optional<Error> File::Open(const String& filename, FileAccess access)
 // (copy, remove, open in another mode, etc.)
 Optional<Error> File::Close()
 {
-	if (f)
+	if (f != nullptr)
 	{
 		if (fclose(f) != 0)
 		{
