@@ -130,6 +130,12 @@ public:
 		return &value;
 	}
 
+	// Inheritance operator, provides access to the owned object.
+	const ValueType* operator -> () const
+	{
+		return &value;
+	}
+
 	// Comparison operator does the same as HasValue() function
 	//    @return - 'true' if @has_value == @b
 	constexpr bool operator == (bool b) const
