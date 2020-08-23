@@ -80,7 +80,7 @@ public:
     }
 
 	// Assignment (move) operator
-	TString& operator = (TString && str)
+	TString& operator = (TString && str) noexcept
 	{
 		return static_cast<TString&>(Base::operator = (Move(str)));
 	}

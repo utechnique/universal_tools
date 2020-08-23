@@ -373,6 +373,30 @@ Optional<Error> CreateFolder(const String& folder)
 }
 
 //----------------------------------------------------------------------------//
+// Creates directory tree.
+//    @param folder - the path of the directory tree to be created
+//    @return - 'true' if successfull
+Optional<Error> CreateDirectories(const String& path)
+{
+	const char* str = path.GetAddress();
+	const char* start = str;
+	while (*str != '\0')
+	{
+		if (*str == '\\' || *str == '/')
+		{
+			ut::String directory(start, str - start);
+			Optional<Error> dir_error = CreateFolder(directory);
+			if (dir_error)
+			{
+				return dir_error;
+			}
+		}
+		str++;
+	}
+	return CreateFolder(path);
+}
+
+//----------------------------------------------------------------------------//
 // Calculates Adler32 checksum for the file
 //    @param filename - path to the file
 //    @param out_checksum - checksum will be calculated to this variable

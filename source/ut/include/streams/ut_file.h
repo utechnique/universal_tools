@@ -60,6 +60,12 @@ Optional<Error> CopyFile(const String& source, const String& dest, bool replace 
 Optional<Error> CreateFolder(const String& folder);
 
 //----------------------------------------------------------------------------//
+// Creates directory tree.
+//    @param folder - the path of the directory tree to be created
+//    @return - 'true' if successfull
+Optional<Error> CreateDirectories(const String& path);
+
+//----------------------------------------------------------------------------//
 // Calculates Adler32 checksum for the file
 //    @param filename - path to the file
 //    @param out_checksum - checksum will be calculated to this variable
