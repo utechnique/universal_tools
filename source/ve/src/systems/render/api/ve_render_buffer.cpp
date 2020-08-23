@@ -1,23 +1,22 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_cmd_buffer.h"
+#include "systems/render/api/ve_render_buffer.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-CmdBuffer::CmdBuffer(PlatformCmdBuffer platform_cmd_buffer,
-                     const CmdBuffer::Info& cmd_buffer_info) : PlatformCmdBuffer(ut::Move(platform_cmd_buffer))
-                                                             , info(cmd_buffer_info)
-                                                             , pending(false)
+Buffer::Buffer(PlatformBuffer platform_buffer,
+               Buffer::Info buffer_info) : PlatformBuffer(ut::Move(platform_buffer))
+                                         , info(ut::Move(buffer_info))
 {}
 
 // Move constructor.
-CmdBuffer::CmdBuffer(CmdBuffer&&) noexcept = default;
+Buffer::Buffer(Buffer&&) noexcept = default;
 
 // Move operator.
-CmdBuffer& CmdBuffer::operator =(CmdBuffer&&) noexcept = default;
+Buffer& Buffer::operator =(Buffer&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

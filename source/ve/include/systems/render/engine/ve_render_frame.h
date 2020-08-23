@@ -3,25 +3,40 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_pipeline.h"
+#include "systems/render/ve_render_api.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-namespace directories
+// ve::render::Frame encapsulates render resources for a frame.
+class Frame
 {
-	// Configuration files.
-	static const char* skCfg = "config";
+public:
+	// Constructor.
+	Frame(CmdBuffer in_cmd_buffer, Buffer in_display_ub);
 
-	// Resources.
-	static const char* skRc = "resources";
-	static const char* skRcAlt = "../../../../resources";
-}
+	// Move constructor.
+	Frame(Frame&&) noexcept;
+
+	// Move operator.
+	Frame& operator =(Frame&&) noexcept;
+
+	// Copying is prohibited.
+	Frame(const Frame&) = delete;
+	Frame& operator =(const Frame&) = delete;
+
+	CmdBuffer cmd_buffer;
+	Buffer display_ub;
+
+	struct QuadDescriptorSet : public DescriptorSet
+	{
+		QuadDescriptorSet() : DescriptorSet(ub) {}
+		Descriptor ub = "g_cb_display";
+	} quad_desc_set;
+};
 
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline();
-
-//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

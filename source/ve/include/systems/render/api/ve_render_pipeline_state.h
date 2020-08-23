@@ -1,0 +1,344 @@
+//----------------------------------------------------------------------------//
+//---------------------------------|  V  E  |---------------------------------//
+//----------------------------------------------------------------------------//
+#pragma once
+//----------------------------------------------------------------------------//
+#include "systems/render/api/ve_render_platform.h"
+#include "systems/render/api/ve_render_shader.h"
+#include "systems/render/api/ve_render_pixel_format.h"
+#include "systems/render/api/ve_render_vertex.h"
+#include "systems/render/api/ve_render_primitive_topology.h"
+#include "systems/render/api/ve_render_descriptor.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ve)
+START_NAMESPACE(render)
+//----------------------------------------------------------------------------//
+// Comparison operations.
+namespace compare
+{
+	enum Operation
+	{
+		never,
+		less,
+		equal,
+		less_or_equal,
+		greater,
+		not_equal,
+		greater_or_equal,
+		always,
+	};
+}
+
+//----------------------------------------------------------------------------//
+// The purpose of the input-assembler stage is to read primitive data (points,
+// lines and/or triangles) from user-filled buffers and assemble the data into
+// primitives that will be used by the other pipeline stages.
+class InputAssemblyState
+{
+public:
+	// primitive topology
+	primitive::Topology topology;
+
+	// stride (in bytes) to the next primitive
+	ut::uint32 stride;
+
+	// elements a primitive's vertex consists of
+	ut::Array<VertexElement> elements;
+};
+
+//----------------------------------------------------------------------------//
+// A viewport maps vertex positions(in clip space) into render target positions.
+struct Viewport
+{
+	Viewport(float in_x = 0.0f,
+	         float in_y = 0.0f,
+	         float in_width = 0.0f,
+	         float in_height = 0.0f,
+	         float in_min_depth = 0.0f,
+	         float in_max_depth = 0.0f) : x(in_x)
+		                                , y(in_y)
+	                                    , width(in_width)
+	                                    , height(in_height)
+	                                    , min_depth(in_min_depth)
+	                                    , max_depth(in_max_depth)
+	{}
+
+	float x; // left position in pixels
+	float y; // top position in pixels
+	float width; // width in pixels
+	float height; // height in pixels
+	float min_depth; // 0 - 1
+	float max_depth; // 0 - 1
+	ut::Optional< ut::Rect<int> > scissor; // everything out of bounds is ignored
+};
+
+//----------------------------------------------------------------------------//
+// The rasterization stage converts vector information (composed of shapes or
+// primitives) into a raster image (composed of pixels) for the purpose of
+// displaying real-time 3D graphics.
+struct RasterizationState
+{
+	// Polygon rendering mode
+	enum PolygonMode
+	{
+		fill,
+		line,
+		point
+	};
+
+	// Polygon facing direction used for primitive culling.
+	enum CullMode
+	{
+		no_culling,
+		front_culling,
+		back_culling
+	};
+
+	// Specifies the front-facing triangle orientation to be used for culling.
+	enum FrontFace
+	{
+		counter_clockwise,
+		clockwise
+	};
+
+	// Constructor.
+	RasterizationState(PolygonMode in_polygon_mode = fill,
+	                   CullMode in_cull_mode = no_culling,
+	                   FrontFace in_front_face = clockwise,
+	                   float in_line_width = 1.0f,
+	                   bool in_discard_enable = false,
+	                   bool in_depth_bias_enable = false,
+	                   float in_depth_bias_constant_factor = 0.0f,
+	                   float in_depth_bias_clamp = 0.0f,
+	                   float in_depth_bias_slope_factor = 0.0f) : polygon_mode(in_polygon_mode)
+	                                                            , cull_mode(in_cull_mode)
+	                                                            , front_face(in_front_face)
+	                                                            , line_width(in_line_width)
+	                                                            , discard_enable(in_discard_enable)
+	                                                            , depth_bias_enable(in_depth_bias_enable)
+	                                                            , depth_bias_constant_factor(in_depth_bias_constant_factor)
+	                                                            , depth_bias_clamp(in_depth_bias_clamp)
+	                                                            , depth_bias_slope_factor(in_depth_bias_slope_factor)
+	{}
+
+	PolygonMode polygon_mode;
+	CullMode cull_mode;
+	FrontFace front_face;
+	float line_width;
+	bool discard_enable;
+	bool depth_bias_enable;
+	float depth_bias_constant_factor;
+	float depth_bias_clamp;
+	float depth_bias_slope_factor;
+};
+
+//----------------------------------------------------------------------------//
+// Structure specifying stencil operation state.
+struct StencilOpState
+{
+	// Operation type.
+	enum Operation
+	{
+		keep,
+		zero,
+		replace,
+		increment_and_clamp,
+		decrement_and_clamp,
+		invert,
+		increment_and_wrap,
+		decrement_and_wrap,
+	};
+
+	// Constructor.
+	StencilOpState(compare::Operation in_compare_op = compare::always,
+	               Operation in_fail_op = keep,
+	               Operation in_pass_op = keep,
+	               Operation in_depth_fail_op = keep,
+	               ut::uint32 in_compare_mask = 0,
+	               ut::uint32 in_write_mask = 0,
+	               ut::uint32 in_reference = 0) : compare_op(in_compare_op)
+	                                            , fail_op(in_fail_op)
+	                                            , pass_op(in_pass_op)
+	                                            , depth_fail_op(in_depth_fail_op)
+	                                            , compare_mask(in_compare_mask)
+	                                            , write_mask(in_write_mask)
+	                                            , reference(in_reference)
+	{}
+
+	compare::Operation compare_op;
+	Operation fail_op;
+	Operation pass_op;
+	Operation depth_fail_op;
+	ut::uint32 compare_mask;
+	ut::uint32 write_mask;
+	ut::uint32 reference;
+};
+
+//----------------------------------------------------------------------------//
+// Depth-stencil state object encapsulates depth-stencil test information for
+// the output-merger stage.
+struct DepthStencilState
+{
+	DepthStencilState(bool in_depth_test_enable = false,
+	                  bool in_stencil_test_enable = false,
+	                  bool in_depth_write_enable = false,
+	                  compare::Operation in_depth_compare_op = compare::always,
+	                  StencilOpState in_front = StencilOpState(),
+	                  StencilOpState in_back = StencilOpState()) : depth_test_enable(in_depth_test_enable)
+	                                                             , stencil_test_enable(in_stencil_test_enable)
+	                                                             , depth_write_enable(in_depth_write_enable)
+	                                                             , depth_compare_op(in_depth_compare_op)
+	                                                             , front(in_front)
+	                                                             , back(in_back)
+	{}
+
+	bool depth_test_enable;
+	bool stencil_test_enable;
+	bool depth_write_enable;
+	compare::Operation depth_compare_op;
+	StencilOpState front;
+	StencilOpState back;
+};
+
+//----------------------------------------------------------------------------//
+// Describes the blend state for a render target.
+struct Blending
+{
+	// Blend factor, which modulates values for the pixel shader
+	// and render target.
+	enum Factor
+	{
+		zero,
+		one,
+		src_color,
+		inverted_src_color,
+		dst_color,
+		inverted_dst_color,
+		src_alpha,
+		inverted_src_alpha,
+		dst_alpha,
+		inverted_dst_alpha,
+		src1_color,
+		inverted_src1_color,
+		src1_alpha,
+		inverted_src1_alpha,
+	};
+
+	// RGB or alpha blending operation.
+	enum Operation
+	{
+		add,
+		subtract,
+		reverse_subtract,
+		min,
+		max,
+	};
+
+	// Constructor
+	Blending(bool in_blend_enable = false,
+	         Factor in_src_blend = src_alpha,
+	         Factor in_dst_blend = inverted_src_alpha,
+	         Operation in_color_op = add,
+	         Factor in_src_blend_alpha = one,
+	         Factor in_dst_blend_alpha = one,
+	         Operation in_alpha_op = max,
+	         ut::uint8 in_write_mask = 0xf) : blend_enable(in_blend_enable)
+	                                        , src_blend(in_src_blend)
+	                                        , dst_blend(in_dst_blend)
+	                                        , color_op(in_color_op)
+	                                        , src_blend_alpha(in_src_blend_alpha)
+	                                        , dst_blend_alpha(in_dst_blend_alpha)
+	                                        , alpha_op(in_alpha_op)
+	                                        , write_mask(in_write_mask)
+	{}
+
+	bool blend_enable;
+	Factor src_blend;
+	Factor dst_blend;
+	Operation color_op;
+	Factor src_blend_alpha;
+	Factor dst_blend_alpha;
+	Operation alpha_op;
+	ut::uint8 write_mask;
+};
+
+//----------------------------------------------------------------------------//
+// Blending applies a simple function to combine output values from a pixel
+// shader with data in a render target. You have control over how the pixels are
+// blended by using a predefined set of blending operations and preblending
+// operations.
+struct BlendState
+{
+	// Default constructor. Note that it creates one blend state for the first
+	// target with disabled blending.
+	BlendState()
+	{
+		attachments.Add(Blending());
+	}
+
+	// Constructor
+	BlendState(ut::Array<Blending> in_attachments) : attachments(ut::Move(in_attachments))
+	{}
+
+	ut::Array<Blending> attachments;
+};
+
+//----------------------------------------------------------------------------//
+class PipelineState : public PlatformPipelineState
+{
+public:
+	// ve::render::PipelineInfo conveniently stores all essential
+	// information about the graphics pipeline.
+	class Info
+	{
+	public:
+		// Constructor.
+		Info() : tessellation_enable(false)
+		{}
+
+		// shaders bound to the pipeline
+		ut::Optional<Shader&> stages[Shader::skStageCount];
+
+		// viewports
+		ut::Array<Viewport> viewports;
+
+		// tessellation
+		bool tessellation_enable;
+
+		// states
+		InputAssemblyState input_assembly_state;
+		RasterizationState rasterization_state;
+		DepthStencilState depth_stencil_state;
+		BlendState blend_state;
+	};
+
+	// Constructor.
+	PipelineState(PlatformPipelineState platform_pipeline, Info pipeline_info);
+
+	// Move constructor.
+	PipelineState(PipelineState&&) noexcept;
+
+	// Move operator.
+	PipelineState& operator =(PipelineState&&) noexcept;
+
+	// Copying is prohibited.
+	PipelineState(const PipelineState&) = delete;
+	PipelineState& operator =(const PipelineState&) = delete;
+
+	// Returns a const reference to the object with
+	// information about this image.
+	const Info& GetInfo() const
+	{
+		return info;
+	}
+
+private:
+	Info info;
+};
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
+END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//

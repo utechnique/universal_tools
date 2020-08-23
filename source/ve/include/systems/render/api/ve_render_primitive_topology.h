@@ -1,23 +1,30 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_cmd_buffer.h"
+#pragma once
+//----------------------------------------------------------------------------//
+#include "systems/render/api/ve_render_platform.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Constructor.
-CmdBuffer::CmdBuffer(PlatformCmdBuffer platform_cmd_buffer,
-                     const CmdBuffer::Info& cmd_buffer_info) : PlatformCmdBuffer(ut::Move(platform_cmd_buffer))
-                                                             , info(cmd_buffer_info)
-                                                             , pending(false)
-{}
-
-// Move constructor.
-CmdBuffer::CmdBuffer(CmdBuffer&&) noexcept = default;
-
-// Move operator.
-CmdBuffer& CmdBuffer::operator =(CmdBuffer&&) noexcept = default;
+// Supported primitive topologies.
+namespace primitive
+{
+	enum Topology
+	{
+		point_list,
+		line_list,
+		line_list_with_adjacency,
+		line_strip,
+		line_strip_with_adjacency,
+		triangle_list,
+		triangle_list_with_adjacency,
+		triangle_strip,
+		triangle_strip_with_adjacency,
+		patch_list,
+	};
+}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

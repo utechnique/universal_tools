@@ -10,24 +10,35 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Vulkan framebuffer.
-class PlatformFramebuffer : public VkRc<vk::framebuffer>
+// Vulkan shader.
+class PlatformShader : public VkRc<vk::shader_module>
 {
 	friend class Device;
 	friend class Context;
 public:
 	// Constructor.
-	PlatformFramebuffer(VkDevice device_handle, VkFramebuffer framebuffer_handle);
+	PlatformShader(VkDevice device_handle,
+	               VkShaderModule shader_module_handle,
+	               const VkPipelineShaderStageCreateInfo& shader_stage_info);
 
 	// Move constructor.
-	PlatformFramebuffer(PlatformFramebuffer&&) noexcept;
+	PlatformShader(PlatformShader&&) noexcept;
 
 	// Move operator.
-	PlatformFramebuffer& operator =(PlatformFramebuffer&&) noexcept;
+	PlatformShader& operator =(PlatformShader&&) noexcept;
 
 	// Copying is prohibited.
-	PlatformFramebuffer(const PlatformFramebuffer&) = delete;
-	PlatformFramebuffer& operator =(const PlatformFramebuffer&) = delete;
+	PlatformShader(const PlatformShader&) = delete;
+	PlatformShader& operator =(const PlatformShader&) = delete;
+
+	// Converts provided shader type (see ve::Shader::Type) to appropriate
+	// VkShaderStageFlagBits set of flags.
+	//    @param shader_type - ve::Shader::Type value.
+	//    @return - VkShaderStageFlagBits object.
+	static VkShaderStageFlagBits ConvertTypeToVkStage(ut::uint32 shader_type);
+
+private:
+	VkPipelineShaderStageCreateInfo stage_info;
 };
 
 //----------------------------------------------------------------------------//

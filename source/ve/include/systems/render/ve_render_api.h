@@ -6,6 +6,7 @@
 #include "systems/render/api/ve_render_context.h"
 #include "systems/render/api/ve_render_device.h"
 #include "systems/render/api/ve_render_thread.h"
+#include "systems/render/api/ve_render_shader_compiler.h"
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

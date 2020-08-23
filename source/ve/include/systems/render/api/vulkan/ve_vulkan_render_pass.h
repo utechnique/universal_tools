@@ -11,7 +11,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Vulkan renderpass.
-class PlatformRenderPass
+class PlatformRenderPass : public VkRc<vk::render_pass>
 {
 	friend class Device;
 	friend class Context;
@@ -28,9 +28,6 @@ public:
 	// Copying is prohibited.
 	PlatformRenderPass(const PlatformRenderPass&) = delete;
 	PlatformRenderPass& operator =(const PlatformRenderPass&) = delete;
-
-private:
-	VkRc<vk::render_pass> render_pass;
 };
 
 //----------------------------------------------------------------------------//

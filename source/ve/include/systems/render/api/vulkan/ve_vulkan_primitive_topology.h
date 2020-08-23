@@ -1,27 +1,24 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_cmd_buffer.h"
+#pragma once
+//----------------------------------------------------------------------------//
+#if VE_VULKAN
+//----------------------------------------------------------------------------//
+#include "systems/render/api/vulkan/ve_vulkan_resource.h"
+#include "systems/render/api/ve_render_primitive_topology.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Constructor.
-CmdBuffer::CmdBuffer(PlatformCmdBuffer platform_cmd_buffer,
-                     const CmdBuffer::Info& cmd_buffer_info) : PlatformCmdBuffer(ut::Move(platform_cmd_buffer))
-                                                             , info(cmd_buffer_info)
-                                                             , pending(false)
-{}
-
-// Move constructor.
-CmdBuffer::CmdBuffer(CmdBuffer&&) noexcept = default;
-
-// Move operator.
-CmdBuffer& CmdBuffer::operator =(CmdBuffer&&) noexcept = default;
+// Converts primitive topology to the one compatible with Vulkan.
+VkPrimitiveTopology ConvertPrimitiveTopologyToVulkan(primitive::Topology topology);
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_VULKAN
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

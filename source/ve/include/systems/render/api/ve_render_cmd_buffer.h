@@ -8,10 +8,14 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// ve::render::CmdBufferInfo conveniently stores all essential
-// command buffer information.
-class CmdBufferInfo
+// ve::render::CmdBuffer encapsulates a list of graphics commands for rendering.
+// One can record buffer calling render::Device::Record() and execute recorded
+// commands with render::Device::Submit().
+class CmdBuffer : public PlatformCmdBuffer
 {
+	friend class Context;
+	friend class Device;
+
 public:
 	// Enumeration of flags specifying if the command buffer is primary or
 	// secondary command buffer.
@@ -27,11 +31,9 @@ public:
 		// Normal usage.
 		usage_normal = 0x00000000,
 
-		// Specifies that each recording of the command buffer will only be
-		// submitted once per frame, and the command buffer will be reset
-		// and recorded again between each submission by calling
-		// Device::ResetCmdPool() function.
-		usage_once = 0x00000001,
+		// Specifies that this command buffer will be reset after the call to
+		// Device::WaitCmdBuffer() function.
+		usage_dynamic = 0x00000001,
 
 		// Makes sense only for secondary buffers. Specifies that a secondary
 		// command buffer is considered to be entirely inside a render pass.
@@ -39,27 +41,23 @@ public:
 		usage_inside_render_pass = 0x00000002
 	};
 
-	// Constructor.
-	CmdBufferInfo() : level(level_primary)
-	                , usage(usage_normal)
-	{}
+	// ve::render::CmdBuffer::Info conveniently stores all essential
+	// command buffer information.
+	class Info
+	{
+	public:
+		// Constructor.
+		Info() : level(level_primary)
+		       , usage(usage_normal)
+		{}
 
-	Level level;
-	ut::uint32 usage;
-};
+		Level level;
+		ut::uint32 usage;
+	};
 
-// ve::render::CmdBuffer encapsulates a list of graphics commands for rendering.
-// One can record buffer calling render::Device::Record() and execute recorded
-// commands with render::Device::Submit().
-class CmdBuffer : public PlatformCmdBuffer
-{
-	friend class Context;
-	friend class Device;
-
-public:
 	// Constructor.
 	CmdBuffer(PlatformCmdBuffer platform_cmd_buffer,
-	          const CmdBufferInfo& cmd_buffer_info);
+	          const Info& cmd_buffer_info);
 
 	// Move constructor.
 	CmdBuffer(CmdBuffer&&) noexcept;
@@ -72,13 +70,14 @@ public:
 	CmdBuffer& operator =(const CmdBuffer&) = delete;
 
 	// Returns a const reference to the object with information about this command buffer.
-	const CmdBufferInfo& GetInfo() const
+	const Info& GetInfo() const
 	{
 		return info;
 	}
 
 private:
-	CmdBufferInfo info;
+	Info info;
+	bool pending;
 };
 
 //----------------------------------------------------------------------------//

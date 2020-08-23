@@ -10,7 +10,10 @@
 #include "systems/render/api/ve_render_cmd_buffer.h"
 #include "systems/render/api/ve_render_framebuffer.h"
 #include "systems/render/api/ve_render_pass.h"
-#include "systems/ui/desktop/ve_desktop_viewport.h"
+#include "systems/render/api/ve_render_buffer.h"
+#include "systems/render/api/ve_render_shader.h"
+#include "systems/render/api/ve_render_pipeline_state.h"
+#include "systems/render/api/ve_render_descriptor.h"
 #include "systems/ui/ve_ui.h"
 #include "ve_dedicated_thread.h"
 //----------------------------------------------------------------------------//
@@ -52,7 +55,7 @@ public:
 	//    @param cmd_buffer_info - reference to the information about
 	//                             the command buffer to be created.
 	//    @return - new command buffer or error if failed.
-	ut::Result<CmdBuffer, ut::Error> CreateCmdBuffer(const CmdBufferInfo& cmd_buffer_info);
+	ut::Result<CmdBuffer, ut::Error> CreateCmdBuffer(const CmdBuffer::Info& cmd_buffer_info);
 
 	// Creates render pass object.
 	//    @param in_color_slots - array of color slots.
@@ -61,7 +64,7 @@ public:
 	ut::Result<RenderPass, ut::Error> CreateRenderPass(ut::Array<RenderTargetSlot> in_color_slots,
 	                                                   ut::Optional<RenderTargetSlot> in_depth_stencil_slot = ut::Optional<RenderTargetSlot>());
 
-	// Creates framebuffer. All targets must have the same width and height.
+	// Creates a framebuffer. All targets must have the same width and height.
 	//    @param render_pass - const reference to the renderpass to be bound to.
 	//    @param color_targets - array of references to the colored render
 	//                           targets to be bound to a render pass.
@@ -72,13 +75,26 @@ public:
 	                                                     ut::Array< ut::Ref<Target> > color_targets,
 	                                                     ut::Optional<Target&> depth_stencil_target = ut::Optional<Target&>());
 
-	// Resets all command buffers created with CmdBufferInfo::usage_once flag
-	// enabled. This call is required before re-recording such command buffers.
-	// Usualy it's called once per frame.
-	void ResetDynamicCmdPool();
+	// Creates a buffer.
+	//    @param info - ve::render::Buffer::Info object to initialize a buffer with.
+	//    @return - new shader or error if failed.
+	ut::Result<Buffer, ut::Error> CreateBuffer(Buffer::Info info);
+
+	// Creates a shader.
+	//    @param info - ve::render::Shader::Info object to initialize a shader with.
+	//    @return - new shader or error if failed.
+	ut::Result<Shader, ut::Error> CreateShader(Shader::Info info);
+
+	// Creates a pipeline state.
+	//    @param info - ve::render::PipelineState::Info object to
+	//                  initialize a pipeline with.
+	//    @param render_pass - reference to the ve::render::RenderPass object
+	//                         pipeline will be bound to.
+	//    @return - new pipeline sate or error if failed.
+	ut::Result<PipelineState, ut::Error> CreatePipelineState(PipelineState::Info info, RenderPass& render_pass);
 
 	// Resets given command buffer. This command buffer must be created without
-	// CmdBufferInfo::usage_once flag (use ResetCmdPool() instead).
+	// CmdBufferInfo::usage_dynamic flag (use ResetCmdPool() instead).
 	//    @param cmd_buffer - reference to the buffer to be reset.
 	void ResetCmdBuffer(CmdBuffer& cmd_buffer);
 
@@ -98,15 +114,22 @@ public:
 	            ut::Optional<RenderPass&> render_pass = ut::Optional<RenderPass&>(),
 	            ut::Optional<Framebuffer&> framebuffer = ut::Optional<Framebuffer&>());
 
+	// Waits for all commands from the provided buffer to be executed.
+	//    @param cmd_buffer - reference to the command buffer.
+	void WaitCmdBuffer(CmdBuffer& cmd_buffer);
+
 	// Submits a command buffer to a queue. Also it's possible to enqueue presentation
 	// for displays used in the provided command buffer. Presentation is supported
-	// only for command buffers created with CmdBufferInfo::usage_once flag.
+	// only for command buffers created with CmdBufferInfo::usage_dynamic flag.
 	//    @param cmd_buffer - reference to the command buffer to enqueue.
 	//    @param present_queue - array of references to displays waiting for their
-	//                           buffer to be presented to user. Pass empty array
-	//                           if @cmd_buffer has no CmdBufferInfo::usage_once flag.
+	//                           buffer to be presented to user.
 	void Submit(CmdBuffer& cmd_buffer,
 	            ut::Array< ut::Ref<Display> > present_queue = ut::Array< ut::Ref<Display> >());
+
+	// Acquires next buffer in a swapchain to be filled.
+	//    @param display - reference to the display.
+	void AcquireNextDisplayBuffer(Display& display);
 
 	// Call this function to wait on the host for the completion of all
 	// queue operations for all queues on this device.

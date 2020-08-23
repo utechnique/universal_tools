@@ -31,20 +31,33 @@ public:
 	//    @param frontend - reference to ui::Frontend object.
 	void OpenViewports(ui::Frontend& frontend);
 
-	// Synchronizes all viewport events. Must be called after previous frame is
-	// finished and before the next one starts.
-	void SyncViewportEvents();
-
 protected:
 	// Type of the container with ui viewport reference
 	// and all associated rendering resources.
 	typedef ut::Container<ui::PlatformViewport&,
 	                      Display,
 	                      RenderPass,
+	                      PipelineState,
 	                      ut::Array<Framebuffer> > ViewportContainer;
+
+	// Synchronizes all viewport events. Must be called after previous frame is
+	// finished and before the next one starts.
+	void SyncViewportEvents();
+
+	// Executes pending viewport tasks (resize, close, etc.)
+	void ExecuteViewportTasks();
+
+	// Returns 'true' if at least one viewport task is waiting to be executed.
+	bool HasPendingViewportTasks();
+
+	// Enables or disables vertical synchronization.
+	void SetVerticalSynchronization(bool status);
 
 	// Array of viewports
 	ut::Array<ViewportContainer> viewports;
+
+	// shaders displaying an image to user
+	ut::UniquePtr<BoundShader> display_shader;
 
 private:
 	// Viewport tasks are executed once per frame in a special synchronization
@@ -101,6 +114,10 @@ private:
 
 	// synchronization point to strictly synchronize viewport events
 	ut::SyncPoint sync_point;
+
+	// vertical synchronization is either enabled for all viewports or disabled
+	// for all viewports
+	bool vertical_synchronization;
 };
 
 //----------------------------------------------------------------------------//

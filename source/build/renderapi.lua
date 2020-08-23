@@ -70,8 +70,14 @@ elseif VULKAN then
 		table.insert(RENDER_LIB_DIRS_32, "$(VULKAN_SDK)\\Lib32")
 		table.insert(RENDER_LIB_DIRS_64, "$(VULKAN_SDK)\\Lib")
 		table.insert(RENDER_LIBS, "vulkan-1.lib")
+		table.insert(RENDER_LIBS_RELEASE, "shaderc_combined.lib")
+		table.insert(RENDER_LIBS_RELEASE, "spirv-cross-core.lib")
+		table.insert(RENDER_LIBS_DBG, "shaderc_combinedd.lib")
+		table.insert(RENDER_LIBS_DBG, "spirv-cross-cored.lib")
 	elseif LINUX then
 		table.insert(RENDER_LIBS, "vulkan")
+		table.insert(RENDER_LIBS, "shaderc_combined")
+		table.insert(RENDER_LIBS, "spirv-cross-core")
 	end	
 	
 	-- macros

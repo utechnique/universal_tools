@@ -21,6 +21,14 @@ public:
 
 	// vertical synchronization (on/off)
 	bool vsync;
+
+	// specifies how many frames can be concurrently processed by
+	// the engine in a moment
+	ut::uint32 frames_in_flight;
+
+private:
+	// Validates data after loading.
+	void Validate();
 };
 
 //----------------------------------------------------------------------------//

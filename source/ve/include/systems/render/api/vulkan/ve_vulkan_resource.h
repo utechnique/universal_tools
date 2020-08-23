@@ -17,17 +17,24 @@ namespace vk
 	{
 		instance,
 		device,
+		memory,
 		dbg_messenger,
 		surface,
 		swap_chain,
 		queue,
 		image_view,
+		buffer,
 		semaphore,
 		cmd_pool,
 		cmd_buffer,
 		render_pass,
 		framebuffer,
-		fence
+		fence,
+		shader_module,
+		pipeline,
+		pipeline_layout,
+		descriptor_set_layout,
+		descriptor_pool
 	};
 }
 
@@ -49,6 +56,19 @@ template<> struct VkDetail<vk::device>
 {
 	typedef VkDevice Handle;
 	static void Destroy(VkDevice handle) { vkDestroyDevice(handle, nullptr); };
+};
+
+// Memory.
+template<> struct VkDetail<vk::memory>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkDeviceMemory Handle;
+	void Destroy(VkDeviceMemory memory_handle) { vkFreeMemory(device, memory_handle, nullptr); }
+
+private:
+	VkDevice device;
 };
 
 // Debug messenger.
@@ -124,6 +144,19 @@ template<> struct VkDetail<vk::image_view>
 
 	typedef VkImageView Handle;
 	void Destroy(VkImageView image_view_handle) { vkDestroyImageView(device, image_view_handle, nullptr); }
+
+private:
+	VkDevice device;
+};
+
+// Image view.
+template<> struct VkDetail<vk::buffer>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkBuffer Handle;
+	void Destroy(VkBuffer buffer_handle) { vkDestroyBuffer(device, buffer_handle, nullptr); }
 
 private:
 	VkDevice device;
@@ -209,6 +242,71 @@ template<> struct VkDetail<vk::fence>
 
 	typedef VkFence Handle;
 	void Destroy(VkFence fence_handle) { vkDestroyFence(device, fence_handle, nullptr); }
+
+private:
+	VkDevice device;
+};
+
+// Shader module.
+template<> struct VkDetail<vk::shader_module>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkShaderModule Handle;
+	void Destroy(VkShaderModule module_handle) { vkDestroyShaderModule(device, module_handle, nullptr); }
+
+private:
+	VkDevice device;
+};
+
+// Pipeline.
+template<> struct VkDetail<vk::pipeline>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkPipeline Handle;
+	void Destroy(VkPipeline pipeline_handle) { vkDestroyPipeline(device, pipeline_handle, nullptr); }
+
+private:
+	VkDevice device;
+};
+
+// Pipeline layout.
+template<> struct VkDetail<vk::pipeline_layout>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkPipelineLayout Handle;
+	void Destroy(VkPipelineLayout layout_handle) { vkDestroyPipelineLayout(device, layout_handle, nullptr); }
+
+private:
+	VkDevice device;
+};
+
+// Descriptor set layout.
+template<> struct VkDetail<vk::descriptor_set_layout>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkDescriptorSetLayout Handle;
+	void Destroy(VkDescriptorSetLayout layout_handle) { vkDestroyDescriptorSetLayout(device, layout_handle, nullptr); }
+
+private:
+	VkDevice device;
+};
+
+// Descriptor set.
+template<> struct VkDetail<vk::descriptor_pool>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkDescriptorPool Handle;
+	void Destroy(VkDescriptorPool pool_handle) { vkDestroyDescriptorPool(device, pool_handle, nullptr); }
 
 private:
 	VkDevice device;

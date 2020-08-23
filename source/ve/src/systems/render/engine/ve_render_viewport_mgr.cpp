@@ -12,6 +12,7 @@ START_NAMESPACE(render)
 // Constructor. Render thread is needed to operate with
 // displays that are associated with viewports.
 ViewportManager::ViewportManager(ut::SharedPtr<Device::Thread> rt) : render_thread(ut::Move(rt))
+                                                                   , vertical_synchronization(true)
 {
 	UT_ASSERT(render_thread);
 }
@@ -75,14 +76,29 @@ void ViewportManager::OpenViewports(ui::Frontend& frontend)
 void ViewportManager::SyncViewportEvents()
 {
 	sync_point.Synchronize();
+}
 
-	// execute all tasks
+// Executes pending viewport tasks (resize, close, etc.)
+void ViewportManager::ExecuteViewportTasks()
+{
 	const size_t task_count = viewport_tasks.GetNum();
 	for (size_t i = 0; i < task_count; i++)
 	{
 		viewport_tasks[i]->Execute();
 	}
 	viewport_tasks.Empty();
+}
+
+// Returns 'true' if at least one viewport task is waiting to be executed.
+bool ViewportManager::HasPendingViewportTasks()
+{
+	return !viewport_tasks.IsEmpty();
+}
+
+// Enables or disables vertical synchronization.
+void ViewportManager::SetVerticalSynchronization(bool status)
+{
+	vertical_synchronization = status;
 }
 
 // Creates a new display and all associated render resources for the
@@ -93,12 +109,8 @@ void ViewportManager::SyncViewportEvents()
 ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::CreateDisplay(Device& device,
                                                                                          ui::PlatformViewport& viewport)
 {
-	// load config file
-	Config<Settings> config;
-	config.Load();
-
 	// create display for the viewport in the render thread
-	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport, config.vsync);
+	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport, vertical_synchronization);
 	if (!display_result)
 	{
 		return ut::MakeError(display_result.MoveAlt());
@@ -147,10 +159,28 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 		}
 	}
 
+	// create pipeline state for displaying images to user
+	PipelineState::Info info;
+	info.stages[Shader::vertex] = display_shader->stages[Shader::vertex].Get();
+	info.stages[Shader::pixel] = display_shader->stages[Shader::pixel].Get();
+	info.viewports.Add(Viewport(0.0f, 0.0f, static_cast<float>(viewport.w()/2), static_cast<float>(viewport.h()), 0.0f, 1.0f));
+	info.input_assembly_state.topology = primitive::triangle_strip;
+	info.input_assembly_state.elements.Add(VertexElement("POSITION", 0, pixel::r32g32b32, 0));
+	info.input_assembly_state.elements.Add(VertexElement("TEXCOORD", 0, pixel::r32g32, 12));
+	info.input_assembly_state.stride = 20;
+	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	ut::Result<PipelineState, ut::Error> pipeline_result = device.CreatePipelineState(ut::Move(info), rp_result.GetResult());
+	if (!pipeline_result)
+	{
+		return ut::MakeError(pipeline_result.MoveAlt());
+	}
+
 	// success
 	return ViewportContainer(viewport,
 	                         display_result.MoveResult(),
 	                         rp_result.MoveResult(),
+	                         pipeline_result.MoveResult(),
 	                         ut::Move(framebuffers));
 }
 

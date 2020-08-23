@@ -1,23 +1,21 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_cmd_buffer.h"
+#include "systems/render/api/ve_render_shader_compiler.h"
+#include "ve_default.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-CmdBuffer::CmdBuffer(PlatformCmdBuffer platform_cmd_buffer,
-                     const CmdBuffer::Info& cmd_buffer_info) : PlatformCmdBuffer(ut::Move(platform_cmd_buffer))
-                                                             , info(cmd_buffer_info)
-                                                             , pending(false)
+ShaderCompiler::ShaderCompiler(PlatformShaderCompiler platform_compiler) : PlatformShaderCompiler(ut::Move(platform_compiler))
 {}
 
 // Move constructor.
-CmdBuffer::CmdBuffer(CmdBuffer&&) noexcept = default;
+ShaderCompiler::ShaderCompiler(ShaderCompiler&&) noexcept = default;
 
 // Move operator.
-CmdBuffer& CmdBuffer::operator =(CmdBuffer&&) noexcept = default;
+ShaderCompiler& ShaderCompiler::operator =(ShaderCompiler&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

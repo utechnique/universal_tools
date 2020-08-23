@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_platform.h"
 #include "systems/render/api/ve_render_target.h"
+#include "systems/render/api/ve_render_cmd_buffer.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -65,6 +66,11 @@ private:
 
 	// Whether vertical synchronization is enabled for this display.
 	bool vsync;
+
+	// command buffers associated with swap chain buffers of this display,
+	// display buffer can't be modified until all associated
+	// commands are executed
+	ut::Array< ut::Optional<CmdBuffer&> > pending_buffers;
 };
 
 //----------------------------------------------------------------------------//

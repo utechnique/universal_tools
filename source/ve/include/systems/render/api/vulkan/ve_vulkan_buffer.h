@@ -3,26 +3,42 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_pipeline.h"
+#if VE_VULKAN
+//----------------------------------------------------------------------------//
+#include "systems/render/api/vulkan/ve_vulkan_resource.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-namespace directories
+// Vulkan buffer.
+class PlatformBuffer : public VkRc<vk::buffer>
 {
-	// Configuration files.
-	static const char* skCfg = "config";
+	friend class Device;
+	friend class Context;
+public:
+	PlatformBuffer(VkDevice device_handle,
+	               VkBuffer buffer_handle,
+	               VkDeviceMemory memory_handle);
 
-	// Resources.
-	static const char* skRc = "resources";
-	static const char* skRcAlt = "../../../../resources";
-}
+	// Move constructor.
+	PlatformBuffer(PlatformBuffer&&) noexcept;
+
+	// Move operator.
+	PlatformBuffer& operator =(PlatformBuffer&&) noexcept;
+
+	// Copying is prohibited.
+	PlatformBuffer(const PlatformBuffer&) = delete;
+	PlatformBuffer& operator =(const PlatformBuffer&) = delete;
+
+private:
+	VkRc<vk::memory> memory;
+};
 
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline();
-
-//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_VULKAN
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

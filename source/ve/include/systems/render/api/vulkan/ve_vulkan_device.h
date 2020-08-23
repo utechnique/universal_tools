@@ -44,28 +44,52 @@ protected:
 	// graphics, compute, transfer and present
 	VkRc<vk::queue> main_queue;
 
-	// command pool for all command buffers that are expected to be re-recorded
-	// very rarely and don't need to be reset by ResetCmdPool() method.
-	VkRc<vk::cmd_pool> static_cmd_pool;
-
 	// command pool for all command buffers created with CmdBufferInfo::usage_once
 	// flag and that must be reset every frame by calling ResetCmdPool() method.
 	VkRc<vk::cmd_pool> dynamic_cmd_pool;
-
-	// every dynamic command submission generates a fence, and device
-	// uses this fence to wait until all commands are done before
-	// a call to vkResetCommandPool
-	ut::Array<VkFence> dynamic_cmd_fences;
-
-	// array of displays that enqueued presentation and
-	// waiting a moment to swap buffers
-	ut::Array< ut::Ref<Display> > swap_buffer_queue;
 
 	// physical device that is used for rendering
 	VkPhysicalDevice gpu;
 
 	// queue families available on physical device
 	ut::Map<vulkan_queue::FamilyType, vulkan_queue::Family> queue_families;
+
+	// memory properties
+	VkPhysicalDeviceMemoryProperties memory_properties;
+
+	// Combines the requirements of the buffer and application requirements
+	// to find the right type of memory to use.
+	//    @param type_bits - bitmask that contains one bit set for every
+	//                       supported memory type for the resource.
+	//    @param requirements_mask - requirements flags that must be set for
+	//                               the desired memory.
+	//    @return - id of the memory or nothing if failed.
+	ut::Optional<uint32_t> FindMemoryTypeFromProperties(uint32_t type_bits,
+	                                                    VkFlags requirements_mask);
+
+	// Creates vulkan buffer.
+	//    @param size - buffer size in bytes.
+	//    @param usage - buffer usage flags.
+	//    @return - buffer handle or error if failed.
+	ut::Result<VkBuffer, ut::Error> CreateVulkanBuffer(VkDeviceSize size,
+	                                                   VkBufferUsageFlags usage);
+
+	// Allocates gpu memory for the specified buffer.
+	//    @param buffer - buffer handle.
+	//    @param properties - memory properties.
+	//    @return - memory handle or error if failed.
+	ut::Result<VkDeviceMemory, ut::Error> AllocateBufferMemory(VkBuffer buffer,
+	                                                           VkMemoryPropertyFlags properties);
+
+	// Copies contents of source buffer to the destination buffer.
+	//    @param src - source buffer handle.
+	//    @param dst - destination buffer handle.
+	//    @param size - size of the data to be copied in bytes.
+	//    @return - optional error if failed.
+	ut::Optional<ut::Error> CopyVulkanBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+
+	// Creates command pool.
+	ut::Result<VkCommandPool, ut::Error> CreateCmdPool(VkCommandPoolCreateFlags flags);
 
 private:
 	// Creates vkInstance object.
@@ -97,9 +121,6 @@ private:
 
 	// Creates desired queue.
 	VkRc<vk::queue> CreateQueue(vulkan_queue::FamilyType family_type, uint32_t id);
-
-	// Creates command pool.
-	VkRc<vk::cmd_pool> CreateCmdPool(VkCommandPoolCreateFlags flags);
 };
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

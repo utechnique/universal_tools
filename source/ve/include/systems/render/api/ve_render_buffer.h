@@ -4,56 +4,71 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_platform.h"
-#include "systems/render/api/ve_render_pixel_format.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// ve::render::ImageInfo conveniently stores all essential
-// information about an image.
-class ImageInfo
+// A buffer interface accesses a buffer resource, which is unstructured memory.
+// Buffers typically store vertex or index data, uniforms and custom data.
+class Buffer : public PlatformBuffer
 {
+	friend class Device;
+	friend class Context;
 public:
-	// Constructor.
-	ImageInfo() : format(pixel::unknown)
-	            , width(0)
-	            , height(0)
-	            , depth(0)
-	{}
+	// Type of the buffer.
+	enum Type
+	{
+		vertex,
+		index,
+		uniform,
+		storage
+	};
 
-	pixel::Format format;
-	ut::uint32 width;
-	ut::uint32 height;
-	ut::uint32 depth;
-};
+	// Specifies how buffer will be used.
+	enum Usage
+	{
+		gpu, // can be modified by gpu
+		gpu_cpu, // can be modified by gpu and cpu
+		immutable // can't be modified after creation
+	};
 
-// ve::render::Image interface manages texel data, which is structured memory.
-class Image : public PlatformImage
-{
-public:
+	// ve::render::Buffer::Info conveniently stores all
+	// essential information about a buffer.
+	struct Info
+	{
+		Type type;
+		Usage usage;
+
+		// size of the buffer in bytes
+		size_t size;
+
+		// cpu representation of the gpu data
+		ut::Array<ut::byte> data;
+	};
+
 	// Constructor.
-	Image(PlatformImage platform_img, const ImageInfo& img_info);
+	Buffer(PlatformBuffer platform_buffer,
+	       Buffer::Info buffer_info);
 
 	// Move constructor.
-	Image(Image&&) noexcept;
+	Buffer(Buffer&&) noexcept;
 
 	// Move operator.
-	Image& operator =(Image&&) noexcept;
+	Buffer& operator =(Buffer&&) noexcept;
 
 	// Copying is prohibited.
-	Image(const Image&) = delete;
-	Image& operator =(const Image&) = delete;
+	Buffer(const Buffer&) = delete;
+	Buffer& operator =(const Buffer&) = delete;
 
 	// Returns a const reference to the object with
-	// information about this image.
-	const ImageInfo& GetInfo() const
+	// information about this buffer.
+	const Info& GetInfo() const
 	{
 		return info;
 	}
 
 private:
-	// Format of the texture can't be changed after creation.
-	ImageInfo info;
+	Info info;
 };
 
 //----------------------------------------------------------------------------//

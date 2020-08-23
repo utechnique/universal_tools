@@ -1,34 +1,27 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
+#include "systems/render/api/ve_render_pipeline_state.h"
 //----------------------------------------------------------------------------//
 #if VE_VULKAN
-//----------------------------------------------------------------------------//
-#include "systems/render/api/vulkan/ve_vulkan_resource.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Vulkan framebuffer.
-class PlatformFramebuffer : public VkRc<vk::framebuffer>
-{
-	friend class Device;
-	friend class Context;
-public:
-	// Constructor.
-	PlatformFramebuffer(VkDevice device_handle, VkFramebuffer framebuffer_handle);
+// Constructor.
+PlatformPipelineState::PlatformPipelineState(VkDevice device_handle,
+                                             VkPipeline pipeline_handle,
+                                             VkPipelineLayout layout_handle,
+                                             VkDescriptorSetLayout dsl_handle) : pipeline(pipeline_handle, device_handle)
+                                                                               , layout(layout_handle, device_handle)
+                                                                               , dsl(dsl_handle, device_handle)
+{}
 
-	// Move constructor.
-	PlatformFramebuffer(PlatformFramebuffer&&) noexcept;
+// Move constructor.
+PlatformPipelineState::PlatformPipelineState(PlatformPipelineState&&) noexcept = default;
 
-	// Move operator.
-	PlatformFramebuffer& operator =(PlatformFramebuffer&&) noexcept;
-
-	// Copying is prohibited.
-	PlatformFramebuffer(const PlatformFramebuffer&) = delete;
-	PlatformFramebuffer& operator =(const PlatformFramebuffer&) = delete;
-};
+// Move operator.
+PlatformPipelineState& PlatformPipelineState::operator =(PlatformPipelineState&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

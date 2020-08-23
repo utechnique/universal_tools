@@ -14,20 +14,53 @@ const ut::uint32 skMaxClearValues = 16;
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformContext::PlatformContext(VkDevice device_handle,
-                                 VkCommandBuffer cmd_buffer_handle) : device(device_handle)
-                                                                    , cmd(cmd_buffer_handle)
+                                 PlatformCmdBuffer& cmd_buffer_ref) : device(device_handle)
+                                                                    , cmd_buffer(cmd_buffer_ref)
 {}
 
 // Move constructor.
 PlatformContext::PlatformContext(PlatformContext&&) noexcept = default;
 
-// Move operator.
-PlatformContext& PlatformContext::operator =(PlatformContext&& other) noexcept = default;
-
 //----------------------------------------------------------------------------//
 // Constructor.
 Context::Context(PlatformContext platform_context) : PlatformContext(ut::Move(platform_context))
 {}
+
+// Maps a memory object associated with provided buffer
+// into application address space. Note that buffer must be created with
+// ve::render::Buffer::gpu_cpu flag to be compatible with this function.
+//    @param buffer - reference to the ve::render::Buffer object to be mapped.
+//    @param access - ut::Access value specifying purpose of the mapping
+//                    operation - read, write or both.
+//    @return - pointer to the mapped area or error if failed.
+ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access access)
+{
+	if (buffer.info.usage != Buffer::gpu_cpu)
+	{
+		return ut::MakeError(ut::Error(ut::error::invalid_arg,
+			"Vulkan: Attempt to map buffer that wasn\'t created with gpu_cpu flag"));
+	}
+
+	void* address;
+	VkResult res = vkMapMemory(device,                      // VkDevice handle
+	                           buffer.memory.GetVkHandle(), // VkDeviceMemory handle
+	                           0,                           // offset
+	                           buffer.info.size,            // size
+	                           0,                           // flags
+	                           &address);                   // out ptr
+	if (res != VK_SUCCESS)
+	{
+		return ut::MakeError(VulkanError(res, "vkMapMemory(buffer)"));
+	}
+
+	return address;
+}
+
+// Unmaps a previously mapped memory object associated with provided buffer.
+void Context::UnmapBuffer(Buffer& buffer)
+{
+	vkUnmapMemory(device, buffer.memory.GetVkHandle());
+}
 
 // Begin a new render pass.
 //    @param render_pass - reference to the render pass object.
@@ -78,8 +111,8 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	VkRenderPassBeginInfo rp_begin;
 	rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	rp_begin.pNext = nullptr;
-	rp_begin.renderPass = render_pass.render_pass.GetVkHandle();
-	rp_begin.framebuffer = framebuffer.framebuffer.GetVkHandle();
+	rp_begin.renderPass = render_pass.GetVkHandle();
+	rp_begin.framebuffer = framebuffer.GetVkHandle();
 	rp_begin.renderArea.offset.x = render_area.offset.X();
 	rp_begin.renderArea.offset.y = render_area.offset.Y();
 	rp_begin.renderArea.extent.width = render_area.extent.X();
@@ -88,13 +121,56 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	rp_begin.pClearValues = vk_clear_values;
 
 	// begin render pass
-	vkCmdBeginRenderPass(cmd, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(cmd_buffer.GetVkHandle(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 // End current render pass.
 void Context::EndRenderPass()
 {
-	vkCmdEndRenderPass(cmd);
+	vkCmdEndRenderPass(cmd_buffer.GetVkHandle());
+}
+
+// Binds provided pipeline state to the current context.
+//    @param pipeline_state - reference to the pipeline state.
+void Context::BindPipelineState(PipelineState& pipeline_state)
+{
+	vkCmdBindPipeline(cmd_buffer.GetVkHandle(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_state.pipeline.GetVkHandle());
+	cmd_buffer.bound_pipeline = pipeline_state;
+}
+
+// Binds provided descriptor set to the current pipeline.
+// Note that BindPipelineState() function must be called before.
+//    @param pipeline_state - reference to the pipeline state.
+void Context::BindDescriptorSet(DescriptorSet& set)
+{
+	if (!cmd_buffer.bound_pipeline)
+	{
+		ut::log.Lock() << "Warning! BindDescriptorSet function was called, but there is no bound pipeline." << ut::cret;
+		return;
+	}
+
+	cmd_buffer.descriptor_mgr.AllocateAndBindDescriptorSet(set, cmd_buffer.bound_pipeline->dsl.GetVkHandle(),
+	                                                            cmd_buffer.bound_pipeline->layout.GetVkHandle());
+}
+
+// Binds vertex buffer to the current context.
+//    @param buffer - reference to the buffer to be bound.
+//    @param offset - number of bytes between the first element
+//                    of a vertex buffer and the first element
+//                    that will be used.
+void Context::BindVertexBuffer(Buffer& buffer, size_t offset)
+{
+	VkBuffer vertex_buffers[] = { buffer.GetVkHandle() };
+	VkDeviceSize offsets[] = { offset };
+	vkCmdBindVertexBuffers(cmd_buffer.GetVkHandle(), 0, 1, vertex_buffers, offsets);
+}
+
+// Draw non-indexed, non-instanced primitives.
+//    @param vertex_count - number of vertices to draw.
+//    @param first_vertex_id - index of the first vertex.
+void Context::Draw(ut::uint32 vertex_count, ut::uint32 first_vertex_id)
+{
+	vkCmdDraw(cmd_buffer.GetVkHandle(), vertex_count, 1, first_vertex_id, 0);
 }
 
 //----------------------------------------------------------------------------//

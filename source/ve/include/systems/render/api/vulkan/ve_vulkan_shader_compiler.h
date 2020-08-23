@@ -3,26 +3,38 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_pipeline.h"
+#if VE_VULKAN
+//----------------------------------------------------------------------------//
+#include "systems/render/api/vulkan/ve_vulkan_resource.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-namespace directories
+// Vulkan shader compiler.
+class PlatformShaderCompiler
 {
-	// Configuration files.
-	static const char* skCfg = "config";
+	friend class Device;
+	friend class Context;
+public:
+	// Constructor.
+	explicit PlatformShaderCompiler();
 
-	// Resources.
-	static const char* skRc = "resources";
-	static const char* skRcAlt = "../../../../resources";
-}
+	// Move constructor.
+	PlatformShaderCompiler(PlatformShaderCompiler&&) noexcept;
+
+	// Move operator.
+	PlatformShaderCompiler& operator =(PlatformShaderCompiler&&) noexcept;
+
+	// Copying is prohibited.
+	PlatformShaderCompiler(const PlatformShaderCompiler&) = delete;
+	PlatformShaderCompiler& operator =(const PlatformShaderCompiler&) = delete;
+};
 
 //----------------------------------------------------------------------------//
-// Generates default pipeline tree.
-Pipeline GenDefaultPipeline();
-
-//----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_VULKAN
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

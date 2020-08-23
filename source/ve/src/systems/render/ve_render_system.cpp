@@ -38,7 +38,7 @@ RenderSystem::~RenderSystem()
 System::Result RenderSystem::Update()
 {
 	// draw scene in render thread
-	render_thread->Enqueue([&](Device& device) { engine->ProcessNextFrame(device); });
+	render_thread->Enqueue([&](Device& device) { engine->ProcessNextFrame(); });
 
 	return CmdArray();
 }

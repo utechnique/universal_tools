@@ -3,62 +3,46 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_platform.h"
-#include "systems/render/api/ve_render_pixel_format.h"
+#if VE_VULKAN
+//----------------------------------------------------------------------------//
+#include "systems/render/api/vulkan/ve_vulkan_resource.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// ve::render::ImageInfo conveniently stores all essential
-// information about an image.
-class ImageInfo
+// Vulkan pipeline.
+class PlatformPipelineState
 {
+	friend class Device;
+	friend class Context;
 public:
 	// Constructor.
-	ImageInfo() : format(pixel::unknown)
-	            , width(0)
-	            , height(0)
-	            , depth(0)
-	{}
-
-	pixel::Format format;
-	ut::uint32 width;
-	ut::uint32 height;
-	ut::uint32 depth;
-};
-
-// ve::render::Image interface manages texel data, which is structured memory.
-class Image : public PlatformImage
-{
-public:
-	// Constructor.
-	Image(PlatformImage platform_img, const ImageInfo& img_info);
+	PlatformPipelineState(VkDevice device_handle,
+	                      VkPipeline pipeline_handle,
+	                      VkPipelineLayout layout_handle,
+	                      VkDescriptorSetLayout dsl_handle);
 
 	// Move constructor.
-	Image(Image&&) noexcept;
+	PlatformPipelineState(PlatformPipelineState&&) noexcept;
 
 	// Move operator.
-	Image& operator =(Image&&) noexcept;
+	PlatformPipelineState& operator =(PlatformPipelineState&&) noexcept;
 
 	// Copying is prohibited.
-	Image(const Image&) = delete;
-	Image& operator =(const Image&) = delete;
-
-	// Returns a const reference to the object with
-	// information about this image.
-	const ImageInfo& GetInfo() const
-	{
-		return info;
-	}
+	PlatformPipelineState(const PlatformPipelineState&) = delete;
+	PlatformPipelineState& operator =(const PlatformPipelineState&) = delete;
 
 private:
-	// Format of the texture can't be changed after creation.
-	ImageInfo info;
+	VkRc<vk::pipeline> pipeline;
+	VkRc<vk::pipeline_layout> layout;
+	VkRc<vk::descriptor_set_layout> dsl;
 };
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_VULKAN
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

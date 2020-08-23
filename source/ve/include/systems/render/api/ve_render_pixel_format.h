@@ -21,6 +21,10 @@ namespace pixel
 		b8g8r8a8,
 		r8g8b8a8_srgb,
 		b8g8r8a8_srgb,
+		r32,
+		r32g32,
+		r32g32b32,
+		r32g32b32a32,
 	};
 }
 

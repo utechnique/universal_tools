@@ -1,23 +1,22 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_cmd_buffer.h"
+#include "systems/render/api/ve_render_pipeline_state.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-CmdBuffer::CmdBuffer(PlatformCmdBuffer platform_cmd_buffer,
-                     const CmdBuffer::Info& cmd_buffer_info) : PlatformCmdBuffer(ut::Move(platform_cmd_buffer))
-                                                             , info(cmd_buffer_info)
-                                                             , pending(false)
+PipelineState::PipelineState(PlatformPipelineState platform_pipeline,
+                             PipelineState::Info pipeline_info) : PlatformPipelineState(ut::Move(platform_pipeline))
+                                                                , info(ut::Move(pipeline_info))
 {}
 
 // Move constructor.
-CmdBuffer::CmdBuffer(CmdBuffer&&) noexcept = default;
+PipelineState::PipelineState(PipelineState&&) noexcept = default;
 
 // Move operator.
-CmdBuffer& CmdBuffer::operator =(CmdBuffer&&) noexcept = default;
+PipelineState& PipelineState::operator =(PipelineState&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

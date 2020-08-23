@@ -1,27 +1,31 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_cmd_buffer.h"
+#include "systems/render/api/ve_render_buffer.h"
+//----------------------------------------------------------------------------//
+#if VE_VULKAN
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-CmdBuffer::CmdBuffer(PlatformCmdBuffer platform_cmd_buffer,
-                     const CmdBuffer::Info& cmd_buffer_info) : PlatformCmdBuffer(ut::Move(platform_cmd_buffer))
-                                                             , info(cmd_buffer_info)
-                                                             , pending(false)
+PlatformBuffer::PlatformBuffer(VkDevice device_handle,
+                               VkBuffer buffer_handle,
+                               VkDeviceMemory memory_handle) : VkRc<vk::buffer>(buffer_handle, device_handle)
+                                                             , memory(memory_handle, device_handle)
 {}
 
 // Move constructor.
-CmdBuffer::CmdBuffer(CmdBuffer&&) noexcept = default;
+PlatformBuffer::PlatformBuffer(PlatformBuffer&&) noexcept = default;
 
 // Move operator.
-CmdBuffer& CmdBuffer::operator =(CmdBuffer&&) noexcept = default;
+PlatformBuffer& PlatformBuffer::operator =(PlatformBuffer&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_VULKAN
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
