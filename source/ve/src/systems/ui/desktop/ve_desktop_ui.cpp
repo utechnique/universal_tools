@@ -16,6 +16,13 @@ const ut::uint32 DesktopFrontend::skMinWidth = 320;
 const ut::uint32 DesktopFrontend::skMinHeight = 320;
 
 //----------------------------------------------------------------------------//
+// Callback to hide an fltk window.
+void HideWindow(void* wnd_ptr)
+{
+	static_cast<Fl_Window*>(wnd_ptr)->hide();
+}
+
+//----------------------------------------------------------------------------//
 // Constructor.
 MainWindow::MainWindow(int x, int y,
                        int w, int h,
@@ -45,6 +52,13 @@ DesktopFrontend::DesktopFrontend() : window_ready(false)
 	{
 		ut::this_thread::Sleep(1);
 	}
+}
+
+// Destructor, hides main window and waits until fltk thread is finished.
+DesktopFrontend::~DesktopFrontend()
+{
+	Fl::awake(HideWindow, window.Get());
+	fltk_thread->Join();
 }
 
 //----------------------------------------------------------------------------->
@@ -138,15 +152,8 @@ void DesktopFrontend::Run()
 		throw ut::Error(init_error.Move());
 	}
 
-	// lock fltk so that we could pass commands to the main thread
-	// using Fl::awake(cmd) function
-	Fl::lock();
-
 	// run user interface routine
 	Fl::run();
-
-	// unlock fltk to gracefully exit
-	Fl::unlock();
 
 	// viewports are created in the fltk thread,
 	// so they must be deleted there too

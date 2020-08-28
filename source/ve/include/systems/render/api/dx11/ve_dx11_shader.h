@@ -11,31 +11,47 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// DirectX 11 context.
-class PlatformContext
+// DirectX11 shader.
+class PlatformShader
 {
 	friend class Device;
+	friend class Context;
 public:
-	// Constructor.
-	PlatformContext(ID3D11DeviceContext* context_ptr);
+	// Constructor (vertex shader).
+	PlatformShader(ID3D11VertexShader* vs_ptr);
+
+	// Constructor (geometry shader).
+	PlatformShader(ID3D11GeometryShader* gs_ptr);
+
+	// Constructor (hull shader).
+	PlatformShader(ID3D11HullShader* hs_ptr);
+
+	// Constructor (domain shader).
+	PlatformShader(ID3D11DomainShader* ds_ptr);
+
+	// Constructor (pixel shader).
+	PlatformShader(ID3D11PixelShader* ps_ptr);
+
+	// Constructor (compute shader).
+	PlatformShader(ID3D11ComputeShader* cs_ptr);
 
 	// Move constructor.
-	PlatformContext(PlatformContext&&) noexcept;
+	PlatformShader(PlatformShader&&) noexcept;
 
 	// Move operator.
-	PlatformContext& operator =(PlatformContext&&) noexcept;
+	PlatformShader& operator =(PlatformShader&&) noexcept;
 
 	// Copying is prohibited.
-	PlatformContext(const PlatformContext&) = delete;
-	PlatformContext& operator =(const PlatformContext&) = delete;
+	PlatformShader(const PlatformShader&) = delete;
+	PlatformShader& operator =(const PlatformShader&) = delete;
 
-protected:
-	// Sets the constant buffers used by the appropriate shader pipeline stage.
-	void SetUniformBuffer(ut::uint32 slot, ID3D11Buffer* buffer);
-
-
-	ut::ComPtr<ID3D11DeviceContext> d3d11_context;
-	bool stage_bound[6];
+private:
+	ut::ComPtr<ID3D11VertexShader> vs;
+	ut::ComPtr<ID3D11GeometryShader> gs;
+	ut::ComPtr<ID3D11HullShader> hs;
+	ut::ComPtr<ID3D11DomainShader> ds;
+	ut::ComPtr<ID3D11PixelShader> ps;
+	ut::ComPtr<ID3D11ComputeShader> cs;
 };
 
 //----------------------------------------------------------------------------//

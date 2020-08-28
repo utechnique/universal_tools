@@ -11,31 +11,33 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// DirectX 11 context.
-class PlatformContext
+// DirectX 11 pipeline state.
+class PlatformPipelineState
 {
 	friend class Device;
+	friend class Context;
 public:
 	// Constructor.
-	PlatformContext(ID3D11DeviceContext* context_ptr);
+	PlatformPipelineState(ID3D11InputLayout* input_layout_ptr,
+	                      ID3D11RasterizerState* rasterizer_state_ptr,
+	                      ID3D11DepthStencilState* depthstencil_state_ptr,
+	                      ID3D11BlendState* blend_state_ptr);
 
 	// Move constructor.
-	PlatformContext(PlatformContext&&) noexcept;
+	PlatformPipelineState(PlatformPipelineState&&) noexcept;
 
 	// Move operator.
-	PlatformContext& operator =(PlatformContext&&) noexcept;
+	PlatformPipelineState& operator =(PlatformPipelineState&&) noexcept;
 
 	// Copying is prohibited.
-	PlatformContext(const PlatformContext&) = delete;
-	PlatformContext& operator =(const PlatformContext&) = delete;
+	PlatformPipelineState(const PlatformPipelineState&) = delete;
+	PlatformPipelineState& operator =(const PlatformPipelineState&) = delete;
 
-protected:
-	// Sets the constant buffers used by the appropriate shader pipeline stage.
-	void SetUniformBuffer(ut::uint32 slot, ID3D11Buffer* buffer);
-
-
-	ut::ComPtr<ID3D11DeviceContext> d3d11_context;
-	bool stage_bound[6];
+private:
+	ut::ComPtr<ID3D11InputLayout> input_layout;
+	ut::ComPtr<ID3D11RasterizerState> rasterizer_state;
+	ut::ComPtr<ID3D11DepthStencilState> depthstencil_state;
+	ut::ComPtr<ID3D11BlendState> blend_state;
 };
 
 //----------------------------------------------------------------------------//

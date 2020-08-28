@@ -66,8 +66,9 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	// create screen space quad
 	Buffer::Info buffer_info;
 	buffer_info.type = Buffer::vertex;
-	buffer_info.usage = Buffer::immutable;
+	buffer_info.usage = render::memory::immutable;
 	buffer_info.size = sizeof(QuadVertex) * 4;
+	buffer_info.stride = sizeof(QuadVertex);
 	buffer_info.data.Resize(buffer_info.size);
 
 	QuadVertex* vertices = reinterpret_cast<QuadVertex*>(buffer_info.data.GetAddress());
@@ -296,7 +297,7 @@ ut::Result<Frame, ut::Error> Engine::CreateFrame()
 	// create display uniform buffer
 	Buffer::Info buffer_info;
 	buffer_info.type = Buffer::uniform;
-	buffer_info.usage = Buffer::gpu_cpu;
+	buffer_info.usage = render::memory::gpu_cpu;
 	buffer_info.size = sizeof(ut::Color<4>);
 	buffer_info.data.Resize(buffer_info.size);
 	ut::Color<4>* color = reinterpret_cast<ut::Color<4>*>(buffer_info.data.GetAddress());

@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_platform.h"
+#include "systems/render/api/ve_render_memory.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -24,26 +25,23 @@ public:
 		storage
 	};
 
-	// Specifies how buffer will be used.
-	enum Usage
-	{
-		gpu, // can be modified by gpu
-		gpu_cpu, // can be modified by gpu and cpu
-		immutable // can't be modified after creation
-	};
-
 	// ve::render::Buffer::Info conveniently stores all
 	// essential information about a buffer.
 	struct Info
 	{
 		Type type;
-		Usage usage;
+
+		// specifies how the buffer will be used
+		memory::Usage usage;
 
 		// size of the buffer in bytes
 		size_t size;
 
 		// cpu representation of the gpu data
 		ut::Array<ut::byte> data;
+
+		// the size of each element in the buffer structure
+		ut::uint32 stride;
 	};
 
 	// Constructor.

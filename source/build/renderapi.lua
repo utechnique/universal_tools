@@ -56,6 +56,8 @@ elseif DX11 then
 	table.insert(RENDER_LIB_DIRS_64, "$(DXSDK_DIR)Lib\\x64")
 	table.insert(RENDER_LIBS, "d3d11.lib")
 	table.insert(RENDER_LIBS, "dxgi.lib")
+	table.insert(RENDER_LIBS, "dxguid.lib")
+	table.insert(RENDER_LIBS, "d3dcompiler.lib")
 	
 	-- macros
     table.insert(RENDER_DEFS, "VE_DX11")

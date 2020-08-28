@@ -35,7 +35,7 @@ Context::Context(PlatformContext platform_context) : PlatformContext(ut::Move(pl
 //    @return - pointer to the mapped area or error if failed.
 ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access access)
 {
-	if (buffer.info.usage != Buffer::gpu_cpu)
+	if (buffer.info.usage != render::memory::gpu_cpu)
 	{
 		return ut::MakeError(ut::Error(ut::error::invalid_arg,
 			"Vulkan: Attempt to map buffer that wasn\'t created with gpu_cpu flag"));

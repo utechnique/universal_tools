@@ -1,42 +1,26 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
+#include "systems/render/api/ve_render_buffer.h"
 //----------------------------------------------------------------------------//
 #if VE_DX11
-//----------------------------------------------------------------------------//
-#include "ut.h"
-#include <d3d11.h>
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// DirectX 11 context.
-class PlatformContext
-{
-	friend class Device;
-public:
-	// Constructor.
-	PlatformContext(ID3D11DeviceContext* context_ptr);
+// Constructor.
+PlatformBuffer::PlatformBuffer(ID3D11Buffer* buffer_ptr,
+                               ID3D11UnorderedAccessView* uav_ptr,
+                               ID3D11ShaderResourceView* srv_ptr) : d3d11_buffer(buffer_ptr)
+                                                                  , uav(uav_ptr)
+                                                                  , srv(srv_ptr)
+{}
 
-	// Move constructor.
-	PlatformContext(PlatformContext&&) noexcept;
+// Move constructor.
+PlatformBuffer::PlatformBuffer(PlatformBuffer&&) noexcept = default;
 
-	// Move operator.
-	PlatformContext& operator =(PlatformContext&&) noexcept;
-
-	// Copying is prohibited.
-	PlatformContext(const PlatformContext&) = delete;
-	PlatformContext& operator =(const PlatformContext&) = delete;
-
-protected:
-	// Sets the constant buffers used by the appropriate shader pipeline stage.
-	void SetUniformBuffer(ut::uint32 slot, ID3D11Buffer* buffer);
-
-
-	ut::ComPtr<ID3D11DeviceContext> d3d11_context;
-	bool stage_bound[6];
-};
+// Move operator.
+PlatformBuffer& PlatformBuffer::operator =(PlatformBuffer&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

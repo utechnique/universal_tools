@@ -61,6 +61,101 @@ ID3D11Device* CreateDX11Device()
 	return new_device_ptr;
 }
 
+// Converts usage to the one compatible with DirectX11.
+D3D11_USAGE ConvertUsageToDX11(memory::Usage usage)
+{
+	switch (usage)
+	{
+	case render::memory::gpu:       return D3D11_USAGE_DEFAULT;
+	case render::memory::gpu_cpu:   return D3D11_USAGE_DYNAMIC;
+	case render::memory::immutable: return D3D11_USAGE_IMMUTABLE;
+	}
+	return D3D11_USAGE_DEFAULT;
+}
+
+// Converts compare operation to the one compatible with DirectX11.
+D3D11_COMPARISON_FUNC ConvertCompareOpToDX11(compare::Operation op)
+{
+	switch (op)
+	{
+	case compare::never:            return D3D11_COMPARISON_NEVER;
+	case compare::less:             return D3D11_COMPARISON_LESS;
+	case compare::equal:            return D3D11_COMPARISON_EQUAL;
+	case compare::less_or_equal:    return D3D11_COMPARISON_LESS_EQUAL;
+	case compare::greater:          return D3D11_COMPARISON_GREATER;
+	case compare::not_equal:        return D3D11_COMPARISON_NOT_EQUAL;
+	case compare::greater_or_equal: return D3D11_COMPARISON_GREATER_EQUAL;
+	case compare::always:           return D3D11_COMPARISON_ALWAYS;
+	}
+	return D3D11_COMPARISON_ALWAYS;
+}
+
+// Converts stencil operation to the one compatible with DirectX11.
+D3D11_STENCIL_OP ConvertStencilOpToDX11(StencilOpState::Operation op)
+{
+	switch (op)
+	{
+	case StencilOpState::keep:                return D3D11_STENCIL_OP_KEEP;
+	case StencilOpState::zero:                return D3D11_STENCIL_OP_ZERO;
+	case StencilOpState::replace:             return D3D11_STENCIL_OP_REPLACE;
+	case StencilOpState::increment_and_clamp: return D3D11_STENCIL_OP_INCR_SAT;
+	case StencilOpState::decrement_and_clamp: return D3D11_STENCIL_OP_DECR_SAT;
+	case StencilOpState::invert:              return D3D11_STENCIL_OP_INVERT;
+	case StencilOpState::increment_and_wrap:  return D3D11_STENCIL_OP_INCR;
+	case StencilOpState::decrement_and_wrap:  return D3D11_STENCIL_OP_DECR;
+	}
+	return D3D11_STENCIL_OP_KEEP;
+}
+
+// Converts cull mode to the one compatible with DirectX11.
+D3D11_CULL_MODE ConvertCullModeToDX11(RasterizationState::CullMode mode)
+{
+	switch (mode)
+	{
+	case RasterizationState::no_culling:    return D3D11_CULL_NONE;
+	case RasterizationState::front_culling: return D3D11_CULL_FRONT;
+	case RasterizationState::back_culling:  return D3D11_CULL_BACK;
+	}
+	return D3D11_CULL_NONE;
+}
+
+// Converts blend operation to the one compatible with DirectX11.
+D3D11_BLEND_OP ConvertBlendOpToDX11(Blending::Operation op)
+{
+	switch (op)
+	{
+	case Blending::add:              return D3D11_BLEND_OP_ADD;
+	case Blending::subtract:         return D3D11_BLEND_OP_SUBTRACT;
+	case Blending::reverse_subtract: return D3D11_BLEND_OP_REV_SUBTRACT;
+	case Blending::min:              return D3D11_BLEND_OP_MIN;
+	case Blending::max:              return D3D11_BLEND_OP_MAX;
+	}
+	return D3D11_BLEND_OP_MAX;
+}
+
+// Converts blend factor to the one compatible with DirectX11.
+D3D11_BLEND ConvertBlendFactorToDX11(Blending::Factor op)
+{
+	switch (op)
+	{
+	case Blending::zero:                return D3D11_BLEND_ZERO;
+	case Blending::one:                 return D3D11_BLEND_ONE;
+	case Blending::src_color:           return D3D11_BLEND_SRC_COLOR;
+	case Blending::inverted_src_color:  return D3D11_BLEND_INV_SRC_COLOR;
+	case Blending::dst_color:           return D3D11_BLEND_DEST_COLOR;
+	case Blending::inverted_dst_color:  return D3D11_BLEND_INV_DEST_COLOR;
+	case Blending::src_alpha:           return D3D11_BLEND_SRC_ALPHA;
+	case Blending::inverted_src_alpha:  return D3D11_BLEND_INV_SRC_ALPHA;
+	case Blending::dst_alpha:           return D3D11_BLEND_DEST_ALPHA;
+	case Blending::inverted_dst_alpha:  return D3D11_BLEND_INV_DEST_ALPHA;
+	case Blending::src1_color:          return D3D11_BLEND_SRC1_COLOR;
+	case Blending::inverted_src1_color: return D3D11_BLEND_INV_SRC1_COLOR;
+	case Blending::src1_alpha:          return D3D11_BLEND_SRC1_ALPHA;
+	case Blending::inverted_src1_alpha: return D3D11_BLEND_INV_SRC1_ALPHA;
+	}
+	return D3D11_BLEND_ONE;
+}
+
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformDevice::PlatformDevice(ID3D11Device* device_ptr) : d3d11_device(device_ptr)
@@ -230,7 +325,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 //    @param cmd_buffer_info - reference to the information about
 //                             the command buffer to be created.
 //    @return - new command buffer or error if failed.
-ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBufferInfo& cmd_buffer_info)
+ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBuffer::Info& cmd_buffer_info)
 {
 	return CmdBuffer(PlatformCmdBuffer(), cmd_buffer_info);
 }
@@ -304,11 +399,351 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	return Framebuffer(PlatformFramebuffer(), info, ut::Move(color_targets), ut::Move(depth_stencil_target));
 }
 
-// Resets all command buffers created with CmdBufferInfo::usage_once flag
-// enabled. This call is required before re-recording such command buffers.
-// Usualy it's called once per frame.
-void Device::ResetDynamicCmdPool()
-{}
+// Creates a buffer.
+//    @param info - ve::render::Buffer::Info object to initialize a buffer with.
+//    @return - new shader or error if failed.
+ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
+{
+	ID3D11Buffer *buffer = nullptr;
+	ID3D11UnorderedAccessView *uav = nullptr;
+	ID3D11ShaderResourceView *srv = nullptr;
+	D3D11_BUFFER_DESC buffer_desc;
+
+	// usage, length, misc
+	buffer_desc.ByteWidth = static_cast<UINT>(info.size);
+	buffer_desc.Usage = ConvertUsageToDX11(info.usage);
+	buffer_desc.MiscFlags = 0;
+
+	// bind flags
+	switch (info.type)
+	{
+	case Buffer::vertex:  buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;   break;
+	case Buffer::index:   buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;    break;
+	case Buffer::uniform: buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER; break;
+	case Buffer::storage: buffer_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE; break;
+	}
+
+	// cpu access
+	if (info.usage == render::memory::gpu_cpu)
+	{
+		buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	}
+	else
+	{
+		buffer_desc.CPUAccessFlags = 0;
+	}
+
+	if (info.type == Buffer::storage)
+	{
+		buffer_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		buffer_desc.StructureByteStride = info.stride;
+	}
+
+	// init data
+	D3D11_SUBRESOURCE_DATA subrc_data;
+	D3D11_SUBRESOURCE_DATA *init_data;
+	if (!info.data.IsEmpty())
+	{
+		init_data = &subrc_data;
+		subrc_data.pSysMem = info.data.GetAddress();
+	}
+	else
+	{
+		init_data = nullptr;
+	}
+
+	// create DX11 buffer
+	HRESULT result = d3d11_device->CreateBuffer(&buffer_desc, init_data, &buffer);
+	if (FAILED(result))
+	{
+		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 buffer."));
+	}
+
+	// create DX11 uav and srv
+	if (info.type == Buffer::storage)
+	{
+		D3D11_UNORDERED_ACCESS_VIEW_DESC desc_uav;
+		D3D11_SHADER_RESOURCE_VIEW_DESC  desc_srv;
+
+		desc_uav.Format = DXGI_FORMAT_UNKNOWN;
+		desc_uav.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+		desc_uav.Buffer.FirstElement = 0;
+		desc_uav.Buffer.NumElements = static_cast<UINT>(info.size / info.stride);
+		desc_uav.Buffer.Flags = 0;
+
+		desc_srv.Format = DXGI_FORMAT_UNKNOWN;
+		desc_srv.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+		desc_srv.Buffer.FirstElement = 0;
+		desc_srv.Buffer.NumElements = static_cast<UINT>(info.size / info.stride);
+
+		result = d3d11_device->CreateUnorderedAccessView(buffer, &desc_uav, &uav);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 buffer UAV."));
+		}
+
+		result = d3d11_device->CreateShaderResourceView(buffer, &desc_srv, &srv);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 buffer srv."));
+		}
+	}
+
+	// success
+	PlatformBuffer platform_buffer(buffer, uav, srv);
+	return Buffer(ut::Move(platform_buffer), ut::Move(info));
+}
+
+// Creates a shader.
+//    @param info - ve::render::Shader::Info object to initialize a shader with.
+//    @return - new shader or error if failed.
+ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
+{
+	ID3D11VertexShader*   vs = nullptr;
+	ID3D11GeometryShader* gs = nullptr;
+	ID3D11HullShader*     hs = nullptr;
+	ID3D11DomainShader*   ds = nullptr;
+	ID3D11PixelShader*    ps = nullptr;
+	ID3D11ComputeShader*  cs = nullptr;
+
+	// create DX11 shader
+	switch (info.stage)
+	{
+		case Shader::vertex:
+		{
+			HRESULT result = d3d11_device->CreateVertexShader(info.bytecode.GetAddress(),
+															  info.bytecode.GetSize(),
+															  nullptr,
+															  &vs);
+			if (FAILED(result))
+			{
+				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 vertex shader."));
+			}
+		} break;
+
+		case Shader::hull:
+		{
+			HRESULT result = d3d11_device->CreateHullShader(info.bytecode.GetAddress(),
+															info.bytecode.GetSize(),
+															nullptr,
+															&hs);
+			if (FAILED(result))
+			{
+				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 hull shader."));
+			}
+		} break;
+
+		case Shader::domain:
+		{
+			HRESULT result = d3d11_device->CreateDomainShader(info.bytecode.GetAddress(),
+															  info.bytecode.GetSize(),
+															  nullptr,
+															  &ds);
+			if (FAILED(result))
+			{
+				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 domain shader."));
+			}
+		} break;
+
+		case Shader::geometry:
+		{
+			HRESULT result = d3d11_device->CreateGeometryShader(info.bytecode.GetAddress(),
+																info.bytecode.GetSize(),
+																nullptr,
+																&gs);
+			if (FAILED(result))
+			{
+				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 geometry shader."));
+			}
+		} break;
+
+		case Shader::pixel:
+		{
+			HRESULT result = d3d11_device->CreatePixelShader(info.bytecode.GetAddress(),
+															 info.bytecode.GetSize(),
+															 nullptr,
+															 &ps);
+			if (FAILED(result))
+			{
+				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 pixel shader."));
+			}
+		} break;
+
+		case Shader::compute:
+		{
+			HRESULT result = d3d11_device->CreateComputeShader(info.bytecode.GetAddress(),
+															   info.bytecode.GetSize(),
+															   nullptr,
+															   &cs);
+			if (FAILED(result))
+			{
+				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 compute shader."));
+			}
+		} break;
+	}
+
+	// create ve shader
+	switch (info.stage)
+	{
+	case Shader::vertex:   return Shader(PlatformShader(vs), ut::Move(info));
+	case Shader::hull:     return Shader(PlatformShader(hs), ut::Move(info));
+	case Shader::domain:   return Shader(PlatformShader(ds), ut::Move(info));
+	case Shader::geometry: return Shader(PlatformShader(gs), ut::Move(info));
+	case Shader::pixel:    return Shader(PlatformShader(ps), ut::Move(info));
+	case Shader::compute:  return Shader(PlatformShader(cs), ut::Move(info));
+	}
+	return ut::MakeError(ut::error::fail);
+}
+
+// Creates a pipeline state.
+//    @param info - ve::render::PipelineState::Info object to
+//                  initialize a pipeline with.
+//    @param render_pass - reference to the ve::render::RenderPass object
+//                         pipeline will be bound to.
+//    @return - new pipeline sate or error if failed.
+ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::Info info,
+                                                                 RenderPass& render_pass)
+{
+	HRESULT result;
+	ID3D11InputLayout* input_layout = nullptr;
+	ID3D11BlendState* blend_state = nullptr;
+	ID3D11RasterizerState* rasterizer_state = nullptr;
+	ID3D11DepthStencilState* depthstencil_state = nullptr;
+
+	// descriptors of dx11 input layout elements
+	const UINT input_element_count = static_cast<UINT>(info.input_assembly_state.elements.GetNum());
+	ut::Array<D3D11_INPUT_ELEMENT_DESC> input_el_desc(input_element_count);
+	for (UINT i = 0; i < input_element_count; i++)
+	{
+		VertexElement& element = info.input_assembly_state.elements[i];
+
+		D3D11_INPUT_ELEMENT_DESC& desc = input_el_desc[i];
+		desc.SemanticName = element.semantic_name;
+		desc.SemanticIndex = element.semantic_id;
+		desc.Format = ConvertPixelFormatToDX11(element.format);
+		desc.InputSlot = 0;
+		desc.AlignedByteOffset = element.offset;
+		desc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+		desc.InstanceDataStepRate = 0;
+	}
+
+	// create dx11 input layout
+	if (info.stages[Shader::vertex])
+	{
+		const ut::Array<ut::byte>& vs_bytecode = info.stages[Shader::vertex]->info.bytecode;
+
+		result = d3d11_device->CreateInputLayout(input_el_desc.GetAddress(),
+		                                         input_element_count,
+		                                         vs_bytecode.GetAddress(),
+		                                         vs_bytecode.GetSize(),
+		                                         &input_layout);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 input layout."));
+		}
+	}
+	else
+	{
+		ut::log.Lock() << "Warning! Pipeline state has no vertex shader stage." << ut::cret;
+	}
+
+	// check if at least one scissor is used
+	const size_t viewport_count = info.viewports.GetNum();
+	BOOL scissor_enable = FALSE;
+	for (size_t i = 0; i < viewport_count; i++)
+	{
+		if (info.viewports[i].scissor)
+		{
+			scissor_enable = TRUE;
+			break;
+		}
+	}
+
+	// create rasterizer state
+	const RasterizationState& rs = info.rasterization_state;
+	D3D11_RASTERIZER_DESC raster_desc;
+	raster_desc.FillMode = rs.polygon_mode == RasterizationState::fill ? D3D11_FILL_SOLID : D3D11_FILL_WIREFRAME;
+	raster_desc.CullMode = ConvertCullModeToDX11(rs.cull_mode);
+	raster_desc.FrontCounterClockwise = rs.front_face == RasterizationState::counter_clockwise ? TRUE : FALSE;
+	raster_desc.DepthBias = rs.depth_bias_enable ? 1 : 0;
+	raster_desc.DepthBiasClamp = rs.depth_bias_clamp;
+	raster_desc.SlopeScaledDepthBias = rs.depth_bias_slope_factor;
+	raster_desc.DepthClipEnable = TRUE;
+	raster_desc.ScissorEnable = scissor_enable;
+	raster_desc.MultisampleEnable = FALSE;
+	raster_desc.AntialiasedLineEnable = FALSE;
+	result = d3d11_device->CreateRasterizerState(&raster_desc, &rasterizer_state);
+	if (FAILED(result))
+	{
+		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 rasterizer state."));
+	}
+
+	// create depth-stencil state
+	const DepthStencilState& ds = info.depth_stencil_state;
+	D3D11_DEPTH_STENCIL_DESC ds_desc;
+	ds_desc.DepthEnable = ds.depth_test_enable;
+	ds_desc.DepthWriteMask = ds.depth_write_enable ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
+	ds_desc.DepthFunc = ConvertCompareOpToDX11(ds.depth_compare_op);
+	ds_desc.StencilEnable = ds.stencil_test_enable;
+	ds_desc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+	ds_desc.StencilWriteMask = ds.stencil_write_mask;
+	ds_desc.FrontFace.StencilFunc = ConvertCompareOpToDX11(ds.front.compare_op);
+	ds_desc.FrontFace.StencilDepthFailOp = ConvertStencilOpToDX11(ds.front.depth_fail_op);
+	ds_desc.FrontFace.StencilPassOp = ConvertStencilOpToDX11(ds.front.pass_op);
+	ds_desc.FrontFace.StencilFailOp = ConvertStencilOpToDX11(ds.front.fail_op);
+	ds_desc.BackFace.StencilFunc = ConvertCompareOpToDX11(ds.back.compare_op);
+	ds_desc.BackFace.StencilDepthFailOp = ConvertStencilOpToDX11(ds.back.depth_fail_op);
+	ds_desc.BackFace.StencilPassOp = ConvertStencilOpToDX11(ds.back.pass_op);
+	ds_desc.BackFace.StencilFailOp = ConvertStencilOpToDX11(ds.back.fail_op);
+	result = d3d11_device->CreateDepthStencilState(&ds_desc, &depthstencil_state);
+	if (FAILED(result))
+	{
+		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 depth-stencil state."));
+	}
+
+	// check blendstate attachment count
+	const size_t blend_attachment_count = info.blend_state.attachments.GetNum();
+	if (blend_attachment_count > 8)
+	{
+		return ut::MakeError(ut::Error(ut::error::fail, "Too many blendstate attachments (max 8 for DX11)."));
+	}
+
+	// create blend state
+	D3D11_BLEND_DESC blend_desc;
+	blend_desc.AlphaToCoverageEnable = FALSE;
+	blend_desc.IndependentBlendEnable = TRUE;
+	for (size_t i = 0; i < 8; i++)
+	{
+		D3D11_RENDER_TARGET_BLEND_DESC& target = blend_desc.RenderTarget[i];
+		if (i >= blend_attachment_count)
+		{
+			ut::memory::Set(&target, 0, sizeof(D3D11_RENDER_TARGET_BLEND_DESC));
+			continue;
+		}
+
+		Blending& blending = info.blend_state.attachments[i];
+		target.BlendEnable = blending.blend_enable ? TRUE : FALSE;
+		target.SrcBlend = ConvertBlendFactorToDX11(blending.src_blend);
+		target.DestBlend = ConvertBlendFactorToDX11(blending.dst_blend);
+		target.BlendOp = ConvertBlendOpToDX11(blending.color_op);
+		target.SrcBlendAlpha = ConvertBlendFactorToDX11(blending.src_alpha);
+		target.DestBlendAlpha = ConvertBlendFactorToDX11(blending.dst_alpha);
+		target.BlendOpAlpha = ConvertBlendOpToDX11(blending.alpha_op);
+		target.RenderTargetWriteMask = blending.write_mask;
+	}
+	result = d3d11_device->CreateBlendState(&blend_desc, &blend_state);
+	if (FAILED(result))
+	{
+		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 blend state."));
+	}
+
+	// success
+	PlatformPipelineState platform_pipeline(input_layout,
+	                                        rasterizer_state,
+	                                        depthstencil_state,
+	                                        blend_state);
+	return PipelineState(ut::Move(platform_pipeline), ut::Move(info));
+}
 
 // Resets given command buffer. This command buffer must be created without
 // CmdBufferInfo::usage_once flag (use ResetCmdPool() instead).
@@ -333,6 +768,13 @@ void Device::Record(CmdBuffer& cmd_buffer,
 	                ut::Optional<Framebuffer&> framebuffer)
 {
 	cmd_buffer.proc = function;
+}
+
+// Waits for all commands from the provided buffer to be executed.
+//    @param cmd_buffer - reference to the command buffer.
+void Device::WaitCmdBuffer(CmdBuffer& cmd_buffer)
+{
+	cmd_buffer.pending = false;
 }
 
 // Submits a command buffer to a queue. Also it's possible to enqueue presentation
@@ -362,6 +804,11 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 		display.dxgi_swapchain->Present(display.vsync ? 1 : 0, 0);
 	}
 }
+
+// Acquires next buffer in a swapchain to be filled.
+//    @param display - reference to the display.
+void Device::AcquireNextDisplayBuffer(Display& display)
+{}
 
 // Call this function to wait on the host for the completion of all
 // queue operations for all queues on this device.

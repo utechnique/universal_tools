@@ -1,42 +1,42 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
+#include "systems/render/api/ve_render_shader.h"
 //----------------------------------------------------------------------------//
 #if VE_DX11
-//----------------------------------------------------------------------------//
-#include "ut.h"
-#include <d3d11.h>
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// DirectX 11 context.
-class PlatformContext
-{
-	friend class Device;
-public:
-	// Constructor.
-	PlatformContext(ID3D11DeviceContext* context_ptr);
+// Constructor (vertex shader).
+PlatformShader::PlatformShader(ID3D11VertexShader* vs_ptr) : vs(vs_ptr)
+{}
 
-	// Move constructor.
-	PlatformContext(PlatformContext&&) noexcept;
+// Constructor (geometry shader).
+PlatformShader::PlatformShader(ID3D11GeometryShader* gs_ptr) : gs(gs_ptr)
+{}
 
-	// Move operator.
-	PlatformContext& operator =(PlatformContext&&) noexcept;
+// Constructor (hull shader).
+PlatformShader::PlatformShader(ID3D11HullShader* hs_ptr) : hs(hs_ptr)
+{}
 
-	// Copying is prohibited.
-	PlatformContext(const PlatformContext&) = delete;
-	PlatformContext& operator =(const PlatformContext&) = delete;
+// Constructor (domain shader).
+PlatformShader::PlatformShader(ID3D11DomainShader* ds_ptr) : ds(ds_ptr)
+{}
 
-protected:
-	// Sets the constant buffers used by the appropriate shader pipeline stage.
-	void SetUniformBuffer(ut::uint32 slot, ID3D11Buffer* buffer);
+// Constructor (pixel shader).
+PlatformShader::PlatformShader(ID3D11PixelShader* ps_ptr) : ps(ps_ptr)
+{}
 
+// Constructor (compute shader).
+PlatformShader::PlatformShader(ID3D11ComputeShader* cs_ptr) : cs(cs_ptr)
+{}
 
-	ut::ComPtr<ID3D11DeviceContext> d3d11_context;
-	bool stage_bound[6];
-};
+// Move constructor.
+PlatformShader::PlatformShader(PlatformShader&&) noexcept = default;
+
+// Move operator.
+PlatformShader& PlatformShader::operator =(PlatformShader&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

@@ -11,31 +11,31 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// DirectX 11 context.
-class PlatformContext
+// DirectX11 buffer.
+class PlatformBuffer
 {
 	friend class Device;
+	friend class Context;
 public:
 	// Constructor.
-	PlatformContext(ID3D11DeviceContext* context_ptr);
+	PlatformBuffer(ID3D11Buffer* buffer_ptr,
+	               ID3D11UnorderedAccessView* uav_ptr,
+	               ID3D11ShaderResourceView* srv_ptr);
 
 	// Move constructor.
-	PlatformContext(PlatformContext&&) noexcept;
+	PlatformBuffer(PlatformBuffer&&) noexcept;
 
 	// Move operator.
-	PlatformContext& operator =(PlatformContext&&) noexcept;
+	PlatformBuffer& operator =(PlatformBuffer&&) noexcept;
 
 	// Copying is prohibited.
-	PlatformContext(const PlatformContext&) = delete;
-	PlatformContext& operator =(const PlatformContext&) = delete;
+	PlatformBuffer(const PlatformBuffer&) = delete;
+	PlatformBuffer& operator =(const PlatformBuffer&) = delete;
 
-protected:
-	// Sets the constant buffers used by the appropriate shader pipeline stage.
-	void SetUniformBuffer(ut::uint32 slot, ID3D11Buffer* buffer);
-
-
-	ut::ComPtr<ID3D11DeviceContext> d3d11_context;
-	bool stage_bound[6];
+private:
+	ut::ComPtr<ID3D11Buffer> d3d11_buffer;
+	ut::ComPtr<ID3D11UnorderedAccessView> uav;
+	ut::ComPtr<ID3D11ShaderResourceView> srv;
 };
 
 //----------------------------------------------------------------------------//

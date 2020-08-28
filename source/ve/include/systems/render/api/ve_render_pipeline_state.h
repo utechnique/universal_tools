@@ -161,8 +161,6 @@ struct StencilOpState
 	                                            , pass_op(in_pass_op)
 	                                            , depth_fail_op(in_depth_fail_op)
 	                                            , compare_mask(in_compare_mask)
-	                                            , write_mask(in_write_mask)
-	                                            , reference(in_reference)
 	{}
 
 	compare::Operation compare_op;
@@ -170,8 +168,7 @@ struct StencilOpState
 	Operation pass_op;
 	Operation depth_fail_op;
 	ut::uint32 compare_mask;
-	ut::uint32 write_mask;
-	ut::uint32 reference;
+	
 };
 
 //----------------------------------------------------------------------------//
@@ -190,6 +187,8 @@ struct DepthStencilState
 	                                                             , depth_compare_op(in_depth_compare_op)
 	                                                             , front(in_front)
 	                                                             , back(in_back)
+	                                                             , stencil_write_mask(0xff)
+	                                                             , stencil_reference(0)
 	{}
 
 	bool depth_test_enable;
@@ -198,6 +197,8 @@ struct DepthStencilState
 	compare::Operation depth_compare_op;
 	StencilOpState front;
 	StencilOpState back;
+	ut::uint32 stencil_write_mask;
+	ut::uint32 stencil_reference;
 };
 
 //----------------------------------------------------------------------------//
@@ -286,6 +287,8 @@ struct BlendState
 //----------------------------------------------------------------------------//
 class PipelineState : public PlatformPipelineState
 {
+	friend class Context;
+	friend class Device;
 public:
 	// ve::render::PipelineInfo conveniently stores all essential
 	// information about the graphics pipeline.

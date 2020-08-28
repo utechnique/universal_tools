@@ -1437,7 +1437,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 
 	// find valid usage for the buffer
 	int usage = ConvertBufferTypeToVulkan(info.type);
-	if (info.usage == Buffer::immutable)
+	if (info.usage == render::memory::immutable)
 	{
 		usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	}
@@ -1453,7 +1453,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	// allocate memory
 	VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 	                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	if (info.usage == Buffer::immutable)
+	if (info.usage == render::memory::immutable)
 	{
 		memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	}
@@ -1468,7 +1468,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	// copy memory
 	if (ini_size > 0)
 	{
-		if (info.usage == Buffer::immutable)
+		if (info.usage == render::memory::immutable)
 		{
 			// create staging buffer
 			ut::Result<VkBuffer, ut::Error> staging_buffer_result = CreateVulkanBuffer(info.size,
@@ -1721,15 +1721,15 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	ds_state.back.depthFailOp = ConvertStencilOpToVulkan(info.depth_stencil_state.back.depth_fail_op);
 	ds_state.back.compareOp = ConvertCompareOpToVulkan(info.depth_stencil_state.back.compare_op);
 	ds_state.back.compareMask = info.depth_stencil_state.back.compare_mask;
-	ds_state.back.reference = info.depth_stencil_state.back.reference;
-	ds_state.back.writeMask = info.depth_stencil_state.back.write_mask;
+	ds_state.back.reference = info.depth_stencil_state.stencil_reference;
+	ds_state.back.writeMask = info.depth_stencil_state.stencil_write_mask;
 	ds_state.front.failOp = ConvertStencilOpToVulkan(info.depth_stencil_state.front.fail_op);
 	ds_state.front.passOp = ConvertStencilOpToVulkan(info.depth_stencil_state.front.pass_op);
 	ds_state.front.depthFailOp = ConvertStencilOpToVulkan(info.depth_stencil_state.front.depth_fail_op);
 	ds_state.front.compareOp = ConvertCompareOpToVulkan(info.depth_stencil_state.front.compare_op);
 	ds_state.front.compareMask = info.depth_stencil_state.front.compare_mask;
-	ds_state.front.reference = info.depth_stencil_state.front.reference;
-	ds_state.front.writeMask = info.depth_stencil_state.front.write_mask;
+	ds_state.front.reference = info.depth_stencil_state.stencil_reference;
+	ds_state.front.writeMask = info.depth_stencil_state.stencil_write_mask;
 	ds_state.depthBoundsTestEnable = VK_FALSE;
 	ds_state.minDepthBounds = 0;
 	ds_state.maxDepthBounds = 0;

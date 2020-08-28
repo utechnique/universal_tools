@@ -41,6 +41,9 @@ public:
 	// Constructor.
 	DesktopFrontend();
 
+	// Destructor, hides main window and waits until fltk thread is finished.
+	~DesktopFrontend();
+
 	// Initialization.
 	ut::Optional<ut::Error> Initialize();
 

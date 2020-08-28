@@ -12,7 +12,7 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-
+// DirectX11 Device.
 class PlatformDevice
 {
 public:
