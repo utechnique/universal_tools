@@ -100,7 +100,7 @@ Optional<Error> JsonDoc::ParseValue(text::Reader& cursor, Tree<text::Node>& node
 		{
 			return string_result.MoveAlt();
 		}
-		node.data.value = string_result.MoveResult();
+		node.data.value = string_result.Move();
 	}
 	else if (cursor.CheckLength(4) && cursor.Compare("true", false)) // true?
 	{
@@ -129,7 +129,7 @@ Optional<Error> JsonDoc::ParseValue(text::Reader& cursor, Tree<text::Node>& node
 		}
 
 		node.data.value_type = String(Type<int>::Name());
-		node.data.value = number_result.MoveResult();
+		node.data.value = number_result.Move();
 	}
 	else if (cursor == '{') // object?
 	{
@@ -200,7 +200,7 @@ Optional<Error> JsonDoc::ParseObject(text::Reader& cursor, Tree<text::Node>& nod
 		Result<String, Error> name_result = ExtractString(cursor);
 		if (name_result)
 		{
-			child_node.data.name = name_result.MoveResult();
+			child_node.data.name = name_result.Move();
 		}
 		else
 		{

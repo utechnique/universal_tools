@@ -268,11 +268,11 @@ public:
 				return MakeError(extraction_result.MoveAlt());
 			}
 
-			element = Scan<T>(extraction_result.GetResult());
+			element = Scan<T>(extraction_result.Get());
 		}
 		else
 		{
-			return MakeError(Error(error::fail, "Invalid (non-input) mode."));
+			return MakeError(error::fail, "Invalid (non-input) mode.");
 		}
 
 		// success
@@ -312,7 +312,7 @@ public:
 			T element;
 			if (extraction_result)// we have found "value" node - totally ok!
 			{
-				element = Scan<T>(extraction_result.GetResult());
+				element = Scan<T>(extraction_result.Get());
 			}
 			else if(io.text_output->data.value) // there is no separate "value" node, it can be ok,
 			{                                   // if it'a a json document e.g.
@@ -565,7 +565,7 @@ private:
 		{
 			return read_cursor.MoveAlt();
 		}
-		cursor = read_cursor.GetResult();
+		cursor = read_cursor.Get();
 
 		// success
 		return Optional<Error>();
@@ -607,7 +607,7 @@ private:
 		{
 			return read_cursor.MoveAlt();
 		}
-		cursor = read_cursor.GetResult();
+		cursor = read_cursor.Get();
 
 		// success
 		return Optional<Error>();

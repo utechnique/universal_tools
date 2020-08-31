@@ -28,7 +28,7 @@ static void SendMsgCallback(Fl_Widget *widget, void *userdata)
 	{
 		// call signal
 		ut::String message(input->value());
-		ui->message_sent(message, select_result.GetResult());
+		ui->message_sent(message, select_result.Get());
 	}
 	else
 	{

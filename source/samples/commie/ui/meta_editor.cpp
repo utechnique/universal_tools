@@ -257,13 +257,13 @@ ut::Optional<ut::Error> MetaEditor::Rebuild(const ut::text::Document& document)
 		}
 
 		// skip if new tree is empty
-		if (!add_node_result.GetResult().HasValue())
+		if (!add_node_result.Get().HasValue())
 		{
 			continue;
 		}
 
 		// add item to the tree
-		if (!items.Add(add_node_result.GetResult().Get()))
+		if (!items.Add(add_node_result.Get().Get()))
 		{
 			return ut::Error(ut::error::out_of_memory);
 		}
@@ -306,7 +306,7 @@ ut::Result<ut::XmlDoc, ut::Error> MetaEditor::Save() const
 		{
 			return ut::MakeError(ut::Error(save_item_result.MoveAlt()));
 		}
-		doc << save_item_result.GetResult();
+		doc << save_item_result.Get();
 	}
 
 	return doc;
@@ -331,12 +331,12 @@ ut::Result<ut::Tree<ut::text::Node>, ut::Error> MetaEditor::SaveItem(const ut::T
 	ut::Result<ut::String, ut::Error> get_value_result = item.data.GetValue();
 
 	// set node name
-	node.data.name = get_name_result.MoveResult();
+	node.data.name = get_name_result.Move();
 
 	// set node value, note that node can have no value
 	if (get_value_result)
 	{
-		node.data.value = get_value_result.MoveResult();
+		node.data.value = get_value_result.Move();
 	}
 
 	// add children
@@ -347,7 +347,7 @@ ut::Result<ut::Tree<ut::text::Node>, ut::Error> MetaEditor::SaveItem(const ut::T
 		{
 			return ut::MakeError(ut::Error(save_child_result.MoveAlt()));
 		}
-		node.Add(save_child_result.MoveResult());
+		node.Add(save_child_result.Move());
 	}
 
 	// success
@@ -399,13 +399,13 @@ ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> MetaEditor::AddTr
 			return ut::MakeError(add_node_error.MoveAlt());
 		}
 
-		if (!add_node_error.GetResult().HasValue())
+		if (!add_node_error.Get().HasValue())
 		{
 			continue;
 		}
 
 		// add child item to the parent tree
-		if (!parent_item.Add(add_node_error.GetResult().Get()))
+		if (!parent_item.Add(add_node_error.Get().Get()))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
 		}

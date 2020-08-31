@@ -62,14 +62,14 @@ Optional<Error> Server::Run()
 			if (accept_result)
 			{
 				// signalize that new client has been accepted
-				Result<HostAddress, Error> get_addr_result = accept_result.GetResult()->GetAddr();
+				Result<HostAddress, Error> get_addr_result = accept_result.Get()->GetAddr();
 				if (get_addr_result)
 				{
-					client_accepted(get_addr_result.GetResult());
+					client_accepted(get_addr_result.Get());
 				}
 				
 				// create new connection
-				UniquePtr<Connection> connection = CreateConnection(accept_result.MoveResult());
+				UniquePtr<Connection> connection = CreateConnection(accept_result.Move());
 
 				// add connection to the array
 				Array< UniquePtr<Connection> >& locked_connections = connections.Lock();

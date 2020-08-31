@@ -177,7 +177,7 @@ void Slot3Task::Execute()
 		return;
 	}
 
-	if (result.GetResult() != 10 + 36)
+	if (result.Get() != 10 + 36)
 	{
 		report += ut::String("FAIL");
 		failed_test_counter.Increment();

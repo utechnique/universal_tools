@@ -28,9 +28,9 @@ constexpr Alternate<T> MakeAlt(const T& x)
 //----------------------------------------------------------------------------//
 // 'Move' version of the MakeAlt<>()
 template<typename T>
-constexpr Alternate<T> MakeAlt(T && x)
+constexpr Alternate<T> MakeAlt(T&& x)
 {
-	return { Move(x) };
+	return { ut::Move(x) };
 }
 
 //----------------------------------------------------------------------------//
@@ -39,7 +39,7 @@ constexpr Alternate<T> MakeAlt(T && x)
 // for failure. You can set an expected (successful in other words, @R type)
 // value using usual constructor, or if you want to set unexpected value
 // (failure, @A type) - use ut::Result(ut::MakeAlt<YourType>(your_value)). You
-// can get one of two result values calling ut::Result::GetResult() or
+// can get one of two result values calling ut::Result::Get() or
 // ut::Result::GetAlt(). Use ut::Result::HasResult() or ut::Result::operator==()
 // to figure out what value is kept inside the object.
 template<class R, class A>
@@ -60,14 +60,14 @@ public:
 
 	// This constructor constructs @R value
 	// from @value parameter using move semantics
-	constexpr Result(ResultType && value) : result(Move(value)), has_result(true)
+	constexpr Result(ResultType && value) : result(ut::Move(value)), has_result(true)
 	{}
 
 	// This constructor constructs @A value
 	constexpr Result(const Alternate<AlternateType>& e) : alt(e.value), has_result(false)
 	{}
 
-	constexpr Result(Alternate<AlternateType>&& e) : alt(Move(e.value)), has_result(false)
+	constexpr Result(Alternate<AlternateType>&& e) : alt(ut::Move(e.value)), has_result(false)
 	{}
 
 	// Copy constructor, uses placement new internally.
@@ -90,11 +90,11 @@ public:
 	{
 		if (has_result)
 		{
-			new (&result)ResultType(Move(right.result));
+			new (&result)ResultType(ut::Move(right.result));
 		}
 		else
 		{
-			new (&alt)AlternateType(Move(right.alt));
+			new (&alt)AlternateType(ut::Move(right.alt));
 		}
 	}
 
@@ -132,11 +132,11 @@ public:
 		// construct new object using move constructor
 		if (has_result)
 		{
-			new (&result)ResultType(Move(right.result));
+			new (&result)ResultType(ut::Move(right.result));
 		}
 		else
 		{
-			new (&alt)AlternateType(Move(right.alt));
+			new (&alt)AlternateType(ut::Move(right.alt));
 		}
 
 		return *this;
@@ -166,23 +166,23 @@ public:
 
 	// Use this function to get @R value (if present)
 	//    @return - @result reference
-	constexpr const ResultType& GetResult() const
+	constexpr const ResultType& Get() const
 	{
 		return result;
 	}
 
 	// Use this function to get @R value (if present)
 	//    @return - @result reference
-	ResultType& GetResult()
+	ResultType& Get()
 	{
 		return result;
 	}
 
 	// Use this function to move @R value (if present)
 	//    @return - @result r-value reference
-	ResultType&& MoveResult()
+	ResultType&& Move()
 	{
-		return Move(result);
+		return ut::Move(result);
 	}
 
 	// Use this function to get @A value (if present)
@@ -203,7 +203,7 @@ public:
 	//    @return - @alt r-value reference
 	AlternateType&& MoveAlt()
 	{
-		return Move(alt);
+		return ut::Move(alt);
 	}
 
 	// Bool conversion operator
@@ -313,21 +313,21 @@ public:
 	constexpr Result(const Alternate<AlternateType>& e) : Base(e)
 	{}
 
-	constexpr Result(Alternate<AlternateType>&& e) : Base(Move(e))
+	constexpr Result(Alternate<AlternateType>&& e) : Base(ut::Move(e))
 	{}
 
 	// Use this function to get @R value (if present)
 	//    @return - @result reference
-	constexpr ResultType& GetResult() const
+	constexpr ResultType& Get() const
 	{
-		return *Base::GetResult();
+		return *Base::Get();
 	}
 
 	// Use this function to move @R value (if present)
 	//    @return - @result r-value reference
-	ResultType&& MoveResult()
+	ResultType&& Move()
 	{
-		return Move(*Base::MoveResult());
+		return ut::Move(*Base::Move());
 	}
 };
 

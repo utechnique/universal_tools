@@ -98,10 +98,10 @@ Optional<Error> SendCommand::Execute(Connection& connection)
 	Result<Optional<Error>, Error> signal_result = cmd->sent(connection);
 	if (signal_result)
 	{
-		const Optional<Error>& signal_error = signal_result.GetResult();
+		const Optional<Error>& signal_error = signal_result.Get();
 		if (signal_error)
 		{
-			return signal_result.MoveResult();
+			return signal_result.Move();
 		}
 	}
 
@@ -126,7 +126,7 @@ Optional<Error> SendCommandFromStack::Execute(Connection& connection)
 	Result<UniquePtr<Command>, Error> pick_result = connection.PickCommand();
 
 	// move command if exist
-	UniquePtr<Command> picked_cmd = pick_result ? pick_result.MoveResult() : UniquePtr<Command>(nullptr);
+	UniquePtr<Command> picked_cmd = pick_result ? pick_result.Move() : UniquePtr<Command>(nullptr);
 
 	// serialize command
 	BinaryStream stream;
@@ -153,10 +153,10 @@ Optional<Error> SendCommandFromStack::Execute(Connection& connection)
 	Result<Optional<Error>, Error> signal_result = cmd->sent(connection);
 	if (signal_result)
 	{
-		const Optional<Error>& signal_error = signal_result.GetResult();
+		const Optional<Error>& signal_error = signal_result.Get();
 		if (signal_error)
 		{
-			return signal_result.MoveResult();
+			return signal_result.Move();
 		}
 	}
 

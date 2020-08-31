@@ -67,17 +67,17 @@ public:
 		UniquePtrType& ptr_ref = *static_cast<UniquePtrType*>(ptr);
 
 		// check if serialized pointer is not null
-		if (read_type_result.GetResult() == Type<void>::Name())
+		if (read_type_result.Get() == Type<void>::Name())
 		{
 			ptr_ref.Delete(); // reset current value
 			return Optional<Error>(); // exit, ok
 		}
 
 		// create new instance
-		Result<UniquePtrType, Error> create_result = CreateNewInstanceVariant<T>(read_type_result.GetResult());
+		Result<UniquePtrType, Error> create_result = CreateNewInstanceVariant<T>(read_type_result.Get());
 		if (create_result)
 		{
-			ptr_ref = Move(create_result.MoveResult());
+			ptr_ref = Move(create_result.Move());
 		}
 		else
 		{
@@ -156,7 +156,7 @@ private:
 		}
 
 		// create a new object
-		const DynamicType& dyn_type = type_result.GetResult();
+		const DynamicType& dyn_type = type_result.Get();
 		UniquePtrType instance(static_cast<T*>(dyn_type.CreateInstance()));
 		return Move(instance);
 	}

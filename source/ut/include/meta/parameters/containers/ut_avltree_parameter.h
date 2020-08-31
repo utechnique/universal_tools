@@ -172,7 +172,7 @@ public:
 			{
 				return type_result.MoveAlt();
 			}
-			else if (BaseParameter::DeduceTypeName<Value>() != type_result.GetResult())
+			else if (BaseParameter::DeduceTypeName<Value>() != type_result.Get())
 			{
 				return Error(error::types_not_match);
 			}
@@ -183,7 +183,7 @@ public:
 			{
 				return type_result.MoveAlt();
 			}
-			else if (BaseParameter::DeduceTypeName<Key>() != type_result.GetResult())
+			else if (BaseParameter::DeduceTypeName<Key>() != type_result.Get())
 			{
 				return Error(error::types_not_match);
 			}

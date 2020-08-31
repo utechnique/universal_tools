@@ -57,7 +57,7 @@ Optional<Error> Controller::SetBinaryInputStream(InputStream& stream)
 	{
 		return read_cursor.MoveAlt();
 	}
-	cursor = read_cursor.GetResult();
+	cursor = read_cursor.Get();
 
 	// success
 	return Optional<Error>();
@@ -78,7 +78,7 @@ Optional<Error> Controller::SetBinaryOutputStream(OutputStream& stream)
 	{
 		return read_cursor.MoveAlt();
 	}
-	cursor = read_cursor.GetResult();
+	cursor = read_cursor.Get();
 
 	// success
 	return Optional<Error>();
@@ -190,7 +190,7 @@ Optional<Error> Controller::SyncWithStream()
 		{
 			return stream_cursor.MoveAlt();
 		}
-		cursor = stream_cursor.GetResult();
+		cursor = stream_cursor.Get();
 	}
 	else if (mode == binary_output_mode)
 	{
@@ -199,7 +199,7 @@ Optional<Error> Controller::SyncWithStream()
 		{
 			return stream_cursor.MoveAlt();
 		}
-		cursor = stream_cursor.GetResult();
+		cursor = stream_cursor.Get();
 	}
 
 	// success
@@ -260,7 +260,7 @@ Optional<Error> Controller::ReadLink(const BaseParameter* parameter)
 	}
 
 	// create linker task to link parameters after deserialization
-	UniquePtr<LinkTask> read_task(new ReadLinkTask(parameter, read_id_result.GetResult()));
+	UniquePtr<LinkTask> read_task(new ReadLinkTask(parameter, read_id_result.Get()));
 	return linker->AddTask(Move(read_task));
 }
 
@@ -289,14 +289,14 @@ Optional<Error> Controller::ReadSharedLink(const BaseParameter* parameter,
 	}
 
 	// let the linker know about the existance of the linked shared object
-	Optional<Error> cache_error = linker->RegisterInputSharedObject(ptr, read_id_result.GetResult());
+	Optional<Error> cache_error = linker->RegisterInputSharedObject(ptr, read_id_result.Get());
 	if (cache_error)
 	{
 		return cache_error;
 	}
 
 	// create linker task to link parameters after deserialization
-	UniquePtr<LinkTask> read_task(new ReadSharedPtrLinkTask(parameter, read_id_result.GetResult()));
+	UniquePtr<LinkTask> read_task(new ReadSharedPtrLinkTask(parameter, read_id_result.Get()));
 	return linker->AddTask(Move(read_task));
 }
 
@@ -323,7 +323,7 @@ Optional<Error> Controller::ReadWeakLink(const BaseParameter* parameter)
 	}
 
 	// create linker task to link parameters after deserialization
-	UniquePtr<LinkTask> read_task(new ReadSharedPtrLinkTask(parameter, read_id_result.GetResult()));
+	UniquePtr<LinkTask> read_task(new ReadSharedPtrLinkTask(parameter, read_id_result.Get()));
 	return linker->AddTask(Move(read_task));
 }
 
@@ -382,7 +382,7 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 
 	// write parameter size to the reserved space,
 	// this affects only a binary variant
-	optional_error = WriteParameterSize(reserve_size_result.GetResult());
+	optional_error = WriteParameterSize(reserve_size_result.Get());
 	if (optional_error)
 	{
 		return optional_error;
@@ -453,7 +453,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 	{
 		return MakeError(uniforms_result.MoveAlt());
 	}
-	Controller::Uniform uniforms(uniforms_result.MoveResult());
+	Controller::Uniform uniforms(uniforms_result.Move());
 
 	// read size - this affects only a binary variant
 	Result<stream::Cursor, Error> read_size_result = ReadParameterSize();
@@ -465,7 +465,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 	// skip this node in case we are forbidden to move further
 	if (skip_loading)
 	{
-		Optional<Error> skip_error = SkipParameter(read_size_result.GetResult());
+		Optional<Error> skip_error = SkipParameter(read_size_result.Get());
 		if (skip_error)
 		{
 			return MakeError(skip_error.Move());
@@ -477,7 +477,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 	Optional<Snapshot&> sibling = FindSiblingNode(node.Get(), uniforms.name);
 	if (!sibling) // not fatal, skipping..
 	{
-		Optional<Error> skip_error = SkipParameter(read_size_result.GetResult());
+		Optional<Error> skip_error = SkipParameter(read_size_result.Get());
 		if (skip_error)
 		{
 			return MakeError(skip_error.Move());
@@ -491,7 +491,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 		Optional<Error> type_check_error = CheckType(sibling.Get(), uniforms.type.Get());
 		if (type_check_error) // not fatal, skipping..
 		{
-			Optional<Error> skip_error = SkipParameter(read_size_result.GetResult());
+			Optional<Error> skip_error = SkipParameter(read_size_result.Get());
 			if (skip_error)
 			{
 				return MakeError(skip_error.Move());
@@ -701,7 +701,7 @@ Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 	{
 		return MakeError(read_name_result.MoveAlt());
 	}
-	out.name = read_name_result.MoveResult();
+	out.name = read_name_result.Move();
 
 	// read type
 	if (info.HasTypeInformation())
@@ -711,7 +711,7 @@ Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 		{
 			return MakeError(read_type_result.MoveAlt());
 		}
-		out.type = read_type_result.MoveResult();
+		out.type = read_type_result.Move();
 	}
 
 	// read linkage information
@@ -723,7 +723,7 @@ Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 		{
 			return MakeError(read_id_result.MoveAlt());
 		}
-		out.id = read_id_result.MoveResult();
+		out.id = read_id_result.Move();
 	}
 
 	// success
@@ -820,7 +820,7 @@ Optional<Error> Controller::WriteChildNodes(Snapshot& node)
 	Controller state = SaveState();
 
 	// iterate child nodes
-	const size_t offset = alloc_result.GetResult();
+	const size_t offset = alloc_result.Get();
 	for (size_t i = 0; i < node.GetNumChildren(); i++)
 	{
 		// create a new node for serialiation
@@ -880,7 +880,7 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node)
 	Controller state = SaveState();
 
 	// iterate child nodes
-	for (size_t i = 0; i < child_num_result.GetResult(); i++)
+	for (size_t i = 0; i < child_num_result.Get(); i++)
 	{
 		// create a new child node
 		Optional<Error> dive_new_node_error = DiveIntoChildNode(i);
@@ -1071,7 +1071,7 @@ Result<stream::Cursor, Error> Controller::ReserveParameterSize()
 	}
 
 	// extract starting position
-	const stream::Cursor position = start_cursor_result.GetResult();
+	const stream::Cursor position = start_cursor_result.Get();
 
 	// write a size of the parameter
 	SizeType parameter_size = 0;
@@ -1108,7 +1108,7 @@ Optional<Error> Controller::WriteParameterSize(stream::Cursor start_position)
 	}
 
 	// calculate a size of the parameter after it was completely written
-	const stream::Cursor end_position = end_position_result.GetResult();
+	const stream::Cursor end_position = end_position_result.Get();
 	SizeType parameter_size = static_cast<SizeType>(end_position - start_position);
 
 	// move back cursor position
@@ -1163,7 +1163,7 @@ Result<stream::Cursor, Error> Controller::ReadParameterSize()
 	{
 		return MakeError(read_size_error.Move());
 	}
-	return start_pos_result.GetResult() + static_cast<stream::Cursor>(parameter_size);
+	return start_pos_result.Get() + static_cast<stream::Cursor>(parameter_size);
 }
 
 //----------------------------------------------------------------------------->
@@ -1417,8 +1417,8 @@ Optional<Error> Controller::ReadInfo()
 	LoadState(state);
 	
 	// set controller flags and version
-	info.SetVersion(version.GetResult());
-	info.SetFlags(flags.GetResult());
+	info.SetVersion(version.Get());
+	info.SetFlags(flags.Get());
 
 	// success
 	return Optional<Error>();
@@ -1504,7 +1504,7 @@ Optional<Error> Controller::WriteSharedObjects()
 	}
 
 	// write final number of parameters
-	SetCursor(count_cursor.GetResult(), true);
+	SetCursor(count_cursor.Get(), true);
 	optional_error = WriteAttribute(count, node_names::skCount, true);
 	if (optional_error)
 	{
@@ -1512,7 +1512,7 @@ Optional<Error> Controller::WriteSharedObjects()
 	}
 
 	// set cursor back (where all shared parameters are already written)
-	SetCursor(current_cursor.GetResult(), true);
+	SetCursor(current_cursor.Get(), true);
 
 	// get back to the upper most node
 	LoadState(state);
@@ -1551,7 +1551,7 @@ Optional<Error> Controller::ReadSharedObjects()
 	Array<InputSharedCacheElement> registry = linker->MovePreliminarySharedCache();
 
 	// read all shared objects
-	for (size_t i = 0; i < count.GetResult(); i++)
+	for (size_t i = 0; i < count.Get(); i++)
 	{
 		// generate correct node name
 		const String node_name = GenerateSharedObjectName(i);
@@ -1598,7 +1598,7 @@ Optional<Error> Controller::LoadSharedObject(Array<InputSharedCacheElement>& reg
 	}
 
 	// id must be present
-	if (!uniform.GetResult().id)
+	if (!uniform.Get().id)
 	{
 		String error_desc = "Shared object has no \"id\" value.";
 		info.LogMessage(error_desc);
@@ -1609,7 +1609,7 @@ Optional<Error> Controller::LoadSharedObject(Array<InputSharedCacheElement>& reg
 	for (size_t i = registry.GetNum(); i-- > 0;)
 	{
 		// check if id matches
-		if (registry[i].id != static_cast<size_t>(uniform.GetResult().id.Get()))
+		if (registry[i].id != static_cast<size_t>(uniform.Get().id.Get()))
 		{
 			continue;
 		}
@@ -1660,7 +1660,7 @@ Optional<Error> Controller::LoadSharedObject(Array<InputSharedCacheElement>& reg
 	LoadState(scope_state);
 
 	// synchronize stream postion with controller's one
-	SetCursor(stream_pos.GetResult());
+	SetCursor(stream_pos.Get());
 
 	// success
 	return Optional<Error>();

@@ -89,7 +89,7 @@ public:
 
 			// check types
 			String current_type_name = BaseParameter::DeduceTypeName<T>();
-			if (current_type_name != read_type_result.GetResult())
+			if (current_type_name != read_type_result.Get())
 			{
 				return Error(error::types_not_match);
 			}
@@ -103,7 +103,7 @@ public:
 		}
 
 		// resize the array
-		arr.Resize(static_cast<size_t>(read_num_result.GetResult()));
+		arr.Resize(static_cast<size_t>(read_num_result.Get()));
 
 		// success
 		return Optional<Error>();

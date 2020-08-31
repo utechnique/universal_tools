@@ -417,7 +417,7 @@ Result<uint32, Error> FileCheckSumAdler32(const String& filename)
 	{
 		return MakeError(get_size_result.GetAlt());
 	}
-	size_t file_size = get_size_result.GetResult();
+	size_t file_size = get_size_result.Get();
 
 	// iterate all bytes
 	uint32 a = 1, b = 0;
@@ -457,7 +457,7 @@ Result<Array<ut::byte>, Error> ReadFile(const String& filename)
 	{
 		return MakeError(get_size_result.MoveAlt());
 	}
-	size_t file_size = get_size_result.GetResult();
+	size_t file_size = get_size_result.Get();
 
 	// read file contents
 	Array<ut::byte> data(file_size);
@@ -773,7 +773,7 @@ Result<size_t, Error> File::GetSize()
 	stream::Cursor file_size;
 
 	// get initial cursot position
-	cursor_origin = GetCursor().GetResult();
+	cursor_origin = GetCursor().Get();
 
 	// handle error
 	if (cursor_origin == -1)
@@ -792,7 +792,7 @@ Result<size_t, Error> File::GetSize()
 	Result<stream::Cursor, Error> get_cursor_result = GetCursor();
 	if (get_cursor_result)
 	{
-		file_size = get_cursor_result.GetResult();
+		file_size = get_cursor_result.Get();
 	}
 	else
 	{

@@ -39,7 +39,7 @@ void PerformTest()
 	ut::Result<ut::String, ut::Error> input_result = ut::console.GetLine();
 
 	// show input
-	ut::log << ut::cret << "[INPUT] You entered: " << input_result.GetResult() << ". Waiting a second before exit..";
+	ut::log << ut::cret << "[INPUT] You entered: " << input_result.Get() << ". Waiting a second before exit..";
 
 	// wait before exit
 	ut::this_thread::Sleep<ut::time::seconds>(1);

@@ -64,7 +64,7 @@ Connection::Connection(class Host& owner,
 	// validate address
 	if (getaddr_result)
 	{
-		address = getaddr_result.GetResult();
+		address = getaddr_result.Get();
 	}
 	else
 	{

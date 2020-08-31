@@ -36,7 +36,7 @@ Optional<Error> XmlDoc::Parse(const String& doc)
 			Result<Tree<text::Node>, Error> parse_node_result = ParseNode(cursor);
 			if (parse_node_result)
 			{
-				if (!nodes.Add(parse_node_result.MoveResult()))
+				if (!nodes.Add(parse_node_result.Move()))
 				{
 					return Error(error::out_of_memory);
 				}
@@ -497,7 +497,7 @@ Optional<Error> XmlDoc::ParseNodeAttributes(text::Reader& cursor, Tree<text::Nod
 		// Set attribute value
 		if (result)
 		{
-			attribute.data.value = result.MoveResult();
+			attribute.data.value = result.Move();
 		}
 		else
 		{
@@ -598,7 +598,7 @@ Optional<Error> XmlDoc::ParseNodeContents(text::Reader& cursor,
 					Result<Tree<text::Node>, Error> parse_node_result = ParseNode(cursor);
 					if (parse_node_result)
 					{
-						node.Add(parse_node_result.MoveResult());
+						node.Add(parse_node_result.Move());
 					}
 					else
 					{
@@ -624,7 +624,7 @@ Optional<Error> XmlDoc::ParseNodeContents(text::Reader& cursor,
 
 				if (result)
 				{
-					next_char = result.GetResult();
+					next_char = result.Get();
 					goto after_data_node;   // Bypass regular processing after data nodes
 				}
 				else
@@ -671,7 +671,7 @@ Result<char, Error> XmlDoc::ParseAndAppendData(Tree<text::Node>& node,
 	if (result)
 	{
 		// move value string
-		String value(result.MoveResult());
+		String value(result.Move());
 		size_t val_length = value.Length();
 
 		// Trim trailing whitespace if flag is set; leading was already trimmed by whitespace skip after >

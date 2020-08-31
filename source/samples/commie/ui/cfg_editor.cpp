@@ -185,7 +185,7 @@ ut::Optional<ut::Error> CfgEditor::SaveCfg()
 	}
 
 	// deserialize configutation from the document
-	ut::XmlDoc doc(doc_result.MoveResult());
+	ut::XmlDoc doc(doc_result.Move());
 	return desktop_ui.SaveCfg(doc);
 }
 
