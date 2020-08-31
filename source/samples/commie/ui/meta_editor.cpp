@@ -304,7 +304,7 @@ ut::Result<ut::XmlDoc, ut::Error> MetaEditor::Save() const
 		ut::Result<ut::Tree<ut::text::Node>, ut::Error> save_item_result = SaveItem(items[i]);
 		if (!save_item_result)
 		{
-			return ut::MakeError(ut::Error(save_item_result.MoveAlt()));
+			return ut::MakeError(save_item_result.MoveAlt());
 		}
 		doc << save_item_result.Get();
 	}
@@ -324,7 +324,7 @@ ut::Result<ut::Tree<ut::text::Node>, ut::Error> MetaEditor::SaveItem(const ut::T
 	ut::Result<ut::String, ut::Error> get_name_result = item.data.GetName();
 	if (!get_name_result)
 	{
-		return ut::MakeError(ut::Error(get_name_result.MoveAlt()));
+		return ut::MakeError(get_name_result.MoveAlt());
 	}
 
 	// get item value
@@ -345,7 +345,7 @@ ut::Result<ut::Tree<ut::text::Node>, ut::Error> MetaEditor::SaveItem(const ut::T
 		ut::Result<ut::Tree<ut::text::Node>, ut::Error> save_child_result = SaveItem(item[i]);
 		if (!save_child_result)
 		{
-			return ut::MakeError(ut::Error(save_child_result.MoveAlt()));
+			return ut::MakeError(save_child_result.MoveAlt());
 		}
 		node.Add(save_child_result.Move());
 	}

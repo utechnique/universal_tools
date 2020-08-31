@@ -57,9 +57,21 @@ private:
 };
 
 //----------------------------------------------------------------------------//
-// Shorter expression of the ut::MakeAlt<ut::Error>()
-typedef Alternate<Error>(*MakeAltErrorType)(const Error&);
-MakeAltErrorType const MakeError = &ut::MakeAlt<ut::Error>;
+// Shorter forms of the ut::MakeAlt<ut::Error>()
+inline Alternate<Error> MakeError(const Error& err)
+{
+	return MakeAlt<ut::Error>(err);
+}
+
+inline Alternate<Error> MakeError(Error&& err)
+{
+	return MakeAlt<ut::Error>(ut::Move(err));
+}
+
+inline Alternate<Error> MakeError(error::Code code, String desc)
+{
+	return MakeError(ut::Error(code, ut::Move(desc)));
+}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

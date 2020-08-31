@@ -418,11 +418,11 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 	// validate parameters
 	if (!node && !skip_loading)
 	{
-		return MakeError(Error(error::invalid_arg, "Node can't be null."));
+		return MakeError(error::invalid_arg, "Node can't be null.");
 	}
 	else if (initialize && skip_loading)
 	{
-		return MakeError(Error(error::invalid_arg, "Initializing and skipping simultaneously is forbidden."));
+		return MakeError(error::invalid_arg, "Initializing and skipping simultaneously is forbidden.");
 	}
 
 	// initialize current node
@@ -956,7 +956,7 @@ Result<Optional<String>, Error> Controller::ReadNodeName()
 		return Optional<String>(io.text_input->data.name);
 	}
 
-	return MakeError(Error(error::fail, "Invalid mode."));
+	return MakeError(error::fail, "Invalid mode.");
 }
 
 //----------------------------------------------------------------------------->
@@ -1018,7 +1018,7 @@ Result<size_t, Error> Controller::ReadNumberOfChildNodes(const Snapshot& node)
 		return io.text_input->GetNumChildren();
 	}
 
-	return MakeError(Error(error::fail, "Invalid mode."));
+	return MakeError(error::fail, "Invalid mode.");
 }
 
 //----------------------------------------------------------------------------->
@@ -1067,7 +1067,7 @@ Result<stream::Cursor, Error> Controller::ReserveParameterSize()
 	if (!start_cursor_result)
 	{
 		error::Code error_code = start_cursor_result.GetAlt().GetCode();
-		return MakeError(Error(error_code, "Stream doesn't support positioning."));
+		return MakeError(error_code, "Stream doesn't support positioning.");
 	}
 
 	// extract starting position

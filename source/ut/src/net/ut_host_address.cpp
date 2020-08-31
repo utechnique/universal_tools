@@ -90,7 +90,7 @@ Result<String, Error> GetHostName()
 #elif UT_UNIX
 	if (gethostname(hname, 128))
 	{
-		return MakeError(Error(ConvertErrno(errno)));
+		return MakeError(ConvertErrno(errno));
 	}
 	else
 	{
