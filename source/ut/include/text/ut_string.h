@@ -42,7 +42,7 @@ public:
 	//    @param size - number of allocated characters
 	TString(size_t size) : Base(size + 1)
 	{
-		Base::arr[size] = 0;
+		Base::arr[size] = '\0';
 	}
 
 	// Constructor, allocates @size characters, and
@@ -52,6 +52,7 @@ public:
 	TString(const T* ptr, size_t size) : Base(size + 1)
 	{
 		memory::Copy(Base::arr, ptr, size);
+		Base::arr[size] = '\0';
 	}
 
 	// Copy constructor
@@ -158,10 +159,23 @@ public:
 		return *this;
 	}
 
+	// Returns a pointer to an array that contains a null-terminated sequence
+	// of characters (i.e., a C-string) representing the current value of the
+	// string object.
+	const T* ToCStr() const
+	{
+		if (Base::num == 0)
+		{
+			static const T empty_str[1] = { 0 };
+			return empty_str;
+		}
+		return Base::arr;
+	}
+
 	// Returns the length of the string, without null terminator
 	inline size_t Length() const
     {
-        return StrLen<T>(Base::arr);
+        return Base::num == 0 ? 0 : (Base::num - 1);
     }
 
 	// Compares self with another string and returns the result
@@ -215,19 +229,19 @@ public:
 	//    @param str - string to append
 	void Append(const TString& str)
 	{
-		// delete null terminator at the end
-		size_t self_length = Length();
-		Base::Resize(self_length);
+		// resize buffer
+		size_t self_len = Length();
+		size_t str_len = str.Length();
+		Base::Resize(self_len + str_len + 1);
 
-		// add string
-		size_t src_length = str.Length();
-		for (size_t i = 0; i < src_length; i++)
+		// append string
+		for (size_t i = 0; i < str_len; i++)
 		{
-			Base::Add(str[i]);
+			Base::arr[self_len + i] = str[i];
 		}
 
 		// add null terminator
-		Base::Add(0);
+		Base::arr[Base::num - 1] = '\0';
 	}
 
 	// Appends a character
@@ -253,7 +267,6 @@ public:
     {
         if (str)
         {
-            Base::Empty();
 			size_t length = StrLen<T>(str) + 1;
 			if (!Base::Resize(length))
 			{
@@ -264,42 +277,25 @@ public:
 		else
 		{
 			Base::Empty();
-			Base::Add(0);
 		}
 
 		return true;
     }
 
-	// Replaces self with empty string
-	void SetEmpty()
-	{
-		Base::Empty();
-		Base::Add(0);
-	}
-
-	// Crops unused (excess) null terminators at the end,
+	// Crops unused (excess) text after a null terminator
 	// also puts null terminator if none was found
 	void Validate()
 	{
-		T* nt = nullptr;
-		size_t nt_id;
-		for (nt_id = 0; nt_id < Base::GetNum(); nt_id++)
+		for (size_t i = 0; i < Base::GetNum(); i++)
 		{
-			if (Base::arr[nt_id] == 0)
+			if (Base::arr[i] == 0)
 			{
-				nt = &Base::arr[nt_id];
-				break;
+				Base::Resize(i + 1);
+				return; // exit
 			}
 		}
 
-		if (nt)
-		{
-			Base::Resize(nt_id + 1);
-		}
-		else
-		{
-			Base::Add(0);
-		}
+		Base::Add(0);
 	}
 
 	// Returns isolated filename string (directory is deleted)
@@ -335,26 +331,12 @@ public:
 		int i = (int)Length() - 1;
 		for ( ; i >= 0; i--)
 		{
-			if (Base::arr[i] == '\\')
-			{
-				break;
-			}
-			if (Base::arr[i] == '/')
+			if (Base::arr[i] == '\\' || Base::arr[i] == '/')
 			{
 				break;
 			}
 		}
-
-		TString str;
-		str.Empty();
-		int amount = include_separator ? i : i - 1;
-		for (i = 0; i <= amount; i++)
-		{
-			str.Add(Base::arr[i]);
-		}
-		str.Add(0);
-
-		return str;
+		return TString(Base::arr, include_separator ? i + 1 : i);
 	}
 
 	// Leaves only location, filename is deleted
@@ -373,7 +355,7 @@ public:
 		T clsep_str1[] = { ':', '/', 0 };
 
 		if (StrStr<T>(Base::arr, clsep_str0) ||
-		   StrStr<T>(Base::arr, clsep_str1))
+		    StrStr<T>(Base::arr, clsep_str1))
 		{
 			return true;
 		}
@@ -388,10 +370,10 @@ public:
 		{
 			if (Base::arr[i] == '.')
 			{
-				Base::arr[i] = 0;
+				Base::Resize(i + 1);
+				Base::arr[i] = '\0';
 			}
 		}
-		Validate();
 	}
 
 	// If has an extension - puts it to the @out_str and returns 'true'
@@ -471,13 +453,7 @@ public:
 					}
 
 					// create new word
-					TString new_word;
-					new_word.Resize(word_len);
-					memory::Copy(new_word.GetAddress(), &Base::arr[has_quotes ? start + 1 : start], sizeof(T)*(has_quotes ? word_len : word_len));
-					new_word.Add(0);
-
-					// add to the array
-					words.Add(new_word);
+					words.Add(TString(&Base::arr[has_quotes ? start + 1 : start], sizeof(T) * word_len));
 
 					// reset start value
 					start = -1;
@@ -635,14 +611,11 @@ TString<T1> StrConvert(const T0* src)
 
 	if (length > 0)
 	{
-		TString<T1> out_str;
-		out_str.Empty();
+		TString<T1> out_str(length);
 		for (size_t i = 0; i < length; i++)
 		{
-			T1 c = (T1)src[i];
-			out_str.Add(c);
+			out_str[i] = static_cast<T1>(src[i]);
 		}
-		out_str.Add(0);
 		return out_str;
 	}
 	else

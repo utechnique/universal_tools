@@ -324,7 +324,7 @@ String Console::FlushOutput()
 
 	Lock();
 	String out = data->pending_output;
-	data->pending_output.SetEmpty();
+	data->pending_output.Empty();
 	Unlock();
 	return out;
 }

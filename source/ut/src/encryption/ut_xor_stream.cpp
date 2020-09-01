@@ -20,9 +20,9 @@ Optional<Error> EncryptionStream<encryption::XOR>::Encrypt(const String& passwor
 	// generate 16-bit key from the password
 	byte key[16];
 	Pbkdf2Sha256Function pbkdf2_sha256;
-	pbkdf2_sha256.Calculate(reinterpret_cast<const byte*>(password.GetAddress()),
+	pbkdf2_sha256.Calculate(reinterpret_cast<const byte*>(password.ToCStr()),
 		                    static_cast<uint32>(password.Length()),
-		                    reinterpret_cast<const byte*>(password.GetAddress()),
+		                    reinterpret_cast<const byte*>(password.ToCStr()),
 		                    static_cast<uint32>(password.Length()),
 		                    pbkdf2_iterations,
 		                    key,
@@ -48,9 +48,9 @@ Optional<Error> EncryptionStream<encryption::XOR>::Decrypt(const String& passwor
 	// generate 16-bit key from the password
 	byte key[16];
 	Pbkdf2Sha256Function pbkdf2_sha256;
-	pbkdf2_sha256.Calculate(reinterpret_cast<const byte*>(password.GetAddress()),
+	pbkdf2_sha256.Calculate(reinterpret_cast<const byte*>(password.ToCStr()),
 		                    static_cast<uint32>(password.Length()),
-		                    reinterpret_cast<const byte*>(password.GetAddress()),
+		                    reinterpret_cast<const byte*>(password.ToCStr()),
 		                    static_cast<uint32>(password.Length()),
 		                    pbkdf2_iterations,
 		                    key,

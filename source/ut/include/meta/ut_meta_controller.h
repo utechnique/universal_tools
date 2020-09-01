@@ -661,7 +661,7 @@ private:
 			size_t len = str.Length() + 1;
 
 			// write a string character by character
-			const char* start = str.GetAddress();
+			const char* start = str.ToCStr();
 			for (size_t char_id = 0; char_id < len; char_id++)
 			{
 				Optional<Error> write_error = WriteBinary<char>(start + char_id, 1);

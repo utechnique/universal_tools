@@ -11,7 +11,7 @@ START_NAMESPACE(ut)
 Optional<Error> JsonDoc::Parse(const String& doc)
 {
 	// create input object with the address of the provided string
-	text::Reader cursor(doc.GetAddress());
+	text::Reader cursor(doc.ToCStr());
 	
 	// remove current contents
 	nodes.Empty();

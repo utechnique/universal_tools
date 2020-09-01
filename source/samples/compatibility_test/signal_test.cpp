@@ -88,7 +88,7 @@ void Signal2ProcA(int a, ut::String s)
 
 void Slot2Task::Execute()
 {
-	g_signal_test_str.SetEmpty();
+	g_signal_test_str.Empty();
 	ut::Signal<void(int, ut::String)> signalA;
 	signalA.Connect(Signal2ProcA);
 	ut::String test_string("test");
@@ -108,7 +108,7 @@ void Slot2Task::Execute()
 		return;
 	}
 
-	g_signal_test_str.SetEmpty();
+	g_signal_test_str.Empty();
 	test_string = "moved";
 	signalA(51, Move(test_string));
 
