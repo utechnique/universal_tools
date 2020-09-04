@@ -10,7 +10,7 @@ START_NAMESPACE(ut)
 template<typename DesiredType, typename HeadType, typename... TailItems>
 struct EachIsImpl
 {
-	static constexpr bool value = IsSame<DesiredType, HeadType>::value && EachIsImpl<TailItems...>::value;
+	static constexpr bool value = IsSame<DesiredType, HeadType>::value && EachIsImpl<DesiredType, TailItems...>::value;
 };
 
 template<typename DesiredType, typename HeadType>
