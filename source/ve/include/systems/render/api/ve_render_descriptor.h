@@ -7,6 +7,7 @@
 #include "systems/render/api/ve_render_shader.h"
 #include "systems/render/api/ve_render_buffer.h"
 #include "systems/render/api/ve_render_image.h"
+#include "templates/ut_each_is.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -90,7 +91,7 @@ public:
 	};
 
 	// Constructor, accepts variable number of descriptor references.
-	template<typename... Elements>
+	template<typename... Elements, typename Sfinae = typename ut::EnableIf<ut::EachIs<Descriptor, Elements...>::value>::Type>
 	DescriptorSet(Elements&... elements)
 	{
 		ut::byte* start = reinterpret_cast<ut::byte*>(this);
