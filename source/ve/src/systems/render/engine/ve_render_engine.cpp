@@ -45,16 +45,8 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 
 	// load display shaders
 	ut::Result<Shader, ut::Error> display_vs = LoadShader(Shader::vertex, "display_vs", "VS", "display.hlsl");
-	if (!display_vs)
-	{
-		throw display_vs.MoveAlt();
-	}
 	ut::Result<Shader, ut::Error> display_ps = LoadShader(Shader::pixel, "display_ps", "PS", "display.hlsl");
-	if (!display_ps)
-	{
-		throw display_ps.MoveAlt();
-	}
-	display_shader = ut::MakeUnique<BoundShader>(display_vs.Move(), display_ps.Move());
+	display_shader = ut::MakeUnique<BoundShader>(display_vs.MoveOrThrow(), display_ps.MoveOrThrow());
 
 
 	struct QuadVertex
@@ -78,18 +70,14 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	vertices[3].p = ut::Vector<3>( 1,  1, 0);
 
 	ut::Result<Buffer, ut::Error> buffer_result = device.CreateBuffer(ut::Move(buffer_info));
-	if (!buffer_result)
-	{
-		throw buffer_result.MoveAlt();
-	}
-	screen_space_quad = ut::MakeUnique<Buffer>(buffer_result.Move());
+	screen_space_quad = ut::MakeUnique<Buffer>(buffer_result.MoveOrThrow());
 
 
 	// initialize per-frame data
 	for (size_t i = 0; i < config.frames_in_flight; i++)
 	{
 		ut::Result<Frame, ut::Error> frame = CreateFrame();
-		if (!frames.Add(frame.Move()))
+		if (!frames.Add(frame.MoveOrThrow()))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
@@ -305,7 +293,7 @@ ut::Result<Frame, ut::Error> Engine::CreateFrame()
 	ut::Result<Buffer, ut::Error> display_ub = device.CreateBuffer(ut::Move(buffer_info));
 	if (!display_ub)
 	{
-		throw display_ub.MoveAlt();
+		return ut::MakeError(display_ub.MoveAlt());
 	}
 	
 	// create frame
