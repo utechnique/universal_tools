@@ -24,6 +24,11 @@ public:
 	//    @return - new ut::meta::Info object.
 	static Info CreateComplete(Version version = 1);
 
+	// Create ut::meta::Info with ut::meta::serialization_flags::kMinimal flag.
+	//    @param version - version number, default is 1.
+	//    @return - new ut::meta::Info object.
+	static Info CreateMinimal(Version version = 1);
+
 	// Create ut::meta::Info with ut::meta::serialization_flags::kPure flag.
 	//    @param version - version number, default is 1.
 	//    @return - new ut::meta::Info object.
@@ -73,6 +78,15 @@ public:
 	// This option exists because you may want to reduce binary data size.
 	//    @param status - boolean that turns on/off binary names.
 	void EnableBinaryNames(bool status);
+
+	// Returns 'true' if size information flag is on.
+	// See ut::meta::serialization_flags::kSizeInfo for details.
+	bool HasSizeinformation() const;
+
+	// Sets size information flag.
+	// See ut::meta::serialization_flags::kSizeInfo for details.
+	//    @param status - boolean that turns on/off size information.
+	void EnableSizeInformation(bool status);
 
 	// Returns 'true' if parameters must have a special separate node 
 	// encapsulating value and children in a text mode.

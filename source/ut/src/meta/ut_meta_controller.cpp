@@ -19,16 +19,16 @@ Controller::Controller(const Info& info_copy) : info(info_copy)
 // Extracts a custom entity value from the node.
 // Note that this information may be absent.
 //    @param node_name - name of the child node containing desired value
-//    @return - value of desired node, or ut::Error if encountered an error
-Result<String, Error> Controller::ExtractTextNodeValue(const Tree<text::Node>& parent_node,
-                                                       const String& node_name) const
+//    @return - value of desired node, or nothing if encountered an error
+Optional<String> Controller::ExtractTextNodeValue(const Tree<text::Node>& parent_node,
+                                                  const String& node_name) const
 {
 	// search for a desired node
 	const Optional< ConstRef< Tree<text::Node> > > find_result = FindTextNode<ConstRef>(parent_node,
 	                                                                                    node_name);
 	if (!find_result)
 	{
-		return MakeError(error::not_found);
+		return Optional<String>();
 	}
 
 	// check if value exists
@@ -332,14 +332,14 @@ Optional<Error> Controller::ReadWeakLink(const BaseParameter* parameter)
 //    @param node - a reference to the ut::meta::Snapshot object to be
 //                  serialized, it can be created by calling
 //                  ut::meta::Snapshot::Capture() function.
-//    @param initialize - this boolean indicates if node will be initialized
-//                        with special 'header' information: serialization
-//                        info, shared objects, etc.
+//    @param options - options specifying how exactly @node is supposed to
+//                     be written.
 //    @return - ut::Error if failed.
-Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
+Optional<Error> Controller::WriteNode(Snapshot& node,
+                                      const SerializationOptions& options)
 {
 	// initialize current node
-	if (initialize)
+	if (options.initialize)
 	{
 		// initialize modules
 		Optional<Error> init_error = InitializeNode(node);
@@ -359,22 +359,24 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 	// save state
 	Controller state = SaveState();
 
-	// write name, type, id, etc.
-	Optional<Error> optional_error = WriteUniformAttributes(node);
-	if (optional_error)
+	// modify info object according to the provided options
+	Info original_info = ModifyInfo(options);
+
+	// write name, type, id, size etc.
+	Result<Optional<stream::Cursor>, Error> uniform_result = WriteUniformAttributes(node);
+	if (!uniform_result)
 	{
-		return optional_error;
+		return uniform_result.MoveAlt();
 	}
+
+	// set original info object back
+	info = original_info;
 
 	// reserve space in binary stream for a size variable (it will be written in the end)
-	Result<stream::Cursor, Error> reserve_size_result = ReserveParameterSize();
-	if (!reserve_size_result)
-	{
-		return reserve_size_result.MoveAlt();
-	}
+	Optional<stream::Cursor> size_offset(uniform_result.Move());
 
 	// save parameter ant it's children
-	optional_error = WriteParameter(node);
+	Optional<Error> optional_error = WriteParameter(node);
 	if (optional_error)
 	{
 		return optional_error;
@@ -382,10 +384,13 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 
 	// write parameter size to the reserved space,
 	// this affects only a binary variant
-	optional_error = WriteParameterSize(reserve_size_result.Get());
-	if (optional_error)
+	if (size_offset)
 	{
-		return optional_error;
+		optional_error = WriteParameterSize(size_offset);
+		if (optional_error)
+		{
+			return optional_error;
+		}
 	}
 
 	// get back to the current node
@@ -393,7 +398,7 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 	SyncWithStream(); // here @cursor is synchronized with current stream position
 
 	// finalize current node
-	return initialize ? FinalizeNode(node) : Optional<Error>();
+	return options.initialize ? FinalizeNode(node) : Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
@@ -402,31 +407,25 @@ Optional<Error> Controller::WriteNode(Snapshot& node, bool initialize)
 //                  deserialized, it can be created by calling
 //                  ut::meta::Snapshot::Capture() function;
 //                  this parameter can be empty if @skip_loading is 'true'.
-//    @param initialize - this boolean indicates if node will be initialized
-//                        with special 'header' information: serialization
-//                        info, shared objects, etc; if this parameter is 'true' -
-//                        then @skip_loading parameter must be 'false'
-//    @param skip_loading - this boolean indicates if node's body must be skipped
-//                          and only uniform data is to be read, @node parameter
-//                          can be empty in this case.
+//    @param options - options specifying how exactly @node is supposed to
+//                     be read.
 //    @return - ut::meta::Controller::Uniform object describing a node
 //              or ut::Error if failed.
 Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node,
-                                                        bool initialize,
-                                                        bool skip_loading)
+                                                        const SerializationOptions& options)
 {
 	// validate parameters
-	if (!node && !skip_loading)
+	if (!node && !options.only_uniforms)
 	{
 		return MakeError(error::invalid_arg, "Node can't be null.");
 	}
-	else if (initialize && skip_loading)
+	else if (options.initialize && options.only_uniforms)
 	{
 		return MakeError(error::invalid_arg, "Initializing and skipping simultaneously is forbidden.");
 	}
 
 	// initialize current node
-	if (initialize)
+	if (options.initialize)
 	{
 		// read initialization data (meta::Info)
 		Optional<Error> init_error = ReadInitializationData(node.Get());
@@ -447,6 +446,9 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 	// save state
 	Controller state = SaveState();
 
+	// modify info object according to the provided options
+	Info original_info = ModifyInfo(options);
+
 	// read name, type, id, etc.
 	Result<Controller::Uniform, Error> uniforms_result = ReadUniformAttributes();
 	if (!uniforms_result)
@@ -454,22 +456,23 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 		return MakeError(uniforms_result.MoveAlt());
 	}
 	Controller::Uniform uniforms(uniforms_result.Move());
-
-	// read size - this affects only a binary variant
-	Result<stream::Cursor, Error> read_size_result = ReadParameterSize();
-	if (!read_size_result)
-	{
-		return MakeError(read_size_result.MoveAlt());
-	}
-
+	
 	// skip this node in case we are forbidden to move further
-	if (skip_loading)
+	if (options.only_uniforms)
 	{
-		Optional<Error> skip_error = SkipParameter(read_size_result.Get());
+		Optional<Error> skip_error = SkipParameter(uniforms.next);
 		if (skip_error)
 		{
 			return MakeError(skip_error.Move());
 		}
+	}
+
+	// set original info object back
+	info = original_info;
+
+	// exit if only uniforms had to be read here
+	if (options.only_uniforms)
+	{
 		return uniforms;
 	}
 
@@ -477,7 +480,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 	Optional<Snapshot&> sibling = FindSiblingNode(node.Get(), uniforms.name);
 	if (!sibling) // not fatal, skipping..
 	{
-		Optional<Error> skip_error = SkipParameter(read_size_result.Get());
+		Optional<Error> skip_error = SkipParameter(uniforms.next);
 		if (skip_error)
 		{
 			return MakeError(skip_error.Move());
@@ -491,7 +494,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 		Optional<Error> type_check_error = CheckType(sibling.Get(), uniforms.type.Get());
 		if (type_check_error) // not fatal, skipping..
 		{
-			Optional<Error> skip_error = SkipParameter(read_size_result.Get());
+			Optional<Error> skip_error = SkipParameter(uniforms.next);
 			if (skip_error)
 			{
 				return MakeError(skip_error.Move());
@@ -522,7 +525,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 	LoadState(state);
 
 	// finalize current node
-	if (initialize)
+	if (options.initialize)
 	{
 		Optional<Error> finalize_error = FinalizeNode(node.Get());
 		if (finalize_error)
@@ -637,16 +640,46 @@ Optional<Error> Controller::ReadInitializationData(Snapshot& node)
 
 //----------------------------------------------------------------------------->
 // Writes attributes that are mandatory for all parameters,
-// like name, type, id, etc.
+// like name, type, id, size etc.
 //    @param node - reference to the node that is being serialized.
-//    @return - ut::Error if failed.
-Optional<Error> Controller::WriteUniformAttributes(Snapshot& node)
+//    @return - Optional stream offset to the size variable
+//              or ut::Error if failed.
+Result<Optional<stream::Cursor>, Error> Controller::WriteUniformAttributes(Snapshot& node)
 {
+	Optional<Error> optional_error;
+
+	// generate unique linkage id, and add it to the linker
+	size_t link_id;
+	if (info.HasLinkageInformation())
+	{
+		if (mode == binary_output_mode)
+		{
+			Result<stream::Cursor, Error> read_cursor = io.binary_output->GetCursor();
+			if (!read_cursor)
+			{
+				return MakeError(read_cursor.MoveAlt());
+			}
+			link_id = read_cursor.Get();
+		}
+		else
+		{
+			link_id = linker->GenerateId();
+		}
+
+		// create link, note that id is an offset in bytes from the beginning of
+		// the stream in binary mode and a custom unique value for the text mode
+		optional_error = linker->AddLink(node.data.parameter, link_id);
+		if (optional_error)
+		{
+			return MakeError(optional_error.Move());
+		}
+	}
+
 	// write node name
-	Optional<Error> optional_error = WriteNodeName(node.data.name);
+	optional_error = WriteNodeName(node.data.name);
 	if (optional_error)
 	{
-		return optional_error;
+		return MakeError(optional_error.Move());
 	}
 
 	// write type
@@ -657,33 +690,31 @@ Optional<Error> Controller::WriteUniformAttributes(Snapshot& node)
 												true);
 		if (optional_error)
 		{
-			return optional_error;
+			return MakeError(optional_error.Move());
 		}
 	}
 
-	// write linkage information
-	if (info.HasLinkageInformation())
+	// write linkage information (only text mode)
+	if (info.HasLinkageInformation() && mode == text_output_mode)
 	{
-		// create link
-		size_t id = linker->GenerateId();
-		optional_error = linker->AddLink(node.data.parameter, id);
+		optional_error = WriteAttribute<SizeType>(static_cast<SizeType>(link_id),
+			                                        node_names::skId,
+			                                        true);
 		if (optional_error)
 		{
-			return optional_error;
+			return MakeError(optional_error.Move());
 		}
+	}
 
-		// write id
-		optional_error = WriteAttribute<SizeType>(static_cast<SizeType>(id),
-		                                          node_names::skId,
-		                                          true);
-		if (optional_error)
-		{
-			return optional_error;
-		}
+	// write size
+	Result<Optional<stream::Cursor>, Error> reserve_size_result = ReserveParameterSize();
+	if (!reserve_size_result)
+	{
+		return MakeError(reserve_size_result.MoveAlt());
 	}
 
 	// success
-	return Optional<Error>();
+	return reserve_size_result.Move();
 }
 
 //----------------------------------------------------------------------------->
@@ -694,6 +725,17 @@ Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 {
 	// result of the function
 	Uniform out;
+
+	// linkage id can be easily calculated for the binary mode
+	if (info.HasLinkageInformation() && mode == binary_input_mode)
+	{
+		Result<stream::Cursor, Error> read_cursor = io.binary_input->GetCursor();
+		if (!read_cursor)
+		{
+			return MakeError(read_cursor.MoveAlt());
+		}
+		out.id = static_cast<SizeType>(read_cursor.Get());
+	}
 
 	// read node name
 	Result<Optional<String>, Error> read_name_result = ReadNodeName();
@@ -715,9 +757,8 @@ Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 	}
 
 	// read linkage information
-	if (info.HasLinkageInformation())
+	if (info.HasLinkageInformation() && mode == text_input_mode)
 	{
-		// read id
 		Result<SizeType, Error> read_id_result = ReadAttribute<SizeType>(node_names::skId);
 		if (!read_id_result)
 		{
@@ -725,6 +766,14 @@ Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 		}
 		out.id = read_id_result.Move();
 	}
+
+	// read parameter size, size variable must be the last one of uniforms
+	Result<stream::Cursor, Error> read_size_result = ReadParameterSize();
+	if (!read_size_result)
+	{
+		return MakeError(read_size_result.MoveAlt());
+	}
+	out.next = read_size_result.Move();
 
 	// success
 	return out;
@@ -831,7 +880,9 @@ Optional<Error> Controller::WriteChildNodes(Snapshot& node)
 		}
 
 		// write child node
-		Optional<Error> save_child_error = WriteNode(node[i], false);
+		SerializationOptions options;
+		options.initialize = false;
+		Optional<Error> save_child_error = WriteNode(node[i], options);
 		if (save_child_error)
 		{
 			return save_child_error;
@@ -895,7 +946,9 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node)
 		size_t node_id = i >= node.GetNumChildren() ? node.GetNumChildren() - 1 : i;
 
 		// read child node
-		Result<Controller::Uniform, Error> read_result = ReadNode(node[i], false);
+		SerializationOptions options;
+		options.initialize = false;
+		Result<Controller::Uniform, Error> read_result = ReadNode(node[i], options);
 		if (!read_result)
 		{
 			return read_result.MoveAlt();
@@ -1052,13 +1105,13 @@ Result<size_t, Error> Controller::AllocateChildNodes(size_t count)
 // Allocates space in the output binary stream for the size variable.
 //    @return - position of the size variable in a stream, or
 //              ut::Error if something failed.
-Result<stream::Cursor, Error> Controller::ReserveParameterSize()
+Result<Optional<stream::Cursor>, Error> Controller::ReserveParameterSize()
 {
 	// this function is sensible only for a binary variant
 	// and only if parameters can be skipped
 	if (mode != binary_output_mode || !SkipIsPossible())
 	{
-		return static_cast<stream::Cursor>(0);
+		return Optional<stream::Cursor>();
 	}
 
 	// write a number of bytes in the parameter, so that binary stream could skip it
@@ -1082,7 +1135,7 @@ Result<stream::Cursor, Error> Controller::ReserveParameterSize()
 	}
 
 	// return a position of the size variable in stream
-	return position;
+	return Optional<stream::Cursor>(position);
 }
 
 //----------------------------------------------------------------------------->
@@ -1090,11 +1143,11 @@ Result<stream::Cursor, Error> Controller::ReserveParameterSize()
 //    @param start_position - position of the preallocated space for
 //                            the size variable in a stream.
 //    @return - ut::Error if failed.
-Optional<Error> Controller::WriteParameterSize(stream::Cursor start_position)
+Optional<Error> Controller::WriteParameterSize(const Optional<stream::Cursor>& start_position)
 {
 	// this function is sensible only for a binary variant
 	// and only if parameters have names - so that they could be randomly iterated
-	if (mode != binary_output_mode || !SkipIsPossible())
+	if (mode != binary_output_mode || !start_position)
 	{
 		return Optional<Error>();
 	}
@@ -1109,10 +1162,10 @@ Optional<Error> Controller::WriteParameterSize(stream::Cursor start_position)
 
 	// calculate a size of the parameter after it was completely written
 	const stream::Cursor end_position = end_position_result.Get();
-	SizeType parameter_size = static_cast<SizeType>(end_position - start_position);
+	SizeType parameter_size = static_cast<SizeType>(end_position - start_position.Get());
 
 	// move back cursor position
-	Optional<Error> move_back_error = io.binary_output->MoveCursor(start_position);
+	Optional<Error> move_back_error = io.binary_output->MoveCursor(start_position.Get());
 	if (move_back_error)
 	{
 		return move_back_error;
@@ -1241,8 +1294,13 @@ Optional<Error> Controller::CheckType(const Snapshot& node, const String& serial
 // Moves an input stream cursor to the next parameter.
 //    @param next - stream position of the next parameter.
 //    @return - ut::Error if failed.
-Optional<Error> Controller::SkipParameter(stream::Cursor next)
+Optional<Error> Controller::SkipParameter(const Optional<stream::Cursor>& next)
 {
+	if (!next)
+	{
+		return Error(error::fail, "Parameters without size information cannot be skipped.");
+	}
+
 	// check if skip is possible
 	if (!SkipIsPossible())
 	{
@@ -1250,23 +1308,24 @@ Optional<Error> Controller::SkipParameter(stream::Cursor next)
 	}
 
 	// this function is sensible only for binary variant
-	if (mode != binary_input_mode || !SkipIsPossible())
+	if (mode != binary_input_mode)
 	{
 		return Optional<Error>();
 	}
 
 	// skip this parameter
-	return SetCursor(next, true);
+	return SetCursor(next.Get(), true);
 }
 
 //----------------------------------------------------------------------------->
 // Returns 'true' if parameters can be skipped without error if something went wrong.
 bool Controller::SkipIsPossible() const
 {
+	bool is_text_mode = mode == text_input_mode || mode == text_output_mode;
+
 	// Skipping is sensible only if we can check type or name, in other words - only 
 	// if we can detect that serialized parameter doesn't match a current one
-	return mode == text_input_mode || mode == text_output_mode ||
-	       info.HasBinaryNames() || info.HasTypeInformation() || info.HasLinkageInformation();
+	return is_text_mode || info.HasSizeinformation();
 }
 
 //----------------------------------------------------------------------------->
@@ -1588,10 +1647,14 @@ Optional<Error> Controller::LoadSharedObject(Array<InputSharedCacheElement>& reg
                                              const String& name,
                                              const Controller& scope_state)
 {
-	// read information (name, type, id) and nothing else
 	Controller node_state = SaveState();
-	Result<Uniform, Error> uniform = ReadNode(Optional<Snapshot&>(),
-	                                          false, true);
+
+	// read information (name, type, id) and nothing else
+	SerializationOptions options;
+	options.initialize = false;
+	options.only_uniforms = true;
+	options.force_size_info = true;
+	Result<Uniform, Error> uniform = ReadNode(Optional<Snapshot&>(), options);
 	if (!uniform)
 	{
 		return uniform.MoveAlt();
@@ -1730,6 +1793,31 @@ Controller Controller::SaveState()
 void Controller::LoadState(const Controller& controller)
 {
 	*this = controller;
+}
+
+//----------------------------------------------------------------------------->
+// Modifies @info object according to the provided options.
+// Note that one must restore original @info after reading/writing
+// a node is done.
+//    @param options - set of options.
+//    @return - original (unmodified) copy of the @info object;
+Info Controller::ModifyInfo(const SerializationOptions& options)
+{
+	Info original(info);
+
+	if (options.force_size_info)
+	{
+		info.EnableSizeInformation(true);
+	}
+
+	// first element can't have linkage id, otherwise this id is the
+	// same as one of the first child
+	if (options.initialize)
+	{
+		info.EnableLinkageInformation(false);
+	}
+
+	return original;
 }
 
 //----------------------------------------------------------------------------//

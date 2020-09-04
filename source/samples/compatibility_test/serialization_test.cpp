@@ -99,6 +99,10 @@ SerializationVariantsTask::SerializationVariantsTask() : TestTask("Serialization
 	// no value encapsulation
 	serialization_info.EnableValueEncapsulation(false);
 	info_variants.Add(PairType("no encapsulation", serialization_info));
+
+	// minimal
+	serialization_info = ut::meta::Info::CreateMinimal();
+	info_variants.Add(PairType("minimal", serialization_info));
 }
 
 void SerializationVariantsTask::Execute()
@@ -424,6 +428,20 @@ SerializationTest::SerializationTest(bool in_alternate,
 	refl_shared_void_ptr = ut::MakeShared<ReflectiveA>(1, 1);
 	ival_weak_ptr_0 = ival_shared_ptr_0;
 	void_weak_ptr_0 = ival_shared_ptr_0;
+
+	// byte array
+	byte_data.Resize(256);
+	for (size_t i = 0; i < 256; i++)
+	{
+		byte_data[i] = static_cast<ut::byte>(256 - i);
+	}
+
+	// vector array
+	vec_data.Resize(32);
+	for (size_t i = 0; i < 32; i++)
+	{
+		vec_data[i] = ut::Vector<3, ut::byte>(0xf1, 0xf2, 0xf3);
+	}
 }
 
 void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
@@ -458,6 +476,8 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 		snapshot << deep_weak_ptr_0;
 		snapshot << void_weak_ptr_0;
 	}
+	snapshot << byte_data;
+	snapshot << vec_data;
 	snapshot << int16_unique;
 	snapshot << int16_unique_void;
 	snapshot << uval;
@@ -824,6 +844,13 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.ival_weak_ptr_0 = object.ival_shared_ptr_2;
 	object.deep_weak_ptr_0 = object.refl_shared_level_ptr->shared_obj->shared_obj->i32_shared;
 	object.void_weak_ptr_0.Reset();
+
+	// byte array
+	object.byte_data.Resize(256);
+	for (size_t i = 0; i < 256; i++)
+	{
+		object.byte_data[i] = static_cast<ut::byte>(i);
+	}
 }
 
 // Checks if serialized object was loaded with the correct values,
@@ -1088,6 +1115,16 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 		}
 	
 		if (object.void_weak_ptr_0.IsValid()) return false;
+	}
+
+	// byte array
+	if (object.byte_data.GetSize() != 256) return false;
+	for (size_t i = 0; i < 256; i++)
+	{
+		if (object.byte_data[i] != i)
+		{
+			return false;
+		}
 	}
 
 	return true;

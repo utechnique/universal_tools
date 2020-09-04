@@ -78,7 +78,11 @@ public:
 	Optional<Error> Save(Controller& controller, const String& name)
 	{
 		Snapshot snapshot = Snapshot::Capture(ptr.GetRef(), name, controller.GetInfo());
-		return controller.WriteNode(snapshot, false);
+
+		meta::Controller::SerializationOptions options;
+		options.initialize = false;
+		options.force_size_info = true;
+		return controller.WriteNode(snapshot, options);
 	}
 
 	// Deserializes managed object using provided controller.
@@ -103,8 +107,11 @@ public:
 		Snapshot snapshot = Snapshot::Capture(ptr.GetRef(), name, controller.GetInfo());
 
 		// deserialize captured node
-		Result<Controller::Uniform, Error> read_result = controller.ReadNode(snapshot,
-		                                                                     false, false);
+		meta::Controller::SerializationOptions options;
+		options.initialize = false;
+		options.only_uniforms = false;
+		options.force_size_info = true;
+		Result<Controller::Uniform, Error> read_result = controller.ReadNode(snapshot, options);
 		if (!read_result)
 		{
 			return read_result.MoveAlt();

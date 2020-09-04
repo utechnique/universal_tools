@@ -273,6 +273,8 @@ public:
 	ut::WeakPtr<ut::int32> ival_weak_ptr_0;
 	ut::WeakPtr<ut::int32> deep_weak_ptr_0;
 	ut::WeakPtr<ut::int32> void_weak_ptr_0;
+	ut::Array<ut::byte> byte_data;
+	ut::Array< ut::Vector<3, ut::byte> > vec_data;
 	ut::uint64 uval;
 	bool bool_val;
 	ut::String str;

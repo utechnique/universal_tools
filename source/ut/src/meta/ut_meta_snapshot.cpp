@@ -45,7 +45,8 @@ Optional<Error> Snapshot::Save(OutputStream& stream)
 	InvokeCallback(&Snapshot::presave);
 
 	// write self via controller
-	Optional<Error> write_error = controller.WriteNode(*this);
+	meta::Controller::SerializationOptions default_options;
+	Optional<Error> write_error = controller.WriteNode(*this, default_options);
 	if (write_error)
 	{
 		return write_error;
@@ -78,7 +79,8 @@ Optional<Error> Snapshot::Load(InputStream& stream)
 	InvokeCallback(&Snapshot::preload);
 
 	// read self via controller
-	Result<Controller::Uniform, Error> read_result = controller.ReadNode(*this);
+	meta::Controller::SerializationOptions default_options;
+	Result<Controller::Uniform, Error> read_result = controller.ReadNode(*this, default_options);
 	if (!read_result)
 	{
 		return read_result.MoveAlt();
@@ -111,7 +113,8 @@ Optional<Error> Snapshot::Save(Tree<text::Node>& text_node)
 	InvokeCallback(&Snapshot::presave);
 
 	// write self via controller
-	Optional<Error> write_error = controller.WriteNode(*this);
+	meta::Controller::SerializationOptions default_options;
+	Optional<Error> write_error = controller.WriteNode(*this, default_options);
 	if (write_error)
 	{
 		return write_error;
@@ -144,7 +147,8 @@ Optional<Error> Snapshot::Load(const Tree<text::Node>& text_node)
 	InvokeCallback(&Snapshot::preload);
 
 	// read self via controller
-	Result<Controller::Uniform, Error> read_result = controller.ReadNode(*this);
+	meta::Controller::SerializationOptions default_options;
+	Result<Controller::Uniform, Error> read_result = controller.ReadNode(*this, default_options);
 	if (!read_result)
 	{
 		return read_result.MoveAlt();

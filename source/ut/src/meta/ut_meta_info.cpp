@@ -27,19 +27,31 @@ namespace serialization_flags
 	// version.
 	const Info::Flag kBinaryNames = 0x8;
 
+	// If this bit is on, a special integer containing a size of the parameter
+	// accompany all serialized entities. In this case parameter can be
+	// skipped if something went wrong. Shared objects can't be serialized
+	// without this flag.
+	const Info::Flag kSizeInfo = 0x20;
+
 	// If this bit is on, a parameter value is encapsulated inside a separate
 	// node. This is how naming issues (when child node can have the same name
 	// as one of the attributes) can be avoided. However you can turn this bit
 	// off to make text files look better and human-friendly. But keep in mind
 	// that you can't name child node with any name from ut::meta::node_names
 	// enumeration in this case.
-	const Info::Flag kTextValueEncapsulation = 0x20;
+	const Info::Flag kTextValueEncapsulation = 0x40;
 
 	// Set of flags with maximum information about the serialized entity.
 	const Info::Flag kComplete = kLittleEndian | kTypeInfo | kLinkageInfo |
-	                             kBinaryNames | kTextValueEncapsulation;
+	                             kBinaryNames | kSizeInfo |
+	                             kTextValueEncapsulation;
+
+	// Set of flags with minimum information sufficient for serializing
+	// any entity. No serialization error can be handled in this case.
+	const Info::Flag kMinimal = kLittleEndian | kLinkageInfo | kTextValueEncapsulation;
 
 	// Set of flags with minimum information about the serialized entity.
+	// References can't be serialized.
 	// This is suitable only for very primitive structures (plain values,
 	// arrays, etc.) without pointers.
 	const Info::Flag kPure = kLittleEndian;
@@ -52,6 +64,14 @@ namespace serialization_flags
 Info Info::CreateComplete(Version version)
 {
 	return Info(version, serialization_flags::kComplete);
+}
+
+// Create ut::meta::Info with ut::meta::serialization_flags::kMinimal flag.
+//    @param version - version number, default is 1.
+//    @return - new ut::meta::Info object.
+Info Info::CreateMinimal(Version version)
+{
+	return Info(version, serialization_flags::kMinimal);
 }
 
 // Create ut::meta::Info with ut::meta::serialization_flags::kPure flag.
@@ -176,6 +196,30 @@ void Info::EnableBinaryNames(bool status)
 	else
 	{
 		flags &= ~serialization_flags::kBinaryNames;
+	}
+	VerifyFlags();
+}
+
+//----------------------------------------------------------------------------->
+// Returns 'true' if size information flag is on.
+// See ut::meta::serialization_flags::kSizeInfo for details.
+bool Info::HasSizeinformation() const
+{
+	return (flags & serialization_flags::kSizeInfo) ? true : false;
+}
+
+// Sets size information flag.
+// See ut::meta::serialization_flags::kSizeInfo for details.
+//    @param status - boolean that turns on/off size information.
+void Info::EnableSizeInformation(bool status)
+{
+	if (status)
+	{
+		flags |= serialization_flags::kSizeInfo;
+	}
+	else
+	{
+		flags &= ~serialization_flags::kSizeInfo;
 	}
 	VerifyFlags();
 }
