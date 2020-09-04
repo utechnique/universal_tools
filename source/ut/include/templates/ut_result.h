@@ -180,8 +180,20 @@ public:
 
 	// Use this function to move @R value (if present)
 	//    @return - @result r-value reference
-	ResultType&& Move()
+	ResultType&& Move() noexcept
 	{
+		return ut::Move(result);
+	}
+
+	// Use this function to move @R value if it's present or throw
+	// @A otherwise.
+	//    @return - @result r-value reference
+	ResultType&& MoveOrThrow()
+	{
+		if (!has_result)
+		{
+			throw alt;
+		}
 		return ut::Move(result);
 	}
 
