@@ -27,12 +27,12 @@ void PipelineCombiner::operator()(System::Result result)
 	}
 
 	// add commands to the current result
-	CmdArray& commands = sum.GetResult();
-	commands += result.MoveResult();
+	CmdArray& commands = sum.Get();
+	commands += result.Move();
 }
 
 // Returns current array of commands, original array becomes empty.
-System::Result PipelineCombiner::MoveResult()
+System::Result PipelineCombiner::Move()
 {
 	ut::ScopeLock lock(mutex);
 	return ut::Move(sum);
@@ -95,7 +95,7 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 		{
 			return update_result;
 		}
-		commands += update_result.MoveResult();
+		commands += update_result.Move();
 	}
 
 	// kick off parallel tasks
@@ -109,12 +109,12 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 
 	// wait for all tasks to finish and combine all commands in a single array
 	PipelineCombiner& combiner = scheduler.WaitForCompletion();
-	System::Result parallel_result(combiner.MoveResult());
+	System::Result parallel_result(combiner.Move());
 	if (!parallel_result)
 	{
 		return parallel_result;
 	}
-	commands += parallel_result.MoveResult();
+	commands += parallel_result.Move();
 
 	// execute serial tasks
 	const size_t serial_count = series.GetNum();
@@ -125,7 +125,7 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 		{
 			return execute_result;
 		}
-		commands += execute_result.MoveResult();
+		commands += execute_result.Move();
 	}
 
 	// success

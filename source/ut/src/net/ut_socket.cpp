@@ -76,7 +76,7 @@ Socket::~Socket(void)
 void Socket::SetAddr(const String& ip, int port)
 {
 	bool empty = ip.Length() == 0;
-	const char* ip_cs = ip.GetAddress();
+	const char* ip_cs = ip.ToCStr();
 #if UT_WINDOWS
 	sock_addr_in.sin_family = AF_INET;  // TCP/UDP family
 	sock_addr_in.sin_port = htons(port);
@@ -225,7 +225,7 @@ Result<UniquePtr<Socket>, Error> Socket::Accept() const
 	socket_t client_socket = accept(socket, (sockaddr*)(&client_addr_in), &client_addr_size);
 	if (client_socket < 0)
 	{
-		return MakeError(Error(ConvertErrno(errno)));
+		return MakeError(ConvertErrno(errno));
 	}
 	UniquePtr<Socket> sock_ptr(new Socket(client_socket, &client_addr_in));
 	return Move(sock_ptr);
@@ -331,7 +331,7 @@ Result<int, Error> Socket::Recv(byte* data,
 	ssize_t bytes = recv(GetPlatformSocket(), (char*)data, data_size, 0);
 	if (bytes < 0)
 	{
-		return MakeError(Error(ConvertErrno(errno)));
+		return MakeError(ConvertErrno(errno));
 	}
 	else if (bytes == 0)
 	{
@@ -369,7 +369,7 @@ Result<int, Error> Socket::Send(const byte* data,
 	ssize_t bytes = send(GetPlatformSocket(), (char*)data, data_size, 0);
 	if (bytes < 0)
 	{
-		return MakeError(Error(ConvertErrno(errno)));
+		return MakeError(ConvertErrno(errno));
 	}
 	else
 	{

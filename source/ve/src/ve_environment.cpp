@@ -28,14 +28,14 @@ ut::Optional<ut::Error> Environment::Run()
 
 		// get the result of execution
 		PipelineCombiner& combiner = scheduler.WaitForCompletion();
-		System::Result execute_result(combiner.MoveResult());
+		System::Result execute_result(combiner.Move());
 		if (!execute_result)
 		{
 			return execute_result.MoveAlt();
 		}
 
 		// execute environment commands
-		ut::Optional<ut::Error> dispatch_error = ExecuteCommands(execute_result.MoveResult());
+		ut::Optional<ut::Error> dispatch_error = ExecuteCommands(execute_result.Move());
 		if (dispatch_error)
 		{
 			return dispatch_error;

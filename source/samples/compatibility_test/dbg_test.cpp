@@ -19,7 +19,7 @@ void BacktraceTask::Execute()
 	ut::Result<ut::String, ut::Error> result = GetStrDbgError(0);
 	if (result.HasResult())
 	{
-		report += result.GetResult();;
+		report += result.Get();;
 	}
 	else
 	{

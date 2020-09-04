@@ -367,7 +367,7 @@ OpenGLContext CreateGLContextAndInitPlatform()
 	initialized = true;
 
     // success
-	return context.MoveResult();
+	return context.Move();
 }
 
 //----------------------------------------------------------------------------//

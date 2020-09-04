@@ -49,7 +49,7 @@ void XmlTask::Execute()
 			ut::File file;
 			if (!file.Open("test.xml", ut::file_access_write))
 			{
-				file.Write(binary_stream.GetData().GetResult(), 1, binary_stream.GetSize().GetResult());
+				file.Write(binary_stream.GetData().Get(), 1, binary_stream.GetSize().Get());
 				file.Close();
 			}
 		}
@@ -95,7 +95,7 @@ void JsonTask::Execute()
 			ut::File file;
 			if (!file.Open("test.json", ut::file_access_write))
 			{
-				file.Write(binary_stream.GetData().GetResult(), 1, binary_stream.GetSize().GetResult());
+				file.Write(binary_stream.GetData().Get(), 1, binary_stream.GetSize().Get());
 				file.Close();
 			}
 		}

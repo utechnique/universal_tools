@@ -78,7 +78,11 @@ public:
 	Optional<Error> Save(Controller& controller, const String& name)
 	{
 		Snapshot snapshot = Snapshot::Capture(ptr.GetRef(), name, controller.GetInfo());
-		return controller.WriteNode(snapshot, false);
+
+		meta::Controller::SerializationOptions options;
+		options.initialize = false;
+		options.force_size_info = true;
+		return controller.WriteNode(snapshot, options);
 	}
 
 	// Deserializes managed object using provided controller.
@@ -97,14 +101,17 @@ public:
 		}
 
 		// reset smart pointer
-		ptr = instance.MoveResult();
+		ptr = instance.Move();
 
 		// reflect data into snapshot
 		Snapshot snapshot = Snapshot::Capture(ptr.GetRef(), name, controller.GetInfo());
 
 		// deserialize captured node
-		Result<Controller::Uniform, Error> read_result = controller.ReadNode(snapshot,
-		                                                                     false, false);
+		meta::Controller::SerializationOptions options;
+		options.initialize = false;
+		options.only_uniforms = false;
+		options.force_size_info = true;
+		Result<Controller::Uniform, Error> read_result = controller.ReadNode(snapshot, options);
 		if (!read_result)
 		{
 			return read_result.MoveAlt();
@@ -147,7 +154,7 @@ private:
 		}
 
 		// create a new object
-		const DynamicType& dyn_type = type_result.GetResult();
+		const DynamicType& dyn_type = type_result.Get();
 		SharedPtrType instance(static_cast<T*>(dyn_type.CreateInstance()));
 		return Move(instance);
 	}
@@ -223,14 +230,14 @@ public:
 		SharedPtrType& ptr_ref = *static_cast<SharedPtrType*>(ptr);
 
 		// check if serialized pointer is not null
-		if (read_type_result.GetResult() == Type<void>::Name())
+		if (read_type_result.Get() == Type<void>::Name())
 		{
 			ptr_ref.Reset(); // reset current value
 			return Optional<Error>(); // exit, ok
 		}
 
 		// read id and link up with the correct object
-		SharedPtr<SharedPtrHolderBase> holder(new HolderType(ptr_ref, read_type_result.MoveResult()));
+		SharedPtr<SharedPtrHolderBase> holder(new HolderType(ptr_ref, read_type_result.Move()));
 		return controller.ReadSharedLink(this, holder);
 	}
 

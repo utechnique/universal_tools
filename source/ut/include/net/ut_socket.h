@@ -127,7 +127,7 @@ public:
 		}
 
 		// calculate received bytes
-		return recv_size_result.GetResult() + recv_arr_result.GetResult();
+		return recv_size_result.Get() + recv_arr_result.Get();
 	}
 
 	// Sends single element

@@ -60,7 +60,7 @@ Optional<Error> RenameFile(const String& old_fn, const String& new_fn)
 #if UT_WINDOWS
 	WString wold = StrConvert<char, wchar, cp_utf8>(old_fn);
 	WString wnew = StrConvert<char, wchar, cp_utf8>(new_fn);
-	int result = _wrename(wold.GetAddress(), wnew.GetAddress());
+	int result = _wrename(wold.ToCStr(), wnew.ToCStr());
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
@@ -85,7 +85,7 @@ Optional<Error> RemoveFile(const String& filename)
 {
 #if UT_WINDOWS
 	WString wfn = StrConvert<char, wchar, cp_utf8>(filename);
-	int result = _wremove(wfn.GetAddress());
+	int result = _wremove(wfn.ToCStr());
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
@@ -122,14 +122,14 @@ Optional<Error> RemoveFolder(const String& folder, bool delete_subdirectories)
 	WString wfolder = StrConvert<char, wchar, cp_utf8>(folder);
 	pattern_str = wfolder;
 	pattern_str += L"\\*.*";
-	directory_handle = ::FindFirstFile(pattern_str.GetAddress(), &file_info);
+	directory_handle = ::FindFirstFile(pattern_str.ToCStr(), &file_info);
 	if (directory_handle != INVALID_HANDLE_VALUE)
 	{
 		do
 		{
 			if (file_info.cFileName[0] != '.')
 			{
-				file_path.SetEmpty();
+				file_path.Empty();
 				file_path = wfolder;
 				file_path += L"\\";
 				file_path += file_info.cFileName;
@@ -417,7 +417,7 @@ Result<uint32, Error> FileCheckSumAdler32(const String& filename)
 	{
 		return MakeError(get_size_result.GetAlt());
 	}
-	size_t file_size = get_size_result.GetResult();
+	size_t file_size = get_size_result.Get();
 
 	// iterate all bytes
 	uint32 a = 1, b = 0;
@@ -457,7 +457,7 @@ Result<Array<ut::byte>, Error> ReadFile(const String& filename)
 	{
 		return MakeError(get_size_result.MoveAlt());
 	}
-	size_t file_size = get_size_result.GetResult();
+	size_t file_size = get_size_result.Get();
 
 	// read file contents
 	Array<ut::byte> data(file_size);
@@ -608,7 +608,7 @@ Optional<Error> File::Close()
 #elif !UT_WINDOWS
 		#error ut::File::Close() is not implemented
 #endif
-		path.SetEmpty();
+		path.Empty();
 	}
 	return Optional<Error>();
 }
@@ -773,7 +773,7 @@ Result<size_t, Error> File::GetSize()
 	stream::Cursor file_size;
 
 	// get initial cursot position
-	cursor_origin = GetCursor().GetResult();
+	cursor_origin = GetCursor().Get();
 
 	// handle error
 	if (cursor_origin == -1)
@@ -792,7 +792,7 @@ Result<size_t, Error> File::GetSize()
 	Result<stream::Cursor, Error> get_cursor_result = GetCursor();
 	if (get_cursor_result)
 	{
-		file_size = get_cursor_result.GetResult();
+		file_size = get_cursor_result.Get();
 	}
 	else
 	{

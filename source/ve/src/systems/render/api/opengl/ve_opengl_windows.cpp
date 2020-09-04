@@ -236,14 +236,14 @@ ut::Result<OpenGLContext, ut::Error> CreateDummyOpenGLContext()
 	}
 
 	// create opengl context
-	OpenGLContext::Handle opengl_context = wglCreateContext(dummy_window_result.GetResult().hdc);
+	OpenGLContext::Handle opengl_context = wglCreateContext(dummy_window_result.Get().hdc);
 	if (!opengl_context)
 	{
 		return ut::MakeError(ut::Error(ut::error::fail, "Failed to create dummy wgl context."));
 	}
 
 	// success
-	return OpenGLContext(opengl_context, dummy_window_result.MoveResult());
+	return OpenGLContext(opengl_context, dummy_window_result.Move());
 }
 
 // Creates platform-specific OpenGL context.
@@ -274,7 +274,7 @@ ut::Result<OpenGLContext, ut::Error> CreateOpenGLContext()
 	};
 
 	// create opengl context
-	OpenGLContext::Handle opengl_context = wglCreateContextAttribsARB(dummy_window_result.GetResult().hdc, nullptr, attrib_list);
+	OpenGLContext::Handle opengl_context = wglCreateContextAttribsARB(dummy_window_result.Get().hdc, nullptr, attrib_list);
 	if (!opengl_context)
 	{
 		ut::String desc = "Failed to create OpenGL context, version ";
@@ -284,7 +284,7 @@ ut::Result<OpenGLContext, ut::Error> CreateOpenGLContext()
 	}
 
 	// success
-	return OpenGLContext(opengl_context, dummy_window_result.MoveResult());
+	return OpenGLContext(opengl_context, dummy_window_result.Move());
 }
 
 // Creates platform-specific OpenGL context and initializes global
@@ -308,7 +308,7 @@ OpenGLContext CreateGLContextAndInitPlatform()
 		}
 
 		// apply dummy context
-		OpenGLContext& dummy_context = dummy_context_result.GetResult();
+		OpenGLContext& dummy_context = dummy_context_result.Get();
 		ut::Optional<ut::Error> make_current_error = dummy_context.MakeCurrent();
 		if (make_current_error)
 		{
@@ -334,7 +334,7 @@ OpenGLContext CreateGLContextAndInitPlatform()
 	}
 
 	// apply context
-	OpenGLContext& final_context = final_context_result.GetResult();
+	OpenGLContext& final_context = final_context_result.Get();
 	ut::Optional<ut::Error> make_current_error = final_context.MakeCurrent();
 	if (make_current_error)
 	{
@@ -351,7 +351,7 @@ OpenGLContext CreateGLContextAndInitPlatform()
 	wglMakeCurrent(nullptr, nullptr);
 
 	// success
-	return final_context_result.MoveResult();
+	return final_context_result.Move();
 }
 
 //----------------------------------------------------------------------------//

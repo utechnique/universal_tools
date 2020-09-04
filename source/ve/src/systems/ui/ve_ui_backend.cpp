@@ -38,7 +38,7 @@ System::Result Backend::Update()
 		{
 			return result;
 		}
-		commands += result.MoveResult();
+		commands += result.Move();
 	}
 
 	// return array of commands that are to be

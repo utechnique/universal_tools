@@ -152,7 +152,7 @@ PlatformDevice::PlatformDevice() : instance(CreateVulkanInstance())
 
 	// command pools
 	ut::Result<VkCommandPool, ut::Error> pool_result = CreateCmdPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-	dynamic_cmd_pool = VkRc<vk::cmd_pool>(pool_result.GetResult(), device.GetVkHandle());
+	dynamic_cmd_pool = VkRc<vk::cmd_pool>(pool_result.Get(), device.GetVkHandle());
 
 	// memory properties
 	vkGetPhysicalDeviceMemoryProperties(gpu, &memory_properties);
@@ -1131,7 +1131,7 @@ ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBuffer::Info& 
 	VkCommandBufferAllocateInfo cmd_info = {};
 	cmd_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cmd_info.pNext = nullptr;
-	cmd_info.commandPool = cmd_pool.GetResult();
+	cmd_info.commandPool = cmd_pool.Get();
 	cmd_info.level = is_primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 	cmd_info.commandBufferCount = 1;
 
@@ -1154,7 +1154,7 @@ ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBuffer::Info& 
 		return ut::MakeError(VulkanError(res, "vkCreateFence(cmdbuffer)"));
 	}
 
-	PlatformCmdBuffer platform_buffer(device.GetVkHandle(), cmd_pool.GetResult(), cmd_buffer, fence);
+	PlatformCmdBuffer platform_buffer(device.GetVkHandle(), cmd_pool.Get(), cmd_buffer, fence);
 	return CmdBuffer(ut::Move(platform_buffer), cmd_buffer_info);
 }
 
@@ -1448,7 +1448,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	{
 		return ut::MakeError(buffer_result.MoveAlt());
 	}
-	VkBuffer buffer = buffer_result.GetResult();
+	VkBuffer buffer = buffer_result.Get();
 
 	// allocate memory
 	VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -1463,7 +1463,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	{
 		return ut::MakeError(memory_result.MoveAlt());
 	}
-	VkDeviceMemory buffer_memory = memory_result.GetResult();
+	VkDeviceMemory buffer_memory = memory_result.Get();
 
 	// copy memory
 	if (ini_size > 0)
@@ -1477,7 +1477,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 			{
 				return ut::MakeError(staging_buffer_result.MoveAlt());
 			}
-			VkBuffer staging_buffer = staging_buffer_result.GetResult();
+			VkBuffer staging_buffer = staging_buffer_result.Get();
 
 			// allocate staging memory
 			VkMemoryPropertyFlags staging_mem_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -1488,7 +1488,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 			{
 				return ut::MakeError(staging_mem_result.MoveAlt());
 			}
-			VkDeviceMemory staging_memory = staging_mem_result.GetResult();
+			VkDeviceMemory staging_memory = staging_mem_result.Get();
 
 			// copy memory to the staging buffer
 			void* staging_buffer_data;
@@ -1557,7 +1557,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 	shader_stage.flags = 0;
 	shader_stage.stage = PlatformShader::ConvertTypeToVkStage(info.stage);
 	shader_stage.module = shader_module;
-	shader_stage.pName = info.entry_point.GetAddress();
+	shader_stage.pName = info.entry_point.ToCStr();
 
 	// success
 	PlatformShader platform_shader(device.GetVkHandle(), shader_module, shader_stage);

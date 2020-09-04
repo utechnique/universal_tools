@@ -58,6 +58,25 @@ public:
 		Optional<String> name;
 		Optional<String> type;
 		Optional<SizeType> id;
+		Optional<stream::Cursor> next;
+	};
+
+	// Represents a combination of possible ways how a
+	// node can be read/written.
+	struct SerializationOptions
+	{
+		// specifies that a node  has special 'header' information: 
+		// serialization info, shared objects, etc; if this parameter 
+		// is 'true' - then @only_uniforms parameter must be 'false'
+		bool initialize = true;
+
+		// specifies that node's body must be skipped
+		// and only uniform data is to be read/written
+		bool only_uniforms = false;
+
+		// specifies that a node must have size information even
+		// if info.HasSizeinformations() returns 'false' 
+		bool force_size_info = false;
 	};
 
 	// Constructor
@@ -68,9 +87,9 @@ public:
 	// Extracts a custom entity value from the node.
 	// Note that this information may be absent.
 	//    @param node_name - name of the child node containing desired value
-	//    @return - value of desired node, or ut::Error if encountered an error
-	Result<String, Error> ExtractTextNodeValue(const Tree<text::Node>& parent_node,
-	                                           const String& node_name) const;
+	//    @return - value of desired node, or nothing if encountered an error
+	Optional<String> ExtractTextNodeValue(const Tree<text::Node>& parent_node,
+	                                      const String& node_name) const;
 
 	// Changes mode to binary input stream
 	//    @param stream - reference to input stream to read data from
@@ -157,28 +176,21 @@ public:
 	//    @param node - a reference to the ut::meta::Snapshot object to be
 	//                  serialized, it can be created by calling
 	//                  ut::meta::Snapshot::Capture() function.
-	//    @param initialize - this boolean indicates if node will be initialized
-	//                        with special 'header' information: serialization
-	//                        info, shared objects, etc.
+	//    @param options - options specifying how exactly @node is supposed to
+	//                     be written.
 	//    @return - ut::Error if failed.
-	Optional<Error> WriteNode(Snapshot& node, bool initialize = true);
+	Optional<Error> WriteNode(Snapshot& node, const SerializationOptions& options);
 
 	// Deserializes a provided reflective node.
 	//    @param node - a reference to the ut::meta::Snapshot object to be
 	//                  deserialized, it can be created by calling
 	//                  ut::meta::Snapshot::Capture() function;
 	//                  this parameter can be empty if @skip_loading is 'true'.
-	//    @param initialize - this boolean indicates if node will be initialized
-	//                        with special 'header' information: serialization
-	//                        info, shared objects, etc.
-	//    @param skip_loading - this boolean indicates if node's body must be skipped
-	//                          and only uniform data is to be read, @node parameter
-	//                          can be empty in this case.
+	//    @param options - options specifying how exactly @node is supposed to
+	//                     be read.
 	//    @return - ut::meta::Controller::Uniform object describing a node
 	//              or ut::Error if failed.
-	Result<Uniform, Error> ReadNode(Optional<Snapshot&> node,
-	                                bool initialize = true,
-	                                bool skip_loading = false);
+	Result<Uniform, Error> ReadNode(Optional<Snapshot&> node, const SerializationOptions& options);
 
 	// Adds unique shared parameter.
 	//    @param ptr - shared pointer to the holder of the SharedPtr object.
@@ -262,17 +274,17 @@ public:
 		}
 		else if (mode == text_input_mode) // read text form
 		{
-			Result<String, Error> extraction_result = ExtractTextNodeValue(*io.text_input, attribute_name);
+			Optional<String> extraction_result = ExtractTextNodeValue(*io.text_input, attribute_name);
 			if (!extraction_result)
 			{
-				return MakeError(extraction_result.MoveAlt());
+				return MakeError(error::not_found);
 			}
 
-			element = Scan<T>(extraction_result.GetResult());
+			element = Scan<T>(extraction_result.Get());
 		}
 		else
 		{
-			return MakeError(Error(error::fail, "Invalid (non-input) mode."));
+			return MakeError(error::fail, "Invalid (non-input) mode.");
 		}
 
 		// success
@@ -306,13 +318,13 @@ public:
 		if (mode == text_input_mode && !info.HasValueEncapsulation())
 		{
 			// try to find a value in a separate "value" node (variant for json)
-			Result<String, Error> extraction_result = ExtractTextNodeValue(*io.text_input, node_names::skValue);
+			Optional<String> extraction_result = ExtractTextNodeValue(*io.text_input, node_names::skValue);
 			
 			// extract element from string
 			T element;
 			if (extraction_result)// we have found "value" node - totally ok!
 			{
-				element = Scan<T>(extraction_result.GetResult());
+				element = Scan<T>(extraction_result.Get());
 			}
 			else if(io.text_output->data.value) // there is no separate "value" node, it can be ok,
 			{                                   // if it'a a json document e.g.
@@ -379,10 +391,11 @@ private:
 	Optional<Error> ReadInitializationData(Snapshot& node);
 
 	// Writes attributes that are mandatory for all parameters,
-	// like name, type, id, etc.
+	// like name, type, id, size etc.
 	//    @param node - reference to the node that is being serialized.
-	//    @return - ut::Error if failed.
-	Optional<Error> WriteUniformAttributes(Snapshot& node);
+	//    @return - Optional stream offset to the size variable
+	//              or ut::Error if failed.
+	Result<Optional<stream::Cursor>, Error> WriteUniformAttributes(Snapshot& node);
 
 	// Reads attributes that are mandatory for all parameters,
 	// like name, type, id, etc.
@@ -438,13 +451,13 @@ private:
 	// Allocates space in the output binary stream for the size variable.
 	//    @return - position of the size variable in a stream, or
 	//              ut::Error if something failed.
-	Result<stream::Cursor, Error> ReserveParameterSize();
+	Result<Optional<stream::Cursor>, Error> ReserveParameterSize();
 
 	// Writes a size of a parameter to the binary stream.
 	//    @param start_position - position of the preallocated space for
 	//                            the size variable in a stream.
 	//    @return - ut::Error if failed.
-	Optional<Error> WriteParameterSize(stream::Cursor start_position);
+	Optional<Error> WriteParameterSize(const Optional<stream::Cursor>& start_position);
 
 	// Reads a serialized size of a parameter from the binary stream.
 	//    @return - cursor position of the next parameter or ut::Error if failed.
@@ -467,7 +480,7 @@ private:
 	// Moves an input stream cursor to the next parameter.
 	//    @param next - stream position of the next parameter.
 	//    @return - ut::Error if failed.
-	Optional<Error> SkipParameter(stream::Cursor next);
+	Optional<Error> SkipParameter(const Optional<stream::Cursor>& next);
 
 	// Returns 'true' if parameters can be skipped without error if something went wrong.
 	bool SkipIsPossible() const;
@@ -529,6 +542,13 @@ private:
 	// Loads a provided state.
 	void LoadState(const Controller& controller);
 
+	// Modifies @info object according to the provided options.
+	// Note that one must restore original @info after reading/writing
+	// a node is done.
+	//    @param options - set of options.
+	//    @return - original (unmodified) copy of the @info object;
+	Info ModifyInfo(const SerializationOptions& options);
+
 	// Helper function to read custom value from the binary stream
 	//    @address - pointer to the element to be read
 	//    @count - number of elements to read
@@ -565,7 +585,7 @@ private:
 		{
 			return read_cursor.MoveAlt();
 		}
-		cursor = read_cursor.GetResult();
+		cursor = read_cursor.Get();
 
 		// success
 		return Optional<Error>();
@@ -607,7 +627,7 @@ private:
 		{
 			return read_cursor.MoveAlt();
 		}
-		cursor = read_cursor.GetResult();
+		cursor = read_cursor.Get();
 
 		// success
 		return Optional<Error>();
@@ -661,7 +681,7 @@ private:
 			size_t len = str.Length() + 1;
 
 			// write a string character by character
-			const char* start = str.GetAddress();
+			const char* start = str.ToCStr();
 			for (size_t char_id = 0; char_id < len; char_id++)
 			{
 				Optional<Error> write_error = WriteBinary<char>(start + char_id, 1);

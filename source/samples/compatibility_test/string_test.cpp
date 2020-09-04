@@ -141,7 +141,7 @@ void StrConstructorTask::Execute()
 	str_2 = str_0;
 	report += "testing constructors: ";
 	report += str_0 + " " + str_1 + " " + str_2;
-	if (!ut::StrCmp<char>(str_2.GetAddress(), "hello"))
+	if (!ut::StrCmp<char>(str_2.ToCStr(), "hello"))
 	{
 		report += " failed";
 		failed_test_counter.Increment();

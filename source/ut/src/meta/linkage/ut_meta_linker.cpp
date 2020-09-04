@@ -230,7 +230,7 @@ Optional<Error> Linker::WriteLinkId(Controller state, size_t id) const
 	}
 
 	// set stream position back to the origin value
-	return controller.SetCursor(stream_position.GetResult(), true);
+	return controller.SetCursor(stream_position.Get(), true);
 }
 
 //----------------------------------------------------------------------------->

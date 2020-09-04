@@ -30,7 +30,7 @@ Optional<Error> Document::ParseFile(const String& filename)
 	{
 		return get_size_result.GetAlt();
 	}
-	size_t file_size = get_size_result.GetResult();
+	size_t file_size = get_size_result.Get();
 
 	// read file content to the string
 	String text(file_size);
@@ -411,7 +411,7 @@ Document& operator >> (InputStream& stream, Document& doc)
 	}
 
 	// read everything up to the end of the stream buffer
-	size_t bytes_to_read = get_size_result.GetResult() - get_cursor_result.GetResult();
+	size_t bytes_to_read = get_size_result.Get() - get_cursor_result.Get();
 	String text(bytes_to_read);
 	Optional<Error> read_error = stream.Read(text.GetAddress(), 1, bytes_to_read);
 	if (read_error)

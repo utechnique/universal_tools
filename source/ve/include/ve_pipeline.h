@@ -20,7 +20,7 @@ public:
 	void operator()(System::Result result);
 
 	// Returns current array of commands, original array becomes empty.
-	System::Result MoveResult();
+	System::Result Move();
 
 private:
 	System::Result sum;

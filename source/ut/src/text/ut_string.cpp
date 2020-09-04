@@ -25,7 +25,6 @@ template<> String StrConvert<wchar, char, cp_utf8>(const wchar* src)
 
 	// convert string and add null terminator
 	WideCharToMultiByte(CP_UTF8, 0, src, (int)length, out_str.GetAddress(), size_needed, NULL, NULL);
-	out_str.Add(0);
 	return out_str;
 #elif UT_UNIX
 	size_t src_length = StrLen<wchar>(src) + 1;
@@ -59,7 +58,6 @@ template<> WString StrConvert<char, wchar, cp_utf8>(const char* src)
 
 	// convert string and add null terminator
 	MultiByteToWideChar(CP_UTF8, 0, src, (int)length, out_str.GetAddress(), size_needed);
-	out_str.Add(0);
 	return out_str;
 #elif UT_UNIX
 	size_t src_length = StrLen<char>(src) + 1;

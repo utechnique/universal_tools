@@ -11,7 +11,7 @@ START_NAMESPACE(ut)
 Optional<Error> XmlDoc::Parse(const String& doc)
 {
 	// create input object with the address of the provided string
-	text::Reader cursor(doc.GetAddress());
+	text::Reader cursor(doc.ToCStr());
 
 	// remove current contents
 	nodes.Empty();
@@ -36,7 +36,7 @@ Optional<Error> XmlDoc::Parse(const String& doc)
 			Result<Tree<text::Node>, Error> parse_node_result = ParseNode(cursor);
 			if (parse_node_result)
 			{
-				if (!nodes.Add(parse_node_result.MoveResult()))
+				if (!nodes.Add(parse_node_result.Move()))
 				{
 					return Error(error::out_of_memory);
 				}
@@ -174,13 +174,13 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseNode(text::Reader& cursor)
 			{
 				if (cursor == 0)
 				{
-					return MakeError(Error(error::fail, "Unexpected end of data"));
+					return MakeError(error::fail, "Unexpected end of data");
 				}
 				++cursor;
 			}
 			++cursor;     // Skip '>'
 
-			return MakeError(Error(error::fail, "No node recognized"));
+			return MakeError(error::fail, "No node recognized");
 		} // case '!'
 	} // switch (cursor[0])
 }
@@ -199,7 +199,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseElement(text::Reader& cursor)
 	Skip(cursor, Lookup::skNodeName);
 	if (cursor.Get() == name)
 	{
-		return MakeError(Error(error::fail, "expected element name"));
+		return MakeError(error::fail, "expected element name");
 	}
 	element.data.name = String(name, cursor.Get() - name);
 
@@ -228,13 +228,13 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseElement(text::Reader& cursor)
 		++cursor;
 		if (cursor != '>')
 		{
-			return MakeError(Error(error::fail, "expected >"));
+			return MakeError(error::fail, "expected >");
 		}
 		++cursor;
 	}
 	else
 	{
-		return MakeError(Error(error::fail, "expected >"));
+		return MakeError(error::fail, "expected >");
 	}
 
 	// Return parsed element
@@ -263,7 +263,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseXmlDeclaration(text::Reader& cursor
 	// Skip ?>
 	if (cursor[0] != '?' || cursor[1] != '>')
 	{
-		return MakeError(Error(error::fail, "expected ?>"));
+		return MakeError(error::fail, "expected ?>");
 	}
 	cursor += 2;
 
@@ -284,7 +284,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParsePi(text::Reader& cursor)
 	Skip(cursor, Lookup::skNodeName);
 	if (cursor.Get() == name)
 	{
-		return MakeError(Error(error::fail, "expected PI target"));
+		return MakeError(error::fail, "expected PI target");
 	}
 	pi.data.name = String(name, cursor.Get() - name);
 
@@ -299,7 +299,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParsePi(text::Reader& cursor)
 	{
 		if (cursor == '\0')
 		{
-			return MakeError(Error(error::fail, "unexpected end of data"));
+			return MakeError(error::fail, "unexpected end of data");
 		}
 		++cursor;
 	}
@@ -328,7 +328,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseComment(text::Reader& cursor)
 	{
 		if (!cursor[0])
 		{
-			return MakeError(Error(error::fail, "unexpected end of data"));
+			return MakeError(error::fail, "unexpected end of data");
 		}
 		++cursor;
 	}
@@ -356,7 +356,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseCData(text::Reader& cursor)
 	{
 		if (!cursor[0])
 		{
-			return MakeError(Error(error::fail, "unexpected end of data"));
+			return MakeError(error::fail, "unexpected end of data");
 		}
 		++cursor;
 	}
@@ -402,7 +402,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseDoctype(text::Reader& cursor)
 						case ']': --depth; break;
 						case 0:
 						{
-							return MakeError(Error(error::fail, "unexpected end of data"));
+							return MakeError(error::fail, "unexpected end of data");
 						}
 					}
 					++cursor;
@@ -413,7 +413,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseDoctype(text::Reader& cursor)
 			// Error on end of text
 			case '\0':
 			{
-				return MakeError(Error(error::fail, "unexpected end of data"));
+				return MakeError(error::fail, "unexpected end of data");
 			}
 
 			// Other character, skip it
@@ -497,7 +497,7 @@ Optional<Error> XmlDoc::ParseNodeAttributes(text::Reader& cursor, Tree<text::Nod
 		// Set attribute value
 		if (result)
 		{
-			attribute.data.value = result.MoveResult();
+			attribute.data.value = result.Move();
 		}
 		else
 		{
@@ -598,7 +598,7 @@ Optional<Error> XmlDoc::ParseNodeContents(text::Reader& cursor,
 					Result<Tree<text::Node>, Error> parse_node_result = ParseNode(cursor);
 					if (parse_node_result)
 					{
-						node.Add(parse_node_result.MoveResult());
+						node.Add(parse_node_result.Move());
 					}
 					else
 					{
@@ -624,7 +624,7 @@ Optional<Error> XmlDoc::ParseNodeContents(text::Reader& cursor,
 
 				if (result)
 				{
-					next_char = result.GetResult();
+					next_char = result.Get();
 					goto after_data_node;   // Bypass regular processing after data nodes
 				}
 				else
@@ -671,7 +671,7 @@ Result<char, Error> XmlDoc::ParseAndAppendData(Tree<text::Node>& node,
 	if (result)
 	{
 		// move value string
-		String value(result.MoveResult());
+		String value(result.Move());
 		size_t val_length = value.Length();
 
 		// Trim trailing whitespace if flag is set; leading was already trimmed by whitespace skip after >

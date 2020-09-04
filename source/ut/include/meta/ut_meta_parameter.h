@@ -120,7 +120,7 @@ private:
 		}
 
 		// move result to the managed object
-		*static_cast<T*>(ptr) = read_result.MoveResult();
+		*static_cast<T*>(ptr) = read_result.Move();
 
 		// success
 		return Optional<Error>();
@@ -212,7 +212,7 @@ public:
 
 			// check types
 			String current_type_name = BaseParameter::DeduceTypeName<T>();
-			if (current_type_name != read_type_result.GetResult())
+			if (current_type_name != read_type_result.Get())
 			{
 				return Error(error::types_not_match, "Static arrays have different type.");
 			}
@@ -226,7 +226,7 @@ public:
 		}
 
 		// check array size
-		if (read_num_result.GetResult() != arr_size)
+		if (read_num_result.Get() != arr_size)
 		{
 			return Error(error::types_not_match, "Static arrays have different size.");
 		}

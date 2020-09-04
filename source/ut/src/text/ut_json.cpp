@@ -11,7 +11,7 @@ START_NAMESPACE(ut)
 Optional<Error> JsonDoc::Parse(const String& doc)
 {
 	// create input object with the address of the provided string
-	text::Reader cursor(doc.GetAddress());
+	text::Reader cursor(doc.ToCStr());
 	
 	// remove current contents
 	nodes.Empty();
@@ -100,7 +100,7 @@ Optional<Error> JsonDoc::ParseValue(text::Reader& cursor, Tree<text::Node>& node
 		{
 			return string_result.MoveAlt();
 		}
-		node.data.value = string_result.MoveResult();
+		node.data.value = string_result.Move();
 	}
 	else if (cursor.CheckLength(4) && cursor.Compare("true", false)) // true?
 	{
@@ -129,7 +129,7 @@ Optional<Error> JsonDoc::ParseValue(text::Reader& cursor, Tree<text::Node>& node
 		}
 
 		node.data.value_type = String(Type<int>::Name());
-		node.data.value = number_result.MoveResult();
+		node.data.value = number_result.Move();
 	}
 	else if (cursor == '{') // object?
 	{
@@ -200,7 +200,7 @@ Optional<Error> JsonDoc::ParseObject(text::Reader& cursor, Tree<text::Node>& nod
 		Result<String, Error> name_result = ExtractString(cursor);
 		if (name_result)
 		{
-			child_node.data.name = name_result.MoveResult();
+			child_node.data.name = name_result.Move();
 		}
 		else
 		{
@@ -388,8 +388,7 @@ Result<String, Error> JsonDoc::ExtractString(text::Reader& cursor)
 				// We need 5 chars (4 hex + the 'u') or its not valid
 				if (!cursor.CheckLength(5))
 				{
-					return MakeError(Error(error::fail,
-						"\\u sequence is invalid: must be 4 hex + the 'u'."));
+					return MakeError(error::fail, "\\u sequence is invalid: must be 4 hex + the 'u'.");
 				}
 
 				// Deal with the chars
@@ -418,8 +417,7 @@ Result<String, Error> JsonDoc::ExtractString(text::Reader& cursor)
 					else
 					{
 						// Invalid hex digit = invalid JSON
-						return MakeError(Error(error::fail,
-							"Invalid hex digit."));
+						return MakeError(error::fail, "Invalid hex digit.");
 					}
 				}
 				break;
@@ -427,7 +425,7 @@ Result<String, Error> JsonDoc::ExtractString(text::Reader& cursor)
 
 			// By the spec, only the above cases are allowed
 			default:
-				return MakeError(Error(error::fail, "Invalid string."));
+				return MakeError(error::fail, "Invalid string.");
 			}
 		}
 		else if (next_char == L'"') // End of the string?
@@ -438,8 +436,7 @@ Result<String, Error> JsonDoc::ExtractString(text::Reader& cursor)
 		else if (next_char < L' ' && next_char != L'\t') // Disallowed char?
 		{
 			// SPEC Violation: Allow tabs due to real world cases
-			return MakeError(Error(error::fail,
-				"Disallowed character in a string."));
+			return MakeError(error::fail, "Disallowed character in a string.");
 		}
 
 		// Add the next char
@@ -450,7 +447,7 @@ Result<String, Error> JsonDoc::ExtractString(text::Reader& cursor)
 	}
 
 	// If we're here, the string ended incorrectly
-	return MakeError(Error(error::fail, "Unexpected end of the string."));
+	return MakeError(error::fail, "Unexpected end of the string.");
 }
 
 //----------------------------------------------------------------------------->
@@ -487,7 +484,7 @@ Result<String, Error> JsonDoc::ExtractNumber(text::Reader& cursor)
 	}
 	else
 	{
-		return MakeError(Error(error::fail, "Invalid digit."));
+		return MakeError(error::fail, "Invalid digit.");
 	}
 
 	// Could be a decimal now...
@@ -498,7 +495,7 @@ Result<String, Error> JsonDoc::ExtractNumber(text::Reader& cursor)
 		// Not get any digits?
 		if (!(cursor[0] >= L'0' && cursor[0] <= L'9'))
 		{
-			return MakeError(Error(error::fail, "Digit has invalid decimal part."));
+			return MakeError(error::fail, "Digit has invalid decimal part.");
 		}
 
 		// Find the decimal and sort the decimal place out
@@ -534,7 +531,7 @@ Result<String, Error> JsonDoc::ExtractNumber(text::Reader& cursor)
 		// Not get any digits?
 		if (!(cursor[0] >= L'0' && cursor[0] <= L'9'))
 		{
-			return MakeError(Error(error::fail, "Number has invalid exponent."));
+			return MakeError(error::fail, "Number has invalid exponent.");
 		}
 
 		// Sort the expo out

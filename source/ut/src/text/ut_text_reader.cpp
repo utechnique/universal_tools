@@ -125,7 +125,7 @@ bool Reader::CheckLength(size_t length) const
 //    @return - true if @str is equal to the current char sequence
 bool Reader::Compare(const String & str, bool case_sensitive) const
 {
-	const char* s0 = str.GetAddress();
+	const char* s0 = str.ToCStr();
 	const char* s1 = cursor;
 
 	while (*s0 != '\0')

@@ -22,7 +22,7 @@ void HostNameTask::Execute()
 	ut::Result<ut::String, ut::Error> hostname = ut::net::GetHostName();
 	if (hostname)
 	{
-		report += hostname.GetResult();
+		report += hostname.Get();
 	}
 	else
 	{
@@ -42,7 +42,7 @@ void IpFromNameLHTask::Execute()
 	ut::Result<ut::String, ut::Error> localhost = ut::net::GetHostByName("localhost");
 	if (localhost)
 	{
-		report += localhost.GetResult();
+		report += localhost.Get();
 	}
 	else
 	{
@@ -62,7 +62,7 @@ void GoogleIpTask::Execute()
 	ut::Result<ut::String, ut::Error> hostip = ut::net::GetHostByName("www.google.com");
 	if (hostip)
 	{
-		report += hostip.GetResult();
+		report += hostip.Get();
 	}
 	else
 	{
@@ -244,7 +244,7 @@ void ServerTestJob::Execute()
 				ut::Result<ut::UniquePtr<ut::net::Socket>, ut::Error> accept_result = socket->Accept();
 				if (accept_result)
 				{
-					ut::UniquePtr<ut::net::Socket> client_socket(accept_result.MoveResult());
+					ut::UniquePtr<ut::net::Socket> client_socket(accept_result.Move());
 					report += "    server socket accepted client\n";
 
 					// recv int value

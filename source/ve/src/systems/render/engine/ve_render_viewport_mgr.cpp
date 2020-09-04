@@ -61,7 +61,7 @@ void ViewportManager::OpenViewports(ui::Frontend& frontend)
 
 		// newly created display is added to the map and can be
 		// used to display rendered images to user
-		if (!viewports.Add(result.MoveResult()))
+		if (!viewports.Add(result.Move()))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
@@ -117,14 +117,14 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 	}
 
 	// check if display has at least one target
-	const ut::uint32 buffer_count = display_result.GetResult().GetBufferCount();
+	const ut::uint32 buffer_count = display_result.Get().GetBufferCount();
 	if (buffer_count == 0)
 	{
 		return ut::MakeError(ut::Error(ut::error::empty, "Render: display has empty target list."));
 	}
 
 	// initialize render pass info
-	pixel::Format format = display_result.GetResult().GetTarget(0).image.GetInfo().format;
+	pixel::Format format = display_result.Get().GetTarget(0).image.GetInfo().format;
 	RenderTargetSlot color_slot(format, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, true);
 	ut::Array<RenderTargetSlot> slots;
 	slots.Add(color_slot);
@@ -142,10 +142,10 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 	{
 		// initialize framebuffer info
 		ut::Array< ut::Ref<Target> > color_targets;
-		color_targets.Add(display_result.GetResult().GetTarget(i));
+		color_targets.Add(display_result.Get().GetTarget(i));
 
 		// create framebuffer
-		ut::Result<Framebuffer, ut::Error> fb_result = device.CreateFramebuffer(rp_result.GetResult(),
+		ut::Result<Framebuffer, ut::Error> fb_result = device.CreateFramebuffer(rp_result.Get(),
 		                                                                        ut::Move(color_targets));
 		if (!fb_result)
 		{
@@ -153,7 +153,7 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 		}
 
 		// add framebuffer to the array
-		if (!framebuffers.Add(fb_result.MoveResult()))
+		if (!framebuffers.Add(fb_result.Move()))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
 		}
@@ -170,7 +170,7 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 	info.input_assembly_state.stride = 20;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;
-	ut::Result<PipelineState, ut::Error> pipeline_result = device.CreatePipelineState(ut::Move(info), rp_result.GetResult());
+	ut::Result<PipelineState, ut::Error> pipeline_result = device.CreatePipelineState(ut::Move(info), rp_result.Get());
 	if (!pipeline_result)
 	{
 		return ut::MakeError(pipeline_result.MoveAlt());
@@ -178,9 +178,9 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 
 	// success
 	return ViewportContainer(viewport,
-	                         display_result.MoveResult(),
-	                         rp_result.MoveResult(),
-	                         pipeline_result.MoveResult(),
+	                         display_result.Move(),
+	                         rp_result.Move(),
+	                         pipeline_result.Move(),
 	                         ut::Move(framebuffers));
 }
 
@@ -211,7 +211,7 @@ void ViewportManager::ResizeViewport(ui::Viewport::Id id, ut::uint32 w, ut::uint
 		}
 
 		// add new container to the map
-		if (!viewports.Add(vp_container_result.MoveResult()))
+		if (!viewports.Add(vp_container_result.Move()))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}

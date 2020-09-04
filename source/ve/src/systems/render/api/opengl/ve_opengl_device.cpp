@@ -115,7 +115,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 	RenderTargetInfo info(RenderTargetInfo::usage_present);
 
 	// create render target that will be associated with provided viewport
-	Target target(PlatformRenderTarget(), texture.MoveResult(), info);
+	Target target(PlatformRenderTarget(), texture.Move(), info);
 
 	// array of targets
 	ut::Array<Target> display_targets;

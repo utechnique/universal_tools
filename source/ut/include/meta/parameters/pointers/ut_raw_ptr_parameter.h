@@ -58,7 +58,7 @@ public:
 		}
 
 		// check if serialized pointer is not null
-		if (read_type_result.GetResult() == Type<void>::Name())
+		if (read_type_result.Get() == Type<void>::Name())
 		{
 			return Optional<Error>(); // exit, ok
 		}

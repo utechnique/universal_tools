@@ -89,7 +89,7 @@ protected:
 				Result<NodeType*, Error> result = node->GetNextSibling();
 				if (result)
 				{
-					node = result.GetResult();
+					node = result.Get();
 				}
 				else
 				{
@@ -121,7 +121,7 @@ protected:
 			Result<NodeType*, Error> result = node->GetPreviousNode();
 			if (result)
 			{
-				node = result.GetResult();
+				node = result.Get();
 			}
 			else
 			{
@@ -284,14 +284,14 @@ public:
 	NodeType& operator () (const size_t id)
 	{
 		Result<NodeType*, size_t> result = Iterate(id);
-		return result ? *result.GetResult() : *static_cast<NodeType*>(this);
+		return result ? *result.Get() : *static_cast<NodeType*>(this);
 	}
 
 	// Returns desired element from the whole tree
 	const NodeType& operator () (const size_t id) const
 	{
 		Result<const NodeType*, size_t> result = Iterate(id);
-		return result ? *result.GetResult() : *static_cast<NodeType*>(this);
+		return result ? *result.Get() : *static_cast<NodeType*>(this);
 	}
 
 	// Adds new child node to the end of the array
@@ -582,7 +582,7 @@ protected:
 				Result<NodeType*, size_t> result = child_nodes[child_id].Iterate(position);
 				if (result)
 				{
-					return result.GetResult();
+					return result.Get();
 				}
 				else
 				{

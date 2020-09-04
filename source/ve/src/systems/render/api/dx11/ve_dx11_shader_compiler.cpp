@@ -42,8 +42,8 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 	ut::Array<D3D10_SHADER_MACRO> d3d_macros(macros.GetNum() + 1);
 	for (UINT i = 0; i < macros.GetNum(); i++)
 	{
-		d3d_macros[i].Name = macros[i].name.GetAddress();
-		d3d_macros[i].Definition = macros[i].value.GetAddress();
+		d3d_macros[i].Name = macros[i].name.ToCStr();
+		d3d_macros[i].Definition = macros[i].value.ToCStr();
 	}
 	d3d_macros.GetLast().Name = nullptr;
 	d3d_macros.GetLast().Definition = nullptr;
@@ -63,12 +63,12 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 	// compile
 	ID3DBlob* blob_out;
 	ID3DBlob* blob_error;
-	HRESULT result = D3DCompile(code.GetAddress(),
+	HRESULT result = D3DCompile(code.ToCStr(),
 	                            code.Length(),
 	                            nullptr,
 	                            d3d_macros.GetAddress(),
 	                            nullptr,
-	                            entry_point.GetAddress(),
+	                            entry_point.ToCStr(),
 	                            target,
 	                            flags,
 	                            0,

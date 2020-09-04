@@ -54,7 +54,7 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	{
 		throw display_ps.MoveAlt();
 	}
-	display_shader = ut::MakeUnique<BoundShader>(display_vs.MoveResult(), display_ps.MoveResult());
+	display_shader = ut::MakeUnique<BoundShader>(display_vs.Move(), display_ps.Move());
 
 
 	struct QuadVertex
@@ -82,14 +82,14 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	{
 		throw buffer_result.MoveAlt();
 	}
-	screen_space_quad = ut::MakeUnique<Buffer>(buffer_result.MoveResult());
+	screen_space_quad = ut::MakeUnique<Buffer>(buffer_result.Move());
 
 
 	// initialize per-frame data
 	for (size_t i = 0; i < config.frames_in_flight; i++)
 	{
 		ut::Result<Frame, ut::Error> frame = CreateFrame();
-		if (!frames.Add(frame.MoveResult()))
+		if (!frames.Add(frame.Move()))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
@@ -253,7 +253,7 @@ ut::Result<Shader, ut::Error> Engine::LoadShader(Shader::Stage stage,
 	{
 		return ut::MakeError(result.MoveAlt());
 	}
-	return device.CreateShader(result.MoveResult());
+	return device.CreateShader(result.Move());
 }
 
 // Updates buffer contents with provided data. Can be used as a convenient
@@ -272,7 +272,7 @@ ut::Optional<ut::Error> Engine::UpdateBuffer(Context& context, Buffer& buffer, c
 		return map_result.MoveAlt();
 	}
 
-	ut::memory::Copy(map_result.GetResult(), data, buffer.GetInfo().size);
+	ut::memory::Copy(map_result.Get(), data, buffer.GetInfo().size);
 
 	context.UnmapBuffer(buffer);
 
@@ -309,7 +309,7 @@ ut::Result<Frame, ut::Error> Engine::CreateFrame()
 	}
 	
 	// create frame
-	Frame frame(cmd_buffer.MoveResult(), display_ub.MoveResult());
+	Frame frame(cmd_buffer.Move(), display_ub.Move());
 
 	// connect descriptors
 	frame.quad_desc_set.Connect(display_shader.GetRef());

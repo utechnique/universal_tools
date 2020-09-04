@@ -754,18 +754,18 @@ void ResultTask::Execute()
 	const ut::String& test_const_str = "const";
 
 	ut::Result<ut::String&, int> test_result(test_str);
-	if (test_result.GetResult() != test_str)
+	if (test_result.Get() != test_str)
 	{
 		report += "fail! references don't match.";
 		failed_test_counter.Increment();
 		return;
 	}
 
-	ut::String& str_ref = test_result.GetResult();
+	ut::String& str_ref = test_result.Get();
 	str_ref += "+++";
 
 	ut::String test_move_str;
-	test_move_str = test_result.MoveResult();
+	test_move_str = test_result.Move();
 	if (test_str.GetNum() != 0)
 	{
 		report += "fail! string was copied instead of being moved.";
@@ -774,7 +774,7 @@ void ResultTask::Execute()
 	}
 
 	ut::Result<const ut::String&, int> const_result(test_const_str);
-	ut::String test_copy_str = const_result.GetResult();
+	ut::String test_copy_str = const_result.Get();
 
 	ut::Result<const ut::String&, int> const_result_alt(ut::MakeAlt<int>(10));
 
@@ -785,7 +785,7 @@ void ResultTask::Execute()
 		failed_test_counter.Increment();
 		return;
 	}
-	else if (def_result.GetResult().Length() != 0)
+	else if (def_result.Get().Length() != 0)
 	{
 		report += "fail! default result has corrupted value.";
 		failed_test_counter.Increment();

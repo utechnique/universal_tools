@@ -107,7 +107,7 @@ ut::Result<Shader::Info, ut::Error> ShaderCache::CompileFromFile(Shader::Stage s
 		}
 
 		// check hash
-		if (find_result->hash == ut::Sha256(shader_text.GetResult()))
+		if (find_result->hash == ut::Sha256(shader_text.Get()))
 		{
 			ut::log.Lock() << "Shader cache: full match for \"" << shader_name
 			               << "\", loaded cached version." << ut::cret;
@@ -135,7 +135,7 @@ ut::Result<Shader::Info, ut::Error> ShaderCache::CompileFromFile(Shader::Stage s
 	ut::Result<Shader::Info, ut::Error> compile_result = compiler.Compile(stage,
 	                                                                      ut::Move(shader_name),
 	                                                                      ut::Move(entry_point),
-	                                                                      shader_text.GetResult(),
+	                                                                      shader_text.Get(),
 	                                                                      ut::Move(macros));
 	if (!compile_result)
 	{
@@ -143,8 +143,8 @@ ut::Result<Shader::Info, ut::Error> ShaderCache::CompileFromFile(Shader::Stage s
 	}
 
 	// calculate hash
-	Shader::Info& info = compile_result.GetResult();
-	info.hash = ut::Sha256(shader_text.GetResult());
+	Shader::Info& info = compile_result.Get();
+	info.hash = ut::Sha256(shader_text.Get());
 
 	// remove previous version
 	cache.Remove(info.name);
@@ -156,7 +156,7 @@ ut::Result<Shader::Info, ut::Error> ShaderCache::CompileFromFile(Shader::Stage s
 	}
 
 	// success
-	return compile_result.MoveResult();
+	return compile_result.Move();
 }
 
 //----------------------------------------------------------------------------->
@@ -254,7 +254,7 @@ ut::Result<ut::String, ut::Error> ShaderCache::Reader::ReadShaderFileText(const 
 		ut::log.Lock() << "Shader cache: can't read shader file size " << filename << ut::cret;
 		return ut::MakeError(get_size_result.MoveAlt());
 	}
-	size_t file_size = get_size_result.GetResult();
+	size_t file_size = get_size_result.Get();
 
 	// read file content to the string
 	ut::String text(file_size);
@@ -277,7 +277,7 @@ ut::Result<ut::String, ut::Error> ShaderCache::Reader::ReadShaderFileText(const 
 	}
 
 	// success
-	return final_code.MoveResult();
+	return final_code.Move();
 }
 
 //----------------------------------------------------------------------------->
@@ -305,7 +305,7 @@ ut::Result<ut::String, ut::Error> ShaderCache::Reader::ProcessIncludes(ut::Strin
 		}
 
 		// calculate offset to the next line
-		next_line = cursor + read_line_result.GetResult();
+		next_line = cursor + read_line_result.Get();
 		if (next_line == cursor)
 		{
 			// end of the file
@@ -357,7 +357,7 @@ ut::Result<ut::String, ut::Error> ShaderCache::Reader::ProcessIncludes(ut::Strin
 			}
 
 			// read include file
-			ut::Result<ut::String, ut::Error> include_result = ReadShaderFileText(directory + include_file.GetResult());
+			ut::Result<ut::String, ut::Error> include_result = ReadShaderFileText(directory + include_file.Get());
 			if (!include_result)
 			{
 				return ut::MakeError(include_result.MoveAlt());
@@ -368,7 +368,7 @@ ut::Result<ut::String, ut::Error> ShaderCache::Reader::ProcessIncludes(ut::Strin
 			ut::String temp(out.GetAddress(), line_start - out.GetAddress());
 
 			// add included file text
-			temp += include_result.GetResult();
+			temp += include_result.Get();
 			temp += ut::cret;
 
 			// remember an offset to the the next line

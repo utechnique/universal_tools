@@ -72,7 +72,7 @@ public:
 		WeakPtrType& ptr_ref = *static_cast<WeakPtrType*>(ptr);
 
 		// check if serialized pointer is not null
-		if (read_type_result.GetResult() == Type<void>::Name())
+		if (read_type_result.Get() == Type<void>::Name())
 		{
 			ptr_ref.Reset(); // reset current value
 			return Optional<Error>(); // exit, ok
