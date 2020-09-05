@@ -230,6 +230,16 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class IntHolder : public ut::meta::Reflective
+{
+public:
+	IntHolder();
+	void Reflect(ut::meta::Snapshot& snapshot);
+	int ival;
+	int ival2;
+};
+
+//----------------------------------------------------------------------------//
 class SerializationTest : public ut::meta::Reflective
 {
 public:
@@ -255,6 +265,8 @@ public:
 	ut::Quaternion<double> quaternion;
 	ut::int32* ival_ptr;
 	ut::int32* void_ptr;
+	IntHolder iholder;
+	ut::int32* ival_ptr2;
 	const ut::int32* ival_const_ptr;
 	ut::String* str_ptr;
 	ut::String** str_ptr_ptr;
