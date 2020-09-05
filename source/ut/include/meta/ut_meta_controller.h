@@ -404,23 +404,27 @@ private:
 
 	// Writes parameter and all child nodes of this parameter.
 	//    @param node - reference to the node that is being serialized.
+	//    @param start - start position of the node in the binary stream.
 	//    @return - ut::Error if failed.
-	Optional<Error> WriteParameter(Snapshot& node);
+	Optional<Error> WriteParameter(Snapshot& node, stream::Cursor start);
 
 	// Reads parameter and all child nodes of this parameter.
 	//    @param node - reference to the node that is being deserialized.
+	//    @param start - start position of the node in the binary stream.
 	//    @return - ut::Error if failed.
-	Optional<Error> ReadParameter(Snapshot& node);
+	Optional<Error> ReadParameter(Snapshot& node, stream::Cursor start);
 
 	// Serializes leaves of the provided reflective node.
 	//    @param node - reference to a parent node.
+	//    @param start - start position of the node in the binary stream.
 	//    @return - ut::Error if failed.
-	Optional<Error> WriteChildNodes(Snapshot& node);
+	Optional<Error> WriteChildNodes(Snapshot& node, stream::Cursor start);
 
 	// Deserializes leaves of the provided reflective node.
 	//    @param node - reference to a parent node.
+	//    @param start - start position of the node in the binary stream.
 	//    @return - ut::Error if failed.
-	Optional<Error> ReadChildNodes(Snapshot& node);
+	Optional<Error> ReadChildNodes(Snapshot& node, stream::Cursor start);
 
 	// Writes a name of the node.
 	//    @param name - name of the node.

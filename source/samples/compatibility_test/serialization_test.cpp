@@ -364,6 +364,7 @@ SerializationTest::SerializationTest(bool in_alternate,
                                                              , ival_ptr(&ival)
                                                              , ival_const_ptr(&ival)
                                                              , void_ptr(nullptr)
+                                                             , ival_ptr2(&iholder.ival2)
                                                              , int16_unique(ut::MakeUnique<ut::int16>(1))
                                                              , int16_unique_void(ut::MakeUnique<ut::int16>(2))
                                                              , uval(0)
@@ -460,6 +461,8 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 		snapshot << ival_ptr;
 		snapshot << ival_const_ptr;
 		snapshot << void_ptr;
+		snapshot << iholder;
+		snapshot << ival_ptr2;
 		snapshot << str_ptr_ptr;
 		snapshot << str_ptr;
 		snapshot << i16_ptr;
@@ -738,6 +741,16 @@ void SharedTestLevel0::Reflect(ut::meta::Snapshot& snapshot)
 }
 
 //----------------------------------------------------------------------------//
+IntHolder::IntHolder() : ival(3), ival2(6)
+{ }
+
+void IntHolder::Reflect(ut::meta::Snapshot& snapshot)
+{
+	snapshot.Add(ival, "ival");
+	snapshot.Add(ival2, "ival2");
+}
+
+//----------------------------------------------------------------------------//
 // Changes serialized object to validate it further
 // (if loading will fail - parameters would have default values against changed ones)
 void ChangeSerializedObject(SerializationTest& object)
@@ -829,6 +842,7 @@ void ChangeSerializedObject(SerializationTest& object)
 	// change pointers
 	object.int16_unique_void.Delete();
 	object.ival_const_ptr = &object.ival2;
+	object.ival_ptr2 = &object.iholder.ival;
 	object.refl_ptr = object.reflect_unique_ptr2.Get();
 
 	// change shared pointers
@@ -1038,6 +1052,7 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 		if (*object.ival_ptr != object.ival) return false;
 		if (*object.ival_const_ptr != object.ival2) return false;
 		if (object.void_ptr != nullptr) return false;
+		if (*object.ival_ptr2 != object.iholder.ival) return false;
 		if (object.str_ptr != &object.strarrarr[0][0]) return false;
 		if (object.str_ptr_ptr != &object.str_ptr) return false;
 		if (object.i16_ptr != object.int16_unique.Get()) return false;

@@ -356,6 +356,13 @@ Optional<Error> Controller::WriteNode(Snapshot& node,
 		}
 	}
 
+	// remember cursor before writing a parameter
+	Result<stream::Cursor, Error> start_cursor = GetStreamCursor();
+	if (!start_cursor)
+	{
+		return start_cursor.MoveAlt();
+	}
+
 	// save state
 	Controller state = SaveState();
 
@@ -376,7 +383,7 @@ Optional<Error> Controller::WriteNode(Snapshot& node,
 	Optional<stream::Cursor> size_offset(uniform_result.Move());
 
 	// save parameter ant it's children
-	Optional<Error> optional_error = WriteParameter(node);
+	Optional<Error> optional_error = WriteParameter(node, start_cursor.Get());
 	if (optional_error)
 	{
 		return optional_error;
@@ -441,6 +448,13 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 		{
 			return MakeError(init_error.Move());
 		}
+	}
+
+	// remember cursor before writing a parameter
+	Result<stream::Cursor, Error> start_cursor = GetStreamCursor();
+	if (!start_cursor)
+	{
+		return MakeError(start_cursor.MoveAlt());
 	}
 
 	// save state
@@ -515,7 +529,7 @@ Result<Controller::Uniform, Error> Controller::ReadNode(Optional<Snapshot&> node
 	}
 
 	// read parameter
-	Optional<Error> read_param_error = ReadParameter(sibling.Get());
+	Optional<Error> read_param_error = ReadParameter(sibling.Get(), start_cursor.Get());
 	if (read_param_error)
 	{
 		return MakeError(read_param_error.Move());
@@ -782,8 +796,9 @@ Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 //----------------------------------------------------------------------------->
 // Writes parameter and all child nodes of this parameter.
 //    @param node - reference to the node that is being serialized.
+//    @param start - start position of the node in the binary stream.
 //    @return - ut::Error if failed.
-Optional<Error> Controller::WriteParameter(Snapshot& node)
+Optional<Error> Controller::WriteParameter(Snapshot& node, stream::Cursor start)
 {
 	// save parameter body
 	Optional<Error> save_param_error = node.data.parameter->Save(*this);
@@ -793,7 +808,7 @@ Optional<Error> Controller::WriteParameter(Snapshot& node)
 	}
 
 	// write children (this step is recursive)
-	Optional<Error> save_children_error = WriteChildNodes(node);
+	Optional<Error> save_children_error = WriteChildNodes(node, start);
 	if (save_children_error)
 	{
 		return save_children_error;
@@ -806,8 +821,9 @@ Optional<Error> Controller::WriteParameter(Snapshot& node)
 //----------------------------------------------------------------------------->
 // Reads parameter and all child nodes of this parameter.
 //    @param node - reference to the node that is being deserialized.
+//    @param start - start position of the node in the binary stream.
 //    @return - ut::Error if failed.
-Optional<Error> Controller::ReadParameter(Snapshot& node)
+Optional<Error> Controller::ReadParameter(Snapshot& node, stream::Cursor start)
 {
 	// here parameter loads it's value and/or attributes that
 	// help it to build a new (deserialized) reflection tree, but with empty leaves
@@ -822,7 +838,7 @@ Optional<Error> Controller::ReadParameter(Snapshot& node)
 	node.data.parameter->Reflect(node);
 
 	// after the tree structure was restored we can load every leaf separately
-	Optional<Error> read_children_error = ReadChildNodes(node);
+	Optional<Error> read_children_error = ReadChildNodes(node, start);
 	if (read_children_error)
 	{
 		return read_children_error;
@@ -835,8 +851,9 @@ Optional<Error> Controller::ReadParameter(Snapshot& node)
 //----------------------------------------------------------------------------->
 // Serializes leaves of the provided reflective node.
 //    @param node - parent of the leaves to serialize.
+//    @param start - start position of the node in the binary stream.
 //    @return - ut::Error if failed.
-Optional<Error> Controller::WriteChildNodes(Snapshot& node)
+Optional<Error> Controller::WriteChildNodes(Snapshot& node, stream::Cursor start)
 {
 	// move one level down into the 'value' node
 	// this affects only a text variant, because binary nodes are written
@@ -856,6 +873,28 @@ Optional<Error> Controller::WriteChildNodes(Snapshot& node)
 	if (child_num_error)
 	{
 		return child_num_error;
+	}
+
+	// check case when parent node has the same stream offset as it's first
+	// child node - then one needs to add an offset to the child node so that
+	// it had different linkage id
+	if (mode == binary_output_mode && child_num != 0)
+	{
+		Result<stream::Cursor, Error> current_cursor = io.binary_output->GetCursor();
+		if (!current_cursor)
+		{
+			return current_cursor.MoveAlt();
+		}
+
+		if (current_cursor.Get() == start)
+		{
+			ut::byte offset_stub = 0;
+			Optional<Error> offset_error = WriteBinary<ut::byte>(&offset_stub, 1);
+			if (offset_error)
+			{
+				return offset_error;
+			}
+		}
 	}
 
 	// allocate space for child nodes (only text mode is involved)
@@ -899,8 +938,9 @@ Optional<Error> Controller::WriteChildNodes(Snapshot& node)
 //----------------------------------------------------------------------------->
 // Deserializes leaves of the provided reflective node.
 //    @param node - reference to a parent node.
+//    @param start - start position of the node in the binary stream.
 //    @return - ut::Error if failed.
-Optional<Error> Controller::ReadChildNodes(Snapshot& node)
+Optional<Error> Controller::ReadChildNodes(Snapshot& node, stream::Cursor start)
 {
 	// move one level down to the 'value' node
 	// this affects only a text variant, because binary nodes are written
@@ -925,6 +965,28 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node)
 	if (node.GetNumChildren() == 0)
 	{
 		return Optional<Error>();
+	}
+
+	// check case when parent node has the same stream offset as it's first
+	// child node - then one needs to add an offset to the child node so that
+	// it had different linkage id
+	if (mode == binary_input_mode)
+	{
+		Result<stream::Cursor, Error> current_cursor = io.binary_input->GetCursor();
+		if (!current_cursor)
+		{
+			return current_cursor.MoveAlt();
+		}
+
+		if (current_cursor.Get() == start)
+		{
+			ut::byte offset_stub = 0;
+			Optional<Error> offset_error = ReadBinary<ut::byte>(&offset_stub, 1);
+			if (offset_error)
+			{
+				return offset_error;
+			}
+		}
 	}
 
 	// save current state
@@ -1808,13 +1870,6 @@ Info Controller::ModifyInfo(const SerializationOptions& options)
 	if (options.force_size_info)
 	{
 		info.EnableSizeInformation(true);
-	}
-
-	// first element can't have linkage id, otherwise this id is the
-	// same as one of the first child
-	if (options.initialize)
-	{
-		info.EnableLinkageInformation(false);
 	}
 
 	return original;
