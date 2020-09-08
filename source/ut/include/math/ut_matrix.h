@@ -76,7 +76,7 @@ public:
 	}
 
 	// Copy constructor, just copies all elements one by one.
-	Matrix(const Matrix& copy)
+	Matrix(const Matrix& copy) noexcept
 	{
 		for (MatrixElementId i = 0; i < size; i++)
 		{
@@ -106,7 +106,7 @@ public:
 	}
 
 	// Assignment operator, just copies all elements one by one.
-	Matrix& operator = (const Matrix& copy)
+	Matrix& operator = (const Matrix& copy) noexcept
 	{
 		for (MatrixElementId i = 0; i < size; i++)
 		{
