@@ -182,8 +182,8 @@ public:
 	Result<size_t, Error> GetSize();
 
 private:
-	String path; // path to the file
     FILE* f; // stream pointer
+	String path; // path to the file
 };
 
 //----------------------------------------------------------------------------//
