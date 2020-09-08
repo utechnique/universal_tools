@@ -615,8 +615,8 @@ Optional<Error> File::Close()
 }
 
 //----------------------------------------------------------------------------->
-// Returns the path to opened file (or empty string if no file was opened)
-String File::GetPath() const
+// Returns the path to the file.
+const String& File::GetPath() const
 {
 	return path;
 }
