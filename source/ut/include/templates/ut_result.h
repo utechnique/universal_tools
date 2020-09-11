@@ -142,6 +142,20 @@ public:
 		return *this;
 	}
 
+	// Inheritance operator, provides access to the owned @R object.
+	ResultType* operator -> ()
+	{
+		UT_ASSERT(has_result);
+		return &result;
+	}
+
+	// Inheritance operator, provides access to the owned @R object.
+	const ResultType* operator -> () const
+	{
+		UT_ASSERT(has_result);
+		return &result;
+	}
+
 	// Destructor is needed to destruct @result or @alt, because cpp 
 	// unions do not call destructor. This applies not only to cpp11 (and higher),
 	// because custom buffer is used instead of 'union' for older dialects.

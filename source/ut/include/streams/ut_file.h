@@ -140,8 +140,8 @@ public:
 	// (copy, remove, open in another mode, etc.)
 	Optional<Error> Close();
 
-	// Returns the path to opened file (or empty string if no file was opened)
-	String GetPath() const;
+	// Returns the path to the file.
+	const String& GetPath() const;
 
 	// Returns 'true' if a file was opened, and hasn't been closed yet
 	bool IsOpened() const;
@@ -182,8 +182,8 @@ public:
 	Result<size_t, Error> GetSize();
 
 private:
-	String path; // path to the file
     FILE* f; // stream pointer
+	String path; // path to the file
 };
 
 //----------------------------------------------------------------------------//

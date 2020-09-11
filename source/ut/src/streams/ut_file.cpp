@@ -536,7 +536,7 @@ File::File(const String& filename, FileAccess access) : f(nullptr)
 
 //----------------------------------------------------------------------------->
 // Move constructor.
-File::File(File&& other) noexcept : f(other.f)
+File::File(File&& other) noexcept : f(other.f), path(ut::Move(other.path))
 {
 	other.f = nullptr;
 }
@@ -546,6 +546,7 @@ File::File(File&& other) noexcept : f(other.f)
 File& File::operator = (File&& other) noexcept
 {
 	Close();
+	path = ut::Move(other.path);
 	f = other.f;
 	other.f = nullptr;
 	return *this;
@@ -614,8 +615,8 @@ Optional<Error> File::Close()
 }
 
 //----------------------------------------------------------------------------->
-// Returns the path to opened file (or empty string if no file was opened)
-String File::GetPath() const
+// Returns the path to the file.
+const String& File::GetPath() const
 {
 	return path;
 }
