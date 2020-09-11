@@ -39,6 +39,29 @@ newoption
 }
 NO_UI = _OPTIONS["no_ui"]
 
+-- helper library to load images
+utStaticLibProj
+{
+    projname = "stb", -- project name
+    targname = "stb", -- target name
+    projdir  = "stb", -- project folder
+	bindfltk = false, -- using fltk library
+    srcfiles =        -- sources
+    {
+        "../contrib/stb/*.h",
+		"../contrib/stb/*.cpp",
+    },
+}
+
+-- include directories for projects using ve
+VE_INCLUDE_DIRS =
+{
+	"../contrib/stb/",
+	"../source/ut/include/",
+	"../source/ve/include/",
+	RENDER_INCLUDE_DIRS
+}
+
 -- ve static lib
 utStaticLibProj
 {
@@ -51,12 +74,7 @@ utStaticLibProj
         "../source/ve/**.h",
 		"../source/ve/**.cpp",
     },
-	incdir =
-	{
-		"../source/ut/include/",
-		"../source/ve/include/",
-		RENDER_INCLUDE_DIRS
-	},
+	incdir = VE_INCLUDE_DIRS,
 	dependencies =       -- dependencies
 	{
 		"ut"
@@ -80,18 +98,16 @@ utApplication
 	},
 	incdir =                            --include directories
 	{
-		"../source/ut/include/",
-		"../source/ve/include/",
+		VE_INCLUDE_DIRS,
 		"../source/ve_sandbox/include/",
-		RENDER_INCLUDE_DIRS
 	},
 	libdir = { RENDER_LIB_DIRS }, --library directories
 	libdir_32 = { RENDER_LIB_DIRS_32 }, --library directories (32 bits only)
 	libdir_64 = { RENDER_LIB_DIRS_64 }, --library directories (64 bits only)
-	libs = { "ve", "ut", RENDER_LIBS }, -- libraries (correct order is important for gcc linker)
+	libs = { "ve", "stb", "ut", RENDER_LIBS }, -- libraries (correct order is important for gcc linker)
 	libs_release = { RENDER_LIBS_RELEASE }, -- libraries ('Release' only)
 	libs_dbg = { RENDER_LIBS_DBG }, -- libraries ('Debug' only)
-	dependencies = { "ve", "ut" }, -- dependencies
+	dependencies = { "ve", "stb", "ut" }, -- dependencies
 	def = { RENDER_DEFS } -- preprocessor
 }
 

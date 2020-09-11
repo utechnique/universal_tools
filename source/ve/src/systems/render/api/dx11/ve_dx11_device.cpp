@@ -156,6 +156,19 @@ D3D11_BLEND ConvertBlendFactorToDX11(Blending::Factor op)
 	return D3D11_BLEND_ONE;
 }
 
+// Converts address mode value to the one compatible with DirectX11.
+D3D11_TEXTURE_ADDRESS_MODE ConvertTexAddressModeToDX11(Sampler::AddressMode mode)
+{
+	switch (mode)
+	{
+	case Sampler::address_wrap: return D3D11_TEXTURE_ADDRESS_WRAP;
+	case Sampler::address_mirror: return D3D11_TEXTURE_ADDRESS_MIRROR;
+	case Sampler::address_clamp: return D3D11_TEXTURE_ADDRESS_CLAMP;
+	case Sampler::address_border: return D3D11_TEXTURE_ADDRESS_BORDER;
+	}
+	return D3D11_TEXTURE_ADDRESS_WRAP;
+}
+
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformDevice::PlatformDevice(ID3D11Device* device_ptr) : d3d11_device(device_ptr)
@@ -219,36 +232,276 @@ Device::Device(Device&&) noexcept = default;
 // Move operator.
 Device& Device::operator =(Device&&) noexcept = default;
 
-// Creates new texture.
-//    @param info - reference to the ImageInfo object describing an image.
+// Creates a new texture.
+//    @param info - reference to the Image::Info object describing an image.
 //    @return - new image object of error if failed.
-ut::Result<Image, ut::Error> Device::CreateImage(const ImageInfo& info)
+ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 {
-	ID3D11Texture2D* tex2d = nullptr;
+	HRESULT result;
 
-	D3D11_TEXTURE2D_DESC desc;
-	desc.Width = info.width;
-	desc.Height = info.height;
-	desc.MipLevels = 1;
-	desc.ArraySize = 1;
-	desc.Format = ConvertPixelFormatToDX11(info.format);
-	desc.SampleDesc.Count = 1;
-	desc.SampleDesc.Quality = 0;
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	desc.BindFlags |= 0;
-	desc.CPUAccessFlags = 0;
-	desc.MiscFlags = 0;
+	D3D11_SUBRESOURCE_DATA* subrc_data = nullptr;
+	ut::Array<D3D11_SUBRESOURCE_DATA> subresources;
 
-	HRESULT hr = d3d11_device->CreateTexture2D(&desc, NULL, &tex2d);
-	if (FAILED(hr))
+	ID3D11Texture1D *tex1D = nullptr;
+	ID3D11Texture2D *tex2D = nullptr;
+	ID3D11Texture3D *tex3D = nullptr;
+
+	// figure out pixel size
+	const ut::uint32 pixel_size = pixel::GetSize(info.format);
+	if (pixel_size == 0)
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(hr) + " CreateTexture2D failed. "));
+		return ut::MakeError(ut::error::invalid_arg, "DX11: Cannot create image with zero pixel size.");
 	}
 
-	PlatformImage platform_img(tex2d, nullptr);
+	// dimensions
+	bool is_1d = info.type == Image::type_1D;
+	bool is_2d = info.type == Image::type_2D || info.type == Image::type_cube;
+	bool is_3d = info.type == Image::type_3D;
+	bool is_cube = info.type == Image::type_cube;
 
-	return Image(ut::Move(platform_img), info);
+	// initialize subresource data
+	if (!info.data.IsEmpty())
+	{
+		ut::byte* mip_data = info.data.GetAddress();
+
+		const ut::uint32 cubeface_count = is_cube ? 6 : 1;
+
+		subresources.Resize(cubeface_count * info.mip_count);
+		
+		for (ut::uint32 i = 0; i < cubeface_count; i++)
+		{
+			ut::uint32 mip_width = info.width;
+			ut::uint32 mip_height = info.height;
+			ut::uint32 mip_depth = info.depth;
+
+			for (ut::uint32 j = 0; j < info.mip_count; j++)
+			{
+				const ut::uint32 subrc_id = i * info.mip_count + j;
+
+				subresources[subrc_id].pSysMem = mip_data;
+				subresources[subrc_id].SysMemPitch = pixel_size * mip_width;
+				subresources[subrc_id].SysMemSlicePitch = pixel_size * mip_width * mip_height;
+
+				ut::uint32 mip_size = pixel_size * mip_width;
+				mip_width /= 2;
+
+				if (is_2d || is_3d)
+				{
+					mip_size *= mip_height;
+					mip_height /= 2;
+				}
+
+				if (is_3d)
+				{
+					mip_size *= mip_depth;
+					mip_depth /= 2;
+				}
+
+				mip_data += mip_size;
+			}
+		}
+
+		subrc_data = subresources.GetAddress();
+	}
+
+	// cpu access
+	UINT cpu_access = info.usage == render::memory::gpu_cpu ? D3D11_CPU_ACCESS_WRITE : 0;
+
+	// shader resource view description
+	ID3D11ShaderResourceView* srv = nullptr;
+	ID3D11ShaderResourceView* cube_faces[6];
+	ID3D11Resource* shader_resource = nullptr;
+	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
+	srv_desc.Format = ConvertPixelFormatToDX11(info.format);
+	srv_desc.Texture2D.MostDetailedMip = 0;
+	srv_desc.Texture2D.MipLevels = info.mip_count;
+
+	// create appropriate texture
+	if (is_1d)
+	{
+		D3D11_TEXTURE1D_DESC tex1d_desc;
+		tex1d_desc.Width = info.width;
+		tex1d_desc.MipLevels = info.mip_count;
+		tex1d_desc.ArraySize = 1;
+		tex1d_desc.Format = ConvertPixelFormatToDX11(info.format);
+		tex1d_desc.Usage = ConvertUsageToDX11(info.usage);
+		tex1d_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		tex1d_desc.CPUAccessFlags = cpu_access;
+		tex1d_desc.MiscFlags = 0;
+		result = d3d11_device->CreateTexture1D(&tex1d_desc, subrc_data, &tex1D);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 1d texture.");
+		}
+
+		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1D;
+		shader_resource = tex1D;
+	}
+	else if (is_2d)
+	{
+		D3D11_TEXTURE2D_DESC tex2d_desc;
+		tex2d_desc.Width = info.width;
+		tex2d_desc.Height = info.height;
+		tex2d_desc.MipLevels = info.mip_count;
+		tex2d_desc.ArraySize = info.type == Image::type_cube ? 6 : 1;
+		tex2d_desc.Format = ConvertPixelFormatToDX11(info.format);
+		tex2d_desc.SampleDesc.Count = 1;
+		tex2d_desc.SampleDesc.Quality = 0;
+		tex2d_desc.Usage = ConvertUsageToDX11(info.usage);
+		tex2d_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		tex2d_desc.CPUAccessFlags = cpu_access;
+		tex2d_desc.MiscFlags = is_cube ? D3D11_RESOURCE_MISC_TEXTURECUBE : 0;
+		result = d3d11_device->CreateTexture2D(&tex2d_desc, subrc_data, &tex2D);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 2d texture.");
+		}
+
+		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		shader_resource = tex2D;
+
+		// create dx11 cube srv if texture is a cubemap
+		if (is_cube)
+		{
+			srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+
+			D3D11_SHADER_RESOURCE_VIEW_DESC face_srv_desc = srv_desc;
+
+			face_srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+			face_srv_desc.Texture2DArray.ArraySize = 1;
+
+			for (int i = 0; i < 6; i++)
+			{
+				face_srv_desc.Texture2DArray.FirstArraySlice = i;
+				result = d3d11_device->CreateShaderResourceView(tex2D, &face_srv_desc, &cube_faces[i]);
+				if (FAILED(result))
+				{
+					return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 srv for a cube face.");
+				}
+			}
+		}
+	}
+	else if (is_3d)
+	{
+		D3D11_TEXTURE3D_DESC tex3d_desc;
+		tex3d_desc.Width = info.width;
+		tex3d_desc.Height = info.height;
+		tex3d_desc.Depth = info.depth;
+		tex3d_desc.MipLevels = info.mip_count;
+		tex3d_desc.Format = ConvertPixelFormatToDX11(info.format);
+		tex3d_desc.Usage = ConvertUsageToDX11(info.usage);
+		tex3d_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		tex3d_desc.CPUAccessFlags = cpu_access;
+		tex3d_desc.MiscFlags = 0;
+		result = d3d11_device->CreateTexture3D(&tex3d_desc, subrc_data, &tex3D);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 3d texture.");
+		}
+
+		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
+		shader_resource = tex3D;
+	}
+
+	// create shader resource view
+	result = d3d11_device->CreateShaderResourceView(shader_resource, &srv_desc, &srv);
+	if (FAILED(result))
+	{
+		return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 srv for 1d texture.");
+	}
+
+	// success
+	PlatformImage platform_img = is_1d ? PlatformImage(tex1D, srv) :
+	                             is_2d ? PlatformImage(tex2D, srv, is_cube ? cube_faces : nullptr) :
+	                             PlatformImage(tex3D, srv);
+	return Image(ut::Move(platform_img), ut::Move(info));
+}
+
+// Creates a new sampler.
+//    @param info - reference to the Sampler::Info object describing a sampler.
+//    @return - new sampler object of error if failed.
+ut::Result<Sampler, ut::Error> Device::CreateSampler(Sampler::Info info)
+{
+	ID3D11SamplerState* sampler;
+	D3D11_SAMPLER_DESC sampler_desc;
+	
+	sampler_desc.AddressU = ConvertTexAddressModeToDX11(info.address_u);
+	sampler_desc.AddressV = ConvertTexAddressModeToDX11(info.address_v);
+	sampler_desc.AddressW = ConvertTexAddressModeToDX11(info.address_w);
+	sampler_desc.MipLODBias = info.mip_lod_bias;
+	sampler_desc.MaxAnisotropy = static_cast<UINT>(info.max_anisotropy);
+	sampler_desc.ComparisonFunc = ConvertCompareOpToDX11(info.compare_op);;
+	sampler_desc.BorderColor[0] = info.border_color.R();
+	sampler_desc.BorderColor[1] = info.border_color.G();
+	sampler_desc.BorderColor[2] = info.border_color.B();
+	sampler_desc.BorderColor[3] = info.border_color.A();
+	sampler_desc.MinLOD = info.min_lod;
+	sampler_desc.MaxLOD = info.max_lod;
+
+	if (info.mag_filter == Sampler::filter_nearest)
+	{
+		if (info.min_filter == Sampler::filter_nearest)
+		{
+			if (info.mip_filter == Sampler::filter_nearest)
+			{
+				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+			}
+			else if (info.mip_filter == Sampler::filter_linear)
+			{
+				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+			}
+		}
+		else if (info.min_filter == Sampler::filter_linear)
+		{
+			if (info.mip_filter == Sampler::filter_nearest)
+			{
+				sampler_desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+			}
+			else if (info.mip_filter == Sampler::filter_linear)
+			{
+				sampler_desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+			}
+		}
+	}
+	else if (info.mag_filter == Sampler::filter_linear)
+	{
+		if (info.min_filter == Sampler::filter_nearest)
+		{
+			if (info.mip_filter == Sampler::filter_nearest)
+			{
+				sampler_desc.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+			}
+			else if (info.mip_filter == Sampler::filter_linear)
+			{
+				sampler_desc.Filter = D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+			}
+		}
+		else if (info.min_filter == Sampler::filter_linear)
+		{
+			if (info.mip_filter == Sampler::filter_nearest)
+			{
+				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+			}
+			else if (info.mip_filter == Sampler::filter_linear)
+			{
+				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+			}
+		}
+	}
+
+	if (info.anisotropy_enable)
+	{
+		sampler_desc.Filter = D3D11_FILTER_ANISOTROPIC;
+	}
+
+	HRESULT result = d3d11_device->CreateSamplerState(&sampler_desc, &sampler);
+	if (FAILED(result))
+	{
+		return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 sampler.");
+	}
+
+	PlatformSampler platform_sampler(sampler);
+	return Sampler(ut::Move(platform_sampler), info);
 }
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
@@ -265,7 +518,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	const ut::uint32 height = static_cast<ut::uint32>(viewport.h());
 
 	// initialize target backbuffer info
-	ImageInfo backbuffer_info;
+	Image::Info backbuffer_info;
 	backbuffer_info.format = pixel::r8g8b8a8_srgb;
 	backbuffer_info.width = width;
 	backbuffer_info.height = height;
@@ -290,7 +543,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	HRESULT result = gi_factory->CreateSwapChain(d3d11_device.Get(), &swapchain_desc, &swapchain);
 	if (FAILED(result))
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " CreateSwapChain() failed."));
+		return ut::MakeError(ut::error::fail, ut::Print(result) + " CreateSwapChain() failed.");
 	}
 
 	// extract texture and rtv from the swapchain to be able to construct ve::render::Target object.
@@ -303,11 +556,11 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	}
 
 	// initialize render target info
-	RenderTargetInfo target_info;
-	target_info.usage = RenderTargetInfo::usage_present;
+	Target::Info target_info;
+	target_info.usage = Target::Info::usage_present;
 
 	// create render target that will be associated with provided viewport
-	Image texture(PlatformImage(backbuffer, nullptr), backbuffer_info);
+	Image texture(PlatformImage(backbuffer, nullptr), ut::Move(backbuffer_info));
 	Target target(PlatformRenderTarget(rtv, nullptr), ut::Move(texture), target_info);
 
 	// dx11 does swapping manually, so there is only one buffer available for engine
@@ -368,32 +621,34 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	}
 	else
 	{
-		return ut::MakeError(ut::Error(ut::error::invalid_arg, "DirectX 11: no targets for the framebuffer."));
+		return ut::MakeError(ut::error::invalid_arg, "DirectX 11: no targets for the framebuffer.");
 	}
 
 	// check width and height of the color targets
 	const size_t color_target_count = color_targets.GetNum();
 	for (size_t i = 0; i < color_target_count; i++)
 	{
-		const ImageInfo& img_info = color_targets[i]->image.GetInfo();
+		const Image::Info& img_info = color_targets[i]->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
-			return ut::MakeError(ut::Error(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer."));
+			return ut::MakeError(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer.");
 		}
 	}
 
 	// check width and height of the depth target
 	if (depth_stencil_target)
 	{
-		const ImageInfo& img_info = depth_stencil_target->image.GetInfo();
+		const Image::Info& img_info = depth_stencil_target->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
-			return ut::MakeError(ut::Error(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer."));
+			return ut::MakeError(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer.");
 		}
 	}
 
 	// initialize info
-	FramebufferInfo info(width, height);
+	Framebuffer::Info info;
+	info.width = width;
+	info.height = height;
 
 	// success
 	return Framebuffer(PlatformFramebuffer(), info, ut::Move(color_targets), ut::Move(depth_stencil_target));
@@ -456,7 +711,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	HRESULT result = d3d11_device->CreateBuffer(&buffer_desc, init_data, &buffer);
 	if (FAILED(result))
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 buffer."));
+		return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 buffer.");
 	}
 
 	// create DX11 uav and srv
@@ -479,13 +734,13 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 		result = d3d11_device->CreateUnorderedAccessView(buffer, &desc_uav, &uav);
 		if (FAILED(result))
 		{
-			return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 buffer UAV."));
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 buffer UAV.");
 		}
 
 		result = d3d11_device->CreateShaderResourceView(buffer, &desc_srv, &srv);
 		if (FAILED(result))
 		{
-			return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 buffer srv."));
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 buffer srv.");
 		}
 	}
 
@@ -517,7 +772,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 															  &vs);
 			if (FAILED(result))
 			{
-				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 vertex shader."));
+				return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 vertex shader.");
 			}
 		} break;
 
@@ -529,7 +784,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 															&hs);
 			if (FAILED(result))
 			{
-				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 hull shader."));
+				return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 hull shader.");
 			}
 		} break;
 
@@ -541,7 +796,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 															  &ds);
 			if (FAILED(result))
 			{
-				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 domain shader."));
+				return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 domain shader.");
 			}
 		} break;
 
@@ -553,7 +808,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 																&gs);
 			if (FAILED(result))
 			{
-				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 geometry shader."));
+				return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 geometry shader.");
 			}
 		} break;
 
@@ -565,7 +820,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 															 &ps);
 			if (FAILED(result))
 			{
-				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 pixel shader."));
+				return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 pixel shader.");
 			}
 		} break;
 
@@ -577,7 +832,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 															   &cs);
 			if (FAILED(result))
 			{
-				return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 compute shader."));
+				return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 compute shader.");
 			}
 		} break;
 	}
@@ -639,7 +894,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		                                         &input_layout);
 		if (FAILED(result))
 		{
-			return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 input layout."));
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 input layout.");
 		}
 	}
 	else
@@ -675,7 +930,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	result = d3d11_device->CreateRasterizerState(&raster_desc, &rasterizer_state);
 	if (FAILED(result))
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 rasterizer state."));
+		return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 rasterizer state.");
 	}
 
 	// create depth-stencil state
@@ -698,14 +953,14 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	result = d3d11_device->CreateDepthStencilState(&ds_desc, &depthstencil_state);
 	if (FAILED(result))
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 depth-stencil state."));
+		return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 depth-stencil state.");
 	}
 
 	// check blendstate attachment count
 	const size_t blend_attachment_count = info.blend_state.attachments.GetNum();
 	if (blend_attachment_count > 8)
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, "Too many blendstate attachments (max 8 for DX11)."));
+		return ut::MakeError(ut::error::fail, "Too many blendstate attachments (max 8 for DX11).");
 	}
 
 	// create blend state
@@ -734,7 +989,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	result = d3d11_device->CreateBlendState(&blend_desc, &blend_state);
 	if (FAILED(result))
 	{
-		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to create d3d11 blend state."));
+		return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 blend state.");
 	}
 
 	// success

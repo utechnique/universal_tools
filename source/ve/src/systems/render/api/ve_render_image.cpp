@@ -8,8 +8,8 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 Image::Image(PlatformImage platform_img,
-             const ImageInfo& img_info) : PlatformImage(ut::Move(platform_img))
-                                        , info(img_info)
+             Image::Info img_info) : PlatformImage(ut::Move(platform_img))
+                                   , info(ut::Move(img_info))
 {}
 
 // Move constructor.

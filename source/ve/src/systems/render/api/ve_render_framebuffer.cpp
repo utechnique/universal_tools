@@ -8,7 +8,7 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 Framebuffer::Framebuffer(PlatformFramebuffer platform_framebuffer,
-                         const FramebufferInfo& framebuffer_info,
+                         const Framebuffer::Info& framebuffer_info,
                          ut::Array< ut::Ref<Target> > in_color_targets,
                          ut::Optional<Target&> in_ds_target) : PlatformFramebuffer(ut::Move(platform_framebuffer))
                                                              , color_targets(ut::Move(in_color_targets))

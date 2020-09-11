@@ -144,7 +144,7 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 		else if (bind_desc.Type == D3D10_SIT_TEXTURE)
 		{
 			char desc_name[128];
-			strcpy_s(desc_name, 128, bind_desc.Name);
+			ut::memory::Copy(desc_name, bind_desc.Name, ut::StrLen<char>(bind_desc.Name) + 1);
 			parameter_type = Shader::Parameter::image;
 
 			// bracket character means that there is a texture array, in that case

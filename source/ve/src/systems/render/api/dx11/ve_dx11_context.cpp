@@ -23,7 +23,7 @@ PlatformContext::PlatformContext(PlatformContext&&) noexcept = default;
 // Move operator.
 PlatformContext& PlatformContext::operator =(PlatformContext&& other) noexcept = default;
 
-// Sets the constant buffers used by the appropriate shader pipeline stage.
+// Sets a constant buffer used by the appropriate shader pipeline stage.
 void PlatformContext::SetUniformBuffer(ut::uint32 slot, ID3D11Buffer* buffer)
 {
 	for (ut::uint32 i = 0; i < Shader::skStageCount; i++)
@@ -41,6 +41,50 @@ void PlatformContext::SetUniformBuffer(ut::uint32 slot, ID3D11Buffer* buffer)
 		case Shader::geometry: d3d11_context->GSSetConstantBuffers(slot, 1, &buffer); break;
 		case Shader::pixel:    d3d11_context->PSSetConstantBuffers(slot, 1, &buffer); break;
 		case Shader::compute:  d3d11_context->CSSetConstantBuffers(slot, 1, &buffer); break;
+		}
+	}
+}
+
+// Sets an image used by the appropriate shader pipeline stage.
+void PlatformContext::SetImage(ut::uint32 slot, ID3D11ShaderResourceView* srv)
+{
+	for (ut::uint32 i = 0; i < Shader::skStageCount; i++)
+	{
+		if (!stage_bound[i])
+		{
+			continue;
+		}
+
+		switch (i)
+		{
+		case Shader::vertex:   d3d11_context->VSSetShaderResources(slot, 1, &srv); break;
+		case Shader::hull:     d3d11_context->HSSetShaderResources(slot, 1, &srv); break;
+		case Shader::domain:   d3d11_context->DSSetShaderResources(slot, 1, &srv); break;
+		case Shader::geometry: d3d11_context->GSSetShaderResources(slot, 1, &srv); break;
+		case Shader::pixel:    d3d11_context->PSSetShaderResources(slot, 1, &srv); break;
+		case Shader::compute:  d3d11_context->CSSetShaderResources(slot, 1, &srv); break;
+		}
+	}
+}
+
+// Sets a sampler used by the appropriate shader pipeline stage.
+void PlatformContext::SetSampler(ut::uint32 slot, ID3D11SamplerState* sampler_state)
+{
+	for (ut::uint32 i = 0; i < Shader::skStageCount; i++)
+	{
+		if (!stage_bound[i])
+		{
+			continue;
+		}
+
+		switch (i)
+		{
+		case Shader::vertex:   d3d11_context->VSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::hull:     d3d11_context->HSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::domain:   d3d11_context->DSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::geometry: d3d11_context->GSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::pixel:    d3d11_context->PSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::compute:  d3d11_context->CSSetSamplers(slot, 1, &sampler_state); break;
 		}
 	}
 }
@@ -242,15 +286,42 @@ void Context::BindDescriptorSet(DescriptorSet& descriptor_set)
 	for (size_t i = 0; i < descriptor_count; i++)
 	{
 		const Descriptor& descriptor = descriptor_set.GetDescriptor(i);
-		const ut::Optional<Descriptor::Binding> binding = descriptor.GetBinding();
-		if (!binding || !binding->slot)
+		const ut::Optional<Descriptor::Binding>& binding = descriptor.GetBinding();
+		if (!binding)
 		{
 			continue;
 		}
 
-		if (binding->type == Shader::Parameter::uniform_buffer)
+		const size_t slot_count = binding->slots.GetNum();
+		for (size_t j = 0; j < slot_count; j++)
 		{
-			SetUniformBuffer(binding->id, binding->slot->uniform_buffer->d3d11_buffer.Get());
+			const ut::Optional<Descriptor::Slot>& slot = binding->slots[j];
+			if (!slot)
+			{
+				continue;
+			}
+
+			const ut::uint32 binding_id = binding->id + slot->array_id;
+
+			if (binding->type == Shader::Parameter::uniform_buffer)
+			{
+				SetUniformBuffer(binding_id, slot->uniform_buffer->d3d11_buffer.Get());
+			}
+			else if (binding->type == Shader::Parameter::image)
+			{
+				if (slot->cube_face)
+				{
+					SetImage(binding_id, slot->image->cube_faces[slot->cube_face.Get()].Get());
+				}
+				else
+				{
+					SetImage(binding_id, slot->image->srv.Get());
+				}
+			}
+			else if (binding->type == Shader::Parameter::sampler)
+			{
+				SetSampler(binding_id, slot->sampler->sampler_state.Get());
+			}
 		}
 	}
 }

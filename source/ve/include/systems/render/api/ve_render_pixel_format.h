@@ -26,6 +26,22 @@ namespace pixel
 		r32g32b32,
 		r32g32b32a32,
 	};
+
+	// Returns size of one pixel of the specified format in bytes.
+	constexpr ut::uint32 GetSize(Format format)
+	{
+		return format == r8g8b8        ? 3 : 
+		       format == b8g8r8        ? 3 :
+		       format == r8g8b8a8      ? 4 :
+		       format == b8g8r8a8      ? 4 :
+		       format == r8g8b8a8_srgb ? 4 :
+		       format == b8g8r8a8_srgb ? 4 :
+		       format == r32           ? 4 :
+		       format == r32g32        ? 8 :
+		       format == r32g32b32     ? 12 :
+		       format == r32g32b32a32  ? 16 :
+		       0;
+	}
 }
 
 //----------------------------------------------------------------------------//

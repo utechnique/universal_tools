@@ -1,28 +1,28 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/api/ve_render_target.h"
+#include "systems/render/api/ve_render_sampler.h"
+//----------------------------------------------------------------------------//
+#if VE_DX11
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-Target::Target(PlatformRenderTarget platform_target,
-               Image target_img,
-               const Target::Info& target_info) : PlatformRenderTarget(ut::Move(platform_target))
-                                                , image(ut::Move(target_img))
-                                                , info(target_info)
+PlatformSampler::PlatformSampler(ID3D11SamplerState* sampler_ptr) : sampler_state(sampler_ptr)
 {}
 
 // Move constructor.
-Target::Target(Target&&) noexcept = default;
+PlatformSampler::PlatformSampler(PlatformSampler&&) noexcept = default;
 
 // Move operator.
-Target& Target::operator =(Target&&) noexcept = default;
+PlatformSampler& PlatformSampler::operator =(PlatformSampler&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_DX11
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

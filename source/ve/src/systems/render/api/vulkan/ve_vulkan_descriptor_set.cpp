@@ -190,7 +190,7 @@ void DescriptorManager::AllocateAndBindDescriptorSet(DescriptorSet& set,
 	{
 		Descriptor& descriptor = set.GetDescriptor(i);
 
-		ut::Optional<Descriptor::Binding> binding = descriptor.GetBinding();
+		const ut::Optional<Descriptor::Binding>& binding = descriptor.GetBinding();
 		if (!binding)
 		{
 			continue;

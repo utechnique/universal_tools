@@ -7,6 +7,7 @@
 #include "systems/render/api/ve_render_shader.h"
 #include "systems/render/api/ve_render_buffer.h"
 #include "systems/render/api/ve_render_image.h"
+#include "systems/render/api/ve_render_sampler.h"
 #include "templates/ut_each_is.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -16,11 +17,23 @@ START_NAMESPACE(render)
 class Descriptor
 {
 public:
-	// Union of resources that can be bound to the pipeline.
-	union Slot
+	// Represents an element in array of shader resources.
+	struct Slot
 	{
-		Buffer* uniform_buffer;
-		Image* image;
+		// Id of the cube face in case if bound resource is an image,
+		// and if this image is a cubemap.
+		ut::Optional<Image::Cube::Face> cube_face;
+
+		// Array element id (if bound resource is an array).
+		ut::uint32 array_id;
+
+		// Union of resources that can be bound to the pipeline.
+		union
+		{
+			Buffer* uniform_buffer;
+			Image* image;
+			Sampler* sampler;
+		};
 	};
 
 	// Contains an id of the shader resource and it's type.
@@ -35,8 +48,8 @@ public:
 		// Type of resource how it's defined in a shader code.
 		Shader::Parameter::Type type;
 
-		// Resource to be bound to the pipeline.
-		ut::Optional<Slot> slot;
+		// Resources to be bound to the pipeline.
+		ut::Array< ut::Optional<Slot> > slots;
 	};
 
 	// Constructor, accepts a name of the shader resource.
@@ -59,16 +72,26 @@ public:
 	void Connect(Shader& shader);
 
 	// Binds provided uniform buffer to this descriptor.
-	void BindUniformBuffer(Buffer& uniform_buffer);
+	void BindUniformBuffer(Buffer& uniform_buffer, ut::uint32 array_id = 0);
 
 	// Binds provided image to this descriptor.
-	void BindImage(Image& image);
+	void BindImage(Image& image, ut::uint32 array_id = 0);
+
+	// Binds provided cube face to this descriptor.
+	void BindCubeFace(Image& cube_image, Image::Cube::Face face, ut::uint32 array_id = 0);
+
+	// Binds provided sampler to this descriptor.
+	void BindSampler(Sampler& sampler, ut::uint32 array_id = 0);
 
 	// Returns current binding.
-	ut::Optional<Binding> GetBinding() const;
+	const ut::Optional<Binding>& GetBinding() const;
 
 private:
-	// Binding indices for all shader stages.
+	// Connects shader resource that is specified by the provided pointer to
+	// the appropriate slot.
+	void AssignSlot(void* rc_ptr, ut::uint32 array_id);
+
+	// Binding index (must be the same for all shader stages).
 	ut::Optional<Binding> binding;
 };
 

@@ -9,26 +9,10 @@
 #include "systems/render/api/ve_render_vertex.h"
 #include "systems/render/api/ve_render_primitive_topology.h"
 #include "systems/render/api/ve_render_descriptor.h"
+#include "systems/render/api/ve_render_cmp.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
-//----------------------------------------------------------------------------//
-// Comparison operations.
-namespace compare
-{
-	enum Operation
-	{
-		never,
-		less,
-		equal,
-		less_or_equal,
-		greater,
-		not_equal,
-		greater_or_equal,
-		always,
-	};
-}
-
 //----------------------------------------------------------------------------//
 // The purpose of the input-assembler stage is to read primitive data (points,
 // lines and/or triangles) from user-filled buffers and assemble the data into

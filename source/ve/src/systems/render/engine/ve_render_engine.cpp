@@ -9,6 +9,8 @@ START_NAMESPACE(render)
 // Constructor.
 Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportManager(ut::Move(viewport_mgr))
                                                                     , device(render_device)
+                                                                    , img_loader(render_device)
+                                                                    , shader_loader(render_device)
                                                                     , current_frame_id(0)
 {
 	// load configuration file
@@ -28,9 +30,6 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 		}
 	}
 
-	// load shader cache
-	shader_cache.Load();
-
 	// set vertical synchronization for viewports
 	SetVerticalSynchronization(config.vsync);
 
@@ -44,8 +43,8 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 
 
 	// load display shaders
-	ut::Result<Shader, ut::Error> display_vs = LoadShader(Shader::vertex, "display_vs", "VS", "display.hlsl");
-	ut::Result<Shader, ut::Error> display_ps = LoadShader(Shader::pixel, "display_ps", "PS", "display.hlsl");
+	ut::Result<Shader, ut::Error> display_vs = shader_loader.Load(Shader::vertex, "display_vs", "VS", "display.hlsl");
+	ut::Result<Shader, ut::Error> display_ps = shader_loader.Load(Shader::pixel, "display_ps", "PS", "display.hlsl");
 	display_shader = ut::MakeUnique<BoundShader>(display_vs.MoveOrThrow(), display_ps.MoveOrThrow());
 
 
@@ -64,14 +63,151 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	buffer_info.data.Resize(buffer_info.size);
 
 	QuadVertex* vertices = reinterpret_cast<QuadVertex*>(buffer_info.data.GetAddress());
-	vertices[0].p = ut::Vector<3>(-1, -1, 0);
-	vertices[1].p = ut::Vector<3>(-1,  1, 0);
-	vertices[2].p = ut::Vector<3>( 1, -1, 0);
-	vertices[3].p = ut::Vector<3>( 1,  1, 0);
+	vertices[0].p = ut::Vector<3>(-1, 1, 0);
+	vertices[0].t = ut::Vector<2>(0, 0);
+	vertices[1].p = ut::Vector<3>(1, 1, 0);
+	vertices[1].t = ut::Vector<2>(1, 0);
+	vertices[2].p = ut::Vector<3>(-1, -1, 0);
+	vertices[2].t = ut::Vector<2>(0, 1);
+	vertices[3].p = ut::Vector<3>(1, -1, 0);
+	vertices[3].t = ut::Vector<2>(1, 1);
 
 	ut::Result<Buffer, ut::Error> buffer_result = device.CreateBuffer(ut::Move(buffer_info));
 	screen_space_quad = ut::MakeUnique<Buffer>(buffer_result.MoveOrThrow());
 
+	// 1d image
+	Image::Info img_info_1d;
+	img_info_1d.type = Image::type_1D;
+	img_info_1d.format = pixel::r8g8b8a8;
+	img_info_1d.usage = render::memory::immutable;
+	img_info_1d.width = 6;
+	img_info_1d.height = 1;
+	img_info_1d.depth = 1;
+	img_info_1d.mip_count = 1;
+	img_info_1d.data.Resize(img_info_1d.width * pixel::GetSize(pixel::r8g8b8a8));
+	ut::Color<4, byte>* pixel_1d = reinterpret_cast<ut::Color<4, byte>*>(img_info_1d.data.GetAddress());
+	pixel_1d[0] = ut::Color<4, byte>(255, 0, 0, 0);
+	pixel_1d[1] = ut::Color<4, byte>(0, 255, 0, 0);
+	pixel_1d[2] = ut::Color<4, byte>(0, 0, 255, 0);
+	pixel_1d[3] = ut::Color<4, byte>(255, 255, 0, 0);
+	pixel_1d[4] = ut::Color<4, byte>(0, 255, 255, 0);
+	pixel_1d[5] = ut::Color<4, byte>(255, 0, 255, 0);
+	ut::Result<Image, ut::Error> img1d_result = device.CreateImage(ut::Move(img_info_1d));
+	img_1d = ut::MakeUnique<Image>(img1d_result.MoveOrThrow());
+
+	// 2d image
+	ImageLoader::Info img_info_2d;
+	img_info_2d.srgb = true;
+	img_info_2d.high_quality_mips = false;
+	ut::Result<Image, ut::Error> img2d_result = img_loader.Load("maps/lazb.jpg", img_info_2d);
+	img_2d = ut::MakeUnique<Image>(img2d_result.MoveOrThrow());
+
+	// cube image
+	Image::Info img_info_cube;
+	img_info_cube.type = Image::type_cube;
+	img_info_cube.format = pixel::r8g8b8a8;
+	img_info_cube.usage = render::memory::immutable;
+	img_info_cube.width = 512;
+	img_info_cube.height = 512;
+	img_info_cube.depth = 1;
+	img_info_cube.mip_count = 7;
+	const ut::uint32 cubeface_size = img_info_cube.width * img_info_cube.height;
+	
+	ut::uint32 mip_offset = 0;
+	for (ut::uint32 i = 0; i < 6; i++)
+	{
+		ut::uint32 mip_width = img_info_cube.width;
+		ut::uint32 mip_height = img_info_cube.height;
+
+		for (ut::uint32 m = 0; m < img_info_cube.mip_count; m++)
+		{
+			const ut::uint32 mip_size = mip_width * mip_height;
+
+			img_info_cube.data.Resize(img_info_cube.data.GetSize() + mip_size * pixel::GetSize(pixel::r8g8b8a8));
+
+			for (ut::uint32 j = 0; j < mip_height; j++)
+			{
+				for (ut::uint32 k = 0; k < mip_width; k++)
+				{
+					ut::Color<4, byte>* pixel_cube_data = reinterpret_cast<ut::Color<4, byte>*>(img_info_cube.data.GetAddress());
+
+					int coef = i % 2 ? 2 : 1;
+
+					ut::Color<4, byte> color(255 / coef, 255 / coef, 255 / coef, 255);
+
+					switch (i)
+					{
+					case 0: color.G() = 0; color.B() = 0; break;
+					case 1: color.G() = 0; color.B() = 0; break;
+					case 2: color.R() = 0; color.B() = 0; break;
+					case 3: color.R() = 0; color.B() = 0; break;
+					case 4: color.R() = 0; color.G() = 0; break;
+					case 5: color.R() = 0; color.G() = 0; break;
+					}
+
+					if (j < k)
+					{
+						color.R() /= 2;
+						color.G() /= 2;
+						color.B() /= 2;
+					}
+
+					const ut::uint32 id = mip_offset + j * mip_width + k;
+					pixel_cube_data[id] = color;
+				}
+			}
+
+			mip_offset += mip_size;
+			mip_width /= 2;
+			mip_height /= 2;
+		}
+	}
+	ut::Result<Image, ut::Error> imgcube_result = device.CreateImage(ut::Move(img_info_cube));
+	img_cube = ut::MakeUnique<Image>(imgcube_result.MoveOrThrow());
+
+	// img_3d
+	Image::Info img_info_3d;
+	img_info_3d.type = Image::type_3D;
+	img_info_3d.format = pixel::r8g8b8a8;
+	img_info_3d.usage = render::memory::immutable;
+	img_info_3d.width = 4;
+	img_info_3d.height = 2;
+	img_info_3d.depth = 2;
+	img_info_3d.mip_count = 1;
+	img_info_3d.data.Resize(img_info_3d.width * img_info_3d.height * img_info_3d.depth * pixel::GetSize(pixel::r8g8b8a8));
+	ut::Color<4, byte>* pixel_3d = reinterpret_cast<ut::Color<4, byte>*>(img_info_3d.data.GetAddress());
+	for (ut::uint32 i = 0; i < img_info_3d.depth; i++)
+	{
+		for (ut::uint32 j = 0; j < img_info_3d.height; j++)
+		{
+			for (ut::uint32 k = 0; k < img_info_3d.width; k++)
+			{
+				const ut::uint32 id = i * img_info_3d.height * img_info_3d.width + j * img_info_3d.width + k;
+				pixel_3d[id] = ut::Color<4, byte>(255 / (i + 1), 255 / (j + 1), 255 / (k + 1), 255);
+			}
+		}
+	}
+	ut::Result<Image, ut::Error> img3d_result = device.CreateImage(ut::Move(img_info_3d));
+	img_3d = ut::MakeUnique<Image>(img3d_result.MoveOrThrow());
+
+
+	// sampler
+	Sampler::Info sampler_info;
+	sampler_info.mag_filter = Sampler::filter_linear;
+	sampler_info.min_filter = Sampler::filter_linear;
+	sampler_info.mip_filter = Sampler::filter_linear;
+	sampler_info.address_u = Sampler::address_clamp;
+	sampler_info.address_v = Sampler::address_clamp;
+	sampler_info.address_w = Sampler::address_clamp;
+	sampler_info.compare_op = compare::always;
+	sampler_info.border_color = ut::Color<4, float>(0.0f);
+	sampler_info.anisotropy_enable = false;
+	sampler_info.max_anisotropy = 1.0f;
+	sampler_info.mip_lod_bias = 0.0f;
+	sampler_info.min_lod = 0.0f;
+	sampler_info.max_lod = 4096.0f;
+	ut::Result<Sampler, ut::Error> sampler_result = device.CreateSampler(sampler_info);
+	linear_sampler = ut::MakeUnique<Sampler>(sampler_result.MoveOrThrow());
 
 	// initialize per-frame data
 	for (size_t i = 0; i < config.frames_in_flight; i++)
@@ -84,7 +220,7 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	}
 
 	// save shader cache
-	shader_cache.Save();
+	shader_loader.SaveCache();
 }
 
 // Renders the whole environment to the internal images and presents
@@ -174,7 +310,7 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 		ut::Array<Framebuffer>& framebuffers = active_viewports[i]->Get< ut::Array<Framebuffer> >();
 
 		Framebuffer& framebuffer = framebuffers[display.GetCurrentBufferId()];
-		const FramebufferInfo& fb_info = framebuffer.GetInfo();
+		const Framebuffer::Info& fb_info = framebuffer.GetInfo();
 		ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
 
 		// update uniform buffer
@@ -183,9 +319,18 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 
 		// draw quad
 		frame.quad_desc_set.ub.BindUniformBuffer(frame.display_ub);
-
+		frame.quad_desc_set.tex1d.BindImage(img_1d.GetRef());
+		frame.quad_desc_set.tex2d.BindImage(img_2d.GetRef());
+		frame.quad_desc_set.tex_cube.BindImage(img_cube.GetRef());
+		frame.quad_desc_set.tex3d.BindImage(img_3d.GetRef());
+		frame.quad_desc_set.tex_cube_face.BindCubeFace(img_cube.GetRef(), Image::Cube::positive_x, 0);
+		frame.quad_desc_set.tex_cube_face.BindCubeFace(img_cube.GetRef(), Image::Cube::negative_x, 1);
+		frame.quad_desc_set.tex_cube_face.BindCubeFace(img_cube.GetRef(), Image::Cube::positive_y, 2);
+		frame.quad_desc_set.tex_cube_face.BindCubeFace(img_cube.GetRef(), Image::Cube::negative_y, 3);
+		frame.quad_desc_set.tex_cube_face.BindCubeFace(img_cube.GetRef(), Image::Cube::positive_z, 4);
+		frame.quad_desc_set.tex_cube_face.BindCubeFace(img_cube.GetRef(), Image::Cube::negative_z, 5);
+		frame.quad_desc_set.sampler.BindSampler(linear_sampler.GetRef());
 		context.BeginRenderPass(rp, framebuffer, render_area, backbuffer_clear_values);
-
 		context.BindPipelineState(pipeline_state);
 		context.BindDescriptorSet(frame.quad_desc_set);
 		context.BindVertexBuffer(screen_space_quad.GetRef(), 0);
@@ -214,34 +359,6 @@ void Engine::ProcessViewportEvents()
 		// viewport tasks can now be executed safely
 		ExecuteViewportTasks();
 	}
-}
-
-// Compiles a shader from file. Returns cached version if source didn't
-// change or compiles it from the scratch otherwise.
-//    @param stage - type of the shader (vertex/pixel/geometry etc.).
-//    @param shader_name - string with the name of this
-//                         particular shader build.
-//    @param entry_point - string with a name of entry point.
-//    @param filename - const string with the name of shader file, can be
-//                      relative to ve::directories::skRc directory.
-//    @param macros - preprocessor macros to build shader with.
-//    @return - Shader::Info object or ut::Error if failed.
-ut::Result<Shader, ut::Error> Engine::LoadShader(Shader::Stage stage,
-                                                 ut::String shader_name,
-                                                 ut::String entry_point,
-                                                 const ut::String& filename,
-                                                 Shader::Macros macros)
-{
-	ut::Result<Shader::Info, ut::Error> result = shader_cache.CompileFromFile(stage,
-	                                                                          ut::Move(shader_name),
-	                                                                          ut::Move(entry_point),
-	                                                                          filename,
-	                                                                          ut::Move(macros));
-	if (!result)
-	{
-		return ut::MakeError(result.MoveAlt());
-	}
-	return device.CreateShader(result.Move());
 }
 
 // Updates buffer contents with provided data. Can be used as a convenient

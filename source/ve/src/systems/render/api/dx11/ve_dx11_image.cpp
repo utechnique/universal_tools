@@ -16,9 +16,19 @@ PlatformImage::PlatformImage(ID3D11Texture1D* t1d_ptr,
 
 // Constructor, accepts 2d texture.
 PlatformImage::PlatformImage(ID3D11Texture2D* t2d_ptr,
-                             ID3D11ShaderResourceView* srv_ptr) : tex2d(t2d_ptr)
-                                                                , srv(srv_ptr)
-{}
+                             ID3D11ShaderResourceView* srv_ptr,
+                             ID3D11ShaderResourceView** cube_faces_ptr) : tex2d(t2d_ptr)
+                                                                       , srv(srv_ptr)
+{
+	if (cube_faces_ptr)
+	{
+		for (ut::uint32 i = 0; i < 6; i++)
+		{
+			ut::ComPtr<ID3D11ShaderResourceView> face(cube_faces_ptr[i]);
+			cube_faces[i] = ut::Move(face);
+		}
+	}
+}
 
 // Constructor, accepts 3d texture.
 PlatformImage::PlatformImage(ID3D11Texture3D* t3d_ptr,

@@ -47,7 +47,7 @@ void Descriptor::Connect(Shader& shader)
 }
 
 // Binds provided uniform buffer to this descriptor.
-void Descriptor::BindUniformBuffer(Buffer& uniform_buffer)
+void Descriptor::BindUniformBuffer(Buffer& uniform_buffer, ut::uint32 array_id)
 {
 	if (!binding)
 	{
@@ -62,12 +62,11 @@ void Descriptor::BindUniformBuffer(Buffer& uniform_buffer)
 		                  "as an uniform buffer: \"" << name << "\"" << ut::cret;
 	}
 
-	binding->slot = Slot();
-	binding->slot->uniform_buffer = &uniform_buffer;
+	AssignSlot(&uniform_buffer, array_id);
 }
 
 // Binds provided image to this descriptor.
-void Descriptor::BindImage(Image& image)
+void Descriptor::BindImage(Image& image, ut::uint32 array_id)
 {
 	if (!binding)
 	{
@@ -76,14 +75,62 @@ void Descriptor::BindImage(Image& image)
 		return;
 	}
 
-	binding->slot = Slot();
-	binding->slot->image = &image;
+	AssignSlot(&image, array_id);
+}
+
+// Binds provided cube face to this descriptor.
+void Descriptor::BindCubeFace(Image& cube_image, Image::Cube::Face face, ut::uint32 array_id)
+{
+	if (cube_image.GetInfo().type != Image::type_cube)
+	{
+		ut::log.Lock() << "Warning! Attempt to bind non-cubic image " <<
+		                  "as a cube face image: \"" << name << "\"" << ut::cret;
+		return;
+	}
+
+	if (!binding)
+	{
+		ut::log.Lock() << "Warning! Attempt to bind unconnected descriptor " << 
+		                  "as a cube face image: \"" << name << "\"" << ut::cret;
+		return;
+	}
+
+	AssignSlot(&cube_image, array_id);
+	binding->slots[array_id]->cube_face = face;
+}
+
+// Binds provided sampler to this descriptor.
+void Descriptor::BindSampler(Sampler& sampler, ut::uint32 array_id)
+{
+	if (!binding)
+	{
+		ut::log.Lock() << "Warning! Attempt to bind unconnected descriptor " <<
+		                  "as a sampler: \"" << name << "\"" << ut::cret;
+		return;
+	}
+
+	AssignSlot(&sampler, array_id);
 }
 
 // Returns current binding.
-ut::Optional<Descriptor::Binding> Descriptor::GetBinding() const
+const ut::Optional<Descriptor::Binding>& Descriptor::GetBinding() const
 {
 	return binding;
+}
+
+// Connects shader resource that is specified by the provided pointer to
+// the appropriate slot.
+void Descriptor::AssignSlot(void* rc_ptr, ut::uint32 array_id)
+{
+	const ut::uint32 min_array_size = array_id + 1;
+	if (binding->slots.GetNum() < min_array_size)
+	{
+		binding->slots.Resize(min_array_size);
+	}
+	ut::Optional<Slot>& slot = binding->slots[array_id];
+	slot = Slot();
+	slot->array_id = array_id;
+	slot->uniform_buffer = static_cast<Buffer*>(rc_ptr);
 }
 
 //----------------------------------------------------------------------------//
@@ -190,8 +237,8 @@ void DescriptorSet::Validate()
 				                  "the same name: \"" << d1.name << "\"" << ut::cret;
 			}
 
-			ut::Optional<Descriptor::Binding> b1 = d1.GetBinding();
-			ut::Optional<Descriptor::Binding> b2 = d2.GetBinding();
+			const ut::Optional<Descriptor::Binding>& b1 = d1.GetBinding();
+			const ut::Optional<Descriptor::Binding>& b2 = d2.GetBinding();
 
 			if (!b1 && !b2)
 			{

@@ -6,8 +6,9 @@
 #include "systems/render/ve_render_api.h"
 #include "ve_render_cfg.h"
 #include "ve_render_viewport_mgr.h"
-#include "ve_shader_cache.h"
 #include "ve_render_frame.h"
+#include "ve_render_image_loader.h"
+#include "ve_shader_loader.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -31,22 +32,6 @@ private:
 	// Executes viewport tasks (resize, close, etc.) in a safe manner.
 	void ProcessViewportEvents();
 
-	// Compiles a shader from file. Returns cached version if source didn't
-	// change or compiles it from the scratch otherwise.
-	//    @param stage - type of the shader (vertex/pixel/geometry etc.).
-	//    @param shader_name - string with the name of this
-	//                         particular shader build.
-	//    @param entry_point - string with a name of entry point.
-	//    @param filename - const string with the name of shader file, can be
-	//                      relative to ve::directories::skRc directory.
-	//    @param macros - preprocessor macros to build shader with.
-	//    @return - Shader::Info object or ut::Error if failed.
-	ut::Result<Shader, ut::Error> LoadShader(Shader::Stage stage,
-	                                         ut::String shader_name,
-	                                         ut::String entry_point,
-	                                         const ut::String& filename,
-	                                         Shader::Macros macros = Shader::Macros());
-
 	// Updates buffer contents with provided data. Can be used as a convenient
 	// wrapper around MapBuffer + UnmapBuffer functions. Note that buffer must be
 	// created with  ve::render::Buffer::gpu_cpu flag to be compatible with this
@@ -65,10 +50,13 @@ private:
 	Config<Settings> config;
 
 	// render device
-	Device& device;
+	Device& device;	
 
-	// shader cache optimizes loading of shaders
-	ShaderCache shader_cache;
+	// loads images form file
+	ImageLoader img_loader;
+
+	// loads shaders form file
+	ShaderLoader shader_loader;
 
 	// per-frame data (frames in flight)
 	ut::Array<Frame> frames;
@@ -77,8 +65,14 @@ private:
 	// used to render current frame
 	ut::uint32 current_frame_id;
 
+	// test
 	ut::Array< ut::Color<4> > backbuffer_clear_values;
 	ut::UniquePtr<Buffer> screen_space_quad;
+	ut::UniquePtr<Image> img_1d;
+	ut::UniquePtr<Image> img_2d;
+	ut::UniquePtr<Image> img_cube;
+	ut::UniquePtr<Image> img_3d;
+	ut::UniquePtr<Sampler> linear_sampler;
 };
 
 //----------------------------------------------------------------------------//

@@ -223,29 +223,14 @@ ut::Optional<Shader::Info&> ShaderCache::Find(Shader::Stage stage,
 //    @return - string with the final shader text or ut::Error if failed.
 ut::Result<ut::String, ut::Error> ShaderCache::Reader::ReadShaderFileText(const ut::String& filename)
 {
-	// open a file
-	ut::File file;
-
-	// try file path as is
-	ut::String path = filename;
-	ut::Optional<ut::Error> open_file_error = file.Open(path, ut::file_access_read);
-	if (open_file_error)
+	// read file
+	ut::Result<ut::File, ut::Error> open_result = OpenResourceFile(filename);
+	if (!open_result)
 	{
-		// if didn't work - try default resources directory
-		path = ut::String(directories::skRc) + ut::skFileSeparator + filename;
-		open_file_error = file.Open(path, ut::file_access_read);
-		if (open_file_error)
-		{
-			// finally try alternative resources directory
-			path = ut::String(directories::skRcAlt) + ut::skFileSeparator + filename;
-			open_file_error = file.Open(path, ut::file_access_read);
-			if (open_file_error)
-			{
-				ut::log.Lock() << "Shader cache: file " << filename << " not found." << ut::cret;
-				return ut::MakeError(open_file_error.Move());
-			}
-		}
+		ut::log.Lock() << "Render: image file " << filename << " not found." << ut::cret;
+		return ut::MakeError(open_result.MoveAlt());
 	}
+	ut::File& file = open_result.Get();
 
 	// get file size
 	ut::Result<size_t, ut::Error> get_size_result = file.GetSize();
@@ -269,7 +254,7 @@ ut::Result<ut::String, ut::Error> ShaderCache::Reader::ReadShaderFileText(const 
 	file.Close();
 
 	// include all files to the final shader code
-	ut::Result<ut::String, ut::Error> final_code = ProcessIncludes(ut::Move(text), path.GetIsolatedLocation(true));
+	ut::Result<ut::String, ut::Error> final_code = ProcessIncludes(ut::Move(text), file.GetPath().GetIsolatedLocation(true));
 	if (!final_code)
 	{
 		ut::log.Lock() << "Shader cache: error parsing includes in shader " << filename << ut::cret;

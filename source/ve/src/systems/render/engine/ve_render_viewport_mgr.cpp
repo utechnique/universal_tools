@@ -163,7 +163,7 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 	PipelineState::Info info;
 	info.stages[Shader::vertex] = display_shader->stages[Shader::vertex].Get();
 	info.stages[Shader::pixel] = display_shader->stages[Shader::pixel].Get();
-	info.viewports.Add(Viewport(0.0f, 0.0f, static_cast<float>(viewport.w()/2), static_cast<float>(viewport.h()), 0.0f, 1.0f));
+	info.viewports.Add(Viewport(0.0f, 0.0f, static_cast<float>(viewport.w()), static_cast<float>(viewport.h()), 0.0f, 1.0f));
 	info.input_assembly_state.topology = primitive::triangle_strip;
 	info.input_assembly_state.elements.Add(VertexElement("POSITION", 0, pixel::r32g32b32, 0));
 	info.input_assembly_state.elements.Add(VertexElement("TEXCOORD", 0, pixel::r32g32, 12));

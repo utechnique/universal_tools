@@ -9,20 +9,6 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// ve::render::FramebufferInfo conveniently stores all essential
-// information about a framebuffer.
-class FramebufferInfo
-{
-public:
-	FramebufferInfo(ut::uint32 in_width = 0,
-	                ut::uint32 in_height = 0) : width(in_width)
-	                                          , height(in_height)
-	{}
-
-	ut::uint32 width;
-	ut::uint32 height;
-};
-
 // ve::render::Framebuffer represents a set of render targets that can
 // be bound to the graphics pipeline. It can have one depth-stencil
 // target (optionally) and multiple color targets.
@@ -32,9 +18,17 @@ class Framebuffer : public PlatformFramebuffer
 	friend class Device;
 
 public:
+	// ve::render::Framebuffer::Info conveniently stores all essential
+	// information about a framebuffer.
+	struct Info
+	{
+		ut::uint32 width = 0;
+		ut::uint32 height = 0;
+	};
+
 	// Constructor.
 	Framebuffer(PlatformFramebuffer platform_framebuffer,
-	            const FramebufferInfo& framebuffer_info,
+	            const Info& framebuffer_info,
 	            ut::Array< ut::Ref<Target> > in_color_targets,
 	            ut::Optional<Target&> in_depth_stencil_target = ut::Optional<Target&>());
 
@@ -49,7 +43,7 @@ public:
 	Framebuffer& operator =(const Framebuffer&) = delete;
 
 	// Returns a const reference to the object with information about this framebuffer.
-	const FramebufferInfo& GetInfo() const
+	const Info& GetInfo() const
 	{
 		return info;
 	}
@@ -57,7 +51,7 @@ public:
 private:
 	ut::Array< ut::Ref<Target> > color_targets;
 	ut::Optional<Target&> depth_stencil_target;
-	FramebufferInfo info;
+	Info info;
 };
 
 //----------------------------------------------------------------------------//

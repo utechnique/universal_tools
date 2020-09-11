@@ -5,6 +5,8 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_platform.h"
 #include "systems/render/api/ve_render_context.h"
+#include "systems/render/api/ve_render_image.h"
+#include "systems/render/api/ve_render_sampler.h"
 #include "systems/render/api/ve_render_target.h"
 #include "systems/render/api/ve_render_display.h"
 #include "systems/render/api/ve_render_cmd_buffer.h"
@@ -40,10 +42,15 @@ public:
 	Device(const Device&) = delete;
 	Device& operator =(const Device&) = delete;
 
-	// Creates new texture.
-	//    @param info - reference to the ImageInfo object describing an image.
+	// Creates a new texture.
+	//    @param info - reference to the Image::Info object describing an image.
 	//    @return - new image object of error if failed.
-	ut::Result<Image, ut::Error> CreateImage(const ImageInfo& info);
+	ut::Result<Image, ut::Error> CreateImage(Image::Info info);
+
+	// Creates a new sampler.
+	//    @param info - reference to the Sampler::Info object describing a sampler.
+	//    @return - new sampler object of error if failed.
+	ut::Result<Sampler, ut::Error> CreateSampler(Sampler::Info info);
 
 	// Creates platform-specific representation of the rendering area inside a UI viewport.
 	//    @param viewport - reference to UI viewport containing rendering area.

@@ -25,6 +25,68 @@ Pipeline GenDefaultPipeline()
 	return pipeline;
 }
 
+// Searches for a file using provided filename, if desired file wasn't found,
+// searches for it in ve::skRc and ve::skRcAlt directories, and if it wasn't
+// found even there - returns an error.
+//    @param filename - path to the file.
+//    @return - path to the file or ut::Error if failed.
+ut::Optional<ut::String> FindResourceFile(const ut::String& filename)
+{
+	ut::File file;
+	ut::String path = filename;
+	ut::Optional<ut::Error> open_file_error = file.Open(path, ut::file_access_read);
+	if (open_file_error)
+	{
+		// if didn't work - try default resources directory
+		path = ut::String(directories::skRc) + ut::skFileSeparator + filename;
+		open_file_error = file.Open(path, ut::file_access_read);
+		if (open_file_error)
+		{
+			// finally try alternative resources directory
+			path = ut::String(directories::skRcAlt) + ut::skFileSeparator + filename;
+			open_file_error = file.Open(path, ut::file_access_read);
+			if (open_file_error)
+			{
+				return ut::Optional<ut::String>();
+			}
+		}
+	}
+	return path;
+}
+
+// Opens a file using ve::FindResourceFile() function.
+//    @param filename - path to the file.
+//    @return - opened file or ut::Error if failed.
+ut::Result<ut::File, ut::Error> OpenResourceFile(const ut::String& filename)
+{
+	ut::Optional<ut::String> path = FindResourceFile(filename);
+	if (!path)
+	{
+		return ut::MakeError(ut::error::not_found);
+	}
+
+	ut::File file;
+	ut::Optional<ut::Error> open_file_error = file.Open(path.Get(), ut::file_access_read);
+	if (open_file_error)
+	{
+		return ut::MakeError(open_file_error.Move());
+	}
+	return file;
+}
+
+// Reads data from file using ve::FindResourceFile() function.
+//    @param filename - path to the file.
+//    @return - contents of the desired file or ut::Error if failed.
+ut::Result<ut::Array<ut::byte>, ut::Error> ReadResourceFile(const ut::String& filename)
+{
+	ut::Optional<ut::String> path = FindResourceFile(filename);
+	if (!path)
+	{
+		return ut::MakeError(ut::error::not_found);
+	}
+	return ut::ReadFile(path.Get());
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//

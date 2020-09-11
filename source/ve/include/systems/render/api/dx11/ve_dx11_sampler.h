@@ -11,36 +11,27 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// DirectX 11 context.
-class PlatformContext
+// DirectX 11 sampler.
+class PlatformSampler
 {
 	friend class Device;
+	friend class Context;
 public:
 	// Constructor.
-	PlatformContext(ID3D11DeviceContext* context_ptr);
+	PlatformSampler(ID3D11SamplerState* sampler_ptr);
 
 	// Move constructor.
-	PlatformContext(PlatformContext&&) noexcept;
+	PlatformSampler(PlatformSampler&&) noexcept;
 
 	// Move operator.
-	PlatformContext& operator =(PlatformContext&&) noexcept;
+	PlatformSampler& operator =(PlatformSampler&&) noexcept;
 
 	// Copying is prohibited.
-	PlatformContext(const PlatformContext&) = delete;
-	PlatformContext& operator =(const PlatformContext&) = delete;
+	PlatformSampler(const PlatformSampler&) = delete;
+	PlatformSampler& operator =(const PlatformSampler&) = delete;
 
-protected:
-	// Sets a constant buffer used by the appropriate shader pipeline stage.
-	void SetUniformBuffer(ut::uint32 slot, ID3D11Buffer* buffer);
-
-	// Sets an image used by the appropriate shader pipeline stage.
-	void SetImage(ut::uint32 slot, ID3D11ShaderResourceView* srv);
-
-	// Sets a sampler used by the appropriate shader pipeline stage.
-	void SetSampler(ut::uint32 slot, ID3D11SamplerState* sampler_state);
-
-	ut::ComPtr<ID3D11DeviceContext> d3d11_context;
-	bool stage_bound[6];
+private:
+	ut::ComPtr<ID3D11SamplerState> sampler_state;
 };
 
 //----------------------------------------------------------------------------//

@@ -23,7 +23,8 @@ public:
 
 	// Constructor, accepts 2d texture.
 	explicit PlatformImage(ID3D11Texture2D* t2d_ptr,
-	                       ID3D11ShaderResourceView* srv_ptr);
+	                       ID3D11ShaderResourceView* srv_ptr,
+	                       ID3D11ShaderResourceView** cube_faces_ptr = nullptr);
 
 	// Constructor, accepts 3d texture.
 	explicit PlatformImage(ID3D11Texture3D* t3d_ptr,
@@ -45,6 +46,7 @@ private:
 	ut::ComPtr<ID3D11Texture2D>			 tex2d;
 	ut::ComPtr<ID3D11Texture3D>			 tex3d;
 	ut::ComPtr<ID3D11Texture2D>			 stage2d;
+	ut::ComPtr<ID3D11ShaderResourceView> cube_faces[6];
 };
 
 //----------------------------------------------------------------------------//
