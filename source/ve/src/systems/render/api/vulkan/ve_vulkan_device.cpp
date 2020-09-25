@@ -134,7 +134,66 @@ VkBufferUsageFlagBits ConvertBufferTypeToVulkan(Buffer::Type type)
 	return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 }
 
+// Converts image type to the one compatible with Vulkan.
+VkImageType ConvertImageTypeToVulkan(Image::Type type)
+{
+	switch (type)
+	{
+	case Image::type_1D: return VK_IMAGE_TYPE_1D;
+	case Image::type_2D: return VK_IMAGE_TYPE_2D;
+	case Image::type_cube: return VK_IMAGE_TYPE_2D;
+	case Image::type_3D: return VK_IMAGE_TYPE_3D;
+	}
+	return VK_IMAGE_TYPE_2D;
+}
 
+// Converts image type to the one compatible with Vulkan.
+VkImageViewType ConvertImageViewTypeToVulkan(Image::Type type)
+{
+	switch (type)
+	{
+	case Image::type_1D: return VK_IMAGE_VIEW_TYPE_1D;
+	case Image::type_2D: return VK_IMAGE_VIEW_TYPE_2D;
+	case Image::type_cube: return VK_IMAGE_VIEW_TYPE_CUBE;
+	case Image::type_3D: return VK_IMAGE_VIEW_TYPE_3D;
+	}
+	return VK_IMAGE_VIEW_TYPE_2D;
+}
+
+// Converts texture filter to the one compatible with Vulkan.
+VkFilter ConvertFilterToVulkan(Sampler::Filter filter)
+{
+	switch (filter)
+	{
+	case Sampler::filter_nearest: return VK_FILTER_NEAREST;
+	case Sampler::filter_linear: return VK_FILTER_LINEAR;
+	}
+	return  VK_FILTER_NEAREST;
+}
+
+// Converts mipmap mode to the one compatible with Vulkan.
+VkSamplerMipmapMode ConvertMipmapModeToVulkan(Sampler::Filter filter)
+{
+	switch (filter)
+	{
+	case Sampler::filter_nearest: return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	case Sampler::filter_linear: return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	}
+	return  VK_SAMPLER_MIPMAP_MODE_NEAREST;
+}
+
+// Converts sampler address mode to the one compatible with Vulkan.
+VkSamplerAddressMode ConvertAddressModeToVulkan(Sampler::AddressMode mode)
+{
+	switch (mode)
+	{
+	case Sampler::address_wrap: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	case Sampler::address_mirror: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	case Sampler::address_clamp: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	case Sampler::address_border: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	}
+	return  VK_SAMPLER_ADDRESS_MODE_REPEAT;
+}
 
 //----------------------------------------------------------------------------//
 // Constructor.
@@ -228,12 +287,53 @@ ut::Result<VkBuffer, ut::Error> PlatformDevice::CreateVulkanBuffer(VkDeviceSize 
 	return buffer;
 }
 
+// Allocates gpu memory for the specified image.
+//    @param buffer - buffer handle.
+//    @param properties - memory properties.
+//    @return - memory resource object or error if failed.
+ut::Result<VkRc<vk::memory>, ut::Error> PlatformDevice::AllocateImageMemory(VkImage image,
+                                                                            VkMemoryPropertyFlags properties)
+{
+	// get memory requirements
+	VkMemoryRequirements mem_reqs;
+	vkGetImageMemoryRequirements(device.GetVkHandle(), image, &mem_reqs);
+
+	// get memory type
+	ut::Optional<uint32_t> memory_type = FindMemoryTypeFromProperties(mem_reqs.memoryTypeBits, properties);
+	if (!memory_type)
+	{
+		return ut::MakeError(ut::Error(ut::error::not_found, "Vulkan: no suitable memory type for the provided buffer."));
+	}
+
+	// initialize VkMemoryAllocateInfo
+	VkMemoryAllocateInfo alloc_info;
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.pNext = nullptr;
+	alloc_info.allocationSize = mem_reqs.size;
+	alloc_info.memoryTypeIndex = memory_type.Get();
+
+	// allocate video memory
+	VkDeviceMemory image_memory;
+	VkResult res = vkAllocateMemory(device.GetVkHandle(), &alloc_info, nullptr, &image_memory);
+	if (res != VK_SUCCESS)
+	{
+		return ut::MakeError(VulkanError(res, "vkAllocateMemory(buffer)"));
+	}
+
+	// bind memory
+	vkBindImageMemory(device.GetVkHandle(), image, image_memory, 0);
+
+	// success
+	VkDetail<vk::memory> detail(device.GetVkHandle(), alloc_info.allocationSize);
+	return VkRc<vk::memory>(image_memory, detail);
+}
+
 // Allocates gpu memory for the specified buffer.
 //    @param buffer - buffer handle.
 //    @param properties - memory properties.
-//    @return - memory handle or error if failed.
-ut::Result<VkDeviceMemory, ut::Error> PlatformDevice::AllocateBufferMemory(VkBuffer buffer,
-                                                                           VkMemoryPropertyFlags properties)
+//    @return - memory resource object or error if failed.
+ut::Result<VkRc<vk::memory>, ut::Error> PlatformDevice::AllocateBufferMemory(VkBuffer buffer,
+                                                                             VkMemoryPropertyFlags properties)
 {
 	// get memory requirements
 	VkMemoryRequirements mem_reqs;
@@ -265,17 +365,261 @@ ut::Result<VkDeviceMemory, ut::Error> PlatformDevice::AllocateBufferMemory(VkBuf
 	vkBindBufferMemory(device.GetVkHandle(), buffer, buffer_memory, 0);
 
 	// success
-	return buffer_memory;
+	VkDetail<vk::memory> detail(device.GetVkHandle(), alloc_info.allocationSize);
+	return VkRc<vk::memory>(buffer_memory, detail);
+}
+
+// Creates staging buffer.
+//    @param size - size of the buffer in bytes.
+//    @param ini_data - optional array of bytes to initialize buffer with.
+//    @return -buffer object or error if failed.
+ut::Result<PlatformBuffer, ut::Error> PlatformDevice::CreateStagingBuffer(size_t size,
+                                                                          ut::Optional<const ut::Array<ut::byte>&> ini_data)
+{
+	// create staging buffer
+	ut::Result<VkBuffer, ut::Error> staging_buffer_result = CreateVulkanBuffer(size,
+	                                                                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	if (!staging_buffer_result)
+	{
+		return ut::MakeError(staging_buffer_result.MoveAlt());
+	}
+	VkBuffer staging_buffer = staging_buffer_result.Get();
+
+	// allocate staging memory
+	VkMemoryPropertyFlags staging_mem_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+	                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	ut::Result<VkRc<vk::memory>, ut::Error> staging_memory = AllocateBufferMemory(staging_buffer,
+	                                                                              staging_mem_properties);
+	if (!staging_memory)
+	{
+		return ut::MakeError(staging_memory.MoveAlt());
+	}
+
+	// copy data to the staging buffer
+	if(ini_data)
+	{
+		const size_t ini_size = ut::Min<size_t>(ini_data->GetSize(), size);
+		void* staging_buffer_data;
+		VkResult res = vkMapMemory(device.GetVkHandle(),
+								   staging_memory->GetVkHandle(),
+								   0, ini_size,
+								   0, &staging_buffer_data);
+		if (res != VK_SUCCESS)
+		{
+			return ut::MakeError(VulkanError(res, "vkMapMemory(staging buffer)"));
+		}
+		ut::memory::Copy(staging_buffer_data, ini_data->GetAddress(), ini_size);
+		vkUnmapMemory(device.GetVkHandle(), staging_memory->GetVkHandle());
+	}
+
+	// success
+	return PlatformBuffer(device.GetVkHandle(),
+	                      staging_buffer,
+	                      staging_memory.Move());
+}
+
+// Copies pixel data to the image subresource according to the specified
+// layout.
+//    @param dst - address of the buffer associated with an image.
+//    @param src - source linear data with zero pitches.
+//    @param pixel_size - size of one pixel in bytes.
+//    @param width - width of an image in pixels.
+//    @param height - height of an image in pixels.
+//    @param depth - depth of an image in pixels.
+//    @param offset - offset in bytes from the @dst.
+//    @param row_pitch - number of bytes between each row in an image.
+//    @param depth_pitch - number of bytes between each slice in an image.
+void PlatformDevice::CopyPixelsToSubRc(ut::byte* dst,
+                                       const ut::byte* src,
+                                       size_t pixel_size,
+                                       size_t width,
+                                       size_t height,
+                                       size_t depth,
+                                       size_t offset,
+                                       size_t row_pitch,
+                                       size_t depth_pitch)
+{
+	const size_t row_size = width * pixel_size;
+	for (size_t z = 0; z < depth; z++)
+	{
+		ut::byte* row = dst + offset + depth_pitch * z;
+		for (size_t y = 0; y < height; y++)
+		{
+			ut::memory::Copy(row, src, row_size);
+			row += row_pitch;
+			src += row_size;
+		}
+	}
+}
+
+// Performs image layout transition.
+//    @param cmd_buffer - command buffer handle to record transition command.
+//    @param image - image handle.
+//    @param aspect_mask - bitmask of VkImageAspectFlagBits specifying
+//                         which aspect(s) of the image are included
+//                         in the view.
+//    @param old_layout - current image layout.
+//    @param new_layout - desired image layout.
+//    @param src_stages - bitmask of VkAccessFlagBits specifying a
+//                        source access mask.
+//    @param dst_stages - bitmask of VkAccessFlagBits specifying a
+//                        destination access mask.
+//    @param base_mip_level - id of the first mip level.
+//    @param mip_levels - number of mip levels.
+//    @param base_array_layer - id of the first image in an array.
+//    @param layer_count - number of images in an array.
+//    @return - optional error if failed.
+void PlatformDevice::SetImageLayout(VkCommandBuffer cmd_buffer,
+                                    VkImage image,
+                                    VkImageAspectFlags aspect_mask,
+                                    VkImageLayout old_layout,
+                                    VkImageLayout new_layout,
+                                    VkPipelineStageFlags src_stages,
+                                    VkPipelineStageFlags dst_stages,
+                                    ut::uint32 base_mip_level,
+                                    ut::uint32 mip_levels,
+                                    ut::uint32 base_array_layer,
+                                    ut::uint32 layer_count)
+{
+	UT_ASSERT(image != VK_NULL_HANDLE);
+
+	// initialize barrier data
+	VkImageMemoryBarrier img_barrier;
+	img_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	img_barrier.pNext = nullptr;
+	img_barrier.srcAccessMask = 0;
+	img_barrier.dstAccessMask = 0;
+	img_barrier.oldLayout = old_layout;
+	img_barrier.newLayout = new_layout;
+	img_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	img_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	img_barrier.image = image;
+	img_barrier.subresourceRange.aspectMask = aspect_mask;
+	img_barrier.subresourceRange.baseMipLevel = base_mip_level;
+	img_barrier.subresourceRange.levelCount = mip_levels;
+	img_barrier.subresourceRange.baseArrayLayer = base_array_layer;
+	img_barrier.subresourceRange.layerCount = layer_count;
+
+	// initialize source access mask
+	switch (old_layout)
+	{
+	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+		img_barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		break;
+
+	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+		img_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		break;
+
+	case VK_IMAGE_LAYOUT_PREINITIALIZED:
+		img_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		break;
+
+	default:
+		break;
+	}
+
+	// initialize destination access mask
+	switch (new_layout)
+	{
+	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+		img_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		break;
+
+	case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+		img_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		break;
+
+	case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+		img_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		break;
+
+	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+		img_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		break;
+
+	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+		img_barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		break;
+
+	default:
+		break;
+	}
+
+	// set layout
+	vkCmdPipelineBarrier(cmd_buffer, src_stages, dst_stages, 0, 0, nullptr, 0, nullptr, 1, &img_barrier);
 }
 
 // Copies contents of source buffer to the destination buffer.
+//    @param cmd_buffer - command buffer to record a command.
 //    @param src - source buffer handle.
 //    @param dst - destination buffer handle.
 //    @param size - size of the data to be copied in bytes.
-//    @return - optional error if failed.
-ut::Optional<ut::Error> PlatformDevice::CopyVulkanBuffer(VkBuffer src,
-                                                         VkBuffer dst,
-                                                         VkDeviceSize size)
+void PlatformDevice::CopyVulkanBuffer(VkCommandBuffer cmd_buffer,
+                                      VkBuffer src,
+                                      VkBuffer dst,
+                                      VkDeviceSize size)
+{
+	UT_ASSERT(src != VK_NULL_HANDLE);
+	UT_ASSERT(dst != VK_NULL_HANDLE);
+
+	VkBufferCopy copy_region;
+	copy_region.srcOffset = 0; // Optional
+	copy_region.dstOffset = 0; // Optional
+	copy_region.size = size;
+	vkCmdCopyBuffer(cmd_buffer, src, dst, 1, &copy_region);
+}
+
+// Copies contents of source buffer to the destination image.
+//    @param cmd_buffer - command buffer to record a command.
+//    @param src - source buffer handle.
+//    @param dst - destination image handle.
+//    @param offset - buffer offset in bytes.
+//    @param aspect_mask - bitmask of VkImageAspectFlagBits specifying
+//                         which aspect(s) of the image are included
+//                         in the view.
+//    @param image_layout - current image layout.
+//    @param width - width of an image in pixels.
+//    @param height - height of an image in pixels.
+//    @param depth - depth of an image in pixels.
+//    @param mip_id - id of the mip to be copied.
+//    @param base_array_layer - id of the first image in an array.
+//    @param layer_count - number of images in an array.
+void PlatformDevice::CopyVulkanBufferToImage(VkCommandBuffer cmd_buffer,
+                                             VkBuffer src,
+                                             VkImage dst,
+                                             VkImageAspectFlags aspect_mask,
+                                             VkImageLayout image_layout,
+                                             size_t offset,
+                                             ut::uint32 width,
+                                             ut::uint32 height,
+                                             ut::uint32 depth,
+                                             ut::uint32 mip_id,
+                                             ut::uint32 base_array_layer,
+                                             ut::uint32 layer_count)
+{
+	VkBufferImageCopy copy_region;
+	copy_region.bufferOffset = offset;
+	copy_region.bufferRowLength = width;
+	copy_region.bufferImageHeight = height;
+	copy_region.imageSubresource.aspectMask = aspect_mask;
+	copy_region.imageSubresource.mipLevel = mip_id;
+	copy_region.imageSubresource.baseArrayLayer = base_array_layer;
+	copy_region.imageSubresource.layerCount = layer_count;
+	copy_region.imageOffset.x = 0;
+	copy_region.imageOffset.y = 0;
+	copy_region.imageOffset.z = 0;
+	copy_region.imageExtent.width = width;
+	copy_region.imageExtent.height = height;
+	copy_region.imageExtent.depth = depth;
+
+	vkCmdCopyBufferToImage(cmd_buffer, src, dst, image_layout, 1, &copy_region);
+}
+
+// Creates a command buffer to record immediate commands.
+// This command buffer can be submit by calling SubmitImmediateCmdBuffer().
+//    @return - command buffer handle or error if failed.
+ut::Result<VkCommandBuffer, ut::Error> PlatformDevice::BeginImmediateCmdBuffer()
 {
 	VkCommandBufferAllocateInfo alloc_info;
 	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -290,7 +634,7 @@ ut::Optional<ut::Error> PlatformDevice::CopyVulkanBuffer(VkBuffer src,
 	                                        &cmd_buffer);
 	if (res != VK_SUCCESS)
 	{
-		return VulkanError(res, "vkAllocateCommandBuffers(copy buffer)");
+		return ut::MakeError(VulkanError(res, "vkAllocateCommandBuffers(immediate)"));
 	}
 
 	VkCommandBufferBeginInfo begin_info;
@@ -302,19 +646,21 @@ ut::Optional<ut::Error> PlatformDevice::CopyVulkanBuffer(VkBuffer src,
 	res = vkBeginCommandBuffer(cmd_buffer, &begin_info);
 	if (res != VK_SUCCESS)
 	{
-		return VulkanError(res, "vkBeginCommandBuffer(copy buffer)");
+		return ut::MakeError(VulkanError(res, "vkBeginCommandBuffer(immediate)"));
 	}
 
-	VkBufferCopy copy_region;
-	copy_region.srcOffset = 0; // Optional
-	copy_region.dstOffset = 0; // Optional
-	copy_region.size = size;
-	vkCmdCopyBuffer(cmd_buffer, src, dst, 1, &copy_region);
+	return cmd_buffer;
+}
 
-	res = vkEndCommandBuffer(cmd_buffer);
+// Submits provided command buffer and waits for completion.
+//    @param cmd_buffer - command buffer handle.
+//    @return - optional error if failed.
+ut::Optional<ut::Error> PlatformDevice::EndImmediateCmdBuffer(VkCommandBuffer cmd_buffer)
+{
+	VkResult res = vkEndCommandBuffer(cmd_buffer);
 	if (res != VK_SUCCESS)
 	{
-		return VulkanError(res, "vkEndCommandBuffer(copy buffer)");
+		return VulkanError(res, "vkEndCommandBuffer(immediate)");
 	}
 
 	VkSubmitInfo submit_info;
@@ -337,13 +683,13 @@ ut::Optional<ut::Error> PlatformDevice::CopyVulkanBuffer(VkBuffer src,
 	res = vkCreateFence(device.GetVkHandle(), &fence_info, nullptr, &fence);
 	if (res != VK_SUCCESS)
 	{
-		return VulkanError(res, "vkCreateFence(copy buffer)");
+		return VulkanError(res, "vkCreateFence(immediate cmd buffer)");
 	}
 
 	res = vkQueueSubmit(main_queue.GetVkHandle(), 1, &submit_info, fence);
 	if (res != VK_SUCCESS)
 	{
-		return VulkanError(res, "vkQueueSubmit(copy buffer)");
+		return VulkanError(res, "vkQueueSubmit(immediate cmd buffer)");
 	}
 
 	do
@@ -375,7 +721,7 @@ VkInstance PlatformDevice::CreateVulkanInstance()
 	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);;
 	app_info.pEngineName = app_name;
 	app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);;
-	app_info.apiVersion = VK_API_VERSION_1_0;
+	app_info.apiVersion = VK_API_VERSION_1_1;
 
 	// instance information object
 	VkInstanceCreateInfo inst_info = {};
@@ -678,6 +1024,12 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 	// get device extensions
 	ut::Array<const char*> extensions = GetDeviceVkInstanceExtensions();
 
+	// enumerate features to be enabled
+	VkPhysicalDeviceFeatures features;
+	ut::memory::Set(&features, 0, sizeof(VkPhysicalDeviceFeatures));
+	features.geometryShader = VK_TRUE;
+	features.tessellationShader = VK_TRUE;
+
 	// VkDeviceCreateInfo
 	VkDeviceCreateInfo device_info = {};
 	device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -688,7 +1040,7 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 	device_info.ppEnabledExtensionNames = extensions.GetAddress();
 	device_info.enabledLayerCount = 0;
 	device_info.ppEnabledLayerNames = nullptr;
-	device_info.pEnabledFeatures = nullptr;
+	device_info.pEnabledFeatures = &features;
 
 	// create device
 	VkDevice out_device;
@@ -780,13 +1132,374 @@ Device::Device(Device&&) noexcept = default;
 // Move operator.
 Device& Device::operator =(Device&&) noexcept = default;
 
-// Creates new texture.
-//    @param info - reference to the ImageInfo object describing an image.
+// Creates a new image.
+//    @param info - reference to the Image::Info object describing an image.
 //    @return - new image object of error if failed.
-ut::Result<Image, ut::Error> Device::CreateImage(const ImageInfo& info)
+ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 {
-	PlatformImage platform_texture;
-	return Image(ut::Move(platform_texture), info);
+	// dimensions
+	bool is_1d = info.type == Image::type_1D;
+	bool is_2d = info.type == Image::type_2D || info.type == Image::type_cube;
+	bool is_3d = info.type == Image::type_3D;
+	bool is_cube = info.type == Image::type_cube;
+
+	// pixel format
+	const VkFormat pixel_format = ConvertPixelFormatToVulkan(info.format);
+
+	// figure out pixel size
+	const ut::uint32 pixel_size = pixel::GetSize(info.format);
+	if (pixel_size == 0)
+	{
+		return ut::MakeError(ut::error::invalid_arg, "Vulkan: Cannot create image with zero pixel size.");
+	}
+
+	// check if staging is required
+	const size_t ini_size = info.data.GetSize();
+	const bool must_be_initialized = ini_size != 0;
+	const bool must_have_cpu_access = info.usage == render::memory::gpu_read_cpu_write ||
+	                                  info.usage == render::memory::gpu_read_write_cpu_staging;
+	const bool tiling_must_be_linear = must_have_cpu_access;
+	const bool needs_staging = info.usage != render::memory::gpu_read_cpu_write;
+
+	// check if gpu supports linear tiling
+	if (tiling_must_be_linear)
+	{
+		VkFormatProperties formatProps;
+		vkGetPhysicalDeviceFormatProperties(gpu, pixel_format, &formatProps);
+		if (!(formatProps.linearTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
+		{
+			ut::String err_str("Vulkan: image cannot be create - GPU doesn't support linear tiling.");
+			return ut::MakeError(ut::error::not_supported, ut::Move(err_str));
+		}
+	}
+
+	// initialize info
+	VkImageCreateInfo image_info;
+	image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	image_info.pNext = nullptr;
+	image_info.flags = is_cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
+	image_info.imageType = ConvertImageTypeToVulkan(info.type);
+	image_info.format = pixel_format;
+	image_info.extent.width = info.width;
+	image_info.extent.height = info.height;
+	image_info.extent.depth = info.depth;
+	image_info.mipLevels = info.mip_count;
+	image_info.arrayLayers = is_cube ? 6 : 1;
+	image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+	image_info.tiling = tiling_must_be_linear ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+	image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+	image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	image_info.queueFamilyIndexCount = 0;
+	image_info.pQueueFamilyIndices = nullptr;
+	image_info.initialLayout = (!needs_staging && must_be_initialized) ? VK_IMAGE_LAYOUT_PREINITIALIZED :
+	                                                                     VK_IMAGE_LAYOUT_UNDEFINED;
+
+	// set valid usage for the buffer
+	if (needs_staging)
+	{
+		image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	}
+
+	// create image
+	VkImage image;
+	VkResult res = vkCreateImage(device.GetVkHandle(), &image_info, nullptr, &image);
+	if (res != VK_SUCCESS)
+	{
+		return ut::MakeError(VulkanError(res, "vkCreateImage"));
+	}
+
+	// allocate memory
+	VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+	                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	if (needs_staging)
+	{
+		memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	}
+
+	ut::Result<VkRc<vk::memory>, ut::Error> memory_result = AllocateImageMemory(image, memory_properties);
+	if (!memory_result)
+	{
+		return ut::MakeError(memory_result.MoveAlt());
+	}
+	VkRc<vk::memory> image_memory(memory_result.Move());
+	const size_t image_size = image_memory.GetDetail().GetSize();
+
+	// start immediate commands
+	ut::Result<VkCommandBuffer, ut::Error> immediate_buffer = BeginImmediateCmdBuffer();
+	if (!immediate_buffer)
+	{
+		return ut::MakeError(immediate_buffer.MoveAlt());
+	}
+
+	// images must be suitable for all shader stages
+	int shader_stages_flag = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+	                         VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+	                         VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+	                         VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
+	                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+	                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+	// image may need staging buffer
+	ut::Optional<PlatformBuffer> staging_buffer;
+	if (needs_staging)
+	{
+		// create staging buffer
+		ut::Result<PlatformBuffer, ut::Error> staging_buffer_result = CreateStagingBuffer(image_size);
+		if (!staging_buffer_result)
+		{
+			return ut::MakeError(staging_buffer_result.MoveAlt());
+		}
+		staging_buffer = staging_buffer_result.Move();
+
+		// set image layout for staging
+		SetImageLayout(immediate_buffer.Get(),
+		               image,
+		               VK_IMAGE_ASPECT_COLOR_BIT,
+		               image_info.initialLayout,
+		               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		               VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		               VK_PIPELINE_STAGE_TRANSFER_BIT,
+		               0, image_info.mipLevels,    // base mip id and mip level count
+		               0, image_info.arrayLayers); // base array layer and layer count
+	}
+
+	// copy memory
+	if (must_be_initialized)
+	{
+		// get address of the buffer to initialize image, it can be
+		// staging buffer or direct image memory
+		VkDeviceMemory mapped_memory;
+		if (needs_staging)
+		{
+			mapped_memory = staging_buffer->memory.GetVkHandle();
+		}
+		else
+		{
+			mapped_memory = image_memory.GetVkHandle();
+		}
+
+		// map image memory
+		void* image_data;
+		VkResult res = vkMapMemory(device.GetVkHandle(), mapped_memory, 0, image_size, 0, &image_data);
+		if (res != VK_SUCCESS)
+		{
+			return ut::MakeError(VulkanError(res, "vkMapMemory(initializing image)"));
+		}
+
+		// initialize all subresources
+		ut::byte* mip_data = info.data.GetAddress();
+		const ut::uint32 cubeface_count = is_cube ? 6 : 1;
+		for (ut::uint32 cubeface = 0; cubeface < cubeface_count; cubeface++)
+		{
+			ut::uint32 mip_width = info.width;
+			ut::uint32 mip_height = info.height;
+			ut::uint32 mip_depth = info.depth;
+
+			// iterate all mips
+			for (ut::uint32 mip = 0; mip < info.mip_count; mip++)
+			{
+				// get pitches (row, depth, array) for the current mip
+				VkSubresourceLayout layout;
+				VkImageSubresource subrc;
+				subrc.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				subrc.mipLevel = mip;
+				subrc.arrayLayer = cubeface;
+				if (tiling_must_be_linear)
+				{
+					vkGetImageSubresourceLayout(device.GetVkHandle(), image, &subrc, &layout);
+				}
+				else
+				{
+					layout.offset = mip_data - info.data.GetAddress();
+					layout.rowPitch = mip_width * pixel_size;
+					layout.depthPitch = layout.rowPitch * mip_height;
+				}
+
+				// copy data
+				CopyPixelsToSubRc(static_cast<ut::byte*>(image_data),
+				                  mip_data,
+				                  pixel_size,
+				                  mip_width,
+				                  mip_height,
+				                  mip_depth,
+				                  layout.offset,
+				                  layout.rowPitch,
+				                  layout.depthPitch);
+
+				// transfer data to the gpu
+				if (needs_staging)
+				{
+					CopyVulkanBufferToImage(immediate_buffer.Get(),
+					                        staging_buffer->GetVkHandle(),
+					                        image,
+					                        VK_IMAGE_ASPECT_COLOR_BIT,
+					                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					                        layout.offset,
+					                        mip_width,
+					                        mip_height,
+					                        mip_depth,
+					                        mip, // mip id
+					                        cubeface, // base array layer
+					                        1); // array count
+				}
+
+				// calculate metrics of the next mip
+				ut::uint32 mip_size = pixel_size * mip_width;
+				mip_width /= 2;
+
+				if (is_2d || is_3d)
+				{
+					mip_size *= mip_height;
+					mip_height /= 2;
+				}
+
+				if (is_3d)
+				{
+					mip_size *= mip_depth;
+					mip_depth /= 2;
+				}
+
+				mip_data += mip_size;
+			}
+		}
+
+		// unmap image memory
+		vkUnmapMemory(device.GetVkHandle(), mapped_memory);
+	}
+
+	// set final layout
+	VkImageLayout final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	if (needs_staging)
+	{
+		SetImageLayout(immediate_buffer.Get(),
+		               image,
+		               VK_IMAGE_ASPECT_COLOR_BIT,
+		               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		               final_layout,
+		               VK_PIPELINE_STAGE_TRANSFER_BIT,
+		               shader_stages_flag,
+		               0, image_info.mipLevels,    // base mip id and mip level count
+		               0, image_info.arrayLayers); // base array layer and layer count
+	}
+	else
+	{
+		SetImageLayout(immediate_buffer.Get(),
+		               image,
+		               VK_IMAGE_ASPECT_COLOR_BIT,
+		               image_info.initialLayout,
+		               final_layout,
+		               VK_PIPELINE_STAGE_HOST_BIT,
+		               shader_stages_flag,
+		               0, image_info.mipLevels,    // base mip id and mip level count
+		               0, image_info.arrayLayers); // base array layer and layer count
+	}
+
+	// submit all gpu commands
+	ut::Optional<ut::Error> end_cmd_buffer_error = EndImmediateCmdBuffer(immediate_buffer.Get());
+	if (end_cmd_buffer_error)
+	{
+		return ut::MakeError(end_cmd_buffer_error.Move());
+	}
+
+	// initialize image view info
+	VkImageViewCreateInfo view_info;
+	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	view_info.pNext = nullptr;
+	view_info.flags = 0;
+	view_info.image = image;
+	view_info.viewType = ConvertImageViewTypeToVulkan(info.type);
+	view_info.format = image_info.format;
+	view_info.components.r = VK_COMPONENT_SWIZZLE_R;
+	view_info.components.g = VK_COMPONENT_SWIZZLE_G;
+	view_info.components.b = VK_COMPONENT_SWIZZLE_B;
+	view_info.components.a = VK_COMPONENT_SWIZZLE_A;
+	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	view_info.subresourceRange.baseMipLevel = 0;
+	view_info.subresourceRange.levelCount = image_info.mipLevels;
+	view_info.subresourceRange.baseArrayLayer = 0;
+	view_info.subresourceRange.layerCount = image_info.arrayLayers;
+
+	// create image view
+	VkImageView image_view;
+	res = vkCreateImageView(device.GetVkHandle(), &view_info, nullptr, &image_view);
+	if (res != VK_SUCCESS)
+	{
+		return ut::MakeError(VulkanError(res, "vkCreateImageView"));
+	}
+
+	// image views for all cube faces
+	VkImageView cube_faces[6];
+	if (is_cube)
+	{
+		for (ut::uint32 cube_face = 0; cube_face < 6; cube_face++)
+		{
+			view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			view_info.pNext = nullptr;
+			view_info.flags = 0;
+			view_info.image = image;
+			view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			view_info.format = image_info.format;
+			view_info.components.r = VK_COMPONENT_SWIZZLE_R;
+			view_info.components.g = VK_COMPONENT_SWIZZLE_G;
+			view_info.components.b = VK_COMPONENT_SWIZZLE_B;
+			view_info.components.a = VK_COMPONENT_SWIZZLE_A;
+			view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			view_info.subresourceRange.baseMipLevel = 0;
+			view_info.subresourceRange.levelCount = image_info.mipLevels;
+			view_info.subresourceRange.baseArrayLayer = cube_face;
+			view_info.subresourceRange.layerCount = 1;
+
+			res = vkCreateImageView(device.GetVkHandle(), &view_info, nullptr, &cube_faces[cube_face]);
+			if (res != VK_SUCCESS)
+			{
+				return ut::MakeError(VulkanError(res, "vkCreateImageView(cube face)"));
+			}
+		}
+	}
+
+	// success
+	PlatformImage platform_img(device.GetVkHandle(),
+	                           image,
+	                           image_view,
+	                           is_cube ? cube_faces : nullptr,
+	                           final_layout,
+	                           ut::Move(image_memory));
+	return Image(ut::Move(platform_img), info);
+}
+
+// Creates a new sampler.
+//    @param info - reference to the Sampler::Info object describing a sampler.
+//    @return - new sampler object of error if failed.
+ut::Result<Sampler, ut::Error> Device::CreateSampler(const Sampler::Info& info)
+{
+	VkSamplerCreateInfo sampler_info;
+	sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	sampler_info.pNext = nullptr;
+	sampler_info.flags = 0;
+	sampler_info.magFilter = ConvertFilterToVulkan(info.mag_filter);
+	sampler_info.minFilter = ConvertFilterToVulkan(info.min_filter);
+	sampler_info.mipmapMode = ConvertMipmapModeToVulkan(info.mip_filter);
+	sampler_info.addressModeU = ConvertAddressModeToVulkan(info.address_u);
+	sampler_info.addressModeV = ConvertAddressModeToVulkan(info.address_v);
+	sampler_info.addressModeW = ConvertAddressModeToVulkan(info.address_w);
+	sampler_info.mipLodBias = info.mip_lod_bias;
+	sampler_info.anisotropyEnable = info.anisotropy_enable ? VK_TRUE : VK_FALSE;
+	sampler_info.maxAnisotropy = info.max_anisotropy;
+	sampler_info.compareEnable = info.compare_op ? VK_TRUE : VK_FALSE;
+	sampler_info.compareOp = info.compare_op ? ConvertCompareOpToVulkan(info.compare_op.Get()) : VK_COMPARE_OP_ALWAYS;
+	sampler_info.minLod = info.min_lod;
+	sampler_info.maxLod = info.max_lod;
+	sampler_info.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+	sampler_info.unnormalizedCoordinates = VK_FALSE;
+
+	VkSampler sampler;
+	VkResult res = vkCreateSampler(device.GetVkHandle(), &sampler_info, nullptr, &sampler);
+	if (res != VK_SUCCESS)
+	{
+		return ut::MakeError(VulkanError(res, "vkCreateSampler"));
+	}
+
+	return Sampler(PlatformSampler(device.GetVkHandle(), sampler), info);
 }
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
@@ -1083,16 +1796,22 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		PlatformRenderTarget platform_target(device.GetVkHandle(), view);
 
 		// stub texture
-		ImageInfo info;
+		Image::Info info;
 		info.format = ConvertPixelFormatFromVulkan(surface_format);
 		info.width = swapchain_extent.width;
 		info.height = swapchain_extent.height;
 		info.depth = 1;
-		Image image(PlatformImage(), info);
+		PlatformImage empty_img(device.GetVkHandle(),
+		                        VK_NULL_HANDLE, // handle
+		                        VK_NULL_HANDLE, // view
+			                    nullptr, // cube faces
+		                        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // layout
+		                        VK_NULL_HANDLE); // memory
+		Image image(ut::Move(empty_img), info);
 
 		// initialize render target info
-		RenderTargetInfo target_info;
-		target_info.usage = RenderTargetInfo::usage_present;
+		Target::Info target_info;
+		target_info.usage = Target::Info::usage_present;
 
 		// create final target for the current buffer
 		Target target(ut::Move(platform_target), ut::Move(image), target_info);
@@ -1364,7 +2083,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 		const Target& color_target = color_targets[i];
 
 		// check width and height
-		const ImageInfo& img_info = color_target.image.GetInfo();
+		const Image::Info& img_info = color_target.image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));
@@ -1383,7 +2102,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 		const Target& ds_target = depth_stencil_target.Get();
 
 		// check width and height
-		const ImageInfo& img_info = ds_target.image.GetInfo();
+		const Image::Info& img_info = ds_target.image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));
@@ -1396,29 +2115,34 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 		}
 	}
 
-	// framebuffer info
-	VkFramebufferCreateInfo fb_info = {};
-	fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	fb_info.pNext = nullptr;
-	fb_info.renderPass = render_pass.GetVkHandle();
-	fb_info.attachmentCount = static_cast<uint32_t>(attachments.GetNum());
-	fb_info.pAttachments = attachments.GetAddress();
-	fb_info.width = static_cast<uint32_t>(width);
-	fb_info.height = static_cast<uint32_t>(height);
-	fb_info.layers = 1;
+	// vulkan framebuffer info
+	VkFramebufferCreateInfo vk_fb_info = {};
+	vk_fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	vk_fb_info.pNext = nullptr;
+	vk_fb_info.renderPass = render_pass.GetVkHandle();
+	vk_fb_info.attachmentCount = static_cast<uint32_t>(attachments.GetNum());
+	vk_fb_info.pAttachments = attachments.GetAddress();
+	vk_fb_info.width = static_cast<uint32_t>(width);
+	vk_fb_info.height = static_cast<uint32_t>(height);
+	vk_fb_info.layers = 1;
 
 	// create framebuffer
 	VkFramebuffer framebuffer;
-	VkResult res = vkCreateFramebuffer(device.GetVkHandle(), &fb_info, nullptr, &framebuffer);
+	VkResult res = vkCreateFramebuffer(device.GetVkHandle(), &vk_fb_info, nullptr, &framebuffer);
 	if (res != VK_SUCCESS)
 	{
 		return ut::MakeError(VulkanError(res, "vkCreateFramebuffer"));
 	}
 
+	// initialize framebuffer info
+	Framebuffer::Info framebuffer_info;
+	framebuffer_info.width = width;
+	framebuffer_info.height = height;
+
 	// success
 	PlatformFramebuffer platform_framebuffer(device.GetVkHandle(), framebuffer);
 	return Framebuffer(ut::Move(platform_framebuffer),
-	                   FramebufferInfo(width, height),
+	                   framebuffer_info,
 	                   ut::Move(color_targets),
 	                   ut::Move(depth_stencil_target));
 }
@@ -1437,7 +2161,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 
 	// find valid usage for the buffer
 	int usage = ConvertBufferTypeToVulkan(info.type);
-	if (info.usage == render::memory::immutable)
+	if (info.usage == render::memory::gpu_immutable)
 	{
 		usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	}
@@ -1453,80 +2177,63 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	// allocate memory
 	VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 	                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	if (info.usage == render::memory::immutable)
+	if (info.usage == render::memory::gpu_immutable)
 	{
 		memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	}
 
-	ut::Result<VkDeviceMemory, ut::Error> memory_result = AllocateBufferMemory(buffer, memory_properties);
+	ut::Result<VkRc<vk::memory>, ut::Error> memory_result = AllocateBufferMemory(buffer, memory_properties);
 	if (!memory_result)
 	{
 		return ut::MakeError(memory_result.MoveAlt());
 	}
-	VkDeviceMemory buffer_memory = memory_result.Get();
+	VkRc<vk::memory> buffer_memory(memory_result.Move());
 
 	// copy memory
 	if (ini_size > 0)
 	{
-		if (info.usage == render::memory::immutable)
+		if (info.usage == render::memory::gpu_immutable)
 		{
 			// create staging buffer
-			ut::Result<VkBuffer, ut::Error> staging_buffer_result = CreateVulkanBuffer(info.size,
-			                                                                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-			if (!staging_buffer_result)
+			ut::Result<PlatformBuffer, ut::Error> staging_buffer = CreateStagingBuffer(info.size, info.data);
+			if (!staging_buffer)
 			{
-				return ut::MakeError(staging_buffer_result.MoveAlt());
-			}
-			VkBuffer staging_buffer = staging_buffer_result.Get();
-
-			// allocate staging memory
-			VkMemoryPropertyFlags staging_mem_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-			                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-			ut::Result<VkDeviceMemory, ut::Error> staging_mem_result = AllocateBufferMemory(staging_buffer,
-			                                                                                staging_mem_properties);
-			if (!staging_mem_result)
-			{
-				return ut::MakeError(staging_mem_result.MoveAlt());
-			}
-			VkDeviceMemory staging_memory = staging_mem_result.Get();
-
-			// copy memory to the staging buffer
-			void* staging_buffer_data;
-			VkResult res = vkMapMemory(device.GetVkHandle(), staging_memory, 0, ini_size, 0, &staging_buffer_data);
-			if (res != VK_SUCCESS)
-			{
-				return ut::MakeError(VulkanError(res, "vkMapMemory(staging buffer)"));
-			}
-			ut::memory::Copy(staging_buffer_data, info.data.GetAddress(), ini_size);
-			vkUnmapMemory(device.GetVkHandle(), staging_memory);
-
-			// copy data to the final buffer
-			ut::Optional<ut::Error> copy_error = CopyVulkanBuffer(staging_buffer, buffer, ini_size);
-			if (copy_error)
-			{
-				return ut::MakeError(copy_error.Move());
+				return ut::MakeError(staging_buffer.MoveAlt());
 			}
 
-			// clean staging data
-			vkDestroyBuffer(device.GetVkHandle(), staging_buffer, nullptr);
-			vkFreeMemory(device.GetVkHandle(), staging_memory, nullptr);
+			// start immediate commands
+			ut::Result<VkCommandBuffer, ut::Error> immediate_buffer = BeginImmediateCmdBuffer();
+			if (!immediate_buffer)
+			{
+				return ut::MakeError(immediate_buffer.MoveAlt());
+			}
+
+			// record copy command
+			CopyVulkanBuffer(immediate_buffer.Get(), staging_buffer->GetVkHandle(), buffer, ini_size);
+
+			// submit copying
+			ut::Optional<ut::Error> end_cmd_buffer_error = EndImmediateCmdBuffer(immediate_buffer.Get());
+			if (end_cmd_buffer_error)
+			{
+				return ut::MakeError(end_cmd_buffer_error.Move());
+			}
 		}
 		else
 		{
 			// copy memory directly to the buffer
 			void* buffer_data;
-			VkResult res = vkMapMemory(device.GetVkHandle(), buffer_memory, 0, ini_size, 0, &buffer_data);
+			VkResult res = vkMapMemory(device.GetVkHandle(), buffer_memory.GetVkHandle(), 0, ini_size, 0, &buffer_data);
 			if (res != VK_SUCCESS)
 			{
 				return ut::MakeError(VulkanError(res, "vkMapMemory(initializing buffer)"));
 			}
 			ut::memory::Copy(buffer_data, info.data.GetAddress(), info.data.GetSize());
-			vkUnmapMemory(device.GetVkHandle(), buffer_memory);
+			vkUnmapMemory(device.GetVkHandle(), buffer_memory.GetVkHandle());
 		}
 	}
 
 	// success
-	PlatformBuffer platform_buffer(device.GetVkHandle(), buffer, buffer_memory);
+	PlatformBuffer platform_buffer(device.GetVkHandle(), buffer, ut::Move(buffer_memory));
 	return Buffer(ut::Move(platform_buffer), ut::Move(info));
 }
 
@@ -1646,10 +2353,11 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	ut::Array<VkRect2D> scissors(viewport_count);
 	for (uint32_t i = 0; i < viewport_count; i++)
 	{
+		// note that height is inverted to make Y up
 		viewports[i].x = info.viewports[i].x;
-		viewports[i].y = info.viewports[i].y;
+		viewports[i].y = info.viewports[i].buffer_height - info.viewports[i].y;
 		viewports[i].width = info.viewports[i].width;
-		viewports[i].height = info.viewports[i].height;
+		viewports[i].height = -info.viewports[i].height;
 		viewports[i].minDepth = info.viewports[i].min_depth;
 		viewports[i].maxDepth = info.viewports[i].max_depth;
 
@@ -1662,11 +2370,14 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		}
 		else
 		{
-			scissors[i].offset.x = static_cast<int32_t>(viewports[i].x);
-			scissors[i].offset.y = static_cast<int32_t>(viewports[i].y);
-			scissors[i].extent.width = static_cast<uint32_t>(viewports[i].width);
-			scissors[i].extent.height = static_cast<uint32_t>(viewports[i].height);
+			scissors[i].offset.x = static_cast<int32_t>(info.viewports[i].x);
+			scissors[i].offset.y = static_cast<int32_t>(info.viewports[i].y);
+			scissors[i].extent.width = static_cast<uint32_t>(info.viewports[i].width);
+			scissors[i].extent.height = static_cast<uint32_t>(info.viewports[i].height);
 		}
+
+		int32_t scissor_bottom = static_cast<int32_t>(info.viewports[i].buffer_height) - scissors[i].offset.y;
+		scissors[i].offset.y = scissor_bottom - scissors[i].extent.height;
 	}
 
 	// viewport state
@@ -1779,15 +2490,16 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 
 	// create bindings for all uniforms in every shader stage
 	ut::Array<VkDescriptorSetLayoutBinding> layout_bindings;
-	for (uint32_t i = 0; i < shader_stage_count; i++)
+	for (uint32_t stage_id = 0; stage_id < shader_stage_count; stage_id++)
 	{
-		Shader& shader = shaders[i];
-		for (size_t j = 0; j < shader.info.parameters.GetNum(); j++)
+		Shader& shader = shaders[stage_id];
+		for (size_t param_id = 0; param_id < shader.info.parameters.GetNum(); param_id++)
 		{
-			Shader::Parameter& parameter = shader.info.parameters[j];
+			Shader::Parameter& parameter = shader.info.parameters[param_id];
+
 			VkDescriptorSetLayoutBinding dslb;
 			dslb.binding = parameter.GetBinding();
-			dslb.descriptorCount = 1;
+			dslb.descriptorCount = parameter.GetElementCount();
 			dslb.pImmutableSamplers = nullptr;
 			dslb.stageFlags = PlatformShader::ConvertTypeToVkStage(shader.info.stage);
 			dslb.descriptorType = ConvertShaderParameterTypeToVulkan(parameter.GetType());

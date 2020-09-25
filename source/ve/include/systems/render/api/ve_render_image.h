@@ -23,6 +23,7 @@ public:
 		type_cube
 	};
 
+	// Cubemap traits.
 	struct Cube
 	{
 		enum Face : ut::uint32
@@ -36,13 +37,22 @@ public:
 		};
 	};
 
+	// Provides access to image data.
+	struct MappedResource
+	{
+		void* data;
+		size_t row_pitch;
+		size_t depth_pitch;
+		size_t array_pitch;
+	};
+
 	// ve::render::Image::Info conveniently stores all essential
 	// information about an image.
 	struct Info
 	{
 		Type type = type_2D;
 		pixel::Format format = pixel::unknown;
-		memory::Usage usage = render::memory::immutable;
+		memory::Usage usage = render::memory::gpu_immutable;
 		ut::uint32 mip_count = 1;
 		ut::uint32 width = 1;
 		ut::uint32 height = 1;

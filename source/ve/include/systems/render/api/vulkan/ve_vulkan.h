@@ -11,6 +11,7 @@
 #include "systems/render/api/vulkan/ve_vulkan_context.h"
 #include "systems/render/api/vulkan/ve_vulkan_buffer.h"
 #include "systems/render/api/vulkan/ve_vulkan_image.h"
+#include "systems/render/api/vulkan/ve_vulkan_sampler.h"
 #include "systems/render/api/vulkan/ve_vulkan_render_target.h"
 #include "systems/render/api/vulkan/ve_vulkan_display.h"
 #include "systems/render/api/vulkan/ve_vulkan_cmd_buffer.h"

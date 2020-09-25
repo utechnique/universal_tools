@@ -7,6 +7,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/api/vulkan/ve_vulkan_resource.h"
 #include "systems/render/api/vulkan/ve_vulkan_queue.h"
+#include "systems/render/api/vulkan/ve_vulkan_buffer.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -74,19 +75,125 @@ protected:
 	ut::Result<VkBuffer, ut::Error> CreateVulkanBuffer(VkDeviceSize size,
 	                                                   VkBufferUsageFlags usage);
 
+	// Allocates gpu memory for the specified image.
+	//    @param buffer - buffer handle.
+	//    @param properties - memory properties.
+	//    @return - memory resource object or error if failed.
+	ut::Result<VkRc<vk::memory>, ut::Error> AllocateImageMemory(VkImage image,
+	                                                            VkMemoryPropertyFlags properties);
+
 	// Allocates gpu memory for the specified buffer.
 	//    @param buffer - buffer handle.
 	//    @param properties - memory properties.
-	//    @return - memory handle or error if failed.
-	ut::Result<VkDeviceMemory, ut::Error> AllocateBufferMemory(VkBuffer buffer,
-	                                                           VkMemoryPropertyFlags properties);
+	//    @return - memory resource object or error if failed.
+	ut::Result<VkRc<vk::memory>, ut::Error> AllocateBufferMemory(VkBuffer buffer,
+	                                                             VkMemoryPropertyFlags properties);
+
+	// Creates staging buffer.
+	//    @param size - size of the buffer in bytes.
+	//    @param ini_data - optional array of bytes to initialize buffer with.
+	//    @return -buffer object or error if failed.
+	ut::Result<PlatformBuffer, ut::Error> CreateStagingBuffer(size_t size,
+	                                                          ut::Optional<const ut::Array<ut::byte>&> ini_data =
+	                                                          ut::Optional<const ut::Array<ut::byte>&>());
+
+	// Copies pixel data to the image subresource according to the specified
+	// layout.
+	//    @param dst - address of the buffer associated with an image.
+	//    @param src - source linear data with zero pitches.
+	//    @param pixel_size - size of one pixel in bytes.
+	//    @param width - width of an image in pixels.
+	//    @param height - height of an image in pixels.
+	//    @param depth - depth of an image in pixels.
+	//    @param offset - offset in bytes from the @dst.
+	//    @param row_pitch - number of bytes between each row in an image.
+	//    @param depth_pitch - number of bytes between each slice in an image.
+	void CopyPixelsToSubRc(ut::byte* dst,
+	                       const ut::byte* src,
+	                       size_t pixel_size,
+	                       size_t width,
+	                       size_t height,
+	                       size_t depth,
+	                       size_t offset,
+	                       size_t row_pitch,
+	                       size_t depth_pitch);
+
+	// Performs image layout transition.
+	//    @param cmd_buffer - command buffer handle to record transition command.
+	//    @param image - image handle.
+	//    @param aspect_mask - bitmask of VkImageAspectFlagBits specifying
+	//                         which aspect(s) of the image are included
+	//                         in the view.
+	//    @param old_layout - current image layout.
+	//    @param new_layout - desired image layout.
+	//    @param src_stages - bitmask of VkAccessFlagBits specifying a
+	//                        source access mask.
+	//    @param dst_stages - bitmask of VkAccessFlagBits specifying a
+	//                        destination access mask.
+	//    @param base_mip_level - id of the first mip level.
+	//    @param mip_levels - number of mip levels.
+	//    @param base_array_layer - id of the first image in an array.
+	//    @param layer_count - number of images in an array.
+	//    @return - optional error if failed.
+	void SetImageLayout(VkCommandBuffer cmd_buffer,
+	                    VkImage image,
+	                    VkImageAspectFlags aspect_mask,
+	                    VkImageLayout old_layout,
+	                    VkImageLayout new_layout,
+	                    VkPipelineStageFlags src_stages,
+	                    VkPipelineStageFlags dst_stages,
+	                    ut::uint32 base_mip_level,
+	                    ut::uint32 mip_levels,
+	                    ut::uint32 base_array_layer,
+	                    ut::uint32 layer_count);
 
 	// Copies contents of source buffer to the destination buffer.
+	//    @param cmd_buffer - command buffer to record a command.
 	//    @param src - source buffer handle.
 	//    @param dst - destination buffer handle.
 	//    @param size - size of the data to be copied in bytes.
+	void CopyVulkanBuffer(VkCommandBuffer cmd_buffer,
+	                      VkBuffer src,
+	                      VkBuffer dst,
+	                      VkDeviceSize size);
+
+	// Copies contents of source buffer to the destination image.
+	//    @param cmd_buffer - command buffer to record a command.
+	//    @param src - source buffer handle.
+	//    @param dst - destination image handle.
+	//    @param aspect_mask - bitmask of VkImageAspectFlagBits specifying
+	//                         which aspect(s) of the image are included
+	//                         in the view.
+	//    @param image_layout - current image layout.
+	//    @param offset - buffer offset in bytes.
+	//    @param width - width of an image in pixels.
+	//    @param height - height of an image in pixels.
+	//    @param depth - depth of an image in pixels.
+	//    @param mip_id - id of the mip to be copied.
+	//    @param base_array_layer - id of the first image in an array.
+	//    @param layer_count - number of images in an array.
+	void CopyVulkanBufferToImage(VkCommandBuffer cmd_buffer,
+	                             VkBuffer src,
+	                             VkImage dst,
+	                             VkImageAspectFlags aspect_mask,
+	                             VkImageLayout image_layout,
+	                             size_t offset,
+	                             ut::uint32 width,
+	                             ut::uint32 height,
+	                             ut::uint32 depth,
+	                             ut::uint32 mip_id,
+	                             ut::uint32 base_array_layer,
+	                             ut::uint32 layer_count);
+
+	// Creates a command buffer to record immediate commands.
+	// This command buffer can be submit by calling EndImmediateCmdBuffer().
+	//    @return - command buffer handle or error if failed.
+	ut::Result<VkCommandBuffer, ut::Error> BeginImmediateCmdBuffer();
+
+	// Submits provided command buffer and waits for completion.
+	//    @param cmd_buffer - command buffer handle.
 	//    @return - optional error if failed.
-	ut::Optional<ut::Error> CopyVulkanBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+	ut::Optional<ut::Error> EndImmediateCmdBuffer(VkCommandBuffer cmd_buffer);
 
 	// Creates command pool.
 	ut::Result<VkCommandPool, ut::Error> CreateCmdPool(VkCommandPoolCreateFlags flags);

@@ -72,6 +72,7 @@ private:
 	ut::UniquePtr<Image> img_2d;
 	ut::UniquePtr<Image> img_cube;
 	ut::UniquePtr<Image> img_3d;
+	ut::UniquePtr<Image> img_dynamic;
 	ut::UniquePtr<Sampler> linear_sampler;
 };
 

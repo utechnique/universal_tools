@@ -13,9 +13,19 @@ namespace memory
 {
 	enum Usage
 	{
-		gpu, // can be modified by gpu
-		gpu_cpu, // can be modified by gpu and cpu
-		immutable // can't be modified after creation
+		// accessible only by the GPU (full access), fast
+		gpu_read_write,
+
+		// accessible by both the GPU (full access) and the CPU (full access
+		// using staging buffers), slow
+		gpu_read_write_cpu_staging,
+
+		// accessible by both the GPU (read only) and the CPU (write only),
+		// slow, but better than staging
+		gpu_read_cpu_write,
+
+		// can't be modified after creation, cpu has no access, fast
+		gpu_immutable
 	};
 }
 

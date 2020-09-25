@@ -57,7 +57,7 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	// create screen space quad
 	Buffer::Info buffer_info;
 	buffer_info.type = Buffer::vertex;
-	buffer_info.usage = render::memory::immutable;
+	buffer_info.usage = render::memory::gpu_immutable;
 	buffer_info.size = sizeof(QuadVertex) * 4;
 	buffer_info.stride = sizeof(QuadVertex);
 	buffer_info.data.Resize(buffer_info.size);
@@ -79,19 +79,19 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	Image::Info img_info_1d;
 	img_info_1d.type = Image::type_1D;
 	img_info_1d.format = pixel::r8g8b8a8;
-	img_info_1d.usage = render::memory::immutable;
+	img_info_1d.usage = render::memory::gpu_immutable;
 	img_info_1d.width = 6;
 	img_info_1d.height = 1;
 	img_info_1d.depth = 1;
 	img_info_1d.mip_count = 1;
 	img_info_1d.data.Resize(img_info_1d.width * pixel::GetSize(pixel::r8g8b8a8));
-	ut::Color<4, byte>* pixel_1d = reinterpret_cast<ut::Color<4, byte>*>(img_info_1d.data.GetAddress());
-	pixel_1d[0] = ut::Color<4, byte>(255, 0, 0, 0);
-	pixel_1d[1] = ut::Color<4, byte>(0, 255, 0, 0);
-	pixel_1d[2] = ut::Color<4, byte>(0, 0, 255, 0);
-	pixel_1d[3] = ut::Color<4, byte>(255, 255, 0, 0);
-	pixel_1d[4] = ut::Color<4, byte>(0, 255, 255, 0);
-	pixel_1d[5] = ut::Color<4, byte>(255, 0, 255, 0);
+	ut::Color<4, ut::byte>* pixel_1d = reinterpret_cast<ut::Color<4, ut::byte>*>(img_info_1d.data.GetAddress());
+	pixel_1d[0] = ut::Color<4, ut::byte>(255, 0, 0, 0);
+	pixel_1d[1] = ut::Color<4, ut::byte>(0, 255, 0, 0);
+	pixel_1d[2] = ut::Color<4, ut::byte>(0, 0, 255, 0);
+	pixel_1d[3] = ut::Color<4, ut::byte>(255, 255, 0, 0);
+	pixel_1d[4] = ut::Color<4, ut::byte>(0, 255, 255, 0);
+	pixel_1d[5] = ut::Color<4, ut::byte>(255, 0, 255, 0);
 	ut::Result<Image, ut::Error> img1d_result = device.CreateImage(ut::Move(img_info_1d));
 	img_1d = ut::MakeUnique<Image>(img1d_result.MoveOrThrow());
 
@@ -106,13 +106,13 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	Image::Info img_info_cube;
 	img_info_cube.type = Image::type_cube;
 	img_info_cube.format = pixel::r8g8b8a8;
-	img_info_cube.usage = render::memory::immutable;
+	img_info_cube.usage = render::memory::gpu_immutable;
 	img_info_cube.width = 512;
 	img_info_cube.height = 512;
 	img_info_cube.depth = 1;
 	img_info_cube.mip_count = 7;
 	const ut::uint32 cubeface_size = img_info_cube.width * img_info_cube.height;
-	
+
 	ut::uint32 mip_offset = 0;
 	for (ut::uint32 i = 0; i < 6; i++)
 	{
@@ -129,11 +129,11 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 			{
 				for (ut::uint32 k = 0; k < mip_width; k++)
 				{
-					ut::Color<4, byte>* pixel_cube_data = reinterpret_cast<ut::Color<4, byte>*>(img_info_cube.data.GetAddress());
+					ut::Color<4, ut::byte>* pixel_cube_data = reinterpret_cast<ut::Color<4, ut::byte>*>(img_info_cube.data.GetAddress());
 
 					int coef = i % 2 ? 2 : 1;
 
-					ut::Color<4, byte> color(255 / coef, 255 / coef, 255 / coef, 255);
+					ut::Color<4, ut::byte> color(255 / coef, 255 / coef, 255 / coef, 255);
 
 					switch (i)
 					{
@@ -165,17 +165,38 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	ut::Result<Image, ut::Error> imgcube_result = device.CreateImage(ut::Move(img_info_cube));
 	img_cube = ut::MakeUnique<Image>(imgcube_result.MoveOrThrow());
 
+	// dynamic texture
+	Image::Info img_info_dyn;
+	img_info_dyn.type = Image::type_2D;
+	img_info_dyn.format = pixel::r8g8b8a8;
+	img_info_dyn.usage = render::memory::gpu_read_cpu_write;
+	img_info_dyn.width = 8;
+	img_info_dyn.height = 8;
+	img_info_dyn.depth = 1;
+	img_info_dyn.mip_count = 1;
+	img_info_dyn.data.Resize(img_info_dyn.width * img_info_dyn.height * pixel::GetSize(pixel::r8g8b8a8));
+	ut::Color<4, ut::byte>* pixel_2d = reinterpret_cast<ut::Color<4, ut::byte>*>(img_info_dyn.data.GetAddress());
+	for (ut::uint32 y = 0; y < img_info_dyn.height; y++)
+	{
+		for (ut::uint32 x = 0; x < img_info_dyn.width; x++)
+		{
+			pixel_2d[y * img_info_dyn.width + x] = ut::Color<4, ut::byte>(255, 127, 0, 255);
+		}
+	}
+	ut::Result<Image, ut::Error> imgdyn_result = device.CreateImage(ut::Move(img_info_dyn));
+	img_dynamic = ut::MakeUnique<Image>(imgdyn_result.MoveOrThrow());
+
 	// img_3d
 	Image::Info img_info_3d;
 	img_info_3d.type = Image::type_3D;
 	img_info_3d.format = pixel::r8g8b8a8;
-	img_info_3d.usage = render::memory::immutable;
+	img_info_3d.usage = render::memory::gpu_immutable;
 	img_info_3d.width = 4;
 	img_info_3d.height = 2;
 	img_info_3d.depth = 2;
 	img_info_3d.mip_count = 1;
 	img_info_3d.data.Resize(img_info_3d.width * img_info_3d.height * img_info_3d.depth * pixel::GetSize(pixel::r8g8b8a8));
-	ut::Color<4, byte>* pixel_3d = reinterpret_cast<ut::Color<4, byte>*>(img_info_3d.data.GetAddress());
+	ut::Color<4, ut::byte>* pixel_3d = reinterpret_cast<ut::Color<4, ut::byte>*>(img_info_3d.data.GetAddress());
 	for (ut::uint32 i = 0; i < img_info_3d.depth; i++)
 	{
 		for (ut::uint32 j = 0; j < img_info_3d.height; j++)
@@ -183,7 +204,7 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 			for (ut::uint32 k = 0; k < img_info_3d.width; k++)
 			{
 				const ut::uint32 id = i * img_info_3d.height * img_info_3d.width + j * img_info_3d.width + k;
-				pixel_3d[id] = ut::Color<4, byte>(255 / (i + 1), 255 / (j + 1), 255 / (k + 1), 255);
+				pixel_3d[id] = ut::Color<4, ut::byte>(255 / (i + 1), 255 / (j + 1), 255 / (k + 1), 255);
 			}
 		}
 	}
@@ -314,8 +335,34 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 		ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
 
 		// update uniform buffer
-		ut::Color<4> display_color(1, 0, swap_col ? 1 : 0, 1);
-		UpdateBuffer(context, frame.display_ub, &display_color);
+		Frame::DisplayUB display_ub;
+		display_ub.color4 = ut::Color<4>(1, 0, swap_col ? 1 : 0, 1);
+		display_ub.color2 = ut::Color<2>(swap_col ? 1 : 0, 1);
+		display_ub.color3 = ut::Color<3>(0.25f, swap_col ? 1.0f : 0.25f, swap_col ? 0.25f : 1.0f);
+		UpdateBuffer(context, frame.display_ub, &display_ub);
+
+		// update dynamic texture
+		ut::Result<Image::MappedResource, ut::Error> mapped_image = context.MapImage(img_dynamic.GetRef(),
+		                                                                             ut::access_write);
+		if (!mapped_image)
+		{
+			throw mapped_image.MoveAlt();
+		}
+
+		const Image::Info& img_info = img_dynamic->GetInfo();
+		ut::byte* img_data = static_cast<ut::byte*>(mapped_image->data);
+		for (ut::uint32 y = 0; y < img_info.height; y++)
+		{
+			for (ut::uint32 x = 0; x < img_info.width; x++)
+			{
+				ut::Color<4, ut::byte>* pixel_2d = reinterpret_cast<ut::Color<4, ut::byte>*>(img_data + pixel::GetSize(img_info.format) * x);
+
+				*pixel_2d = ut::Color<4, ut::byte>(y > x ? 0 : 127, swap_col ? 255 : 127, (swap_col && (y > x)) ? 127 : 0, 255);
+			}
+
+			img_data += mapped_image->row_pitch;
+		}
+		context.UnmapImage(img_dynamic.GetRef());
 
 		// draw quad
 		frame.quad_desc_set.ub.BindUniformBuffer(frame.display_ub);
@@ -329,6 +376,7 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 		frame.quad_desc_set.tex_cube_face.BindCubeFace(img_cube.GetRef(), Image::Cube::negative_y, 3);
 		frame.quad_desc_set.tex_cube_face.BindCubeFace(img_cube.GetRef(), Image::Cube::positive_z, 4);
 		frame.quad_desc_set.tex_cube_face.BindCubeFace(img_cube.GetRef(), Image::Cube::negative_z, 5);
+		frame.quad_desc_set.tex_dynamic.BindImage(img_dynamic.GetRef());
 		frame.quad_desc_set.sampler.BindSampler(linear_sampler.GetRef());
 		context.BeginRenderPass(rp, framebuffer, render_area, backbuffer_clear_values);
 		context.BindPipelineState(pipeline_state);
@@ -402,17 +450,14 @@ ut::Result<Frame, ut::Error> Engine::CreateFrame()
 	// create display uniform buffer
 	Buffer::Info buffer_info;
 	buffer_info.type = Buffer::uniform;
-	buffer_info.usage = render::memory::gpu_cpu;
-	buffer_info.size = sizeof(ut::Color<4>);
-	buffer_info.data.Resize(buffer_info.size);
-	ut::Color<4>* color = reinterpret_cast<ut::Color<4>*>(buffer_info.data.GetAddress());
-	*color = ut::Color<4>(1, 0, 1, 0);
+	buffer_info.usage = render::memory::gpu_read_cpu_write;
+	buffer_info.size = sizeof(Frame::DisplayUB);
 	ut::Result<Buffer, ut::Error> display_ub = device.CreateBuffer(ut::Move(buffer_info));
 	if (!display_ub)
 	{
 		return ut::MakeError(display_ub.MoveAlt());
 	}
-	
+
 	// create frame
 	Frame frame(cmd_buffer.Move(), display_ub.Move());
 

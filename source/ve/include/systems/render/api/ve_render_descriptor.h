@@ -149,6 +149,9 @@ public:
 	// Returns a number of descriptors in this set.
 	size_t GetDescriptorCount() const;
 
+	// Returns a total number of slots in this set.
+	size_t GetSlotCount() const;
+
 	// Returns a constant reference to the descriptor.
 	const Descriptor& GetDescriptor(size_t id) const;
 

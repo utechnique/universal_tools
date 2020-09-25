@@ -61,7 +61,7 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 	Image::Info img_info;
 	img_info.type = Image::type_2D;
 	img_info.format = info.srgb ? pixel::r8g8b8a8_srgb : pixel::r8g8b8a8;
-	img_info.usage = render::memory::immutable;
+	img_info.usage = render::memory::gpu_immutable;
 	img_info.width = info.width ? info.width.Get() : width;
 	img_info.height = info.height ? info.height.Get() : height;
 	img_info.depth = 1;

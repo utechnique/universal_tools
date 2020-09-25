@@ -40,7 +40,7 @@ public:
 		AddressMode address_u = address_wrap;
 		AddressMode address_v = address_wrap;
 		AddressMode address_w = address_wrap;
-		compare::Operation compare_op = compare::always;
+		ut::Optional<compare::Operation> compare_op;
 		ut::Color<4, float> border_color = ut::Color<4, float>(0.0f);
 		bool anisotropy_enable = false;
 		float max_anisotropy = 1.0f;

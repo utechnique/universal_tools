@@ -89,6 +89,19 @@ void PlatformContext::SetSampler(ut::uint32 slot, ID3D11SamplerState* sampler_st
 	}
 }
 
+// Returns d3d11 resource associated with provided image.
+ID3D11Resource* PlatformContext::GetDX11ImageResource(PlatformImage& image, ut::uint32 type)
+{
+	switch (type)
+	{
+	case Image::type_1D: return image.tex1d.Get();
+	case Image::type_2D: return image.tex2d.Get();
+	case Image::type_cube: return image.tex2d.Get();
+	case Image::type_3D: return image.tex3d.Get();
+	}
+	return nullptr;
+}
+
 //----------------------------------------------------------------------------//
 // Constructor.
 Context::Context(PlatformContext platform_context) : PlatformContext(ut::Move(platform_context))
@@ -114,7 +127,7 @@ ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access acces
 	}
 	else if (access == ut::access_write)
 	{
-		if (buffer.info.usage == render::memory::gpu_cpu)
+		if (buffer.info.usage == render::memory::gpu_read_cpu_write)
 		{
 			if (buffer.info.type == Buffer::uniform)
 			{
@@ -145,6 +158,80 @@ ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access acces
 void Context::UnmapBuffer(Buffer& buffer)
 {
 	d3d11_context->Unmap(buffer.d3d11_buffer.Get(), 0);
+}
+
+// Maps a memory object associated with provided image
+// into application address space. Note that image must be created with
+// usage flag to be compatible with this function.
+//    @param image - reference to the ve::render::Image object to be mapped.
+//    @param mip_level - id of the mip to be mapped.
+//    @param array_layer - id of the layer to be mapped.
+//    @param access - ut::Access value specifying purpose of the mapping
+//                    operation - read, write or both.
+ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
+                                                               ut::Access access,
+                                                               ut::uint32 mip_level,
+                                                               ut::uint32 array_layer)
+{
+	Image::MappedResource mapped_rc;
+	const Image::Info& info = image.GetInfo();
+
+	D3D11_MAP map_type;
+	if (access == ut::access_read)
+	{
+		UT_ASSERT(info.usage != render::memory::gpu_read_cpu_write);
+		map_type = D3D11_MAP_READ;
+	}
+	else if (access == ut::access_write)
+	{
+		map_type = D3D11_MAP_WRITE_DISCARD;
+	}
+	else
+	{
+		UT_ASSERT(info.usage != render::memory::gpu_read_cpu_write);
+		map_type = D3D11_MAP_READ_WRITE;
+	}
+
+	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, info.type);
+	UT_ASSERT(rc_ptr != nullptr);
+
+	const UINT subrc_id = array_layer * info.mip_count + mip_level;
+	
+	// only images created with gpu_read_cpu_write flag have linear layout
+	// and can be accessed without staging buffer
+	if (info.usage == render::memory::gpu_read_cpu_write)
+	{
+		D3D11_MAPPED_SUBRESOURCE mapped_subrc;
+		HRESULT result = d3d11_context->Map(rc_ptr, subrc_id, map_type, 0, &mapped_subrc);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to map d3d11 buffer."));
+		}
+
+		mapped_rc.data = mapped_subrc.pData;
+		mapped_rc.row_pitch = mapped_subrc.RowPitch;
+		mapped_rc.depth_pitch = mapped_subrc.DepthPitch;
+	}
+	else
+	{
+		return ut::MakeError(ut::error::not_supported);
+	}
+
+	return mapped_rc;
+}
+
+// Unmaps a previously mapped memory object associated with provided image.
+void Context::UnmapImage(Image& image)
+{
+	const Image::Info& info = image.GetInfo();
+
+	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, info.type);
+	UT_ASSERT(rc_ptr != nullptr);
+	
+	if (info.usage == render::memory::gpu_read_cpu_write)
+	{
+		d3d11_context->Unmap(rc_ptr, 0);
+	}
 }
 
 // Begin a new render pass.

@@ -215,9 +215,21 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 		{
 			const spirv_cross::Resource& slot = resources.slots[slot_id];
 
+			// name and binding
 			ut::String name(slot.name.c_str());
 			ut::uint32 binding = comp.get_decoration(slot.id, spv::DecorationBinding);
-			info.parameters.Add(Shader::Parameter(type, ut::Move(name), binding));
+
+			// array traits
+			const spirv_cross::SPIRType &spirv_type = comp.get_type(slot.type_id);
+			const size_t dimensions = spirv_type.array.size();
+			ut::Array<ut::uint32> array_dim(dimensions);
+			for (ut::uint32 dim_id = 0; dim_id < dimensions; dim_id++)
+			{
+				array_dim[dim_id] = spirv_type.array[dim_id];
+			}
+
+			// add parameter
+			info.parameters.Add(Shader::Parameter(type, ut::Move(name), binding, ut::Move(array_dim)));
 		}
 	}
 

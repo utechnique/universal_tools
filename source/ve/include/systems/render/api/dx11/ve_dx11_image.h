@@ -16,6 +16,7 @@ class PlatformImage
 {
 	friend class Device;
 	friend class Context;
+	friend class PlatformContext;
 public:
 	// Constructor, accepts 1d texture.
 	explicit PlatformImage(ID3D11Texture1D* t1d_ptr,

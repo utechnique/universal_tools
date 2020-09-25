@@ -35,10 +35,10 @@ Context::Context(PlatformContext platform_context) : PlatformContext(ut::Move(pl
 //    @return - pointer to the mapped area or error if failed.
 ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access access)
 {
-	if (buffer.info.usage != render::memory::gpu_cpu)
+	if (buffer.info.usage != render::memory::gpu_read_cpu_write)
 	{
 		return ut::MakeError(ut::Error(ut::error::invalid_arg,
-			"Vulkan: Attempt to map buffer that wasn\'t created with gpu_cpu flag"));
+			"Vulkan: Attempt to map buffer that wasn\'t created with gpu_read_cpu_write flag"));
 	}
 
 	void* address;
@@ -60,6 +60,67 @@ ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access acces
 void Context::UnmapBuffer(Buffer& buffer)
 {
 	vkUnmapMemory(device, buffer.memory.GetVkHandle());
+}
+
+// Maps a memory object associated with provided image
+// into application address space. Note that image must be created with
+// usage flag to be compatible with this function.
+//    @param image - reference to the ve::render::Image object to be mapped.
+//    @param mip_level - id of the mip to be mapped.
+//    @param array_layer - id of the layer to be mapped.
+//    @param access - ut::Access value specifying purpose of the mapping
+//                    operation - read, write or both.
+ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
+                                                               ut::Access access,
+                                                               ut::uint32 mip_level,
+                                                               ut::uint32 array_layer)
+{
+	Image::MappedResource mapped_rc;
+
+	const Image::Info& info = image.GetInfo();
+
+	// only images created with gpu_read_cpu_write flag have linear layout
+	// and can be accessed without staging buffer
+	if(info.usage == render::memory::gpu_read_cpu_write)
+	{
+		VkSubresourceLayout layout;
+		VkImageSubresource subrc;
+		subrc.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		subrc.mipLevel = mip_level;
+		subrc.arrayLayer = array_layer;
+		vkGetImageSubresourceLayout(device, image.GetVkHandle(), &subrc, &layout);
+
+		VkResult res = vkMapMemory(device,
+		                           image.memory.GetVkHandle(),
+		                           0, // offset
+		                           image.memory.GetDetail().GetSize(),
+		                           0, // flags
+		                           &mapped_rc.data);
+		if (res != VK_SUCCESS)
+		{
+			return ut::MakeError(VulkanError(res, "vkMapMemory(image)"));
+		}
+
+		mapped_rc.row_pitch = layout.rowPitch;
+		mapped_rc.depth_pitch = layout.depthPitch;
+		mapped_rc.array_pitch = layout.arrayPitch;
+	}
+	else
+	{
+		return ut::MakeError(ut::error::not_supported);
+	}
+
+	return mapped_rc;
+}
+
+// Unmaps a previously mapped memory object associated with provided image.
+void Context::UnmapImage(Image& image)
+{
+	const Image::Info& info = image.GetInfo();
+	if (info.usage == render::memory::gpu_read_cpu_write)
+	{
+		vkUnmapMemory(device, image.memory.GetVkHandle());
+	}
 }
 
 // Begin a new render pass.

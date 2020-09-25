@@ -42,7 +42,7 @@ public:
 	Device(const Device&) = delete;
 	Device& operator =(const Device&) = delete;
 
-	// Creates a new texture.
+	// Creates a new image.
 	//    @param info - reference to the Image::Info object describing an image.
 	//    @return - new image object of error if failed.
 	ut::Result<Image, ut::Error> CreateImage(Image::Info info);
@@ -50,7 +50,7 @@ public:
 	// Creates a new sampler.
 	//    @param info - reference to the Sampler::Info object describing a sampler.
 	//    @return - new sampler object of error if failed.
-	ut::Result<Sampler, ut::Error> CreateSampler(Sampler::Info info);
+	ut::Result<Sampler, ut::Error> CreateSampler(const Sampler::Info& info);
 
 	// Creates platform-specific representation of the rendering area inside a UI viewport.
 	//    @param viewport - reference to UI viewport containing rendering area.

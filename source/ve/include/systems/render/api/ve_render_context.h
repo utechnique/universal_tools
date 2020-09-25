@@ -34,7 +34,7 @@ public:
 
 	// Maps a memory object associated with provided buffer
 	// into application address space. Note that buffer must be created with
-	// ve::render::Buffer::gpu_cpu flag to be compatible with this function.
+	// appropriate usage flag to be compatible with this function.
 	//    @param buffer - reference to the ve::render::Buffer object to be mapped.
 	//    @param access - ut::Access value specifying purpose of the mapping
 	//                    operation - read, write or both.
@@ -43,6 +43,22 @@ public:
 
 	// Unmaps a previously mapped memory object associated with provided buffer.
 	void UnmapBuffer(Buffer& buffer);
+
+	// Maps a memory object associated with provided image
+	// into application address space. Note that image must be created with
+	// usage flag to be compatible with this function.
+	//    @param image - reference to the ve::render::Image object to be mapped.
+	//    @param mip_level - id of the mip to be mapped.
+	//    @param array_layer - id of the layer to be mapped.
+	//    @param access - ut::Access value specifying purpose of the mapping
+	//                    operation - read, write or both.
+	ut::Result<Image::MappedResource, ut::Error> MapImage(Image& image,
+	                                                      ut::Access access,
+	                                                      ut::uint32 mip_level = 0,
+	                                                      ut::uint32 array_layer = 0);
+
+	// Unmaps a previously mapped memory object associated with provided image.
+	void UnmapImage(Image& image);
 
 	// Begin a new render pass.
 	//    @param render_pass - reference to the render pass object.

@@ -11,6 +11,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Forward declarations.
+class Descriptor;
 class DescriptorSet;
 
 //----------------------------------------------------------------------------//
@@ -89,9 +90,35 @@ public:
 	void Reset();
 
 private:
-	ut::Array<DescriptorPool> pools;
+	// Updates size of internal caches to be able to update a descriptor set.
+	//    @param descriptor_count - number of descriptors in a set.
+	//    @paramseparate_element_count - number of separate parameters in a set.
+	void UpdateCacheSize(size_t descriptor_count, size_t separate_element_count);
+
+	// Updates cache with write info data.
+	ut::Optional<ut::Error> StoreWriteInfoInCache(const DescriptorSet& set,
+	                                              VkDescriptorSet handle);
+
+	// Initializes VkWriteDescriptorSet object.
+	//    @param wds - reference to the VkWriteDescriptorSet object
+	//                 to be initialized.
+	//    @param descriptor - const reference to the descriptor to
+	//                        initialize VkWriteDescriptorSet with.
+	//    @param handle - vulkan descriptor handle.
+	//    @param cache_offset - number of separate elements written
+	//                          before this descriptor.
+	//    @return - number of elements written or nothing if failed.
+	ut::Optional<size_t> InitializeWriteDescriptorSet(VkWriteDescriptorSet& wds,
+	                                                  const Descriptor& descriptor,
+	                                                  VkDescriptorSet handle,
+	                                                  size_t cache_offset);
+
 	VkDevice device;
 	VkCommandBuffer cmd_buffer;
+	ut::Array<DescriptorPool> pools;
+	ut::Array<VkWriteDescriptorSet> write_cache;
+	ut::Array<VkDescriptorBufferInfo> buffer_cache;
+	ut::Array<VkDescriptorImageInfo> image_cache;
 };
 
 //----------------------------------------------------------------------------//

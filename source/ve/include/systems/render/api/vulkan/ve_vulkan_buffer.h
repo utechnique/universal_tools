@@ -18,7 +18,7 @@ class PlatformBuffer : public VkRc<vk::buffer>
 public:
 	PlatformBuffer(VkDevice device_handle,
 	               VkBuffer buffer_handle,
-	               VkDeviceMemory memory_handle);
+	               VkRc<vk::memory> memory_rc);
 
 	// Move constructor.
 	PlatformBuffer(PlatformBuffer&&) noexcept;

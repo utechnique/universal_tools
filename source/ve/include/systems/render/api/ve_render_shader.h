@@ -54,9 +54,12 @@ public:
 		// Constructor.
 		Parameter(Type in_type = Parameter::unknown,
 				  ut::String in_name = ut::String(),
-				  ut::uint32 in_binding = 0) : type(in_type)
-			                                 , name(ut::Move(in_name))
-			                                 , binding(in_binding)
+				  ut::uint32 in_binding = 0,
+		          ut::Array<ut::uint32> in_arr =
+		          ut::Array<ut::uint32>()) : type(in_type)
+			                               , name(ut::Move(in_name))
+			                               , binding(in_binding)
+		                                   , array_dim(ut::Move(in_arr))
 		{}
 
 		// Registers shader info into reflection tree.
@@ -81,10 +84,37 @@ public:
 			return binding;
 		}
 
+		// Returns a number of dimensions, '0' means a single variable,
+		// otherwise it's a number of dimensions in an array
+		ut::uint32 GetArrayDimensions() const
+		{
+			return static_cast<ut::uint32>(array_dim.GetNum());
+		}
+
+		// Returns a number of elements in a desired array dimension.
+		ut::uint32 GetArrayElementCount(ut::uint32 dimension) const
+		{
+			UT_ASSERT(dimension < array_dim.GetNum());
+			return array_dim[dimension];
+		}
+
+		// Returns a total number of single elements in this parameter
+		ut::uint32 GetElementCount() const;
+
 	private:
+		// type of the parameter, see ve::render::Shader::Parameter::Type
 		ut::uint32 type;
+
+		// name of the parameter how it's defined in a shader code
 		ut::String name;
+
+		// binding id
 		ut::uint32 binding;
+
+		// number of elements in this array represents a number of dimensions,
+		// '0' means a single variable, otherwise it's an array, each element
+		// is a number of elements in appropriate dimension
+		ut::Array<ut::uint32> array_dim;
 	};
 
 	// Info structure fully describing a shader.

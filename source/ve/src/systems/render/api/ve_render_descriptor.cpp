@@ -176,6 +176,23 @@ size_t DescriptorSet::GetDescriptorCount() const
 	return descriptors.GetNum();
 }
 
+// Returns a total number of slots in this set.
+size_t DescriptorSet::GetSlotCount() const
+{
+	size_t slot_count = 0;
+	const size_t descriptor_count = descriptors.GetNum();
+	for (size_t i = 0; i < descriptor_count; i++)
+	{
+		const Descriptor& descriptor = GetDescriptor(i);
+		const ut::Optional<Descriptor::Binding>& binding = descriptor.GetBinding();
+		if (binding)
+		{
+			slot_count += binding->slots.GetNum();
+		}
+	}
+	return slot_count;
+}
+
 // Returns a constant reference to the descriptor.
 const Descriptor& DescriptorSet::GetDescriptor(size_t id) const
 {

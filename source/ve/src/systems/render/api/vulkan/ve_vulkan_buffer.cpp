@@ -11,8 +11,8 @@ START_NAMESPACE(render)
 // Constructor.
 PlatformBuffer::PlatformBuffer(VkDevice device_handle,
                                VkBuffer buffer_handle,
-                               VkDeviceMemory memory_handle) : VkRc<vk::buffer>(buffer_handle, device_handle)
-                                                             , memory(memory_handle, device_handle)
+                               VkRc<vk::memory> memory_rc) : VkRc<vk::buffer>(buffer_handle, device_handle)
+                                                           , memory(ut::Move(memory_rc))
 {}
 
 // Move constructor.

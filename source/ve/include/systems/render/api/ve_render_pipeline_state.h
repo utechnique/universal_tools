@@ -39,20 +39,26 @@ struct Viewport
 	         float in_width = 0.0f,
 	         float in_height = 0.0f,
 	         float in_min_depth = 0.0f,
-	         float in_max_depth = 0.0f) : x(in_x)
-		                                , y(in_y)
-	                                    , width(in_width)
-	                                    , height(in_height)
-	                                    , min_depth(in_min_depth)
-	                                    , max_depth(in_max_depth)
+	         float in_max_depth = 0.0f,
+	         ut::uint32 in_buffer_width = 0,
+	         ut::uint32 in_buffer_height = 0) : x(in_x)
+		                                      , y(in_y)
+	                                          , width(in_width)
+	                                          , height(in_height)
+	                                          , min_depth(in_min_depth)
+	                                          , max_depth(in_max_depth)
+	                                          , buffer_width(in_buffer_width)
+	                                          , buffer_height(in_buffer_height)
 	{}
 
-	float x; // left position in pixels
-	float y; // top position in pixels
-	float width; // width in pixels
-	float height; // height in pixels
-	float min_depth; // 0 - 1
-	float max_depth; // 0 - 1
+	float x = 0.0f; // left position in pixels
+	float y = 0.0f; // top position in pixels
+	float width = 0.0f; // width in pixels
+	float height = 0.0f; // height in pixels
+	float min_depth = 0.0f; // 0 - 1
+	float max_depth = 0.0f; // 0 - 1
+	ut::uint32 buffer_width = 0; // actual width of render buffer in pixels
+	ut::uint32 buffer_height = 0; // actual height of render buffer in pixels
 	ut::Optional< ut::Rect<int> > scissor; // everything out of bounds is ignored
 };
 

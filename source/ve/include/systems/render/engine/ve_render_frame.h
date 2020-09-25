@@ -31,15 +31,23 @@ public:
 	struct QuadDescriptorSet : public DescriptorSet
 	{
 		QuadDescriptorSet() : DescriptorSet(ub, tex1d, tex2d, tex_cube, tex3d,
-		                                    tex_cube_face, sampler) {}
+		                                    tex_cube_face, tex_dynamic, sampler) {}
 		Descriptor ub = "g_cb_display";
 		Descriptor tex1d = "g_tex1d";
 		Descriptor tex2d = "g_tex2d";
 		Descriptor tex_cube = "g_tex_cube";
 		Descriptor tex3d = "g_tex3d";
 		Descriptor tex_cube_face = "g_tex_cube_face";
+		Descriptor tex_dynamic = "g_tex_dynamic";
 		Descriptor sampler = "g_sampler";
 	} quad_desc_set;
+
+	struct DisplayUB
+	{
+		alignas(16) ut::Color<4> color4;
+		alignas(16) ut::Color<2> color2;
+		alignas(16) ut::Color<3> color3;
+	};
 };
 
 //----------------------------------------------------------------------------//

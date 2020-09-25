@@ -22,6 +22,20 @@ void Shader::Parameter::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot.Add(type, "type");
 	snapshot.Add(name, "name");
 	snapshot.Add(binding, "binding");
+	snapshot.Add(array_dim, "array_dim");
+}
+
+// Returns a total number of single elements in this parameter
+ut::uint32 Shader::Parameter::GetElementCount() const
+{
+	ut::uint32 element_count = 1;
+
+	const size_t array_dim_count = array_dim.GetNum();
+	for (size_t i = 0; i < array_dim_count; i++)
+	{
+		element_count *= array_dim[i];
+	}
+	return element_count;
 }
 
 //----------------------------------------------------------------------------//

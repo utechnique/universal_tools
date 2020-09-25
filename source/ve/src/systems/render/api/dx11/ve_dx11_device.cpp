@@ -66,9 +66,10 @@ D3D11_USAGE ConvertUsageToDX11(memory::Usage usage)
 {
 	switch (usage)
 	{
-	case render::memory::gpu:       return D3D11_USAGE_DEFAULT;
-	case render::memory::gpu_cpu:   return D3D11_USAGE_DYNAMIC;
-	case render::memory::immutable: return D3D11_USAGE_IMMUTABLE;
+	case render::memory::gpu_read_write:             return D3D11_USAGE_DEFAULT;
+	case render::memory::gpu_read_write_cpu_staging: return D3D11_USAGE_DEFAULT;
+	case render::memory::gpu_read_cpu_write:         return D3D11_USAGE_DYNAMIC;
+	case render::memory::gpu_immutable:              return D3D11_USAGE_IMMUTABLE;
 	}
 	return D3D11_USAGE_DEFAULT;
 }
@@ -305,7 +306,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	}
 
 	// cpu access
-	UINT cpu_access = info.usage == render::memory::gpu_cpu ? D3D11_CPU_ACCESS_WRITE : 0;
+	UINT cpu_access = info.usage == render::memory::gpu_read_cpu_write ? D3D11_CPU_ACCESS_WRITE : 0;
 
 	// shader resource view description
 	ID3D11ShaderResourceView* srv = nullptr;
@@ -420,23 +421,28 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 // Creates a new sampler.
 //    @param info - reference to the Sampler::Info object describing a sampler.
 //    @return - new sampler object of error if failed.
-ut::Result<Sampler, ut::Error> Device::CreateSampler(Sampler::Info info)
+ut::Result<Sampler, ut::Error> Device::CreateSampler(const Sampler::Info& info)
 {
 	ID3D11SamplerState* sampler;
 	D3D11_SAMPLER_DESC sampler_desc;
-	
+
 	sampler_desc.AddressU = ConvertTexAddressModeToDX11(info.address_u);
 	sampler_desc.AddressV = ConvertTexAddressModeToDX11(info.address_v);
 	sampler_desc.AddressW = ConvertTexAddressModeToDX11(info.address_w);
 	sampler_desc.MipLODBias = info.mip_lod_bias;
 	sampler_desc.MaxAnisotropy = static_cast<UINT>(info.max_anisotropy);
-	sampler_desc.ComparisonFunc = ConvertCompareOpToDX11(info.compare_op);;
+	sampler_desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 	sampler_desc.BorderColor[0] = info.border_color.R();
 	sampler_desc.BorderColor[1] = info.border_color.G();
 	sampler_desc.BorderColor[2] = info.border_color.B();
 	sampler_desc.BorderColor[3] = info.border_color.A();
 	sampler_desc.MinLOD = info.min_lod;
 	sampler_desc.MaxLOD = info.max_lod;
+
+	if (info.compare_op)
+	{
+		sampler_desc.ComparisonFunc = ConvertCompareOpToDX11(info.compare_op.Get());
+	}
 
 	if (info.mag_filter == Sampler::filter_nearest)
 	{
@@ -669,6 +675,12 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	buffer_desc.Usage = ConvertUsageToDX11(info.usage);
 	buffer_desc.MiscFlags = 0;
 
+	// allignment for uniform buffers
+	if (info.type == Buffer::uniform)
+	{
+		buffer_desc.ByteWidth += (16 - buffer_desc.ByteWidth % 16);
+	}
+
 	// bind flags
 	switch (info.type)
 	{
@@ -679,7 +691,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	}
 
 	// cpu access
-	if (info.usage == render::memory::gpu_cpu)
+	if (info.usage == render::memory::gpu_read_cpu_write)
 	{
 		buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	}

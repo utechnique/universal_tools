@@ -22,7 +22,9 @@ namespace vk
 		surface,
 		swap_chain,
 		queue,
+		image,
 		image_view,
+		sampler,
 		buffer,
 		semaphore,
 		cmd_pool,
@@ -61,14 +63,22 @@ template<> struct VkDetail<vk::device>
 // Memory.
 template<> struct VkDetail<vk::memory>
 {
-	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE,
+	         size_t memory_size = 0) : device(device_handle)
+	                                 , size(memory_size)
 	{}
 
 	typedef VkDeviceMemory Handle;
 	void Destroy(VkDeviceMemory memory_handle) { vkFreeMemory(device, memory_handle, nullptr); }
 
+	size_t GetSize() const
+	{
+		return size;
+	}
+
 private:
 	VkDevice device;
+	size_t size;
 };
 
 // Debug messenger.
@@ -136,6 +146,19 @@ private:
 	uint32_t queue_family_id;
 };
 
+// Image.
+template<> struct VkDetail<vk::image>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkImage Handle;
+	void Destroy(VkImage image_handle) { vkDestroyImage(device, image_handle, nullptr); }
+
+private:
+	VkDevice device;
+};
+
 // Image view.
 template<> struct VkDetail<vk::image_view>
 {
@@ -149,7 +172,20 @@ private:
 	VkDevice device;
 };
 
-// Image view.
+// Sampler.
+template<> struct VkDetail<vk::sampler>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkSampler Handle;
+	void Destroy(VkSampler sampler_handle) { vkDestroySampler(device, sampler_handle, nullptr); }
+
+private:
+	VkDevice device;
+};
+
+// Buffer.
 template<> struct VkDetail<vk::buffer>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
@@ -162,7 +198,7 @@ private:
 	VkDevice device;
 };
 
-// Image view.
+// Semaphore.
 template<> struct VkDetail<vk::semaphore>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
@@ -299,7 +335,7 @@ private:
 	VkDevice device;
 };
 
-// Descriptor set.
+// Descriptor pool.
 template<> struct VkDetail<vk::descriptor_pool>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
