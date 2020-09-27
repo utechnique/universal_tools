@@ -358,6 +358,89 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+// Specialization for the case when 'Alternate' type is a reference type.
+template<class R, class A>
+class Result<R, A&> : public Result<R, A*>
+{
+	typedef R ResultType;
+	typedef A AlternateType;
+	typedef Result<ResultType, AlternateType*> Base;
+public:
+	// This constructor constructs @R value from @value parameter
+	constexpr Result(const ResultType& value) : Base(value)
+	{}
+
+	// This constructor constructs @R value
+	// from @value parameter using move semantics
+	constexpr Result(ResultType&& value) : Base(ut::Move(value))
+	{}
+
+	// This constructor constructs alt reference
+	constexpr Result(const Alternate<AlternateType&>& e) : Base(ut::MakeAlt<AlternateType*>(&e.value))
+	{}
+
+	// Use this function to get @A value (if present)
+	//    @return - @alt reference
+	constexpr AlternateType& GetAlt() const
+	{
+		return *Base::GetAlt();
+	}
+
+	// Use this function to move @A value (if present)
+	//    @return - @alt r-value reference
+	AlternateType&& MoveAlt()
+	{
+		return ut::Move(*Base::MoveAlt());
+	}
+};
+
+//----------------------------------------------------------------------------//
+// Specialization for the case when both types are reference types.
+template<class R, class A>
+class Result<R&, A&> : public Result<R*, A*>
+{
+	typedef R ResultType;
+	typedef A AlternateType;
+	typedef Result<ResultType*, AlternateType*> Base;
+public:
+	// This constructor constructs binds result reference
+	constexpr Result(ResultType& result_ref) : Base(&result_ref)
+	{}
+
+	// This constructor constructs alt reference
+	constexpr Result(const Alternate<AlternateType&>& e) : Base(ut::MakeAlt<AlternateType*>(&e.value))
+	{}
+
+	// Use this function to get @R value (if present)
+	//    @return - @result reference
+	constexpr ResultType& Get() const
+	{
+		return *Base::Get();
+	}
+
+	// Use this function to move @R value (if present)
+	//    @return - @result r-value reference
+	ResultType&& Move()
+	{
+		return ut::Move(*Base::Move());
+	}
+
+	// Use this function to get @A value (if present)
+	//    @return - @alt reference
+	constexpr AlternateType& GetAlt() const
+	{
+		return *Base::GetAlt();
+	}
+
+	// Use this function to move @A value (if present)
+	//    @return - @alt r-value reference
+	AlternateType&& MoveAlt()
+	{
+		return ut::Move(*Base::MoveAlt());
+	}
+};
+
+//----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
