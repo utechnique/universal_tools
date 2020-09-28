@@ -4,43 +4,42 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/ve_render_api.h"
-#include "ve_render_viewport_mgr.h"
-#include "ve_render_toolset.h"
-#include "ve_render_profiler.h"
+#include "ve_render_cfg.h"
+#include "ve_render_frame.h"
+#include "ve_render_rc_mgr.h"
+#include "ve_render_image_loader.h"
+#include "ve_shader_loader.h"
+#include "ve_sampler_cache.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// ve::render::Engine is a class that can render (visualize) entities. It must
-// be used only in the thread it was created in.
-class Engine : public ViewportManager
+// ve::render::Toolset is a set of simple independent tools to make rendering
+// easier. This class is some kind of a swiss knife for bigger render modules.
+class Toolset
 {
 public:
 	// Constructor.
-	Engine(Device& render_device, ViewportManager viewport_mgr);
-
-	// Renders the whole environment to the internal images and presents
-	// the result to user.
-	void ProcessNextFrame();
-
-private:
-	// Function for recording all commands needed to draw current frame.
-	void RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportContainer> >& active_viewports);
-
-	// Executes viewport tasks (resize, close, etc.) in a safe manner.
-	void ProcessViewportEvents();
+	Toolset(Device& device_ref) noexcept;
 
 	// render device
 	Device& device;
 
-	// set of helper tools to operate with render resources
-	Toolset tools;
+	// tools
+	Config<Settings> config;
+	ResourceManager rc_mgr;
+	ImageLoader img_loader;
+	ShaderLoader shader_loader;
+	SamplerCache sampler_cache;
+	FrameManager frame_mgr;
 
-	// measures performance
-	Profiler profiler;
+	// vertex buffer representing a fullscreen quad, 2 triangles, 6 vertices
+	Buffer fullscreen_quad;
 
-	// test
-	ut::UniquePtr<Image> img_2d;
+private:
+	// Returns a configuration object. Tries to load it from file, and creates
+	// a default one if loading failed.
+	static Config<Settings> LoadCfg();
 };
 
 //----------------------------------------------------------------------------//

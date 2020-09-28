@@ -56,8 +56,8 @@ protected:
 	// Array of viewports
 	ut::Array<ViewportContainer> viewports;
 
-	// shaders displaying an image to user
-	ut::UniquePtr<BoundShader> display_shader;
+	// shader rendering a quad to the backbuffer
+	ut::UniquePtr<BoundShader> display_quad_shader;
 
 private:
 	// Viewport tasks are executed once per frame in a special synchronization

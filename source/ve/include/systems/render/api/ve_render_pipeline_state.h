@@ -225,6 +225,12 @@ struct Blending
 		max,
 	};
 
+	enum Type
+	{
+		alpha,
+		additive
+	};
+
 	// Constructor
 	Blending(bool in_blend_enable = false,
 	         Factor in_src_blend = src_alpha,
@@ -260,16 +266,37 @@ struct Blending
 // operations.
 struct BlendState
 {
-	// Default constructor. Note that it creates one blend state for the first
-	// target with disabled blending.
+	// Default constructor. Note that it doesn't create any blending attachments.
 	BlendState()
-	{
-		attachments.Add(Blending());
-	}
+	{}
 
 	// Constructor
 	BlendState(ut::Array<Blending> in_attachments) : attachments(ut::Move(in_attachments))
 	{}
+
+	// Blending templates
+	static Blending CreateAlphaBlending()
+	{
+		return Blending(true,
+		                Blending::src_alpha,
+		                Blending::inverted_src_alpha,
+		                Blending::add,
+		                Blending::one,
+		                Blending::one,
+		                Blending::max,
+		                0xf);
+	}
+	static Blending CreateAdditiveBlending()
+	{
+		return Blending(true,
+		                Blending::one,
+		                Blending::one,
+		                Blending::add,
+		                Blending::one,
+		                Blending::one,
+		                Blending::add,
+		                0xf);
+	}
 
 	ut::Array<Blending> attachments;
 };

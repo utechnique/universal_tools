@@ -15,9 +15,6 @@ START_NAMESPACE(render)
 // Converts pixel format to the one compatible with DirectX 11.
 DXGI_FORMAT ConvertPixelFormatToDX11(pixel::Format format);
 
-// Converts DirectX 11 pixel format to ve::render::pixel::Format value.
-pixel::Format ConvertPixelFormatFromDX11(DXGI_FORMAT format);
-
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)

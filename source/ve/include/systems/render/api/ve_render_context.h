@@ -19,6 +19,14 @@ START_NAMESPACE(render)
 class Context : public PlatformContext
 {
 public:
+	// Context::ClearColors is an object incapsulating color information to
+	// clear color attachments. It can hold either an array of colors to clear
+	// every attachment separately or a single color to clear all attachments
+	// with one color. Use Context::ClearColors function to create array of
+	// colors.
+	typedef const ut::Array< ut::Color<4> >& ColorArrayRef;
+	typedef ut::Result<ut::Color<4>, ColorArrayRef> ClearColor;
+
 	// Constructor.
 	Context(PlatformContext platform_context);
 
@@ -65,14 +73,13 @@ public:
 	//    @param framebuffer - reference to the framebuffer to be bound.
 	//    @param render_area - reference to the rectangle representing
 	//                         rendering area in pixels.
-	//    @param color_clear_values - array of colors to clear color
-	//                                render targets with.
+	//    @param clear_color - color to clear render targets with.
 	//    @param depth_clear_value - value to clear depth buffer with.
 	//    @param stencil_clear_value - value to clear stencil buffer with.
 	void BeginRenderPass(RenderPass& render_pass,
 	                     Framebuffer& framebuffer,
 	                     const ut::Rect<ut::uint32>& render_area,
-	                     const ut::Array< ut::Color<4> >& color_clear_values,
+	                     const ClearColor& clear_color,
 	                     float depth_clear_value = 1.0f,
 	                     ut::uint32 stencil_clear_value = 0);
 
@@ -99,6 +106,12 @@ public:
 	//    @param vertex_count - number of vertices to draw.
 	//    @param first_vertex_id - index of the first vertex.
 	void Draw(ut::uint32 vertex_count, ut::uint32 first_vertex_id);
+
+	// Returns Context::ClearColor object initialized with multiple colors.
+	static ut::Alternate<ColorArrayRef> ClearColors(ColorArrayRef color_array)
+	{
+		return ut::MakeAlt<ColorArrayRef>(color_array);
+	}
 };
 
 //----------------------------------------------------------------------------//

@@ -828,8 +828,10 @@ ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(con
 		vkGetPhysicalDeviceProperties(devices[i], &properties);
 		vkGetPhysicalDeviceFeatures(devices[i], &features);
 
-		// geometry and tessellation shaders are necessary
-		if (!features.geometryShader || !features.tessellationShader)
+		// check features
+		if (!features.geometryShader ||
+			!features.tessellationShader ||
+			!features.fillModeNonSolid)
 		{
 			continue;
 		}
@@ -1029,6 +1031,7 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 	ut::memory::Set(&features, 0, sizeof(VkPhysicalDeviceFeatures));
 	features.geometryShader = VK_TRUE;
 	features.tessellationShader = VK_TRUE;
+	features.fillModeNonSolid = VK_TRUE;
 
 	// VkDeviceCreateInfo
 	VkDeviceCreateInfo device_info = {};
@@ -1597,9 +1600,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		for (uint32_t i = 0; i < format_count; i++)
 		{
 			const VkFormat supported_format = surf_formats[i].format;
-			if (supported_format == VK_FORMAT_R8G8B8_SRGB ||
-				supported_format == VK_FORMAT_B8G8R8_SRGB ||
-				supported_format == VK_FORMAT_R8G8B8A8_SRGB ||
+			if (supported_format == VK_FORMAT_R8G8B8A8_SRGB ||
 				supported_format == VK_FORMAT_B8G8R8A8_SRGB)
 			{
 				surface_format = supported_format;
@@ -1797,7 +1798,14 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 
 		// stub texture
 		Image::Info info;
-		info.format = ConvertPixelFormatFromVulkan(surface_format);
+		switch (surface_format)
+		{
+		case VK_FORMAT_R8G8B8A8_SRGB: info.format = pixel::r8g8b8a8_srgb; break;
+		case VK_FORMAT_B8G8R8A8_SRGB: info.format = pixel::b8g8r8a8_srgb; break;
+		case VK_FORMAT_R8G8B8A8_UNORM: info.format = pixel::r8g8b8a8_unorm; break;
+		case VK_FORMAT_B8G8R8A8_UNORM: info.format = pixel::b8g8r8a8_unorm; break;
+		default: return ut::MakeError(VulkanError(res, "Unsupported surface format."));
+		}
 		info.width = swapchain_extent.width;
 		info.height = swapchain_extent.height;
 		info.depth = 1;

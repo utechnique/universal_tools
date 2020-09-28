@@ -3,6 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_viewport_mgr.h"
 #include "systems/render/engine/ve_render_cfg.h"
+#include "systems/render/engine/ve_render_frame.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -158,23 +159,23 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 			return ut::MakeError(ut::error::out_of_memory);
 		}
 	}
-
+	
 	// create pipeline state for displaying images to user
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = display_shader->stages[Shader::vertex].Get();
-	info.stages[Shader::pixel] = display_shader->stages[Shader::pixel].Get();
+	info.stages[Shader::vertex] = display_quad_shader->stages[Shader::vertex].Get();
+	info.stages[Shader::pixel] = display_quad_shader->stages[Shader::pixel].Get();
 	info.viewports.Add(Viewport(0.0f, 0.0f,
 	                            static_cast<float>(viewport.w()),
 	                            static_cast<float>(viewport.h()),
 	                            0.0f, 1.0f,
 	                            static_cast<ut::uint32>(viewport.w()),
 	                            static_cast<ut::uint32>(viewport.h())));
-	info.input_assembly_state.topology = primitive::triangle_strip;
-	info.input_assembly_state.elements.Add(VertexElement("POSITION", 0, pixel::r32g32b32, 0));
-	info.input_assembly_state.elements.Add(VertexElement("TEXCOORD", 0, pixel::r32g32, 12));
-	info.input_assembly_state.stride = 20;
+	info.input_assembly_state.topology = primitive::triangle_list;
+	info.input_assembly_state.elements = Frame::QuadVertex::CreateLayout();
+	info.input_assembly_state.stride = Frame::QuadVertex::size;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.blend_state.attachments.Add(BlendState::CreateAlphaBlending());
 	ut::Result<PipelineState, ut::Error> pipeline_result = device.CreatePipelineState(ut::Move(info), rp_result.Get());
 	if (!pipeline_result)
 	{

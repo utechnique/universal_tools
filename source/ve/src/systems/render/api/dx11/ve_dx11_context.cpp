@@ -239,19 +239,21 @@ void Context::UnmapImage(Image& image)
 //    @param framebuffer - reference to the framebuffer to be bound.
 //    @param render_area - reference to the rectangle representing
 //                         rendering area in pixels.
-//    @param color_clear_values - array of colors to clear color
-//                                render targets with.
+//    @param clear_color - color to clear render targets with.
 //    @param depth_clear_value - value to clear depth buffer with.
 //    @param stencil_clear_value - value to clear stencil buffer with.
 void Context::BeginRenderPass(RenderPass& render_pass,
-	                          Framebuffer& framebuffer,
-	                          const ut::Rect<ut::uint32>& render_area,
-	                          const ut::Array< ut::Color<4> >& color_clear_values,
-	                          float depth_clear_value,
-	                          ut::uint32 stencil_clear_value)
+                              Framebuffer& framebuffer,
+                              const ut::Rect<ut::uint32>& render_area,
+                              const ClearColor& clear_color,
+                              float depth_clear_value,
+                              ut::uint32 stencil_clear_value)
 {
 	// validate arguments
-	UT_ASSERT(color_clear_values.GetNum() <= render_pass.color_slots.GetNum());
+	if (!clear_color)
+	{
+		UT_ASSERT(clear_color.GetAlt().GetNum() == render_pass.color_slots.GetNum());
+	}
 	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_targets.GetNum());
 	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_target : !framebuffer.depth_stencil_target);
 
@@ -268,16 +270,17 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 
 	// form d3d mrt array
 	const size_t color_target_count = framebuffer.color_targets.GetNum();
-	const size_t clear_value_count = color_clear_values.GetNum();
 	ut::Array<ID3D11RenderTargetView*> rtv(color_target_count);
 	for (size_t i = 0; i < color_target_count; i++)
 	{
 		rtv[i] = framebuffer.color_targets[i]->rtv.Get();
 
 		// clear color target
-		if (i < clear_value_count && render_pass.color_slots[i].load_op == RenderTargetSlot::load_clear)
+		if (render_pass.color_slots[i].load_op == RenderTargetSlot::load_clear)
 		{
-			d3d11_context->ClearRenderTargetView(rtv[i], color_clear_values[i].GetData());
+			const float* color_ptr = clear_color ? clear_color->GetData() :
+			                                       clear_color.GetAlt()[i].GetData();
+			d3d11_context->ClearRenderTargetView(rtv[i], color_ptr);
 		}
 	}
 

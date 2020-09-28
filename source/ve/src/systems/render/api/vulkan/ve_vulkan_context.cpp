@@ -128,35 +128,40 @@ void Context::UnmapImage(Image& image)
 //    @param framebuffer - reference to the framebuffer to be bound.
 //    @param render_area - reference to the rectangle representing
 //                         rendering area in pixels.
-//    @param color_clear_values - array of colors to clear color
-//                                render targets with.
+//    @param clear_color - color to clear render targets with.
 //    @param depth_clear_value - value to clear depth buffer with.
 //    @param stencil_clear_value - value to clear stencil buffer with.
 void Context::BeginRenderPass(RenderPass& render_pass,
                               Framebuffer& framebuffer,
                               const ut::Rect<ut::uint32>& render_area,
-                              const ut::Array< ut::Color<4> >& color_clear_values,
+                              const ClearColor& clear_color,
                               float depth_clear_value,
                               ut::uint32 stencil_clear_value)
 {
 	// validate arguments
-	UT_ASSERT(color_clear_values.GetNum() <= skMaxClearValues);
-	UT_ASSERT(color_clear_values.GetNum() <= render_pass.color_slots.GetNum());
+	if (!clear_color)
+	{
+		UT_ASSERT(clear_color.GetAlt().GetNum() <= skMaxClearValues);
+		UT_ASSERT(clear_color.GetAlt().GetNum() == render_pass.color_slots.GetNum());
+	}
 	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_targets.GetNum());
 	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_target : !framebuffer.depth_stencil_target);
-
-	const ut::uint32 clear_val_count = static_cast<ut::uint32>(color_clear_values.GetNum());
+	
 	const ut::uint32 color_slot_count = static_cast<ut::uint32>(render_pass.color_slots.GetNum());
-	ut::uint32 total_clear_val_count = clear_val_count;
+	ut::uint32 total_clear_val_count = color_slot_count;
 
 	// color clear values
 	VkClearValue vk_clear_values[skMaxClearValues];
-	for (ut::uint32 i = 0; i < clear_val_count; i++)
+	for (ut::uint32 i = 0; i < color_slot_count; i++)
 	{
-		vk_clear_values[i].color.float32[0] = color_clear_values[i].R();
-		vk_clear_values[i].color.float32[1] = color_clear_values[i].G();
-		vk_clear_values[i].color.float32[2] = color_clear_values[i].B();
-		vk_clear_values[i].color.float32[3] = color_clear_values[i].A();
+		const ut::Color<4>& color = clear_color ?
+		                            clear_color.Get() :
+		                            clear_color.GetAlt()[i];
+
+		vk_clear_values[i].color.float32[0] = color.R();
+		vk_clear_values[i].color.float32[1] = color.G();
+		vk_clear_values[i].color.float32[2] = color.B();
+		vk_clear_values[i].color.float32[3] = color.A();
 	}
 
 	// depth and stencil clear value

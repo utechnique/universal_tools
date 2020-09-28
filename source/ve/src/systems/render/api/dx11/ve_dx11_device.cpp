@@ -886,7 +886,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 
 		D3D11_INPUT_ELEMENT_DESC& desc = input_el_desc[i];
 		desc.SemanticName = element.semantic_name;
-		desc.SemanticIndex = element.semantic_id;
+		desc.SemanticIndex = 0;
 		desc.Format = ConvertPixelFormatToDX11(element.format);
 		desc.InputSlot = 0;
 		desc.AlignedByteOffset = element.offset;
