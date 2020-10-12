@@ -16,10 +16,10 @@ START_NAMESPACE(meta)
 // without smart pointers. However, it's very uncomfortably to serialize data.
 // AVLNodeProxy utilizes ut::UniquePtr to serialize child nodes, then exports
 // the result to the original tree.
-template<typename Key, typename Value>
+template<typename Key, typename Value, template<typename> class Allocator>
 class AVLNodeProxy : public Reflective
 {
-	typedef typename AVLTree<Key, Value>::Node Node;
+	typedef typename AVLTree<Key, Value, Allocator>::Node Node;
 public:
 	// Default constructor.
 	AVLNodeProxy()
@@ -84,28 +84,31 @@ public:
 
 //----------------------------------------------------------------------------//
 // ut::Parameter<AVLTree> is a template specialization for AVL tree container.
-template<typename Key, typename Value>
-class Parameter< AVLTree<Key, Value> > : public BaseParameter
+template<typename Key, typename Value, template<typename> class Allocator>
+class Parameter< AVLTree<Key, Value, Allocator> > : public BaseParameter
 {
+	// type of the tree
+	typedef AVLTree<Key, Value, Allocator> TreeType;
+
 	// type of the original node
-	typedef typename AVLTree<Key, Value>::Node Node;
+	typedef typename TreeType::Node Node;
 
 	// type of the proxy node
-	typedef AVLNodeProxy<Key, Value> ProxyNode;
+	typedef AVLNodeProxy<Key, Value, Allocator> ProxyNode;
 
 	// short type of the current parameter
-	typedef Parameter< AVLTree<Key, Value> > AVLParameter;
+	typedef Parameter<TreeType> AVLParameter;
 
 public:
 	// Constructor
 	//    @param p - pointer to the managed object
-	Parameter(AVLTree<Key, Value>* p) : BaseParameter(p)
+	Parameter(TreeType* p) : BaseParameter(p)
 	{ }
 
 	// Returns the name of the managed type
 	String GetTypeName() const
 	{
-		return BaseParameter::DeduceTypeName< AVLTree<Key, Value> >();
+		return BaseParameter::DeduceTypeName<TreeType>();
 	}
 
 	// Registers children into reflection tree.
@@ -129,7 +132,7 @@ public:
 	Optional<Error> Save(Controller& controller)
 	{
 		// get array reference from pointer
-		AVLTree<Key, Value>& tree = *static_cast<AVLTree<Key, Value>*>(ptr);
+		TreeType& tree = *static_cast<TreeType*>(ptr);
 
 		// write value and key type names
 		if (controller.GetInfo().HasTypeInformation())
@@ -161,7 +164,7 @@ public:
 	Optional<Error> Load(Controller& controller)
 	{
 		// get array reference from pointer
-		AVLTree<Key, Value>& tree = *static_cast<AVLTree<Key, Value>*>(ptr);
+		TreeType& tree = *static_cast<TreeType*>(ptr);
 
 		// read value typename and compare with current one
 		if (controller.GetInfo().HasTypeInformation())
@@ -195,10 +198,11 @@ public:
 	
 private:
 	// Recursively exports data from the provided proxy node to the original destination node.
+	//    @param dst_tree - reference to the original tree to export data to.
 	//    @param dst_node - reference to pointer to original node to export data to.
 	//    @param proxy_node - const pointer to proxy node to export data from.
 	//    @param parent - pointer to the parent of the @dst_node.
-	static void ExportNode(Node*& dst_node, const ProxyNode* proxy_node, Node* parent)
+	static void ExportNode(TreeType& dst_tree, Node*& dst_node, const ProxyNode* proxy_node, Node* parent)
 	{
 		// exit if proxy is empty
 		if (proxy_node == nullptr)
@@ -208,19 +212,20 @@ private:
 		}
 
 		// create a new node and copy balance value
-		dst_node = new Node(proxy_node->key, proxy_node->value, parent);
+		dst_node = dst_tree.GetAllocator().Allocate(1);
+		new(dst_node) Node(proxy_node->key, proxy_node->value, parent);
 		dst_node->balance = proxy_node->balance;
 
 		// export both leaves
-		ExportNode(dst_node->left, proxy_node->left.Get(), dst_node);
-		ExportNode(dst_node->right, proxy_node->right.Get(), dst_node);
+		ExportNode(dst_tree, dst_node->left, proxy_node->left.Get(), dst_node);
+		ExportNode(dst_tree, dst_node->right, proxy_node->right.Get(), dst_node);
 	}
 
 	// Imports original tree to the temporary proxy structure.
 	void Import()
 	{
 		// cast pointer to the reference to the avl tree
-		AVLTree<Key, Value>& tree = *static_cast<AVLTree<Key, Value>*>(ptr);
+		TreeType& tree = *static_cast<TreeType*>(ptr);
 
 		// export tree to the temporary proxy structure
 		if (tree.root != nullptr)
@@ -233,7 +238,7 @@ private:
 	void Export()
 	{
 		// cast pointer to the reference to the avl tree
-		AVLTree<Key, Value>& tree = *static_cast<AVLTree<Key, Value>*>(ptr);
+		TreeType& tree = *static_cast<TreeType*>(ptr);
 
 		// clear current tree
 		tree.Empty();
@@ -241,7 +246,7 @@ private:
 		// export data
 		if (proxy)
 		{
-			ExportNode(tree.root, proxy.Get(), nullptr);
+			ExportNode(tree, tree.root, proxy.Get(), nullptr);
 		}
 	}
 

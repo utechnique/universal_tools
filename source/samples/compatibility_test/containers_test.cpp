@@ -81,6 +81,10 @@ void ArrayOpsTask::Execute()
 		report += " FAIL. ";
 		failed_test_counter.Increment();
 	}
+	else
+	{
+		report += " success. ";
+	}
 
 	// UniquePtr concatenation
 	ut::Array< ut::UniquePtr<int> > uniqarr0;
@@ -109,6 +113,40 @@ void ArrayOpsTask::Execute()
 		ut::String str;
 		str.Print("%i ", val);
 		report += str;
+	}
+
+	// array with another allocator
+	report += ". Testing array with non-default allocator:";
+	ut::Array<int, TestAllocator<int> > al_int_arr_0;
+	ut::Array<int, TestAllocator<int> > al_int_arr_1;
+	ut::Array<int, TestAllocator<int> > al_int_arr_2;
+	al_int_arr_0.Resize(3);
+	al_int_arr_0[0] = 0;
+	al_int_arr_0[1] = 1;
+	al_int_arr_0[2] = 2;
+	al_int_arr_0.Add(3);
+
+	al_int_arr_1 = al_int_arr_0;
+	al_int_arr_2 = ut::Move(al_int_arr_1);
+	if (al_int_arr_2.GetNum() == 4)
+	{
+		if (al_int_arr_2[0] == 0 &&
+			al_int_arr_2[1] == 1 &&
+			al_int_arr_2[2] == 2 &&
+			al_int_arr_2[3] == 3)
+		{
+			report += " success.";
+		}
+		else
+		{
+			report += " FAIL. ";
+			failed_test_counter.Increment();
+		}
+	}
+	else
+	{
+		report += " FAIL. ";
+		failed_test_counter.Increment();
 	}
 }
 
@@ -547,6 +585,42 @@ void AVLTreeTask::Execute()
 	else
 	{
 		report += ut::String("failed to find element\n");
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// test with non-default allocator
+	report += ut::CRet() + "non-default allocator: ";
+	ut::AVLTree<int, ut::String, TestAllocator> al_tree_0;
+	ut::AVLTree<int, ut::String, TestAllocator> al_tree_1;
+	ut::AVLTree<int, ut::String, TestAllocator> al_tree_2;
+	al_tree_0.Insert(49, "__49");
+	al_tree_0.Insert(29, "__29");
+	al_tree_0.Insert(27, "__27");
+	al_tree_0.Insert(25, "__25");
+	al_tree_0.Remove(27);
+	al_tree_0.Insert(26, "__26");
+
+	al_tree_1 = al_tree_0;
+	al_tree_2 = ut::Move(al_tree_1);
+
+	find_result = al_tree_2.Find(29);
+	if (find_result)
+	{
+		ut::String& str = find_result.Get();
+		if (str == "__29")
+		{
+			report += ". Success";
+		}
+		else
+		{
+			report += " fail";
+			failed_test_counter.Increment();
+		}
+	}
+	else
+	{
+		report += ut::String("failed to find element.");
 		failed_test_counter.Increment();
 		return;
 	}

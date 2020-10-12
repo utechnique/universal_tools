@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
+#include "containers/ut_allocator.h"
 #include "containers/ut_ref.h"
 #include "error/ut_error.h"
 //----------------------------------------------------------------------------//
@@ -17,7 +18,7 @@ namespace meta { template<typename> class Parameter; }
 // call ut::AVLTree::Insert() to add element, ut::AVLTree::Remove() to remove
 // element and ut::AVLTree::Find() to get element by key. @Key type must
 // have comparison operators implemented.
-template <typename Key, typename Value>
+template <typename Key, typename Value, template<typename> class Allocator = DefaultAllocator>
 class AVLTree
 {
 	// ut::meta::Parameter must be a friend so that ut::AVLTree could be serializable.
@@ -34,7 +35,7 @@ public:
 		template <typename> friend class meta::Parameter;
 
 		// ut::AVLTree must be a friend in order to be able to operate with nodes.
-		friend AVLTree<Key, Value>;
+		template<typename, typename, template<typename> class> friend class AVLTree;
 	public:
 		// value is the only public member
 		Value value;
@@ -83,15 +84,26 @@ public:
 			          , right(nullptr)
 		{}
 
-		// Destructor
-		~Node()
+		// Recursively destroys child nodes and deallocates memory.
+		void DestroyLeaves(Allocator<Node>& allocator)
 		{
-			delete left;
-			delete right;
+			if (left != nullptr)
+			{
+				left->DestroyLeaves(allocator);
+				left->~Node();
+				allocator.Deallocate(left, 1);
+			}
+
+			if (right != nullptr)
+			{
+				right->DestroyLeaves(allocator);
+				right->~Node();
+				allocator.Deallocate(right, 1);
+			}
 		}
 
-		// Returns a copy of the key member
-		Key GetKey() const
+		// Returns const reference to the key
+		const Key& GetKey() const
 		{
 			return key;
 		}
@@ -417,12 +429,14 @@ public:
 
 	// Copy constructor
 	AVLTree(const AVLTree& copy) : root(nullptr)
+	                             , allocator(copy.allocator)
 	{
-		Copy(copy);
+		CopyNode(root, copy.root, nullptr);
 	}
 
 	// Move constructor
 	AVLTree(AVLTree&& right) noexcept : root(right.root)
+	                                  , allocator(right.allocator)
 	{
 		right.root = nullptr;
 	}
@@ -430,14 +444,17 @@ public:
 	// Assignment operator
 	AVLTree& operator = (const AVLTree& copy)
 	{
-		Copy(copy);
+		DeleteNode(root);
+		allocator = copy.allocator;
+		CopyNode(root, copy.root, nullptr);
 		return *this;
 	}
 
 	// Move operator
 	AVLTree& operator = (AVLTree&& right) noexcept
 	{
-		delete root;
+		DeleteNode(root);
+		allocator = right.allocator;
 		root = right.root;
 		right.root = nullptr;
 		return *this;
@@ -446,7 +463,7 @@ public:
 	// Destructor, deletes all nodes
 	~AVLTree()
 	{
-		delete root;
+		DeleteNode(root);
 	}
 
 	// Searches for a value by key.
@@ -515,7 +532,7 @@ public:
 	// Destructs all nodes
 	void Empty()
 	{
-		delete root;
+		DeleteNode(root);
 		root = nullptr;
 	}
 
@@ -557,12 +574,24 @@ public:
 		return Iterator(nullptr);
 	}
 
+	// Returns a reference to the allocator
+	Allocator<Node>& GetAllocator()
+	{
+		return allocator;
+	}
+
+	// Returnsconst  reference to the allocator
+	const Allocator<Node>& GetAllocator() const
+	{
+		return allocator;
+	}
+
 private:
 	// Copies provided node with all it's leaves.
 	//    @param node - reference to the destination node pointer
 	//    @param copy - const pointer to the node to be copied
 	//    @param parent - pointer to the parent node to be linked with
-	static void CopyNode(Node*& node, const Node* copy, Node* parent)
+	void CopyNode(Node*& node, const Node* copy, Node* parent)
 	{
 		// skip if copy doesn't exist
 		if (copy == nullptr)
@@ -572,7 +601,8 @@ private:
 		}
 
 		// create a copy
-		node = new Node(copy->key, copy->value, parent);
+		node = allocator.Allocate(1);
+		new(node) Node(copy->key, copy->value, parent);
 
 		// set balance - it stays immutable after copying
 		node->balance = copy->balance;
@@ -580,17 +610,6 @@ private:
 		// do the same as above with both leaves (left and right)
 		CopyNode(node->left, copy->left, node);
 		CopyNode(node->right, copy->right, node);
-	}
-
-	// Copies provided tree, previous data is destructed.
-	//    @param copy - const reference to the tree to be copied
-	void Copy(const AVLTree& copy)
-	{
-		// delete existing tree
-		delete root;
-
-		// recursively copy and link all nodes
-		CopyNode(root, copy.root, nullptr);
 	}
 
 	// Inserts new key-value pair to the tree
@@ -606,7 +625,8 @@ private:
 		{
 			// create new node for the root 
 			// if this is the first insertion
-			root = new Node(Forward<KeyType>(key), Forward<ValueType>(value), nullptr);
+			root = allocator.Allocate(1);
+			new(root) Node(Forward<KeyType>(key), Forward<ValueType>(value), nullptr);
 		}
 		else
 		{
@@ -636,11 +656,13 @@ private:
 					// create a new child for the node @n
 					if (left_side)
 					{
-						parent->left = new Node(Forward<KeyType>(key), Forward<ValueType>(value), parent);
+						parent->left = allocator.Allocate(1);
+						new(parent->left) Node(Forward<KeyType>(key), Forward<ValueType>(value), parent);
 					}
 					else
 					{
-						parent->right = new Node(Forward<KeyType>(key), Forward<ValueType>(value), parent);
+						parent->right = allocator.Allocate(1);
+						new(parent->right) Node(Forward<KeyType>(key), Forward<ValueType>(value), parent);
 					}
 
 					// rebalance tree chunk starting from the @parent node
@@ -717,6 +739,19 @@ private:
 		return current;
 	}
 
+	// Destroys desired node and deallocates memory.
+	void DeleteNode(Node* node)
+	{
+		if (node == nullptr)
+		{
+			return;
+		}
+
+		node->DestroyLeaves(allocator);
+		node->~Node();
+		allocator.Deallocate(node, 1);
+	}
+
 	// Recursive function to delete a node with given key from subtree with given root.
 	// It returns root of the modified subtree.  
 	//    @param parent - current root of subtree
@@ -764,7 +799,7 @@ private:
 				}
 
 				// unlinked node can be deleted now
-				delete temp;
+				DeleteNode(temp);
 			}
 			else
 			{
@@ -980,6 +1015,9 @@ private:
 
 	// root node, null by default
 	Node* root;
+
+	// allocator
+	Allocator<Node> allocator;
 };
 
 //----------------------------------------------------------------------------//

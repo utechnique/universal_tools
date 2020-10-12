@@ -5,14 +5,18 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "containers/ut_iterator.h"
+#include "containers/ut_allocator.h"
 #include "error/ut_throw_error.h"
-#include "templates/ut_is_copy_constructible.h"
+#include "templates/ut_enable_if.h"
+#include "templates/ut_is_class.h"
+#include "math/ut_cmp.h"
+
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // ut::BaseArray is a parent container for dynamic arrays, you can implement
 // your container derived from it to override desired features.
-template<typename T>
+template<typename T, class Allocator = DefaultAllocator<T> >
 class BaseArray
 {
 typedef T ElementType;
@@ -23,7 +27,7 @@ public:
 	// write (modify) the container data.
 	class ConstIterator : public BaseIterator<RandomAccessIteratorTag, T, T*, T&>
 	{
-		friend class BaseArray<T>;
+		friend class BaseArray<T, Allocator>;
 	public:
 		// Default constructor
 		ConstIterator() : ptr(nullptr)
@@ -171,7 +175,7 @@ public:
 	// ut::Array<>::Iterator is a random-access iterator to iterate over parent
 	// container (ut::Array<>). This class is the same as ut::Array::ConstIterator,
 	// but is capable to modify the content of the container.
-	class Iterator : public BaseArray<T>::ConstIterator
+	class Iterator : public BaseArray<T, Allocator>::ConstIterator
 	{
 		// Base iterator type
 		typedef ConstIterator Base;
@@ -215,6 +219,13 @@ public:
 			    , reserved_elements(0)
 	{ }
 
+	// Default constructor, copies allocator object
+	BaseArray(const Allocator& allocator_ref) : allocator(allocator_ref)
+	                                          , arr(nullptr)
+	                                          , num(0)
+	                                          , reserved_elements(0)
+	{ }
+
 	// Constructor, creates @num_elements new empty elements
 	//    @param num_elements - how many elements to be initialized
 	BaseArray(size_t num_elements) : arr(nullptr)
@@ -227,40 +238,26 @@ public:
 		}
 	}
 
-	// Constructor, copies @num_elements elements from the provided raw array
-	//    @param num_elements - how many elements to be copied
-	//    @param ptr - pointer to the first element
-	BaseArray(size_t num_elements, const T* ptr) : arr(nullptr)
-	                                             , num(0)
-	                                             , reserved_elements(0)
+	// Constructor, creates @num_elements new empty elements and
+	// copies allocator object
+	//    @param num_elements - how many elements to be initialized
+	//    @param allocator_ref - const reference to the allocator object
+	BaseArray(size_t num_elements,
+	          const Allocator& allocator_ref) : allocator(allocator_ref)
+	                                          , arr(nullptr)
+	                                          , num(0)
+	                                          , reserved_elements(0)
 	{
-		num = num_elements;
-		arr = nullptr;
-		if (Realloc())
-		{
-			for (size_t i = 0; i < num; i++)
-			{
-				new(arr + i) ElementType(ptr[i]);
-			}
-		}
-		else
+		if (!AllocEmpty(num_elements))
 		{
 			ThrowError(error::out_of_memory);
 		}
 	}
 
-	// Swap constructor, doesn't allocate new memory. It's needed to construct
-	// array from another released array. DON'T use this constructor manually!
-	BaseArray(const T* ptr,
-	          size_t num_elements,
-	          size_t reserved) : arr(ptr)
-	                           , num(num_elements)
-	                           , reserved_elements(reserved)
-	{ }
-
 	// Constructor, copies content of another array
 	//    @param copy - array to copy
-	BaseArray(const BaseArray& copy) : arr(nullptr)
+	BaseArray(const BaseArray& copy) : allocator(copy.allocator)
+	                                 , arr(nullptr)
 	                                 , num(0)
 	                                 , reserved_elements(0)
 	{
@@ -273,7 +270,8 @@ public:
 	// Constructor, moves content of another array
 	//    @param copy - array to copy
 
-	BaseArray(BaseArray&& other) noexcept : arr(other.arr)
+	BaseArray(BaseArray&& other) noexcept : allocator(other.allocator)
+	                                      , arr(other.arr)
 	                                      , num(other.num)
 	                                      , reserved_elements(other.reserved_elements)
 	{
@@ -287,6 +285,9 @@ public:
 	BaseArray& operator = (const BaseArray& copy)
 	{
 		Empty();
+
+		allocator = copy.allocator;
+
 		if (!CopyToEmpty(copy))
 		{
 			ThrowError(error::out_of_memory);
@@ -300,6 +301,9 @@ public:
 	{
 		// release memory
 		Empty();
+
+		// assign new allocator
+		allocator = other.allocator;
 
 		// move
 		arr = other.arr;
@@ -403,6 +407,18 @@ public:
 	{
 		return arr;
 	}
+
+	// Returns a reference to the allocator
+	Allocator& GetAllocator()
+	{
+		return allocator;
+	}
+
+	// Returnsconst  reference to the allocator
+	const Allocator& GetAllocator() const
+	{
+		return allocator;
+	}
 		
 	// Changes the size of array, can crop the ending, or add new elements
 	// depending on case if @num_elements is greater than @num or not
@@ -411,24 +427,20 @@ public:
 	bool Resize(size_t num_elements)
 	{
 		size_t old_num = num;
-		num = num_elements;
-		if (Realloc())
-		{
-			// construct new elements
-			for (size_t i = old_num; i < num; i++)
-			{
-				PlacementNew(i);
-			}
-
-			// success
-			return true;
-		}
-		else
+		if (!Realloc(num_elements))
 		{
 			// not enough memory
-			num = 0;
 			return false;
 		}
+
+		// construct new elements
+		for (size_t i = old_num; i < num; i++)
+		{
+			PlacementNew(i);
+		}
+		
+		// success
+		return true;
 	}
 	
 	// Changes the size of array, can crop the ending or add new elements
@@ -437,21 +449,18 @@ public:
 	bool AllocEmpty(size_t num_elements)
 	{
 		Empty();
-			
-		num = num_elements;
 
-		if (Realloc())
-		{
-			for (size_t i = 0; i < num; i++)
-			{
-				PlacementNew(i);
-			}	
-			return true;
-		}
-		else
+		if (!Realloc(num_elements))
 		{
 			return false;
 		}
+
+		for (size_t i = 0; i < num; i++)
+		{
+			PlacementNew(i);
+		}
+
+		return true;
 	}
 
 	// Adds new element to the end of the array (r-value reference)
@@ -459,36 +468,26 @@ public:
 	//    @param element - r-value referece to a new element
 	bool Add(ElementType&& element)
 	{
-		num++;
-			
-		if (Realloc())
+		if (!Realloc(num + 1))
 		{
-			Emplace(Move(element), num - 1);
-			return true;
-		}
-		else
-		{
-			num--;
 			return false;
 		}
+
+		Emplace(Move(element), num - 1);
+		return true;
 	}
 
 	// Adds new element to the end of the array (reference), @copy is a constant
 	//    @param copy - new element
 	bool Add(const ElementType& copy)
 	{
-		num++;
-			
-		if (Realloc())
+		if (!Realloc(num + 1))
 		{
-			Emplace(copy, num - 1);
-			return true;
-		}
-		else
-		{
-			num--;
 			return false;
 		}
+
+		Emplace(copy, num - 1);
+		return true;
 	}
 	
 	// Inserts elements at the specified location in the container.
@@ -572,9 +571,7 @@ public:
 	// Removes last element
 	void PopBack()
 	{
-		num--;
-		Destruct(num);
-		Realloc();
+		Realloc(num - 1);
 	}
 	
 	// Removes desired element
@@ -584,22 +581,17 @@ public:
 		// id can't be higher than array size
 		if (id >= num)
 			return;
-		
-		// destruct specified element
-		Destruct(id);
 
 		// shift all elements to the left
-		for (size_t i = id+1; i < num; i++)
-		{	
-			new(arr + i - 1) ElementType(Move(arr[i]));
+		const size_t count_minus_one = num - 1;
+		for (size_t i = id; i < count_minus_one; i++)
+		{
 			Destruct(i);
+			new(arr + i) ElementType(Move(arr[i + 1]));
 		}
 
-		// decrement size
-		num--;
-
 		// reallocate memory
-		Realloc();
+		Realloc(count_minus_one);
 	}
 	
 	// Removes desired element
@@ -617,19 +609,7 @@ public:
 	// Releases previously allocated memory
 	void Empty()
 	{
-		if (num)
-		{
-			for (size_t i = 0; i < num; i++)
-			{
-				Destruct(i);
-			}
-				
-			free(arr);
-			arr = nullptr;
-			reserved_elements = 0;
-				
-			num = 0;
-		}
+		Realloc(0);
 	}
 	
 	// Returns first element
@@ -710,29 +690,26 @@ protected:
 	//              'false' if not enough memory
 	inline bool EmplaceForward(size_t position, ElementType&& element)
 	{
-		num++;
-		if (Realloc())
+		// allocate memory for the new element
+		if (!Realloc(num + 1))
 		{
-			// shift all elements forward
-			size_t last = num - 1;
-			size_t next = position + 1;
-			for (size_t i = last; i >= next; i--)
-			{
-				new(arr + i) ElementType(Move(arr[i - 1]));
-				Destruct(i - 1);
-			}
-
-			// emplace new element
-			new(arr + position) ElementType(Forward<ElementType>(element));
-
-			// success
-			return true;
-		}
-		else
-		{
-			num--;
 			return false;
 		}
+
+		// shift all elements forward
+		const size_t last = num - 1;
+		const size_t first = position + 1;
+		for (size_t i = last; i >= first; i--)
+		{
+			new(arr + i) ElementType(Move(arr[i - 1]));
+			Destruct(i - 1);
+		}
+
+		// emplace new element
+		new(arr + position) ElementType(Forward<ElementType>(element));
+
+		// success
+		return true;
 	}
 
 	// Concatenates current data and contents of another array
@@ -742,10 +719,9 @@ protected:
 	{
 		const size_t previous_num = num;
 		const size_t other_num = other.GetNum();
-		num += other_num;
 
 		// allocate memory for new elements
-		if (!Realloc())
+		if (!Realloc(num + other_num))
 		{
 			return false;
 		}
@@ -771,68 +747,135 @@ protected:
 	//    @param copy - array to copy content from
 	bool CopyToEmpty(const BaseArray& copy)
 	{
-		num = copy.GetNum();
-		arr = nullptr;
-
-		if (Realloc())
+		if (!Realloc(copy.GetNum()))
 		{
-			for (size_t i = 0; i < num; i++)
-			{
-				new(arr + i) ElementType(copy[i]);
-			}
-			return true;
-		}
-		else
-		{
-			num = 0;
 			return false;
 		}
+		
+		for (size_t i = 0; i < num; i++)
+		{
+			new(arr + i) ElementType(copy[i]);
+		}
+
+		return true;
 	}
 
 	// Realloc() function performs array data reallocation and new memory 
 	// block will have size = @reserved_elements * sizeof(ElementType)
 	//    @return - 'true' if successful, 'false' if not enough memory
-	bool Realloc()
+	bool Realloc(size_t new_size)
 	{
-		if (num)
+		ElementType* new_arr;
+		size_t new_reserved_elements;
+		if (new_size == 0)
 		{
-			bool needs_realloc = num >= reserved_elements || num <= reserved_elements / 4;
-
+			new_arr = nullptr;
+			new_reserved_elements = 0;
+		}
+		else
+		{
+			const bool needs_realloc = new_size >= reserved_elements || new_size <= reserved_elements / 4;
 			if (needs_realloc)
 			{
-				// reserve double size of elements
-				reserved_elements = num * 2;
-
-				ElementType* pmem = (ElementType*)realloc(arr, sizeof(ElementType) * reserved_elements);
-				if (pmem)
-				{
-					arr = pmem;
-					return true;
-				}
-				else
+				new_reserved_elements = new_size * 2;
+				new_arr = allocator.Allocate(new_reserved_elements);
+				if (new_arr == nullptr)
 				{
 					return false;
 				}
 			}
 			else
 			{
-				// reserved space is still enough for new elements
-				return true;
+				new_arr = arr;
+				new_reserved_elements = reserved_elements;
 			}
 		}
-		else
+
+		// if array address changed - move all elements to the new memory
+		if (new_arr != arr)
 		{
-			if (arr)
+			const size_t elements_to_copy = Min<size_t>(num, new_size);
+			for (size_t i = 0; i < elements_to_copy; i++)
 			{
-				free(arr);
+				new(new_arr + i) ElementType(Move(arr[i]));
 			}
 
-			arr = nullptr;
-			reserved_elements = 0;
+			// destroy old array
+			for (size_t i = 0; i < num; i++)
+			{
+				Destruct(i);
+			}
 
-			return true;
+			if (arr != nullptr)
+			{
+				allocator.Deallocate(arr, reserved_elements);
+			}
 		}
+		else if (new_size < num) // otherwise - destroy tail
+		{
+			for (size_t i = new_size; i < num; i++)
+			{
+				Destruct(i);
+			}
+		}
+
+		// assign new array address and element count
+		arr = new_arr;
+		num = new_size;
+		reserved_elements = new_reserved_elements;
+
+		// success
+		return true;
 	}
+
+	template<typename ObjType>
+	typename EnableIf<IsClass<ObjType>::value>::Type* Reconstruct(ObjType* new_arr, size_t new_size)
+	{
+		// if array address changed - move all elements to the new memory
+		if (new_arr != arr)
+		{
+			const size_t elements_to_copy = Min<size_t>(num, new_size);
+			for (size_t i = 0; i < elements_to_copy; i++)
+			{
+				new(new_arr + i) ElementType(Move(arr[i]));
+			}
+
+			// destroy old array
+			for (size_t i = 0; i < num; i++)
+			{
+				Destruct(i);
+			}
+
+			if (arr != nullptr)
+			{
+				allocator.Deallocate(arr, reserved_elements);
+			}
+		}
+		else if (new_size < num) // otherwise - destroy tail
+		{
+			for (size_t i = new_size; i < num; i++)
+			{
+				Destruct(i);
+			}
+		}
+
+		return nullptr;
+	}
+
+	template<typename ObjType>
+	typename EnableIf<!IsClass<ObjType>::value>::Type* Reconstruct(ObjType* new_arr, size_t new_size)
+	{
+		if (arr != nullptr && new_size == 0)
+		{
+			allocator.Deallocate(arr, reserved_elements);
+		}
+
+		return nullptr;
+	}
+
+
+	// allocator object
+	Allocator allocator;
 
 	// memory block allocated for the array
 	ElementType *arr;
@@ -847,19 +890,31 @@ protected:
 };
 
 // ut::Array is a container that encapsulates dynamic arrays
-template<typename T>
-class Array : public BaseArray<T>
+template<typename T, class Allocator = DefaultAllocator<T> >
+class Array : public BaseArray<T, Allocator>
 {
 typedef T ElementType;
-typedef BaseArray<T> Base;
+typedef BaseArray<T, Allocator> Base;
 public:
 	// Default constructor
 	Array()
 	{}
 
+	// Constructor, copies allocator object
+	Array(const Allocator& allocator_ref) : Base(allocator_ref)
+	{}
+
 	// Constructor, creates @num_elements new empty elements
 	//    @param num_elements - how many elements to be initialized
 	Array(size_t num_elements) : Base(num_elements)
+	{}
+
+	// Constructor, creates @num_elements new empty elements and
+	// copies allocator object
+	//    @param num_elements - how many elements to be initialized
+	//    @param allocator_ref - const reference to the allocator object
+	Array(size_t num_elements,
+	      const Allocator& allocator_ref) : Base(num_elements, allocator_ref)
 	{}
 
 	// Constructor, copies content of another array

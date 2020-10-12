@@ -437,6 +437,13 @@ SerializationTest::SerializationTest(bool in_alternate,
 		byte_data[i] = static_cast<ut::byte>(256 - i);
 	}
 
+	// int array, non-default allocator
+	al_int_data.Resize(64);
+	for (int i = 0; i < 64; i++)
+	{
+		al_int_data[i] = 64 - i;
+	}
+
 	// vector array
 	vec_data.Resize(32);
 	for (size_t i = 0; i < 32; i++)
@@ -480,6 +487,7 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 		snapshot << void_weak_ptr_0;
 	}
 	snapshot << byte_data;
+	snapshot << al_int_data;
 	snapshot << vec_data;
 	snapshot << int16_unique;
 	snapshot << int16_unique_void;
@@ -498,6 +506,7 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << strarrarr;
 	snapshot << u16ptrarr;
 	snapshot << avltree;
+	snapshot << al_avltree;
 	snapshot << reflect_unique_ptr;
 	snapshot << reflect_unique_ptr2;
 
@@ -807,6 +816,13 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.avltree.Insert(3, "__3");
 	object.avltree.Insert(5, "__5");
 
+	// avltree (non-default allocator)
+	object.al_avltree.Insert(1, "__1");
+	object.al_avltree.Insert(55, "__55");
+	object.al_avltree.Insert(4, "__4");
+	object.al_avltree.Insert(3, "__3");
+	object.al_avltree.Insert(5, "__5");
+
 	// array of string arrays
 	object.strarrarr.Empty();
 	ut::Array<ut::String> arr0;
@@ -865,6 +881,14 @@ void ChangeSerializedObject(SerializationTest& object)
 	{
 		object.byte_data[i] = static_cast<ut::byte>(i);
 	}
+
+	// int array, non-default allocator
+	object.al_int_data.Resize(64);
+	for (int i = 0; i < 64; i++)
+	{
+		object.al_int_data[i] = i;
+	}
+	
 }
 
 // Checks if serialized object was loaded with the correct values,
@@ -956,6 +980,21 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	
 	// avltree
 	ut::Optional<const ut::String&> avl_find_result = object.avltree.Find(3);
+	if (avl_find_result)
+	{
+		const ut::String& str = avl_find_result.Get();
+		if (str != "__3")
+		{
+			return false;
+		}
+	}
+	else
+	{
+		return false;
+	}
+
+	// avltree (non-default allocator)
+	avl_find_result = object.al_avltree.Find(3);
 	if (avl_find_result)
 	{
 		const ut::String& str = avl_find_result.Get();
@@ -1137,6 +1176,16 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	for (size_t i = 0; i < 256; i++)
 	{
 		if (object.byte_data[i] != i)
+		{
+			return false;
+		}
+	}
+
+	// int array, non-default allocator
+	if (object.al_int_data.GetNum() != 64) return false;
+	for (int i = 0; i < 64; i++)
+	{
+		if (object.al_int_data[i] != i)
 		{
 			return false;
 		}

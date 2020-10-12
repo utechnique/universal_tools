@@ -94,5 +94,67 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class TestMemoryPool
+{
+public:
+	TestMemoryPool() : busy(0)
+	{}
+
+	TestMemoryPool(const TestMemoryPool&) = delete;
+	TestMemoryPool(TestMemoryPool&&) = delete;
+	TestMemoryPool& operator =(const TestMemoryPool&) = delete;
+	TestMemoryPool& operator =(TestMemoryPool&&) = delete;
+
+	ut::byte* Allocate(size_t n)
+	{
+		if (busy + n > size)
+		{
+			return nullptr;
+		}
+
+		size_t offset = busy;
+		busy += n;
+
+		return &memory[offset];
+	}
+
+	void Deallocate(ut::byte* addr, size_t n)
+	{
+
+	}
+
+private:
+	static constexpr size_t size = 1024;
+	size_t busy;
+	ut::byte memory[size];
+};
+
+
+template<typename ElementType>
+class TestAllocator
+{
+	typedef TestMemoryPool PoolType;
+public:
+	TestAllocator() : pool(ut::MakeShared<PoolType>())
+	{}
+
+	ElementType* Allocate(size_t n)
+	{
+		return reinterpret_cast<ElementType*>(pool ? pool->Allocate(n * sizeof(ElementType)) : nullptr);
+	}
+
+	void Deallocate(ElementType* addr, size_t n)
+	{
+		if (pool)
+		{
+			pool->Deallocate(reinterpret_cast<ut::byte*>(addr), n * sizeof(ElementType));
+		}
+	}
+
+private:
+	ut::SharedPtr<PoolType> pool;
+};
+
+//----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
