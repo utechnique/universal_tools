@@ -39,6 +39,25 @@ inline void* Set(void *dst, int val, size_t size)
 	return memset(dst, val, size);
 }
 
+// Allocates a block of size bytes of memory, returning a pointer to the
+// beginning of the block. The content of the newly allocated block of
+// memory is not initialized, remaining with indeterminate values.
+//    @param size - size of the memory block, in bytes.
+//    @return - on success, a pointer to the memory block allocated by the
+//              function; if the function failed to allocate the requested
+//              block of memory, a null pointer is returned.
+inline void* Allocate(size_t size)
+{
+	return malloc(size);
+}
+
+// A block of memory previously allocated by a call to ut::memory::Allocate
+// is deallocated, making it available again for further allocations.
+inline void Deallocate(void* ptr)
+{
+	return free(ptr);
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(memory)
 END_NAMESPACE(ut)

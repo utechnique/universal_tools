@@ -10,19 +10,20 @@ START_NAMESPACE(ut)
 START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
 // ut::Parameter<Array> is a template specialization for array types.
-template<typename T>
-class Parameter< Array<T> > : public BaseParameter
+template<typename T, typename Allocator>
+class Parameter< Array<T, Allocator> > : public BaseParameter
 {
+	using ArrayType = Array<T, Allocator>;
 public:
 	// Constructor
 	//    @param p - pointer to the managed array
-	Parameter(Array<T>* p) : BaseParameter(p)
+	Parameter(ArrayType* p) : BaseParameter(p)
 	{ }
 
 	// Returns the name of the managed type
 	String GetTypeName() const
 	{
-		return BaseParameter::DeduceTypeName< Array<T> >();
+		return BaseParameter::DeduceTypeName< ArrayType >();
 	}
 
 	// Registers children into reflection tree.
@@ -30,7 +31,7 @@ public:
 	void Reflect(Snapshot& snapshot)
 	{
 		// get array reference from pointer
-		Array<T>& arr = *static_cast<Array<T>*>(ptr);
+		ArrayType& arr = *static_cast<ArrayType*>(ptr);
 
 		// register all elements
 		for (size_t i = 0; i < arr.GetNum(); i++)
@@ -45,7 +46,7 @@ public:
 	Optional<Error> Save(Controller& controller)
 	{
 		// get array reference from pointer
-		Array<T>& arr = *static_cast<Array<T>*>(ptr);
+		ArrayType& arr = *static_cast<ArrayType*>(ptr);
 
 		// write value type name
 		if (controller.GetInfo().HasTypeInformation())
@@ -76,7 +77,7 @@ public:
 	Optional<Error> Load(Controller& controller)
 	{
 		// get array reference from pointer
-		Array<T>& arr = *static_cast<Array<T>*>(ptr);
+		ArrayType& arr = *static_cast<ArrayType*>(ptr);
 
 		// read value typename and compare with current one
 		if (controller.GetInfo().HasTypeInformation())

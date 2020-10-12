@@ -6,6 +6,7 @@
 #include "ut.h"
 #include "test_task.h"
 #include "test_unit.h"
+#include "containers_test.h"
 //----------------------------------------------------------------------------//
 class SerializationTestUnit : public TestUnit
 {
@@ -286,6 +287,7 @@ public:
 	ut::WeakPtr<ut::int32> deep_weak_ptr_0;
 	ut::WeakPtr<ut::int32> void_weak_ptr_0;
 	ut::Array<ut::byte> byte_data;
+	ut::Array<int, TestAllocator<int> > al_int_data;
 	ut::Array< ut::Vector<3, ut::byte> > vec_data;
 	ut::uint64 uval;
 	bool bool_val;
@@ -300,6 +302,7 @@ public:
 	ut::Array< ut::Array<ut::String> > strarrarr;
 	ut::Array< ut::UniquePtr<ut::uint16> > u16ptrarr;
 	ut::AVLTree<int, ut::String> avltree;
+	ut::AVLTree<int, ut::String, TestAllocator> al_avltree;
 	ut::UniquePtr<ReflectiveBase> reflective_param;
 	ut::UniquePtr<ReflectiveBaseAlt> reflective_param_alt;
 	ut::UniquePtr<ReflectiveBase> void_param;
