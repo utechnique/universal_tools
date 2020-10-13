@@ -7,8 +7,6 @@
 #include "containers/ut_iterator.h"
 #include "containers/ut_allocator.h"
 #include "error/ut_throw_error.h"
-#include "templates/ut_enable_if.h"
-#include "templates/ut_is_class.h"
 #include "math/ut_cmp.h"
 
 //----------------------------------------------------------------------------//
@@ -16,18 +14,22 @@ START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // ut::BaseArray is a parent container for dynamic arrays, you can implement
 // your container derived from it to override desired features.
-template<typename T, class Allocator = DefaultAllocator<T> >
-class BaseArray
+template<typename ElementType,
+         class Allocator = DefaultAllocator<ElementType>,
+         class Preallocator = DefaultPreallocator<2, 2> >
+class BaseArray : private Preallocator
 {
-typedef T ElementType;
 public:
 	// ut::Array<>::ConstIterator is a random-access constant iterator to iterate
 	// over parent container (ut::Array<>). This class is capable only to read
 	// the content of the container. Use ut::Array<>::Iterator if you want to
 	// write (modify) the container data.
-	class ConstIterator : public BaseIterator<RandomAccessIteratorTag, T, T*, T&>
+	class ConstIterator : public BaseIterator<RandomAccessIteratorTag,
+	                                          ElementType,
+	                                          ElementType*,
+	                                          ElementType&>
 	{
-		friend class BaseArray<T, Allocator>;
+		friend class BaseArray<ElementType, Allocator, Preallocator>;
 	public:
 		// Default constructor
 		ConstIterator() : ptr(nullptr)
@@ -35,7 +37,7 @@ public:
 
 		// Constructor
 		//    @param p - initialize iterator with this pointer
-		ConstIterator(T* p) : ptr(p)
+		ConstIterator(ElementType* p) : ptr(p)
 		{ }
 
 		// Copy constructor
@@ -50,14 +52,14 @@ public:
 		}
 
 		// Returns constant reference of the managed object
-		const T& operator*() const
+		const ElementType& operator*() const
 		{
 			return (*ptr);
 		}
 
 		// Inheritance operator, provides access to the owned object.
 		// Return value can't be changed, it must be constant.
-		const T* operator->() const
+		const ElementType* operator->() const
 		{
 			return ptr;
 		}
@@ -169,13 +171,13 @@ public:
 
 	protected:
 		// managed object
-		T* ptr;
+		ElementType* ptr;
 	};
 
 	// ut::Array<>::Iterator is a random-access iterator to iterate over parent
 	// container (ut::Array<>). This class is the same as ut::Array::ConstIterator,
 	// but is capable to modify the content of the container.
-	class Iterator : public BaseArray<T, Allocator>::ConstIterator
+	class Iterator : public BaseArray<ElementType, Allocator>::ConstIterator
 	{
 		// Base iterator type
 		typedef ConstIterator Base;
@@ -186,7 +188,7 @@ public:
 
 		// Constructor
 		//    @param p - initialize iterator with this pointer
-		Iterator(T* p) : Base(p)
+		Iterator(ElementType* p) : Base(p)
 		{ }
 
 		// Copy constructor
@@ -201,13 +203,13 @@ public:
 		}
 
 		// Returns reference of the managed object
-		T& operator*()
+		ElementType& operator*()
 		{
 			return (*Base::ptr);
 		}
 
 		// Inheritance operator, provides access to the owned object.
-		T* operator->()
+		ElementType* operator->()
 		{
 			return Base::ptr;
 		}
@@ -216,21 +218,21 @@ public:
 	// Default constructor
 	BaseArray() : arr(nullptr)
 			    , num(0)
-			    , reserved_elements(0)
+			    , capacity(0)
 	{ }
 
 	// Default constructor, copies allocator object
 	BaseArray(const Allocator& allocator_ref) : allocator(allocator_ref)
 	                                          , arr(nullptr)
 	                                          , num(0)
-	                                          , reserved_elements(0)
+	                                          , capacity(0)
 	{ }
 
 	// Constructor, creates @num_elements new empty elements
 	//    @param num_elements - how many elements to be initialized
 	BaseArray(size_t num_elements) : arr(nullptr)
 								   , num(0)
-								   , reserved_elements(0)
+								   , capacity(0)
 	{
 		if (!AllocEmpty(num_elements))
 		{
@@ -246,7 +248,7 @@ public:
 	          const Allocator& allocator_ref) : allocator(allocator_ref)
 	                                          , arr(nullptr)
 	                                          , num(0)
-	                                          , reserved_elements(0)
+	                                          , capacity(0)
 	{
 		if (!AllocEmpty(num_elements))
 		{
@@ -259,7 +261,7 @@ public:
 	BaseArray(const BaseArray& copy) : allocator(copy.allocator)
 	                                 , arr(nullptr)
 	                                 , num(0)
-	                                 , reserved_elements(0)
+	                                 , capacity(0)
 	{
 		if (!CopyToEmpty(copy))
 		{
@@ -273,11 +275,11 @@ public:
 	BaseArray(BaseArray&& other) noexcept : allocator(other.allocator)
 	                                      , arr(other.arr)
 	                                      , num(other.num)
-	                                      , reserved_elements(other.reserved_elements)
+	                                      , capacity(other.capacity)
 	{
 		other.arr = nullptr;
 		other.num = 0;
-		other.reserved_elements = 0;
+		other.capacity = 0;
 	}
 
 	// Assignment operator
@@ -308,12 +310,12 @@ public:
 		// move
 		arr = other.arr;
 		num = other.num;
-		reserved_elements = other.reserved_elements;
+		capacity = other.capacity;
 
 		// swap
 		other.arr = nullptr;
 		other.num = 0;
-		other.reserved_elements = 0;
+		other.capacity = 0;
 
 		return *this;
 	}
@@ -525,7 +527,7 @@ public:
 	//              'false' if not enough memory, or @position is out of range
 	bool Insert(ConstIterator position, ElementType&& element)
 	{
-		T* ptr = position.ptr;
+		ElementType* ptr = position.ptr;
 		if (ptr >= arr && ptr < arr + num)
 		{
 			size_t id = ptr - arr;
@@ -541,7 +543,7 @@ public:
 	//              'false' if not enough memory, or @position is out of range
 	bool Insert(ConstIterator position, const ElementType& copy)
 	{
-		T* ptr = position.ptr;
+		ElementType* ptr = position.ptr;
 		if (ptr >= arr && ptr < arr + num)
 		{
 			size_t id = ptr - arr;
@@ -598,7 +600,7 @@ public:
 	//    @param iterator - element's position
 	void Remove(ConstIterator iterator)
 	{
-		T* ptr = iterator.ptr;
+		ElementType* ptr = iterator.ptr;
 		if (ptr >= arr && ptr < arr + num)
 		{
 			size_t id = ptr - arr;
@@ -761,24 +763,23 @@ protected:
 	}
 
 	// Realloc() function performs array data reallocation and new memory 
-	// block will have size = @reserved_elements * sizeof(ElementType)
+	// block will have size = @capacity * sizeof(ElementType)
 	//    @return - 'true' if successful, 'false' if not enough memory
 	bool Realloc(size_t new_size)
 	{
 		ElementType* new_arr;
-		size_t new_reserved_elements;
+		size_t new_capacity;
 		if (new_size == 0)
 		{
 			new_arr = nullptr;
-			new_reserved_elements = 0;
+			new_capacity = 0;
 		}
 		else
 		{
-			const bool needs_realloc = new_size >= reserved_elements || new_size <= reserved_elements / 4;
-			if (needs_realloc)
+			new_capacity = static_cast<Preallocator&>(*this)(new_size, capacity);
+			if (new_capacity != capacity)
 			{
-				new_reserved_elements = new_size * 2;
-				new_arr = allocator.Allocate(new_reserved_elements);
+				new_arr = allocator.Allocate(new_capacity);
 				if (new_arr == nullptr)
 				{
 					return false;
@@ -787,7 +788,7 @@ protected:
 			else
 			{
 				new_arr = arr;
-				new_reserved_elements = reserved_elements;
+				new_capacity = capacity;
 			}
 		}
 
@@ -808,7 +809,7 @@ protected:
 
 			if (arr != nullptr)
 			{
-				allocator.Deallocate(arr, reserved_elements);
+				allocator.Deallocate(arr, capacity);
 			}
 		}
 		else if (new_size < num) // otherwise - destroy tail
@@ -822,57 +823,11 @@ protected:
 		// assign new array address and element count
 		arr = new_arr;
 		num = new_size;
-		reserved_elements = new_reserved_elements;
+		capacity = new_capacity;
 
 		// success
 		return true;
 	}
-
-	template<typename ObjType>
-	typename EnableIf<IsClass<ObjType>::value>::Type* Reconstruct(ObjType* new_arr, size_t new_size)
-	{
-		// if array address changed - move all elements to the new memory
-		if (new_arr != arr)
-		{
-			const size_t elements_to_copy = Min<size_t>(num, new_size);
-			for (size_t i = 0; i < elements_to_copy; i++)
-			{
-				new(new_arr + i) ElementType(Move(arr[i]));
-			}
-
-			// destroy old array
-			for (size_t i = 0; i < num; i++)
-			{
-				Destruct(i);
-			}
-
-			if (arr != nullptr)
-			{
-				allocator.Deallocate(arr, reserved_elements);
-			}
-		}
-		else if (new_size < num) // otherwise - destroy tail
-		{
-			for (size_t i = new_size; i < num; i++)
-			{
-				Destruct(i);
-			}
-		}
-
-		return nullptr;
-	}
-
-	template<typename ObjType>
-	typename EnableIf<!IsClass<ObjType>::value>::Type* Reconstruct(ObjType* new_arr, size_t new_size)
-	{
-		if (arr != nullptr && new_size == 0)
-		{
-			allocator.Deallocate(arr, reserved_elements);
-		}
-
-		return nullptr;
-	}
-
 
 	// allocator object
 	Allocator allocator;
@@ -881,20 +836,21 @@ protected:
 	ElementType *arr;
 
 	// number of elements in the array
-	size_t       num;
+	size_t num;
 
-	// ut::Array allocates more memory than actually needed
-	// for perfomance reasons. @reserved_elements represents
-	// the real number of elements, mem was allocated for.
-	size_t       reserved_elements;
+	// ut::BaseArray allocates more memory than actually needed
+	// for perfomance reasons. @capacity represents
+	// the real number of elements memory was allocated for.
+	size_t capacity;
 };
 
 // ut::Array is a container that encapsulates dynamic arrays
-template<typename T, class Allocator = DefaultAllocator<T> >
-class Array : public BaseArray<T, Allocator>
+template<typename ElementType,
+         class Allocator = DefaultAllocator<ElementType>,
+         class Preallocator = DefaultPreallocator<2, 2> >
+class Array : public BaseArray<ElementType, Allocator, Preallocator>
 {
-typedef T ElementType;
-typedef BaseArray<T, Allocator> Base;
+typedef BaseArray<ElementType, Allocator> Base;
 public:
 	// Default constructor
 	Array()

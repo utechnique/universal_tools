@@ -10,10 +10,10 @@ START_NAMESPACE(ut)
 START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
 // ut::Parameter<Array> is a template specialization for array types.
-template<typename T, typename Allocator>
-class Parameter< Array<T, Allocator> > : public BaseParameter
+template<typename T, typename Allocator, typename Preallocator>
+class Parameter< Array<T, Allocator, Preallocator> > : public BaseParameter
 {
-	using ArrayType = Array<T, Allocator>;
+	using ArrayType = Array<T, Allocator, Preallocator>;
 public:
 	// Constructor
 	//    @param p - pointer to the managed array

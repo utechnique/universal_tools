@@ -25,6 +25,22 @@ public:
 	}
 };
 
+// Default preallocator. A preallocator calculates how many elements must be
+// preallocated (or deallocated) for future uses.
+template<size_t inc_factor, size_t dec_factor>
+struct DefaultPreallocator
+{
+	size_t operator()(size_t elements, size_t current_capacity) const
+	{
+		const size_t inc_capacity = elements * inc_factor;
+		if (elements > current_capacity || inc_capacity <= current_capacity / dec_factor)
+		{
+			return inc_capacity;
+		}
+		return current_capacity;
+	}
+};
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
