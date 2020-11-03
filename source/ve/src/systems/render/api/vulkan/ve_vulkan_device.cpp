@@ -1674,10 +1674,12 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		// iterate all modes to find immediate one
 		for (uint32_t i = 0; i < present_mode_count; i++)
 		{
-			if (present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
+			if (present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR || 
+			    present_modes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
 			{
-				present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+				present_mode = present_modes[i];
 				vsync = false;
+				break;
 			}
 		}
 	}
