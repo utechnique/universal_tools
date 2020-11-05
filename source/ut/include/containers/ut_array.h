@@ -17,7 +17,7 @@ START_NAMESPACE(ut)
 template<typename ElementType,
          class Allocator = DefaultAllocator<ElementType>,
          class Preallocator = DefaultPreallocator<2, 2> >
-class BaseArray : private Preallocator
+class BaseArray : public Preallocator
 {
 public:
 	// ut::Array<>::ConstIterator is a random-access constant iterator to iterate
@@ -378,6 +378,12 @@ public:
 	~BaseArray()
 	{
 		Empty();
+
+		// ensure that memory is deallocated
+		if (arr != nullptr)
+		{
+			allocator.Deallocate(arr, capacity);
+		}
 	}
 
 	// Returns the size of the array in bytes
@@ -390,6 +396,12 @@ public:
 	inline size_t GetNum() const
 	{
 		return num;
+	}
+
+	// Returns current memory capacity in elements
+	inline size_t GetCapacity() const
+	{
+		return capacity;
 	}
 
 	// Returns 'true' if @num is null
@@ -768,28 +780,24 @@ protected:
 	bool Realloc(size_t new_size)
 	{
 		ElementType* new_arr;
-		size_t new_capacity;
-		if (new_size == 0)
+		size_t new_capacity = this->Preallocator::operator()(new_size, capacity);
+		if (new_capacity == 0)
 		{
+			new_size = 0;
 			new_arr = nullptr;
-			new_capacity = 0;
+		}
+		else if (new_capacity != capacity)
+		{
+			new_arr = allocator.Allocate(new_capacity);
+			if (new_arr == nullptr)
+			{
+				return false;
+			}
 		}
 		else
 		{
-			new_capacity = static_cast<Preallocator&>(*this)(new_size, capacity);
-			if (new_capacity != capacity)
-			{
-				new_arr = allocator.Allocate(new_capacity);
-				if (new_arr == nullptr)
-				{
-					return false;
-				}
-			}
-			else
-			{
-				new_arr = arr;
-				new_capacity = capacity;
-			}
+			new_arr = arr;
+			new_capacity = capacity;
 		}
 
 		// if array address changed - move all elements to the new memory
@@ -811,6 +819,8 @@ protected:
 			{
 				allocator.Deallocate(arr, capacity);
 			}
+
+			arr = new_arr;
 		}
 		else if (new_size < num) // otherwise - destroy tail
 		{
@@ -821,7 +831,6 @@ protected:
 		}
 
 		// assign new array address and element count
-		arr = new_arr;
 		num = new_size;
 		capacity = new_capacity;
 
