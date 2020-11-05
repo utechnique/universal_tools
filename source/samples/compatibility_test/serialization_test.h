@@ -39,6 +39,14 @@ private:
 };
 
 //----------------------------------------------------------------------------//
+class PolymorphicClassificationTask : public TestTask
+{
+public:
+	PolymorphicClassificationTask();
+	void Execute();
+};
+
+//----------------------------------------------------------------------------//
 class SerializationSubClass : public ut::meta::Reflective
 {
 public:

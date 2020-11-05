@@ -28,6 +28,7 @@ SerializationTestUnit::SerializationTestUnit() : TestUnit("SERIALIZATION")
 {
 	tasks.Add(ut::MakeUnique<SerializationBaseTestTask>());
 	tasks.Add(ut::MakeUnique<SerializationVariantsTask>());
+	tasks.Add(ut::MakeUnique<PolymorphicClassificationTask>());
 }
 
 //----------------------------------------------------------------------------//
@@ -337,6 +338,82 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 
 	// success
 	return check_ok;
+}
+
+//----------------------------------------------------------------------------//
+PolymorphicClassificationTask::PolymorphicClassificationTask() : TestTask("Classification")
+{}
+
+void PolymorphicClassificationTask::Execute()
+{
+	ut::Array< ut::UniquePtr<TestBase> > base;
+
+	base.Add(ut::MakeUnique<PolymorphicA>());
+	base.Add(ut::MakeUnique<PolymorphicA>());
+	base.Add(ut::MakeUnique<PolymorphicA>());
+	base.Add(ut::MakeUnique<PolymorphicB>());
+	base.Add(ut::MakeUnique<PolymorphicC>());
+	base.Add(ut::MakeUnique<PolymorphicC>());
+	base.Add(ut::MakeUnique<PolymorphicD>());
+	base.Add(ut::MakeUnique<PolymorphicE>());
+
+
+	ut::Array< ut::Ref<PolymorphicA> > derived_a;
+	ut::Factory<TestBase>::Select<PolymorphicA>(base, derived_a);
+
+	if (derived_a.GetNum() != 3)
+	{
+		report += ut::String("FAILED: Invalid number of derived objects.") + ut::CRet();
+		failed_test_counter.Increment();
+		return;
+	}
+
+	ut::meta::Selector<
+		TestBase,
+		PolymorphicA,
+		PolymorphicB,
+		PolymorphicC
+	> selector;
+
+	selector.Select(base);
+
+	ut::Array< ut::Ref<PolymorphicA> >& a = selector.Get<PolymorphicA>();
+	ut::Array< ut::Ref<PolymorphicB> >& b = selector.Get<PolymorphicB>();
+	ut::Array< ut::Ref<PolymorphicC> >& c = selector.Get<PolymorphicC>();
+
+	if (a.GetNum() != 3 || b.GetNum() != 1 || c.GetNum() != 2)
+	{
+		report += ut::String("FAILED: Invalid number of derived objects.") + ut::CRet();
+		failed_test_counter.Increment();
+		return;
+	}
+
+	selector.Reset();
+
+	if (a.GetNum() != 0 || b.GetNum() != 0 || c.GetNum() != 0)
+	{
+		report += ut::String("FAILED: non-empty array after a Reset() call.") + ut::CRet();
+		failed_test_counter.Increment();
+		return;
+	}
+
+	if (a.GetCapacity() == 0 || b.GetCapacity() == 0 || c.GetCapacity() == 0)
+	{
+		report += ut::String("FAILED: capacity became 0 after a Reset() call.") + ut::CRet();
+		failed_test_counter.Increment();
+		return;
+	}
+
+	selector.Select(base);
+
+	if (a.GetNum() != 3 || b.GetNum() != 1 || c.GetNum() != 2)
+	{
+		report += ut::String("FAILED: Invalid number of derived objects.") + ut::CRet();
+		failed_test_counter.Increment();
+		return;
+	}
+
+	report += "Ok.";
 }
 
 //----------------------------------------------------------------------------//

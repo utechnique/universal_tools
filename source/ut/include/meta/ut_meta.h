@@ -12,6 +12,7 @@
 #include "meta/ut_meta_info.h"
 #include "meta/ut_meta_controller.h"
 #include "meta/ut_meta_snapshot.h"
+#include "meta/ut_meta_selector.h"
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
