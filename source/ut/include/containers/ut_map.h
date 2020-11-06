@@ -12,8 +12,11 @@ START_NAMESPACE(ut)
 // ut::Map is a standard container made up of (key,value) pairs, which can be
 // retrieved based on a key, search and other operations are linear. If you
 // need faster container - use ut::AVLTree instead.
-template <typename Key, typename Value, class Allocator = DefaultAllocator< Pair<Key, Value> > >
-class Map : public BaseArray< Pair<Key, Value>, Allocator>
+template<typename Key,
+         typename Value,
+         class Allocator = DefaultAllocator< Pair<Key, Value> >,
+         class Preallocator = DefaultPreallocator<2, 2> >
+class Map : public BaseArray< Pair<Key, Value>, Allocator, Preallocator>
 {
 	typedef Pair<Key, Value> PairType;
 	typedef BaseArray<PairType, Allocator> Base;

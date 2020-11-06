@@ -8,6 +8,7 @@
 #include "containers/ut_avltree.h"
 #include "containers/ut_pair.h"
 #include "containers/ut_singleton.h"
+#include "pointers/ut_unique_ptr.h"
 #include "pointers/ut_shared_ptr.h"
 #include "system/ut_lock.h"
 #include "templates/ut_enable_if.h"
@@ -103,6 +104,18 @@ public:
 		return CopyObjectTemplate<T>(copy);
 	}
 
+	// Gets type name.
+	static const String& GetName()
+	{
+		return id.first;
+	}
+
+	// Gets type handle.
+	static Handle GetHandle()
+	{
+		return id.second.GetHandle();
+	}
+
 	// static (and thus single) identifier of the managed dynamic type.
 	static const DynamicType::Id id;
 
@@ -161,7 +174,7 @@ inline static const DynamicType& Identify(const T* t)
 template<typename T>
 inline static String GetPolymorphicName()
 {
-	return PolymorphicType<T>::id.first;
+	return PolymorphicType<T>::GetName();
 }
 
 template<typename T>
@@ -245,6 +258,29 @@ public:
 		}
 		DynamicTypePtr& dyn_type = result.Get();
 		return dyn_type.GetRef();
+	}
+
+	// Selects all objects of the specified derived type from the array of
+	// pointers of the base type. Selected items are appended to the end
+	// of the destination array.
+	//    @param src - reference to the array of pointers of the base type.
+	//    @param dst - referenct to the destination array of references of
+	//                 the derived type.
+	template<typename Derived,
+	         typename SrcArray = Array< UniquePtr<Base> >,
+	         typename DstArray = Array< Ref<Derived> > >
+	static void Select(SrcArray& src, DstArray& dst)
+	{
+		const DynamicType::Handle dst_handle = PolymorphicType<Derived>::GetHandle();
+		const size_t src_count = src.GetNum();
+		for (size_t i = 0; i < src_count; i++)
+		{
+			const DynamicType& src_type = src[i]->Identify();
+			if (src_type.GetHandle() == dst_handle)
+			{
+				dst.Add(static_cast<Derived&>(src[i].GetRef()));
+			}
+		}
 	}
 
 private:
