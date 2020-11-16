@@ -792,7 +792,7 @@ private:
 				{
 					// copy the contents of the non-empty child
 					parent->key = temp->key;
-					parent->value = temp->value;
+					parent->value = Move(temp->value);
 					parent->balance = temp->balance;
 					parent->left = temp->left;
 					parent->right = temp->right;
@@ -809,10 +809,10 @@ private:
 
 				// copy the inorder successor's data to this node  
 				parent->key = temp->key;
-				parent->value = temp->value;
+				parent->value = Move(temp->value);
 
 				// delete the inorder successor  
-				parent->right = DeleteNode(parent->right, temp->key);
+				parent->right = DeleteNode(parent->right, parent->key);
 			}
 		}
 
