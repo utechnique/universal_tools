@@ -7,6 +7,9 @@
 #include "ve_render_viewport_mgr.h"
 #include "ve_render_toolset.h"
 #include "ve_render_profiler.h"
+#include "policy/ve_render_view_policy.h"
+#include "ve_render_unit_mgr.h"
+
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -18,6 +21,13 @@ class Engine : public ViewportManager
 public:
 	// Constructor.
 	Engine(Device& render_device, ViewportManager viewport_mgr);
+
+	// Resets all previously added unit links.
+	void UnlinkUnits();
+
+	// Adds references to the provided units, these units will participate
+	// in the rendering process.
+	void LinkUnits(ut::Array< ut::UniquePtr<Unit> >& units);
 
 	// Renders the whole environment to the internal images and presents
 	// the result to user.
@@ -35,6 +45,9 @@ private:
 
 	// set of helper tools to operate with render resources
 	Toolset tools;
+
+	// unit manager renders and maintains units
+	UnitManager unit_mgr;
 
 	// measures performance
 	Profiler profiler;

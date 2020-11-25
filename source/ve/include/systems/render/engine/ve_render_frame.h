@@ -75,6 +75,9 @@ public:
 	// Returns a reference to the current frame.
 	Frame& GetCurrentFrame();
 
+	// Returns an id of the current frame.
+	ut::uint32 GetCurrentFrameId() const;
+
 	// Swaps frames so that the next call to GetCurrentFrame()
 	// will return next frame instead of current.
 	void SwapFrames();

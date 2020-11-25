@@ -68,6 +68,30 @@ public:
 	// Unmaps a previously mapped memory object associated with provided image.
 	void UnmapImage(Image& image);
 
+	// Toggles render target's state.
+	//    @param target - reference to the target.
+	//    @param state - new state of the target.
+	inline void SetTargetState(Target& target, Target::State state)
+	{
+		ut::Array<Target::SharedData> target_data;
+		target_data.Add(target.data);
+		SetTargetState(target_data, state);
+	}
+
+	// Toggles render target state for all targets in the provided framebuffer.
+	//    @param framebuffer - reference to the framebuffer.
+	//    @param state - new state of the target.
+	inline void SetTargetState(Framebuffer& framebuffer, Target::State state)
+	{
+		ut::Array<Target::SharedData> target_data;
+		target_data += framebuffer.color_targets;
+		if (framebuffer.depth_stencil_target)
+		{
+			target_data.Add(framebuffer.depth_stencil_target.Get());
+		}
+		SetTargetState(target_data, state);
+	}
+
 	// Begin a new render pass.
 	//    @param render_pass - reference to the render pass object.
 	//    @param framebuffer - reference to the framebuffer to be bound.
@@ -112,6 +136,12 @@ public:
 	{
 		return ut::MakeAlt<ColorArrayRef>(color_array);
 	}
+
+private:
+	// Toggles render target's state.
+	//    @param targets - reference to the shared target data array.
+	//    @param state - new state of the target.
+	void SetTargetState(ut::Array<Target::SharedData>& targets, Target::State state);
 };
 
 //----------------------------------------------------------------------------//

@@ -125,7 +125,7 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 	}
 
 	// initialize render pass info
-	pixel::Format format = display_result.Get().GetTarget(0).image.GetInfo().format;
+	pixel::Format format = display_result.Get().GetTarget(0).GetImage().GetInfo().format;
 	RenderTargetSlot color_slot(format, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, true);
 	ut::Array<RenderTargetSlot> slots;
 	slots.Add(color_slot);

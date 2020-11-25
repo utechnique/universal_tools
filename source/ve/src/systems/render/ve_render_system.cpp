@@ -8,7 +8,7 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 RenderSystem::RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread,
-                           ut::SharedPtr<ui::Frontend::Thread> in_ui_thread) : System("render")
+                           ut::SharedPtr<ui::Frontend::Thread> in_ui_thread) : ComponentSystem<RenderComponent>("render")
                                                                              , render_thread(ut::Move(in_render_thread))
                                                                              , ui_thread(ut::Move(in_ui_thread))
 {
@@ -38,9 +38,27 @@ RenderSystem::~RenderSystem()
 System::Result RenderSystem::Update()
 {
 	// draw scene in render thread
-	render_thread->Enqueue([&](Device& device) { engine->ProcessNextFrame(); });
+	render_thread->Enqueue([&](Device& device) { ProcessFrame(); });
 
 	return CmdArray();
+}
+
+// Links render units with render engine and renders a new frame.
+void RenderSystem::ProcessFrame()
+{
+	// unlink render units from the previous frame
+	engine->UnlinkUnits();
+
+	// link units to be rendered in the current frame
+	size_t entity_count = entities.GetNum();
+	for (size_t i = 0; i < entity_count; i++)
+	{
+		RenderComponent& component = entities[i].Get<RenderComponent>();
+		engine->LinkUnits(component.units);
+	}
+
+	// render units
+	engine->ProcessNextFrame();
 }
 
 //----------------------------------------------------------------------------//

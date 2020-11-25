@@ -31,7 +31,7 @@ ut::Error VulkanError(VkResult res, const ut::String& desc = ut::String());
 #if DEBUG
 static const bool skEnableVulkanValidationLayer = true;
 #else
-static const bool skEnableVulkanValidationLayer = true;
+static const bool skEnableVulkanValidationLayer = false;
 #endif
 
 // Validation layer name.

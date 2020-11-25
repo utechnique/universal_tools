@@ -8,7 +8,11 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-ResourceManager::ResourceManager(Device& device_ref) noexcept : device(device_ref)
+ResourceManager::ResourceManager(Device& device_ref,
+                                 const Config<Settings>& cfg) noexcept : device(device_ref)
+                                                                       , frame_counter(0)
+                                                                       , frames_in_flight(cfg.frames_in_flight)
+                                                                       , garbage(cfg.frames_in_flight)
 {}
 
 //----------------------------------------------------------------------------->
@@ -61,6 +65,53 @@ ut::Result<Buffer, ut::Error> ResourceManager::CreateFullscreenQuad()
 	vertices[5].texcoord = ut::Vector<2>(1, 1);
 
 	return device.CreateBuffer(ut::Move(buffer_info));
+}
+
+//----------------------------------------------------------------------------->
+// Enqueues a deletion of the desired resource.
+//    @param id - unique identifier of the resource to be deleted.
+void ResourceManager::DeleteResource(Resource::Id id)
+{
+	// lock resources
+	ut::ScopeRWLock scope_lock(lock, ut::access_write);
+
+	// find desired resource by id
+	ut::Optional<ReferencedResource&> resource = resources.Find(id);
+	if (!resource)
+	{
+		return;
+	}
+
+	// move the resource to the deletion queue, also note that
+	// the resource will be deleted only after a full cycle of frames,
+	// this guarantees that resource will not be used by gpu
+	if (!garbage[frame_counter].Add(ut::Move(resource->ptr)))
+	{
+		throw ut::Error(ut::error::out_of_memory);
+	}
+
+	// remove empty pointer
+	resources.Remove(id);
+
+	// release id
+	id_generator.Release(id);
+}
+
+//----------------------------------------------------------------------------->
+// Processes internal resource events, such as deletion, etc.
+void ResourceManager::Update()
+{
+	// lock resources
+	ut::ScopeRWLock scope_lock(lock, ut::access_write);
+
+	// increment frame counter
+	if (++frame_counter >= frames_in_flight)
+	{
+		frame_counter = 0;
+	}
+
+	// delete unused resources
+	garbage[frame_counter].Empty();
 }
 
 //----------------------------------------------------------------------------//

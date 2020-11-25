@@ -92,6 +92,22 @@ namespace pixel
 		       format == d32_float_s8_uint  ? 8 :
 		       0;
 	}
+
+	// Checks if provided pixel format is intended to be used by depth buffer.
+	constexpr bool IsDepthFormat(Format format)
+	{
+		return format == d16_unorm ||
+		       format == d24_unorm_s8_uint ||
+		       format == d32_float ||
+		       format == d32_float_s8_uint;
+	}
+
+	// Checks if provided pixel format is intended to be used by stencil buffer.
+	constexpr bool IsStencilFormat(Format format)
+	{
+		return format == d24_unorm_s8_uint ||
+		       format == d32_float_s8_uint;
+	}
 }
 
 //----------------------------------------------------------------------------//

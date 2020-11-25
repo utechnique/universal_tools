@@ -118,35 +118,6 @@ protected:
 	                       size_t row_pitch,
 	                       size_t depth_pitch);
 
-	// Performs image layout transition.
-	//    @param cmd_buffer - command buffer handle to record transition command.
-	//    @param image - image handle.
-	//    @param aspect_mask - bitmask of VkImageAspectFlagBits specifying
-	//                         which aspect(s) of the image are included
-	//                         in the view.
-	//    @param old_layout - current image layout.
-	//    @param new_layout - desired image layout.
-	//    @param src_stages - bitmask of VkAccessFlagBits specifying a
-	//                        source access mask.
-	//    @param dst_stages - bitmask of VkAccessFlagBits specifying a
-	//                        destination access mask.
-	//    @param base_mip_level - id of the first mip level.
-	//    @param mip_levels - number of mip levels.
-	//    @param base_array_layer - id of the first image in an array.
-	//    @param layer_count - number of images in an array.
-	//    @return - optional error if failed.
-	void SetImageLayout(VkCommandBuffer cmd_buffer,
-	                    VkImage image,
-	                    VkImageAspectFlags aspect_mask,
-	                    VkImageLayout old_layout,
-	                    VkImageLayout new_layout,
-	                    VkPipelineStageFlags src_stages,
-	                    VkPipelineStageFlags dst_stages,
-	                    ut::uint32 base_mip_level,
-	                    ut::uint32 mip_levels,
-	                    ut::uint32 base_array_layer,
-	                    ut::uint32 layer_count);
-
 	// Copies contents of source buffer to the destination buffer.
 	//    @param cmd_buffer - command buffer to record a command.
 	//    @param src - source buffer handle.

@@ -14,15 +14,34 @@ START_NAMESPACE(render)
 class PlatformImage : public VkRc<vk::image>
 {
 	friend class Device;
+	friend class PlatformContext;
 	friend class Context;
 public:
+	// Current state of this image. All changeable image
+	// options are collected here.
+	struct State
+	{
+		static State CreateForColorTarget();
+		static State CreateForDepthStencilTarget();
+		static State CreateForShaderResource();
+
+		State(VkImageLayout in_layout,
+		      VkAccessFlags in_access_mask,
+		      VkPipelineStageFlags in_stages);
+
+		VkImageLayout layout;
+		VkAccessFlags access_mask;
+		VkPipelineStageFlags stages;
+	};
+
 	// Constructor.
 	PlatformImage(VkDevice device_handle,
 	              VkImage image_handle,
 	              VkImageView image_view,
 	              VkImageView* cube_faces_arr, // pass nullptr if not a cubemap
-	              VkImageLayout image_layout,
-	              VkRc<vk::memory> memory_rc);
+	              VkRc<vk::memory> memory_rc,
+	              VkImageAspectFlags aspect_flags,
+	              const State& image_state);
 
 	// Move constructor.
 	PlatformImage(PlatformImage&&) noexcept;
@@ -37,7 +56,7 @@ public:
 	// Returns image layout.
 	VkImageLayout GetLayout() const
 	{
-		return layout;
+		return state.layout;
 	}
 
 	// Returns image view.
@@ -54,10 +73,11 @@ public:
 	}
 
 private:
-	VkImageLayout layout;
+	VkImageAspectFlags aspect_mask;
 	VkRc<vk::image_view> view;
 	VkRc<vk::image_view> cube_faces[6];
 	VkRc<vk::memory> memory;
+	State state;
 };
 
 //----------------------------------------------------------------------------//

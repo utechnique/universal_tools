@@ -17,7 +17,8 @@ class PlatformFramebuffer : public VkRc<vk::framebuffer>
 	friend class Context;
 public:
 	// Constructor.
-	PlatformFramebuffer(VkDevice device_handle, VkFramebuffer framebuffer_handle);
+	PlatformFramebuffer(VkDevice device_handle,
+	                    VkFramebuffer framebuffer_handle);
 
 	// Move constructor.
 	PlatformFramebuffer(PlatformFramebuffer&&) noexcept;

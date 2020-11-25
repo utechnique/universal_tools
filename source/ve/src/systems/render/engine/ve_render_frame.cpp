@@ -81,6 +81,12 @@ Frame& FrameManager::GetCurrentFrame()
 	return frames[current_frame_id];
 }
 
+// Returns an id of the current frame.
+ut::uint32 FrameManager::GetCurrentFrameId() const
+{
+	return current_frame_id;
+}
+
 // Swaps frames so that the next call to GetCurrentFrame()
 // will return next frame instead of current.
 void FrameManager::SwapFrames()

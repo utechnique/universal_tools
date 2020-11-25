@@ -9,11 +9,11 @@ START_NAMESPACE(render)
 // Constructor.
 Framebuffer::Framebuffer(PlatformFramebuffer platform_framebuffer,
                          const Framebuffer::Info& framebuffer_info,
-                         ut::Array< ut::Ref<Target> > in_color_targets,
-                         ut::Optional<Target&> in_ds_target) : PlatformFramebuffer(ut::Move(platform_framebuffer))
-                                                             , color_targets(ut::Move(in_color_targets))
-                                                             , depth_stencil_target(ut::Move(in_ds_target))
-                                                             , info(framebuffer_info)
+                         ut::Array<Target::SharedData> in_color_targets,
+                         ut::Optional<Target::SharedData> in_depth_stencil_target) : PlatformFramebuffer(ut::Move(platform_framebuffer))
+                                                                                   , info(framebuffer_info)
+                                                                                   , color_targets(ut::Move(in_color_targets))
+                                                                                   , depth_stencil_target(ut::Move(in_depth_stencil_target))
 {}
 
 // Move constructor.

@@ -9,10 +9,6 @@ START_NAMESPACE(ve)
 void Component::Reflect(ut::meta::Snapshot& snapshot)
 {}
 
-// ve::Component is abstract class, therefore must have virtual destructor.
-Component::~Component()
-{}
-
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//

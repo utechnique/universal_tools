@@ -21,6 +21,75 @@ PlatformContext::PlatformContext(VkDevice device_handle,
 // Move constructor.
 PlatformContext::PlatformContext(PlatformContext&&) noexcept = default;
 
+// Performs image layout transition.
+//    @param requests - array of transition requests.
+//    @param cmd_buffer - command buffer handle to record transition command.
+void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& requests,
+                                       VkCommandBuffer cmd_buffer)
+{
+	ut::Array<ImageTransitionGroup> transition_groups;
+
+	const ut::uint32 request_count = static_cast<ut::uint32>(requests.GetNum());
+	for (ut::uint32 i = 0; i < request_count; i++)
+	{
+		ImageTransitionRequest& request = requests[i];
+
+		// initialize barrier data
+		VkImageMemoryBarrier barrier;
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		barrier.pNext = nullptr;
+		barrier.oldLayout = request.image.state.layout;
+		barrier.newLayout = request.new_state.layout;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.image = request.image.GetVkHandle();
+		barrier.subresourceRange.aspectMask = request.image.aspect_mask;
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+		barrier.srcAccessMask = request.image.state.access_mask;
+		barrier.dstAccessMask = request.new_state.access_mask;
+
+		// search this transition variant
+		ut::Optional<ImageTransitionGroup&> suitable_group;
+		const ut::uint32 group_count = static_cast<ut::uint32>(transition_groups.GetNum());
+		for (ut::uint32 t = 0; t < group_count; t++)
+		{
+			ImageTransitionGroup& current_group = transition_groups[t];
+			if (current_group.old_stage == request.image.state.stages &&
+				current_group.new_stage == request.new_state.stages)
+			{
+				suitable_group = current_group; break;
+			}
+		}
+
+		// if there is no such transition - add a new group
+		if (!suitable_group)
+		{
+			transition_groups.Add({ 0, request.image.state.stages, request.new_state.stages });
+			suitable_group = transition_groups.GetLast();
+		}
+
+		// update state information
+		suitable_group->barriers.Add(barrier);
+		request.image.state = request.new_state;
+	}
+
+	// perform pipeline barriers - one for each group
+	const ut::uint32 group_count = static_cast<ut::uint32>(transition_groups.GetNum());
+	for (ut::uint32 t = 0; t < group_count; t++)
+	{
+		ImageTransitionGroup& group = transition_groups[t];
+		const uint32_t barrier_count = static_cast<uint32_t>(group.barriers.GetNum());
+		vkCmdPipelineBarrier(cmd_buffer,
+		                     group.old_stage,
+		                     group.new_stage,
+		                     0, 0, nullptr, 0, nullptr,
+		                     barrier_count, group.barriers.GetAddress());
+	}
+}
+
 //----------------------------------------------------------------------------//
 // Constructor.
 Context::Context(PlatformContext platform_context) : PlatformContext(ut::Move(platform_context))
@@ -123,6 +192,46 @@ void Context::UnmapImage(Image& image)
 	}
 }
 
+// Toggles render target's state.
+//    @param targets - reference to the shared target data array.
+//    @param state - new state of the target.
+void Context::SetTargetState(ut::Array<Target::SharedData>& targets, Target::State state)
+{
+	ut::Array<ImageTransitionRequest> transition_requests;
+
+	const ut::uint32 target_count = static_cast<ut::uint32>(targets.GetNum());
+	for (ut::uint32 i = 0; i < target_count; i++)
+	{
+		Target::Data& target_data = targets[i].GetRef();
+		const Target::Info target_info = target_data.info;
+		if (target_info.state == state)
+		{
+			continue;
+		}
+
+		// choose corresponding image state
+		PlatformImage::State image_state = PlatformImage::State::CreateForShaderResource();
+		if (state == Target::state_target)
+		{
+			if (target_info.usage == Target::usage_depth)
+			{
+				image_state = PlatformImage::State::CreateForDepthStencilTarget();
+			}
+			else
+			{
+				image_state = PlatformImage::State::CreateForColorTarget();
+			}
+		}
+
+		// create transition request and update state information
+		transition_requests.Add({ target_data.image, image_state });
+		target_data.info.state = state;
+	}
+
+	// pipeline barrier
+	ChangeImageState(transition_requests, cmd_buffer.GetVkHandle());
+}
+
 // Begin a new render pass.
 //    @param render_pass - reference to the render pass object.
 //    @param framebuffer - reference to the framebuffer to be bound.
@@ -186,6 +295,9 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	rp_begin.clearValueCount = static_cast<uint32_t>(total_clear_val_count);
 	rp_begin.pClearValues = vk_clear_values;
 
+	// all render targets must be in 'target' state before render pass begins
+	SetTargetState(framebuffer, Target::state_target);
+
 	// begin render pass
 	vkCmdBeginRenderPass(cmd_buffer.GetVkHandle(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 }
@@ -209,12 +321,14 @@ void Context::BindPipelineState(PipelineState& pipeline_state)
 //    @param pipeline_state - reference to the pipeline state.
 void Context::BindDescriptorSet(DescriptorSet& set)
 {
+	// check if a pipeline state is set
 	if (!cmd_buffer.bound_pipeline)
 	{
 		ut::log.Lock() << "Warning! BindDescriptorSet function was called, but there is no bound pipeline." << ut::cret;
 		return;
 	}
 
+	// bind descriptors
 	cmd_buffer.descriptor_mgr.AllocateAndBindDescriptorSet(set, cmd_buffer.bound_pipeline->dsl.GetVkHandle(),
 	                                                            cmd_buffer.bound_pipeline->layout.GetVkHandle());
 }

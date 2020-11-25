@@ -45,7 +45,7 @@ Sampler SamplerCache::CreateSampler(Device& device,
 	sampler_info.address_u = address_mode;
 	sampler_info.address_v = address_mode;
 	sampler_info.address_w = address_mode;
-	sampler_info.compare_op = compare::always;
+	sampler_info.compare_op = ut::Optional<render::compare::Operation>();
 	sampler_info.border_color = ut::Color<4, float>(0.0f);
 	sampler_info.anisotropy_enable = false;
 	sampler_info.max_anisotropy = 1.0f;

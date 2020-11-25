@@ -17,8 +17,7 @@ class PlatformRenderTarget
 	friend class Context;
 	friend class PlatformDisplay;
 public:
-	PlatformRenderTarget(VkDevice device_handle,
-	                     VkImageView image_view_handle);
+	PlatformRenderTarget();
 
 	// Move constructor.
 	PlatformRenderTarget(PlatformRenderTarget&&) noexcept;
@@ -29,9 +28,6 @@ public:
 	// Copying is prohibited.
 	PlatformRenderTarget(const PlatformRenderTarget&) = delete;
 	PlatformRenderTarget& operator =(const PlatformRenderTarget&) = delete;
-
-private:
-	VkRc<vk::image_view> image_view;
 };
 
 //----------------------------------------------------------------------------//

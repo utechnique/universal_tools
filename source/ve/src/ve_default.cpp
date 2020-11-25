@@ -4,6 +4,7 @@
 #include "ve_default.h"
 #include "systems/ui/ve_ui.h"
 #include "systems/render/ve_render_system.h"
+#include "systems/render/ve_render_camera_system.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
@@ -19,6 +20,7 @@ Pipeline GenDefaultPipeline()
 
 	// build a pipeline
 	Pipeline pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread));
+	pipeline.AddSerial(Pipeline(ut::MakeShared<render::CameraSystem>()));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<render::RenderSystem>(render_thread, ui_frontend_thread)));
 
 	// success

@@ -9,7 +9,7 @@ START_NAMESPACE(render)
 // Constructor.
 Toolset::Toolset(Device& dvc_ref) noexcept : device(dvc_ref)
                                            , config(LoadCfg())
-                                           , rc_mgr(dvc_ref)
+                                           , rc_mgr(dvc_ref, config)
                                            , img_loader(dvc_ref)
                                            , shader_loader(dvc_ref)
                                            , sampler_cache(dvc_ref)

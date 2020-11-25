@@ -20,12 +20,23 @@ public:
 	//    @param in_pipeline - ve::Pipeline object.
 	Environment(Pipeline in_pipeline = GenDefaultPipeline());
 
+	// Destructor destroys entities.
+	~Environment();
+
 	// Main loop.
 	//    @return - optional ut::Error if environment stopped
 	//              working due to internal error.
 	ut::Optional<ut::Error> Run();
 
-	// Adds a new entity to the environment.
+	// Enqueues a command, it will be executed at
+	// the beginning of the next tick.
+	//    @param command - unique pointer to the command to be executed.
+	//    @return - optional ut::Error if failed to add provided command.
+	ut::Optional<ut::Error> EnqueueCommand(ut::UniquePtr<Cmd> command);
+
+	// Adds a new entity to the environment. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdAddEntity command
+	// instead.
 	//    @param entity - new entity object.
 	//    @return - id of the entity or ut::Error if failed to
 	//              add @entity to the environment.
@@ -56,6 +67,9 @@ private:
 
 	// Thread pool that can process multiple tasks simultaneously.
 	ut::ThreadPool<System::Result, ut::pool_sync::cond_var> pool;
+
+	// Commands to be executed in the next tick.
+	ut::Synchronized<CmdArray> commands;
 };
 
 //----------------------------------------------------------------------------//

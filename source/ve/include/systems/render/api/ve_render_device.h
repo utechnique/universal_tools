@@ -52,6 +52,11 @@ public:
 	//    @return - new sampler object of error if failed.
 	ut::Result<Sampler, ut::Error> CreateSampler(const Sampler::Info& info);
 
+	// Creates a new render target.
+	//    @param info - reference to the Target::Info object describing a target.
+	//    @return - new render target object of error if failed.
+	ut::Result<Target, ut::Error> CreateTarget(const Target::Info& info);
+
 	// Creates platform-specific representation of the rendering area inside a UI viewport.
 	//    @param viewport - reference to UI viewport containing rendering area.
 	//    @param vsync - boolean whether to enable vertical synchronization or not.

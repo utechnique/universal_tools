@@ -275,6 +275,17 @@ struct BlendState
 	{}
 
 	// Blending templates
+	static Blending CreateNoBlending()
+	{
+		return Blending(false,
+		                Blending::src_alpha,
+		                Blending::inverted_src_alpha,
+		                Blending::add,
+		                Blending::one,
+		                Blending::one,
+		                Blending::max,
+		                0xf);
+	}
 	static Blending CreateAlphaBlending()
 	{
 		return Blending(true,

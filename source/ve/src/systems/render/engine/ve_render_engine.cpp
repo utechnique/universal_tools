@@ -10,6 +10,7 @@ START_NAMESPACE(render)
 Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportManager(ut::Move(viewport_mgr))
                                                                     , device(render_device)
                                                                     , tools(render_device)
+                                                                    , unit_mgr(tools)
                                                                     , profiler(tools)
 {
 	// set vertical synchronization for viewports
@@ -39,6 +40,20 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	tools.shader_loader.SaveCache();
 }
 
+// Resets all previously added unit links.
+void Engine::UnlinkUnits()
+{
+	unit_mgr.selector.Reset();
+}
+
+// Adds references to the provided units, these units will participate
+// in the rendering process.
+void Engine::LinkUnits(ut::Array< ut::UniquePtr<Unit> >& units)
+{
+	unit_mgr.selector.Select(units);
+	unit_mgr.InitializeUnits();
+}
+
 // Renders the whole environment to the internal images and presents
 // the result to user.
 void Engine::ProcessNextFrame()
@@ -48,6 +63,9 @@ void Engine::ProcessNextFrame()
 
 	// wait for the previous frame to finish
 	device.WaitCmdBuffer(frame.cmd_buffer);
+
+	// update resources (deletes unused resources, etc.)
+	tools.rc_mgr.Update();
 
 	// execute viewport tasks (resize, close, etc.)
 	ProcessViewportEvents();
@@ -87,36 +105,17 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 	// get current frame
 	Frame& frame = tools.frame_mgr.GetCurrentFrame();
 
+	// render environment to view units
+	Policy<View>& view_policy = unit_mgr.policies.Get<View>();
+	view_policy.RenderEnvironment(context);
+
+	// display rendered image to user
 	for (size_t i = 0; i < active_viewports.GetNum(); i++)
 	{
+		ui::PlatformViewport& ui_viewport = active_viewports[i]->Get<ui::PlatformViewport&>();
 		Display& display = active_viewports[i]->Get<Display>();
 		RenderPass& rp = active_viewports[i]->Get<RenderPass>();
 		PipelineState& pipeline_state = active_viewports[i]->Get<PipelineState>();
-
-		static int it = 0;
-		it++;
-		bool swap_col = it % 100 < 50;
-		if (swap_col)
-		{
-			switch (i)
-			{
-			case 0: frame.clear_color = ut::Color<4>(1, 0, 0, 1); break;
-			case 1: frame.clear_color = ut::Color<4>(0, 1, 0, 1); break;
-			case 2: frame.clear_color = ut::Color<4>(0, 0, 1, 1); break;
-			case 3: frame.clear_color = ut::Color<4>(1, 1, 0, 1); break;
-			}
-		}
-		else
-		{
-			switch (i)
-			{
-			case 0: frame.clear_color = ut::Color<4>(0, 0, 1, 1); break;
-			case 1: frame.clear_color = ut::Color<4>(1, 0, 1, 1); break;
-			case 2: frame.clear_color = ut::Color<4>(1, 0, 0, 1); break;
-			case 3: frame.clear_color = ut::Color<4>(0, 1, 1, 1); break;
-			}
-		}
-
 		ut::Array<Framebuffer>& framebuffers = active_viewports[i]->Get< ut::Array<Framebuffer> >();
 
 		Framebuffer& framebuffer = framebuffers[display.GetCurrentBufferId()];
@@ -136,8 +135,27 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 
 		// draw quad
 		frame.quad_desc_set.ub.BindUniformBuffer(frame.display_quad_ub);
-		frame.quad_desc_set.tex2d.BindImage(img_2d.GetRef());
 		frame.quad_desc_set.sampler.BindSampler(tools.sampler_cache.linear_clamp);
+
+		if (ui_viewport.GetId() == 0)
+		{
+			ut::Array< ut::Ref<View> > views = unit_mgr.selector.Get<View>();
+
+			if (!views.IsEmpty())
+			{
+				frame.quad_desc_set.tex2d.BindImage(views.GetFirst()->data->frames[tools.frame_mgr.GetCurrentFrameId()].g_buffer.depth.GetImage());
+			}
+			else
+			{
+				frame.quad_desc_set.tex2d.BindImage(img_2d.GetRef());
+			}
+		}
+		else
+		{
+			frame.quad_desc_set.tex2d.BindImage(img_2d.GetRef());
+		}
+
+
 		context.BeginRenderPass(rp, framebuffer, render_area, frame.clear_color);
 		context.BindPipelineState(pipeline_state);
 		context.BindDescriptorSet(frame.quad_desc_set);
@@ -145,7 +163,7 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 		context.Draw(6, 0);
 
 		// draw profiler info
-		if (i == 0)
+		if (ui_viewport.GetId() == 0)
 		{
 			profiler.DrawInfo(context, frame, display.GetWidth(), display.GetHeight());
 		}

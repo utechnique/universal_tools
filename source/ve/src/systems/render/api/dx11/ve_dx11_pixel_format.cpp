@@ -52,6 +52,34 @@ DXGI_FORMAT ConvertPixelFormatToDX11(pixel::Format format)
 	return DXGI_FORMAT_UNKNOWN;
 }
 
+// Converts depth pixel format to the one compatible
+// with DirectX 11 texture resource.
+DXGI_FORMAT ConvertTexDepthPixelFormatToDX11(pixel::Format format)
+{
+	switch (format)
+	{
+	case pixel::d16_unorm: return DXGI_FORMAT_R16_UNORM;
+	case pixel::d24_unorm_s8_uint: return DXGI_FORMAT_R24G8_TYPELESS;
+	case pixel::d32_float: return DXGI_FORMAT_R32_FLOAT;
+	case pixel::d32_float_s8_uint: return DXGI_FORMAT_R32G8X24_TYPELESS;
+	}
+	return DXGI_FORMAT_UNKNOWN;
+}
+
+// Converts depth pixel format to the one compatible
+// with DirectX 11 shader resource view.
+DXGI_FORMAT ConvertSrvDepthPixelFormatToDX11(pixel::Format format)
+{
+	switch (format)
+	{
+	case pixel::d16_unorm: return DXGI_FORMAT_R16_FLOAT;
+	case pixel::d24_unorm_s8_uint: return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+	case pixel::d32_float: return DXGI_FORMAT_R32_FLOAT;
+	case pixel::d32_float_s8_uint: return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+	}
+	return DXGI_FORMAT_UNKNOWN;
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)

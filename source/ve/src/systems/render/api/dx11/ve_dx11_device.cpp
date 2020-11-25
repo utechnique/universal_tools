@@ -260,6 +260,10 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	bool is_3d = info.type == Image::type_3D;
 	bool is_cube = info.type == Image::type_cube;
 
+	// check if image is used as a render target
+	const bool is_render_target = info.usage == render::memory::gpu_read_write;
+	const bool is_depth_buffer = is_render_target && pixel::IsDepthFormat(info.format);
+
 	// initialize subresource data
 	if (!info.data.IsEmpty())
 	{
@@ -308,12 +312,27 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	// cpu access
 	UINT cpu_access = info.usage == render::memory::gpu_read_cpu_write ? D3D11_CPU_ACCESS_WRITE : 0;
 
+	// bind flags
+	UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
+	if (is_render_target)
+	{
+		bind_flags |= is_depth_buffer ? D3D11_BIND_DEPTH_STENCIL : D3D11_BIND_RENDER_TARGET;
+	}
+
+	// pixel format
+	DXGI_FORMAT tex_pixel_format = is_depth_buffer ?
+	                               ConvertTexDepthPixelFormatToDX11(info.format) :
+	                               ConvertPixelFormatToDX11(info.format);
+	DXGI_FORMAT srv_pixel_format = is_depth_buffer ?
+	                               ConvertSrvDepthPixelFormatToDX11(info.format) :
+	                               tex_pixel_format;
+
 	// shader resource view description
 	ID3D11ShaderResourceView* srv = nullptr;
 	ID3D11ShaderResourceView* cube_faces[6];
 	ID3D11Resource* shader_resource = nullptr;
 	D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc;
-	srv_desc.Format = ConvertPixelFormatToDX11(info.format);
+	srv_desc.Format = srv_pixel_format;
 	srv_desc.Texture2D.MostDetailedMip = 0;
 	srv_desc.Texture2D.MipLevels = info.mip_count;
 
@@ -324,9 +343,9 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		tex1d_desc.Width = info.width;
 		tex1d_desc.MipLevels = info.mip_count;
 		tex1d_desc.ArraySize = 1;
-		tex1d_desc.Format = ConvertPixelFormatToDX11(info.format);
+		tex1d_desc.Format = tex_pixel_format;
 		tex1d_desc.Usage = ConvertUsageToDX11(info.usage);
-		tex1d_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		tex1d_desc.BindFlags = bind_flags;
 		tex1d_desc.CPUAccessFlags = cpu_access;
 		tex1d_desc.MiscFlags = 0;
 		result = d3d11_device->CreateTexture1D(&tex1d_desc, subrc_data, &tex1D);
@@ -345,11 +364,11 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		tex2d_desc.Height = info.height;
 		tex2d_desc.MipLevels = info.mip_count;
 		tex2d_desc.ArraySize = info.type == Image::type_cube ? 6 : 1;
-		tex2d_desc.Format = ConvertPixelFormatToDX11(info.format);
+		tex2d_desc.Format = tex_pixel_format;
 		tex2d_desc.SampleDesc.Count = 1;
 		tex2d_desc.SampleDesc.Quality = 0;
 		tex2d_desc.Usage = ConvertUsageToDX11(info.usage);
-		tex2d_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		tex2d_desc.BindFlags = bind_flags;
 		tex2d_desc.CPUAccessFlags = cpu_access;
 		tex2d_desc.MiscFlags = is_cube ? D3D11_RESOURCE_MISC_TEXTURECUBE : 0;
 		result = d3d11_device->CreateTexture2D(&tex2d_desc, subrc_data, &tex2D);
@@ -389,9 +408,9 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		tex3d_desc.Height = info.height;
 		tex3d_desc.Depth = info.depth;
 		tex3d_desc.MipLevels = info.mip_count;
-		tex3d_desc.Format = ConvertPixelFormatToDX11(info.format);
+		tex3d_desc.Format = tex_pixel_format;
 		tex3d_desc.Usage = ConvertUsageToDX11(info.usage);
-		tex3d_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		tex3d_desc.BindFlags = bind_flags;
 		tex3d_desc.CPUAccessFlags = cpu_access;
 		tex3d_desc.MiscFlags = 0;
 		result = d3d11_device->CreateTexture3D(&tex3d_desc, subrc_data, &tex3D);
@@ -510,6 +529,89 @@ ut::Result<Sampler, ut::Error> Device::CreateSampler(const Sampler::Info& info)
 	return Sampler(ut::Move(platform_sampler), info);
 }
 
+// Creates a new render target.
+//    @param info - reference to the Target::Info object describing a target.
+//    @return - new render target object of error if failed.
+ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
+{
+	// no image other than 2d or cubemap can be a render target
+	if (info.type != Image::type_2D && info.type != Image::type_cube)
+	{
+		return ut::MakeError(ut::error::not_supported, "Only 2D image can be a render target.");
+	}
+
+	// create image resource for the render target
+	Image::Info img_info;
+	img_info.type = info.type;
+	img_info.format = info.format;
+	img_info.usage = render::memory::gpu_read_write;
+	img_info.mip_count = info.mip_count;
+	img_info.width = info.width;
+	img_info.height = info.height;
+	img_info.depth = info.depth;
+	ut::Result<Image, ut::Error> image = CreateImage(img_info);
+	if (!image)
+	{
+		return ut::MakeError(image.MoveAlt());
+	}
+
+	// retreice 2d texture resource
+	ID3D11Texture2D *tex2d = image->tex2d.Get();
+
+	// check if image is a cubemap
+	const bool is_cube = info.type == Image::type_cube;
+
+	// create render target view
+	ID3D11RenderTargetView* rtv = nullptr;
+	ID3D11DepthStencilView* dsv = nullptr;
+	if (info.usage == Target::usage_depth)
+	{
+		D3D11_DEPTH_STENCIL_VIEW_DESC desc;
+		desc.Format = ConvertPixelFormatToDX11(info.format);
+		desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		desc.Flags = 0;
+		desc.Texture2D.MipSlice = 0;
+		if (is_cube)
+		{
+			desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+			desc.Texture2DArray.FirstArraySlice = 0;
+			desc.Texture2DArray.ArraySize = 6;
+			desc.Texture2DArray.MipSlice = 0;
+		}
+
+		HRESULT result = d3d11_device->CreateDepthStencilView(tex2d, &desc, &dsv);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " CreateDepthStencilView() failed.");
+		}
+	}
+	else
+	{
+		D3D11_RENDER_TARGET_VIEW_DESC desc;
+		desc.Format = ConvertPixelFormatToDX11(info.format);
+		desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		desc.Texture2D.MipSlice = 0;
+		if (is_cube)
+		{
+			desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+			desc.Texture2DArray.FirstArraySlice = 0;
+			desc.Texture2DArray.ArraySize = 6;
+			desc.Texture2DArray.MipSlice = 0;
+		}
+
+		HRESULT result = d3d11_device->CreateRenderTargetView(tex2d, &desc, &rtv);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " CreateRenderTargetView() failed.");
+		}
+	}
+
+	// success
+	return Target(PlatformRenderTarget(rtv, dsv),
+	              image.Move(),
+	              info);
+}
+
 // Creates platform-specific representation of the rendering area inside a UI viewport.
 //    @param viewport - reference to UI viewport containing rendering area.
 //    @param vsync - boolean whether to enable vertical synchronization or not.
@@ -563,7 +665,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 
 	// initialize render target info
 	Target::Info target_info;
-	target_info.usage = Target::Info::usage_present;
+	target_info.usage = Target::usage_present;
 
 	// create render target that will be associated with provided viewport
 	Image texture(PlatformImage(backbuffer, nullptr), ut::Move(backbuffer_info));
@@ -616,14 +718,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	if (color_targets.GetNum() != 0)
 	{
 		const Target& color_target = color_targets.GetFirst();
-		width = color_target.image.GetInfo().width;
-		height = color_target.image.GetInfo().height;
+		width = color_target.data->image.GetInfo().width;
+		height = color_target.data->image.GetInfo().height;
 	}
 	else if (depth_stencil_target)
 	{
 		const Target& ds_target = depth_stencil_target.Get();
-		width = ds_target.image.GetInfo().width;
-		height = ds_target.image.GetInfo().height;
+		width = ds_target.data->image.GetInfo().width;
+		height = ds_target.data->image.GetInfo().height;
 	}
 	else
 	{
@@ -631,10 +733,10 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	}
 
 	// check width and height of the color targets
-	const size_t color_target_count = color_targets.GetNum();
-	for (size_t i = 0; i < color_target_count; i++)
+	const ut::uint32 color_target_count = static_cast<ut::uint32>(color_targets.GetNum());
+	for (ut::uint32 i = 0; i < color_target_count; i++)
 	{
-		const Image::Info& img_info = color_targets[i]->image.GetInfo();
+		const Image::Info& img_info = color_targets[i]->data->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer.");
@@ -644,7 +746,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	// check width and height of the depth target
 	if (depth_stencil_target)
 	{
-		const Image::Info& img_info = depth_stencil_target->image.GetInfo();
+		const Image::Info& img_info = depth_stencil_target->data->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer.");
@@ -656,8 +758,26 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	info.width = width;
 	info.height = height;
 
+	// share color targets
+	ut::Array<Target::SharedData> color_shared_data(color_target_count);
+	for (ut::uint32 i = 0; i < color_target_count; i++)
+	{
+		color_shared_data[i] = color_targets[i]->data;
+	}
+
+	// share depth stencil target
+	ut::Optional<Target::SharedData> depth_stencil_shared_data;
+	if (depth_stencil_target)
+	{
+		depth_stencil_shared_data = depth_stencil_target->data;
+	}
+
+
 	// success
-	return Framebuffer(PlatformFramebuffer(), info, ut::Move(color_targets), ut::Move(depth_stencil_target));
+	return Framebuffer(PlatformFramebuffer(),
+	                   info,
+	                   ut::Move(color_shared_data),
+	                   ut::Move(depth_stencil_shared_data));
 }
 
 // Creates a buffer.

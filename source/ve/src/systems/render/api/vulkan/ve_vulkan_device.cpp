@@ -201,7 +201,10 @@ PlatformDevice::PlatformDevice() : instance(CreateVulkanInstance())
                                  , gpu(nullptr)
 {
 	// create dbg messenger
-	dbg_messenger = VkRc<vk::dbg_messenger>(CreateDbgMessenger(), instance.GetVkHandle());
+	if (skEnableVulkanValidationLayer)
+	{
+		dbg_messenger = VkRc<vk::dbg_messenger>(CreateDbgMessenger(), instance.GetVkHandle());
+	}
 
 	// create device
 	device = VkRc<vk::device>(CreateVulkanDevice());
@@ -452,104 +455,6 @@ void PlatformDevice::CopyPixelsToSubRc(ut::byte* dst,
 	}
 }
 
-// Performs image layout transition.
-//    @param cmd_buffer - command buffer handle to record transition command.
-//    @param image - image handle.
-//    @param aspect_mask - bitmask of VkImageAspectFlagBits specifying
-//                         which aspect(s) of the image are included
-//                         in the view.
-//    @param old_layout - current image layout.
-//    @param new_layout - desired image layout.
-//    @param src_stages - bitmask of VkAccessFlagBits specifying a
-//                        source access mask.
-//    @param dst_stages - bitmask of VkAccessFlagBits specifying a
-//                        destination access mask.
-//    @param base_mip_level - id of the first mip level.
-//    @param mip_levels - number of mip levels.
-//    @param base_array_layer - id of the first image in an array.
-//    @param layer_count - number of images in an array.
-//    @return - optional error if failed.
-void PlatformDevice::SetImageLayout(VkCommandBuffer cmd_buffer,
-                                    VkImage image,
-                                    VkImageAspectFlags aspect_mask,
-                                    VkImageLayout old_layout,
-                                    VkImageLayout new_layout,
-                                    VkPipelineStageFlags src_stages,
-                                    VkPipelineStageFlags dst_stages,
-                                    ut::uint32 base_mip_level,
-                                    ut::uint32 mip_levels,
-                                    ut::uint32 base_array_layer,
-                                    ut::uint32 layer_count)
-{
-	UT_ASSERT(image != VK_NULL_HANDLE);
-
-	// initialize barrier data
-	VkImageMemoryBarrier img_barrier;
-	img_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	img_barrier.pNext = nullptr;
-	img_barrier.srcAccessMask = 0;
-	img_barrier.dstAccessMask = 0;
-	img_barrier.oldLayout = old_layout;
-	img_barrier.newLayout = new_layout;
-	img_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	img_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	img_barrier.image = image;
-	img_barrier.subresourceRange.aspectMask = aspect_mask;
-	img_barrier.subresourceRange.baseMipLevel = base_mip_level;
-	img_barrier.subresourceRange.levelCount = mip_levels;
-	img_barrier.subresourceRange.baseArrayLayer = base_array_layer;
-	img_barrier.subresourceRange.layerCount = layer_count;
-
-	// initialize source access mask
-	switch (old_layout)
-	{
-	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-		img_barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		break;
-
-	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-		img_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		break;
-
-	case VK_IMAGE_LAYOUT_PREINITIALIZED:
-		img_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-		break;
-
-	default:
-		break;
-	}
-
-	// initialize destination access mask
-	switch (new_layout)
-	{
-	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-		img_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		break;
-
-	case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-		img_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		break;
-
-	case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-		img_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		break;
-
-	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-		img_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		break;
-
-	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-		img_barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		break;
-
-	default:
-		break;
-	}
-
-	// set layout
-	vkCmdPipelineBarrier(cmd_buffer, src_stages, dst_stages, 0, 0, nullptr, 0, nullptr, 1, &img_barrier);
-}
-
 // Copies contents of source buffer to the destination buffer.
 //    @param cmd_buffer - command buffer to record a command.
 //    @param src - source buffer handle.
@@ -718,9 +623,9 @@ VkInstance PlatformDevice::CreateVulkanInstance()
 	app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	app_info.pNext = nullptr;
 	app_info.pApplicationName = app_name;
-	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);;
+	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	app_info.pEngineName = app_name;
-	app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);;
+	app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 	app_info.apiVersion = VK_API_VERSION_1_1;
 
 	// instance information object
@@ -1164,6 +1069,9 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	const bool tiling_must_be_linear = must_have_cpu_access;
 	const bool needs_staging = info.usage != render::memory::gpu_read_cpu_write;
 
+	// check if image is used as a render target
+	const bool is_render_target = info.usage == render::memory::gpu_read_write;
+
 	// check if gpu supports linear tiling
 	if (tiling_must_be_linear)
 	{
@@ -1174,6 +1082,37 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 			ut::String err_str("Vulkan: image cannot be create - GPU doesn't support linear tiling.");
 			return ut::MakeError(ut::error::not_supported, ut::Move(err_str));
 		}
+	}
+
+	// check if image is a depth buffer
+	const bool is_depth_buffer = pixel::IsDepthFormat(info.format);
+
+	// check if image is a stencil buffer
+	const bool is_stencil_buffer = pixel::IsStencilFormat(info.format);
+
+	// image state
+	PlatformImage::State image_state = PlatformImage::State::CreateForShaderResource();
+	if (is_render_target)
+	{
+		image_state = is_depth_buffer ?
+		              PlatformImage::State::CreateForDepthStencilTarget() :
+		              PlatformImage::State::CreateForColorTarget();
+	}
+
+	// aspect mask
+	VkImageAspectFlags aspect_mask = is_depth_buffer ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+	if (is_stencil_buffer)
+	{
+		aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+	}
+
+	// determine image usage
+	VkImageUsageFlags image_usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+	if (is_render_target)
+	{
+		image_usage |= (is_depth_buffer || is_stencil_buffer) ?
+		               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT :
+		               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	}
 
 	// initialize info
@@ -1190,7 +1129,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	image_info.arrayLayers = is_cube ? 6 : 1;
 	image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 	image_info.tiling = tiling_must_be_linear ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
-	image_info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+	image_info.usage = image_usage;
 	image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	image_info.queueFamilyIndexCount = 0;
 	image_info.pQueueFamilyIndices = nullptr;
@@ -1202,6 +1141,9 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	{
 		image_info.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	}
+
+	// track image access flags
+	VkAccessFlags current_img_access = 0;
 
 	// create image
 	VkImage image;
@@ -1234,14 +1176,6 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		return ut::MakeError(immediate_buffer.MoveAlt());
 	}
 
-	// images must be suitable for all shader stages
-	int shader_stages_flag = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-	                         VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
-	                         VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
-	                         VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
-	                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-	                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-
 	// image may need staging buffer
 	ut::Optional<PlatformBuffer> staging_buffer;
 	if (needs_staging)
@@ -1255,15 +1189,30 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		staging_buffer = staging_buffer_result.Move();
 
 		// set image layout for staging
-		SetImageLayout(immediate_buffer.Get(),
-		               image,
-		               VK_IMAGE_ASPECT_COLOR_BIT,
-		               image_info.initialLayout,
-		               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		               VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-		               VK_PIPELINE_STAGE_TRANSFER_BIT,
-		               0, image_info.mipLevels,    // base mip id and mip level count
-		               0, image_info.arrayLayers); // base array layer and layer count
+		VkImageMemoryBarrier staging_barrier;
+		staging_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		staging_barrier.pNext = nullptr;
+		staging_barrier.srcAccessMask = current_img_access;
+		staging_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		staging_barrier.oldLayout = image_info.initialLayout;
+		staging_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		staging_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		staging_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		staging_barrier.image = image;
+		staging_barrier.subresourceRange.aspectMask = aspect_mask;
+		staging_barrier.subresourceRange.baseMipLevel = 0;
+		staging_barrier.subresourceRange.levelCount = image_info.mipLevels;
+		staging_barrier.subresourceRange.baseArrayLayer = 0;
+		staging_barrier.subresourceRange.layerCount = image_info.arrayLayers;
+		vkCmdPipelineBarrier(immediate_buffer.Get(),
+		                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		                     VK_PIPELINE_STAGE_TRANSFER_BIT,
+		                     0, 0, nullptr, 0, nullptr,
+		                     1, &staging_barrier);
+
+		// update layout information
+		current_img_access = staging_barrier.dstAccessMask;
+		image_info.initialLayout = staging_barrier.newLayout;
 	}
 
 	// copy memory
@@ -1304,7 +1253,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 				// get pitches (row, depth, array) for the current mip
 				VkSubresourceLayout layout;
 				VkImageSubresource subrc;
-				subrc.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				subrc.aspectMask = aspect_mask;
 				subrc.mipLevel = mip;
 				subrc.arrayLayer = cubeface;
 				if (tiling_must_be_linear)
@@ -1335,7 +1284,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 					CopyVulkanBufferToImage(immediate_buffer.Get(),
 					                        staging_buffer->GetVkHandle(),
 					                        image,
-					                        VK_IMAGE_ASPECT_COLOR_BIT,
+					                        aspect_mask,
 					                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 					                        layout.offset,
 					                        mip_width,
@@ -1371,31 +1320,26 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	}
 
 	// set final layout
-	VkImageLayout final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	if (needs_staging)
-	{
-		SetImageLayout(immediate_buffer.Get(),
-		               image,
-		               VK_IMAGE_ASPECT_COLOR_BIT,
-		               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		               final_layout,
-		               VK_PIPELINE_STAGE_TRANSFER_BIT,
-		               shader_stages_flag,
-		               0, image_info.mipLevels,    // base mip id and mip level count
-		               0, image_info.arrayLayers); // base array layer and layer count
-	}
-	else
-	{
-		SetImageLayout(immediate_buffer.Get(),
-		               image,
-		               VK_IMAGE_ASPECT_COLOR_BIT,
-		               image_info.initialLayout,
-		               final_layout,
-		               VK_PIPELINE_STAGE_HOST_BIT,
-		               shader_stages_flag,
-		               0, image_info.mipLevels,    // base mip id and mip level count
-		               0, image_info.arrayLayers); // base array layer and layer count
-	}
+	VkImageMemoryBarrier img_barrier;
+	img_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	img_barrier.pNext = nullptr;
+	img_barrier.srcAccessMask = current_img_access;
+	img_barrier.dstAccessMask = image_state.access_mask;
+	img_barrier.oldLayout = image_info.initialLayout;
+	img_barrier.newLayout = image_state.layout;
+	img_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	img_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	img_barrier.image = image;
+	img_barrier.subresourceRange.aspectMask = aspect_mask;
+	img_barrier.subresourceRange.baseMipLevel = 0;
+	img_barrier.subresourceRange.levelCount = image_info.mipLevels;
+	img_barrier.subresourceRange.baseArrayLayer = 0;
+	img_barrier.subresourceRange.layerCount = image_info.arrayLayers;
+	vkCmdPipelineBarrier(immediate_buffer.Get(),
+	                     needs_staging ? VK_PIPELINE_STAGE_TRANSFER_BIT : VK_PIPELINE_STAGE_HOST_BIT,
+	                     image_state.stages,
+	                     0, 0, nullptr, 0, nullptr,
+	                     1, &img_barrier);
 
 	// submit all gpu commands
 	ut::Optional<ut::Error> end_cmd_buffer_error = EndImmediateCmdBuffer(immediate_buffer.Get());
@@ -1403,6 +1347,9 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	{
 		return ut::MakeError(end_cmd_buffer_error.Move());
 	}
+
+	// shader can't read depth and stencil simultaneously
+	VkImageAspectFlags view_aspect_mask = aspect_mask & ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
 	// initialize image view info
 	VkImageViewCreateInfo view_info;
@@ -1416,7 +1363,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	view_info.components.g = VK_COMPONENT_SWIZZLE_G;
 	view_info.components.b = VK_COMPONENT_SWIZZLE_B;
 	view_info.components.a = VK_COMPONENT_SWIZZLE_A;
-	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	view_info.subresourceRange.aspectMask = view_aspect_mask;
 	view_info.subresourceRange.baseMipLevel = 0;
 	view_info.subresourceRange.levelCount = image_info.mipLevels;
 	view_info.subresourceRange.baseArrayLayer = 0;
@@ -1446,7 +1393,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 			view_info.components.g = VK_COMPONENT_SWIZZLE_G;
 			view_info.components.b = VK_COMPONENT_SWIZZLE_B;
 			view_info.components.a = VK_COMPONENT_SWIZZLE_A;
-			view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			view_info.subresourceRange.aspectMask = view_aspect_mask;
 			view_info.subresourceRange.baseMipLevel = 0;
 			view_info.subresourceRange.levelCount = image_info.mipLevels;
 			view_info.subresourceRange.baseArrayLayer = cube_face;
@@ -1465,8 +1412,9 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	                           image,
 	                           image_view,
 	                           is_cube ? cube_faces : nullptr,
-	                           final_layout,
-	                           ut::Move(image_memory));
+	                           ut::Move(image_memory),
+	                           aspect_mask,
+	                           image_state);
 	return Image(ut::Move(platform_img), info);
 }
 
@@ -1503,6 +1451,33 @@ ut::Result<Sampler, ut::Error> Device::CreateSampler(const Sampler::Info& info)
 	}
 
 	return Sampler(PlatformSampler(device.GetVkHandle(), sampler), info);
+}
+
+// Creates a new render target.
+//    @param info - reference to the Target::Info object describing a target.
+//    @return - new render target object of error if failed.
+ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
+{
+	// create image resource for the render target
+	Image::Info img_info;
+	img_info.type = info.type;
+	img_info.format = info.format;
+	img_info.usage = render::memory::gpu_read_write;
+	img_info.mip_count = info.mip_count;
+	img_info.width = info.width;
+	img_info.height = info.height;
+	img_info.depth = info.depth;
+	ut::Result<Image, ut::Error> image = CreateImage(img_info);
+	if (!image)
+	{
+		return ut::MakeError(image.MoveAlt());
+	}
+
+	// target is always created in 'target' state
+	Target::Info target_info(info);
+	target_info.state = Target::state_target;
+
+	return Target(PlatformRenderTarget(), image.Move(), info);
 }
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
@@ -1795,9 +1770,6 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 			return ut::MakeError(VulkanError(res, "vkCreateImageView(swapchain)"));
 		}
 
-		// platform render target
-		PlatformRenderTarget platform_target(device.GetVkHandle(), view);
-
 		// stub texture
 		Image::Info info;
 		switch (surface_format)
@@ -1811,20 +1783,23 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		info.width = swapchain_extent.width;
 		info.height = swapchain_extent.height;
 		info.depth = 1;
+
+		PlatformImage::State img_state(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_HOST_BIT);
 		PlatformImage empty_img(device.GetVkHandle(),
 		                        VK_NULL_HANDLE, // handle
-		                        VK_NULL_HANDLE, // view
+		                        view, // view
 			                    nullptr, // cube faces
-		                        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, // layout
-		                        VK_NULL_HANDLE); // memory
+		                        VK_NULL_HANDLE, // memory
+		                        VK_IMAGE_ASPECT_COLOR_BIT, // aspect_mask
+		                        img_state);
 		Image image(ut::Move(empty_img), info);
 
 		// initialize render target info
 		Target::Info target_info;
-		target_info.usage = Target::Info::usage_present;
+		target_info.usage = Target::usage_present;
 
 		// create final target for the current buffer
-		Target target(ut::Move(platform_target), ut::Move(image), target_info);
+		Target target(PlatformRenderTarget(), ut::Move(image), target_info);
 		if (!targets.Add(ut::Move(target)))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
@@ -2030,6 +2005,14 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 	subpass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	subpass_dependency.dependencyFlags = 0;
 
+	// add depth stencil access flags
+	if (in_depth_stencil_slot)
+	{
+		subpass_dependency.srcStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		subpass_dependency.dstStageMask |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		subpass_dependency.dstAccessMask |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	}
+
 	// initialize render pass info
 	VkRenderPassCreateInfo rp_info = {};
 	rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -2071,14 +2054,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	if (color_targets.GetNum() != 0)
 	{
 		const Target& color_target = color_targets.GetFirst();
-		width = color_target.image.GetInfo().width;
-		height = color_target.image.GetInfo().height;
+		width = color_target.data->image.GetInfo().width;
+		height = color_target.data->image.GetInfo().height;
 	}
 	else if (depth_stencil_target)
 	{
 		const Target& ds_target = depth_stencil_target.Get();
-		width = ds_target.image.GetInfo().width;
-		height = ds_target.image.GetInfo().height;
+		width = ds_target.data->image.GetInfo().width;
+		height = ds_target.data->image.GetInfo().height;
 	}
 	else
 	{
@@ -2086,21 +2069,21 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	}
 
 	// color attachments
-	ut::Array<VkImageView> attachments;
+	ut::Array<VkImageView> images;
 	const size_t color_target_count = color_targets.GetNum();
 	for (size_t i = 0; i < color_target_count; i++)
 	{
 		const Target& color_target = color_targets[i];
 
 		// check width and height
-		const Image::Info& img_info = color_target.image.GetInfo();
+		const Image::Info& img_info = color_target.data->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));
 		}
 
 		// add attachment
-		if (!attachments.Add(color_target.image_view.GetVkHandle()))
+		if (!images.Add(color_target.data->image.view.GetVkHandle()))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
 		}
@@ -2112,14 +2095,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 		const Target& ds_target = depth_stencil_target.Get();
 
 		// check width and height
-		const Image::Info& img_info = ds_target.image.GetInfo();
+		const Image::Info& img_info = ds_target.data->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));
 		}
 
 		// add attachment
-		if (!attachments.Add(ds_target.image_view.GetVkHandle()))
+		if (!images.Add(ds_target.data->image.view.GetVkHandle()))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
 		}
@@ -2130,8 +2113,8 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	vk_fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	vk_fb_info.pNext = nullptr;
 	vk_fb_info.renderPass = render_pass.GetVkHandle();
-	vk_fb_info.attachmentCount = static_cast<uint32_t>(attachments.GetNum());
-	vk_fb_info.pAttachments = attachments.GetAddress();
+	vk_fb_info.attachmentCount = static_cast<uint32_t>(images.GetNum());
+	vk_fb_info.pAttachments = images.GetAddress();
 	vk_fb_info.width = static_cast<uint32_t>(width);
 	vk_fb_info.height = static_cast<uint32_t>(height);
 	vk_fb_info.layers = 1;
@@ -2149,12 +2132,27 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	framebuffer_info.width = width;
 	framebuffer_info.height = height;
 
+	// colored shared target data
+	ut::Array<Target::SharedData> color_shared_data;
+	for (size_t i = 0; i < color_target_count; i++)
+	{
+		color_shared_data.Add(color_targets[i]->data);
+	}
+
+	// colored depth stencil target data
+	ut::Optional<Target::SharedData> depth_stencil_shared_data;
+	if (depth_stencil_target)
+	{
+		depth_stencil_shared_data = depth_stencil_target->data;
+	}
+
 	// success
-	PlatformFramebuffer platform_framebuffer(device.GetVkHandle(), framebuffer);
+	PlatformFramebuffer platform_framebuffer(device.GetVkHandle(),
+	                                         framebuffer);
 	return Framebuffer(ut::Move(platform_framebuffer),
 	                   framebuffer_info,
-	                   ut::Move(color_targets),
-	                   ut::Move(depth_stencil_target));
+	                   ut::Move(color_shared_data),
+	                   ut::Move(depth_stencil_shared_data));
 }
 
 // Creates a buffer.
@@ -2452,8 +2450,8 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	ds_state.front.reference = info.depth_stencil_state.stencil_reference;
 	ds_state.front.writeMask = info.depth_stencil_state.stencil_write_mask;
 	ds_state.depthBoundsTestEnable = VK_FALSE;
-	ds_state.minDepthBounds = 0;
-	ds_state.maxDepthBounds = 0;
+	ds_state.minDepthBounds = 0.0f;
+	ds_state.maxDepthBounds = 1.0f;
 
 	// blend attachments
 	const uint32_t blend_attachment_count = static_cast<uint32_t>(info.blend_state.attachments.GetNum());

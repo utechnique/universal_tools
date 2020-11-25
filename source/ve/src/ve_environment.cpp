@@ -12,6 +12,14 @@ Environment::Environment(Pipeline in_pipeline) : pipeline(ut::Move(in_pipeline))
 {}
 
 //----------------------------------------------------------------------------->
+// Destructor destroys entities.
+Environment::~Environment()
+{
+	// the rule is that entities must be deleted before systems
+	entities.Empty();
+}
+
+//----------------------------------------------------------------------------->
 // Main loop.
 //    @return - optional ut::Error if environment stopped
 //              working due to internal error.
@@ -20,6 +28,18 @@ ut::Optional<ut::Error> Environment::Run()
 	// main loop
 	while (!exit.Read())
 	{
+		// move pending commands to temporary buffer
+		CmdArray& locked_commands = commands.Lock();
+		CmdArray cmd_buffer(ut::Move(locked_commands));
+		commands.Unlock();
+
+		// execute pending commands
+		ut::Optional<ut::Error> cmd_error = ExecuteCommands(ut::Move(cmd_buffer));
+		if (cmd_error)
+		{
+			return cmd_error;
+		}
+
 		// processing pipeline must happen inside a thread pool, so that
 		// we could measure and analyze performance
 		ut::Scheduler<System::Result, PipelineCombiner> scheduler = pool.CreateScheduler<PipelineCombiner>();
@@ -34,11 +54,11 @@ ut::Optional<ut::Error> Environment::Run()
 			return execute_result.MoveAlt();
 		}
 
-		// execute environment commands
-		ut::Optional<ut::Error> dispatch_error = ExecuteCommands(execute_result.Move());
-		if (dispatch_error)
+		// execute accumulated pipeline commands
+		cmd_error = ExecuteCommands(execute_result.Move());
+		if (cmd_error)
 		{
-			return dispatch_error;
+			return cmd_error;
 		}
 	}
 
@@ -47,7 +67,24 @@ ut::Optional<ut::Error> Environment::Run()
 }
 
 //----------------------------------------------------------------------------->
-// Adds a new entity to the environment.
+// Enqueues a command, it will be executed at
+// the beginning of the next tick.
+//    @param command - unique pointer to the command to be executed.
+//    @return - optional ut::Error if failed to add provided command.
+ut::Optional<ut::Error> Environment::EnqueueCommand(ut::UniquePtr<Cmd> command)
+{
+	ut::ScopeSyncLock<CmdArray> cmd_lock(commands);
+	if (!cmd_lock.Get().Add(ut::Move(command)))
+	{
+		return ut::Error(ut::error::out_of_memory);
+	}
+	return ut::Optional<ut::Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Adds a new entity to the environment. This function is unsafe if
+// this environment is already running, enqueue ve::CmdAddEntity command
+// instead.
 //    @param entity - new entity object.
 //    @return - id of the entity or ut::Error if failed to
 //              add @entity to the environment.

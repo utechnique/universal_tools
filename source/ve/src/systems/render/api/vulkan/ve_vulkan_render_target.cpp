@@ -9,8 +9,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformRenderTarget::PlatformRenderTarget(VkDevice device_handle,
-                                           VkImageView image_view_handle) : image_view(image_view_handle, device_handle)
+PlatformRenderTarget::PlatformRenderTarget()
 {}
 
 // Move constructor.
