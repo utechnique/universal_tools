@@ -7,7 +7,7 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-#define UT_INTRINSIC_IS_CONSTRUCTIBLE UT_WINDOWS
+#define UT_INTRINSIC_IS_CONSTRUCTIBLE 1
 
 // Check if class is constructible with provided arguments
 template<typename T, typename... Args>
