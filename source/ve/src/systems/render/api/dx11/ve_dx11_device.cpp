@@ -564,7 +564,7 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 	// create render target view
 	ID3D11RenderTargetView* rtv = nullptr;
 	ID3D11DepthStencilView* dsv = nullptr;
-	if (info.usage == Target::usage_depth)
+	if (info.usage == Target::Info::usage_depth)
 	{
 		D3D11_DEPTH_STENCIL_VIEW_DESC desc;
 		desc.Format = ConvertPixelFormatToDX11(info.format);
@@ -665,7 +665,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 
 	// initialize render target info
 	Target::Info target_info;
-	target_info.usage = Target::usage_present;
+	target_info.usage = Target::Info::usage_present;
 
 	// create render target that will be associated with provided viewport
 	Image texture(PlatformImage(backbuffer, nullptr), ut::Move(backbuffer_info));
@@ -718,14 +718,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	if (color_targets.GetNum() != 0)
 	{
 		const Target& color_target = color_targets.GetFirst();
-		width = color_target.data->image.GetInfo().width;
-		height = color_target.data->image.GetInfo().height;
+		width = color_target->image.GetInfo().width;
+		height = color_target->image.GetInfo().height;
 	}
 	else if (depth_stencil_target)
 	{
 		const Target& ds_target = depth_stencil_target.Get();
-		width = ds_target.data->image.GetInfo().width;
-		height = ds_target.data->image.GetInfo().height;
+		width = ds_target->image.GetInfo().width;
+		height = ds_target->image.GetInfo().height;
 	}
 	else
 	{
@@ -736,7 +736,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	const ut::uint32 color_target_count = static_cast<ut::uint32>(color_targets.GetNum());
 	for (ut::uint32 i = 0; i < color_target_count; i++)
 	{
-		const Image::Info& img_info = color_targets[i]->data->image.GetInfo();
+		const Image::Info& img_info = color_targets[i]->GetImage().GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer.");
@@ -746,7 +746,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	// check width and height of the depth target
 	if (depth_stencil_target)
 	{
-		const Image::Info& img_info = depth_stencil_target->data->image.GetInfo();
+		const Image::Info& img_info = depth_stencil_target->GetImage().GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer.");
@@ -759,17 +759,17 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	info.height = height;
 
 	// share color targets
-	ut::Array<Target::SharedData> color_shared_data(color_target_count);
+	ut::Array<SharedTargetData> color_shared_data(color_target_count);
 	for (ut::uint32 i = 0; i < color_target_count; i++)
 	{
-		color_shared_data[i] = color_targets[i]->data;
+		color_shared_data[i] = color_targets[i];
 	}
 
 	// share depth stencil target
-	ut::Optional<Target::SharedData> depth_stencil_shared_data;
+	ut::Optional<SharedTargetData> depth_stencil_shared_data;
 	if (depth_stencil_target)
 	{
-		depth_stencil_shared_data = depth_stencil_target->data;
+		depth_stencil_shared_data = depth_stencil_target.Get();
 	}
 
 

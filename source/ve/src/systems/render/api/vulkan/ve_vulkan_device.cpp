@@ -1475,8 +1475,9 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 
 	// target is always created in 'target' state
 	Target::Info target_info(info);
-	target_info.state = Target::state_target;
+	target_info.state = Target::Info::state_target;
 
+	// success
 	return Target(PlatformRenderTarget(), image.Move(), info);
 }
 
@@ -1796,7 +1797,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 
 		// initialize render target info
 		Target::Info target_info;
-		target_info.usage = Target::usage_present;
+		target_info.usage = Target::Info::usage_present;
 
 		// create final target for the current buffer
 		Target target(PlatformRenderTarget(), ut::Move(image), target_info);
@@ -2054,14 +2055,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	if (color_targets.GetNum() != 0)
 	{
 		const Target& color_target = color_targets.GetFirst();
-		width = color_target.data->image.GetInfo().width;
-		height = color_target.data->image.GetInfo().height;
+		width = color_target->image.GetInfo().width;
+		height = color_target->image.GetInfo().height;
 	}
 	else if (depth_stencil_target)
 	{
 		const Target& ds_target = depth_stencil_target.Get();
-		width = ds_target.data->image.GetInfo().width;
-		height = ds_target.data->image.GetInfo().height;
+		width = ds_target->image.GetInfo().width;
+		height = ds_target->image.GetInfo().height;
 	}
 	else
 	{
@@ -2076,14 +2077,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 		const Target& color_target = color_targets[i];
 
 		// check width and height
-		const Image::Info& img_info = color_target.data->image.GetInfo();
+		const Image::Info& img_info = color_target->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));
 		}
 
 		// add attachment
-		if (!images.Add(color_target.data->image.view.GetVkHandle()))
+		if (!images.Add(color_target->image.view.GetVkHandle()))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
 		}
@@ -2095,14 +2096,14 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 		const Target& ds_target = depth_stencil_target.Get();
 
 		// check width and height
-		const Image::Info& img_info = ds_target.data->image.GetInfo();
+		const Image::Info& img_info = ds_target->image.GetInfo();
 		if (img_info.width != width || img_info.height != height)
 		{
 			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));
 		}
 
 		// add attachment
-		if (!images.Add(ds_target.data->image.view.GetVkHandle()))
+		if (!images.Add(ds_target->image.view.GetVkHandle()))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
 		}
@@ -2133,17 +2134,17 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	framebuffer_info.height = height;
 
 	// colored shared target data
-	ut::Array<Target::SharedData> color_shared_data;
+	ut::Array<SharedTargetData> color_shared_data;
 	for (size_t i = 0; i < color_target_count; i++)
 	{
-		color_shared_data.Add(color_targets[i]->data);
+		color_shared_data.Add(color_targets[i]);
 	}
 
 	// colored depth stencil target data
-	ut::Optional<Target::SharedData> depth_stencil_shared_data;
+	ut::Optional<SharedTargetData> depth_stencil_shared_data;
 	if (depth_stencil_target)
 	{
-		depth_stencil_shared_data = depth_stencil_target->data;
+		depth_stencil_shared_data = depth_stencil_target.Get();
 	}
 
 	// success

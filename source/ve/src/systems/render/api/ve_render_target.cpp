@@ -6,28 +6,28 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Constructor.
+// Render target.
 Target::Target(PlatformRenderTarget target,
                Image image,
-               const Target::Info& target_info) : data(ut::MakeUnsafeShared<Target::Data>(ut::Move(target),
-                                                                                          ut::Move(image),
-                                                                                          target_info))
+               const Target::Info& target_info) : SharedTargetData(ut::MakeUnsafeShared<TargetData>(ut::Move(target),
+                                                                                                    ut::Move(image),
+                                                                                                    target_info))
 {}
 
-Target::Data::Data(PlatformRenderTarget base_target,
-                   Image target_image,
-                   const Info& target_info) : platform_target(ut::Move(base_target))
-                                            , image(ut::Move(target_image))
-                                            , info(target_info)
-{}
-
-// Move constructor.
 Target::Target(Target&&) noexcept = default;
-Target::Data::Data(Data&&) noexcept = default;
-
-// Move operator.
 Target& Target::operator =(Target&&) noexcept = default;
-Target::Data& Target::Data::operator =(Data&&) noexcept = default;
+
+//----------------------------------------------------------------------------->
+// Target Data.
+TargetData::TargetData(PlatformRenderTarget base_target,
+                       Image target_image,
+                       const Info& target_info) : PlatformRenderTarget(ut::Move(base_target))
+                                                , image(ut::Move(target_image))
+                                                , info(target_info)
+{}
+
+TargetData::TargetData(TargetData&&) noexcept = default;
+TargetData& TargetData::operator =(TargetData&&) noexcept = default;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

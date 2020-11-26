@@ -273,7 +273,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	ut::Array<ID3D11RenderTargetView*> rtv(color_target_count);
 	for (size_t i = 0; i < color_target_count; i++)
 	{
-		rtv[i] = framebuffer.color_targets[i]->platform_target.rtv.Get();
+		rtv[i] = framebuffer.color_targets[i]->rtv.Get();
 
 		// clear color target
 		if (render_pass.color_slots[i].load_op == RenderTargetSlot::load_clear)
@@ -288,7 +288,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	ID3D11DepthStencilView* dsv = nullptr;
 	if (framebuffer.depth_stencil_target)
 	{
-		dsv = framebuffer.depth_stencil_target.Get()->platform_target.dsv.Get();
+		dsv = framebuffer.depth_stencil_target.Get()->dsv.Get();
 
 		// clear depth and stencil
 		if (render_pass.depth_stencil_slot->load_op == RenderTargetSlot::load_clear)
@@ -440,8 +440,8 @@ void Context::Draw(ut::uint32 vertex_count, ut::uint32 first_vertex_id)
 // Toggles render target's state.
 //    @param targets - reference to the shared target data array.
 //    @param state - new state of the target.
-void Context::SetTargetState(ut::Array<Target::SharedData>& targets,
-                             Target::State state)
+void Context::SetTargetState(ut::Array<SharedTargetData>& targets,
+                             Target::Info::State state)
 {
 	const ut::uint32 target_count = static_cast<ut::uint32>(targets.GetNum());
 	for (ut::uint32 i = 0; i < target_count; i++)

@@ -195,14 +195,14 @@ void Context::UnmapImage(Image& image)
 // Toggles render target's state.
 //    @param targets - reference to the shared target data array.
 //    @param state - new state of the target.
-void Context::SetTargetState(ut::Array<Target::SharedData>& targets, Target::State state)
+void Context::SetTargetState(ut::Array<SharedTargetData>& targets, Target::Info::State state)
 {
 	ut::Array<ImageTransitionRequest> transition_requests;
 
 	const ut::uint32 target_count = static_cast<ut::uint32>(targets.GetNum());
 	for (ut::uint32 i = 0; i < target_count; i++)
 	{
-		Target::Data& target_data = targets[i].GetRef();
+		TargetData& target_data = targets[i].GetRef();
 		const Target::Info target_info = target_data.info;
 		if (target_info.state == state)
 		{
@@ -211,9 +211,9 @@ void Context::SetTargetState(ut::Array<Target::SharedData>& targets, Target::Sta
 
 		// choose corresponding image state
 		PlatformImage::State image_state = PlatformImage::State::CreateForShaderResource();
-		if (state == Target::state_target)
+		if (state == Target::Info::state_target)
 		{
-			if (target_info.usage == Target::usage_depth)
+			if (target_info.usage == Target::Info::usage_depth)
 			{
 				image_state = PlatformImage::State::CreateForDepthStencilTarget();
 			}
@@ -296,7 +296,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	rp_begin.pClearValues = vk_clear_values;
 
 	// all render targets must be in 'target' state before render pass begins
-	SetTargetState(framebuffer, Target::state_target);
+	SetTargetState(framebuffer, Target::Info::state_target);
 
 	// begin render pass
 	vkCmdBeginRenderPass(cmd_buffer.GetVkHandle(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);

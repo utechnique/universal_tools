@@ -29,8 +29,8 @@ public:
 	// Constructor.
 	Framebuffer(PlatformFramebuffer platform_framebuffer,
 	            const Info& framebuffer_info,
-	            ut::Array<Target::SharedData> in_color_targets,
-	            ut::Optional<Target::SharedData> in_depth_stencil_target);
+	            ut::Array<SharedTargetData> in_color_targets,
+	            ut::Optional<SharedTargetData> in_depth_stencil_target);
 
 	// Move constructor.
 	Framebuffer(Framebuffer&&) noexcept;
@@ -50,8 +50,8 @@ public:
 
 private:
 	Info info;
-	ut::Array<Target::SharedData> color_targets;
-	ut::Optional<Target::SharedData> depth_stencil_target;
+	ut::Array<SharedTargetData> color_targets;
+	ut::Optional<SharedTargetData> depth_stencil_target;
 };
 
 //----------------------------------------------------------------------------//

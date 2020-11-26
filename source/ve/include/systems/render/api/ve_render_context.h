@@ -71,20 +71,24 @@ public:
 	// Toggles render target's state.
 	//    @param target - reference to the target.
 	//    @param state - new state of the target.
-	inline void SetTargetState(Target& target, Target::State state)
+	inline void SetTargetState(Target& target, Target::Info::State state)
 	{
-		ut::Array<Target::SharedData> target_data;
-		target_data.Add(target.data);
+		ut::Array<SharedTargetData> target_data;
+		target_data.Add(target);
 		SetTargetState(target_data, state);
 	}
 
 	// Toggles render target state for all targets in the provided framebuffer.
 	//    @param framebuffer - reference to the framebuffer.
 	//    @param state - new state of the target.
-	inline void SetTargetState(Framebuffer& framebuffer, Target::State state)
+	inline void SetTargetState(Framebuffer& framebuffer, Target::Info::State state)
 	{
-		ut::Array<Target::SharedData> target_data;
-		target_data += framebuffer.color_targets;
+		const ut::uint32 color_target_count = static_cast<ut::uint32>(framebuffer.color_targets.GetNum());
+		ut::Array<SharedTargetData> target_data(color_target_count);
+		for (ut::uint32 i = 0; i < color_target_count; i++)
+		{
+			target_data[i] = framebuffer.color_targets[i];
+		}
 		if (framebuffer.depth_stencil_target)
 		{
 			target_data.Add(framebuffer.depth_stencil_target.Get());
@@ -141,7 +145,7 @@ private:
 	// Toggles render target's state.
 	//    @param targets - reference to the shared target data array.
 	//    @param state - new state of the target.
-	void SetTargetState(ut::Array<Target::SharedData>& targets, Target::State state);
+	void SetTargetState(ut::Array<SharedTargetData>& targets, Target::Info::State state);
 };
 
 //----------------------------------------------------------------------------//
