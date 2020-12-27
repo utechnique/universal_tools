@@ -20,22 +20,24 @@ template <typename T> struct Type
 	static inline const char* Name() { return "data"; }
 
 	// Id() function is guaranteed to be available only for intrinsic types.
-	static inline TypeId Id() { return reinterpret_cast<TypeId>(&Id); }
-};
+	static inline TypeId Id() { return reinterpret_cast<TypeId>(&intrinsic_id); }
 
+private:
+	// this id is available only for intrinsic types.
+	static byte intrinsic_id;
+};
+template<typename T> byte Type<T>::intrinsic_id = 0;
 
 // Static array
 template <typename T, size_t size> struct Type<T[size]>
 {
 	static inline const char* Name() { return "static_array"; }
-	static inline TypeId Id() { return reinterpret_cast<TypeId>(&Id); }
 };
 
 // Pointer types
 template <typename T> struct Type<T*>
 {
 	static inline const char* Name() { return "raw_ptr"; }
-	static inline TypeId Id() { return reinterpret_cast<TypeId>(&Id); }
 };
 
 // Const types have the same name and id
