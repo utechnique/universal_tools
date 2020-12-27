@@ -76,6 +76,23 @@ namespace vertex_traits
 	template<> inline pixel::Format GenerateFormat<float, 3>() { return pixel::r32g32b32_float; }
 	template<> inline pixel::Format GenerateFormat<float, 4>() { return pixel::r32g32b32a32_float; }
 
+	// Returns a reference to the VertexElement object if desired
+    // component is present in the provided input assembly state.
+    template<ComponentType id>
+    static ut::Optional<const VertexElement&> MapComponent(const InputAssemblyState& ias)
+    {
+        const size_t element_count = ias.elements.GetNum();
+        for (size_t i = 0; i < element_count; i++)
+        {
+            const VertexElement& element = ias.elements[i];
+            if (element.semantic_name == Component<id>::GetName())
+            {
+                return element;
+            }
+        }
+        return ut::Optional<const VertexElement&>();
+    }
+
 	// Helper template structure to iterate components.
 	template<ut::uint32 id> struct ComponentIterator
 	{
@@ -84,8 +101,7 @@ namespace vertex_traits
 		static void Map(ut::Optional<const VertexElement&>* map,
 		                const InputAssemblyState& ias)
 		{
-			map[id] = ComponentIterator<0>::template
-			          GetVertexComponent<static_cast<ComponentType>(id)>(ias);
+			map[id] = MapComponent<static_cast<ComponentType>(id)>(ias);
 			ComponentIterator<id - 1>::Map(map, ias);
 		}
 	};
@@ -93,28 +109,11 @@ namespace vertex_traits
 	// Specialization for the last component.
 	template<> struct ComponentIterator<0>
 	{
-		// Returns a reference to the VertexElement object if desired
-		// component is present in the provided input assembly state.
-		template<ComponentType id>
-		static ut::Optional<const VertexElement&> GetVertexComponent(const InputAssemblyState& ias)
-		{
-			const size_t element_count = ias.elements.GetNum();
-			for (size_t i = 0; i < element_count; i++)
-			{
-				const VertexElement& element = ias.elements[i];
-				if (element.semantic_name == Component<id>::GetName())
-				{
-					return element;
-				}
-			}
-			return ut::Optional<const VertexElement&>();
-		}
-
 		// Initializes last map element.
 		static void Map(ut::Optional<const VertexElement&>* map,
 		                const InputAssemblyState& ias)
 		{
-			map[0] = GetVertexComponent<static_cast<vertex_traits::ComponentType>(0)>(ias);
+			map[0] = MapComponent<static_cast<vertex_traits::ComponentType>(0)>(ias);
 		}
 	};
 }
@@ -250,9 +249,9 @@ public:
 				return;
 			}
 
-			const size_t arg_count = sizeof(arg_values) / sizeof(void*);
 			void* arg_values[]{ static_cast<void*>(&scalars)... };
 			ut::TypeId arg_types[]{ ut::Type<Scalars>::Id()... };
+			const size_t arg_count = sizeof(arg_values) / sizeof(void*);
 
 			ut::byte* channel = component_data;
 			for (ut::uint32 i = 0; i < channel_count; i++)
@@ -310,7 +309,7 @@ public:
 			ut::Vector<dim, Scalar> out(0);
 			ut::byte* channel = component_data;
 			const ut::uint32 components_to_read = ut::Min(dim, channel_count);
-			
+
 			for (ut::uint32 i = 0; i < components_to_read; i++)
 			{
 				ut::Convert(channel,
