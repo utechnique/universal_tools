@@ -345,12 +345,47 @@ void Context::BindVertexBuffer(Buffer& buffer, size_t offset)
 	vkCmdBindVertexBuffers(cmd_buffer.GetVkHandle(), 0, 1, vertex_buffers, offsets);
 }
 
+// Binds index buffer to the current context.
+//    @param buffer - reference to the buffer to be bound.
+//    @param offset - number of bytes between the first element
+//                    of an index buffer and the first index
+//                    that will be used.
+//    @param index_type - type of index buffer indices (16 or 32).
+void Context::BindIndexBuffer(Buffer& buffer,
+                              size_t offset,
+                              IndexType index_type)
+{
+	vkCmdBindIndexBuffer(cmd_buffer.GetVkHandle(),
+	                     buffer.GetVkHandle(),
+	                     offset,
+	                     index_type == index_type_uint32 ?
+	                     VK_INDEX_TYPE_UINT32 :
+	                     VK_INDEX_TYPE_UINT16);
+}
+
 // Draw non-indexed, non-instanced primitives.
 //    @param vertex_count - number of vertices to draw.
 //    @param first_vertex_id - index of the first vertex.
 void Context::Draw(ut::uint32 vertex_count, ut::uint32 first_vertex_id)
 {
 	vkCmdDraw(cmd_buffer.GetVkHandle(), vertex_count, 1, first_vertex_id, 0);
+}
+
+// Draw indexed, non-instanced primitives.
+//    @param index_count - number of vertices to draw.
+//    @param first_index_id - the base index within the index buffer.
+//    @param index_count - the value added to the vertex index before
+//                         indexing into the vertex buffer.
+void Context::DrawIndexed(ut::uint32 index_count,
+                          ut::uint32 first_index_id,
+                          ut::int32 vertex_offset)
+{
+	vkCmdDrawIndexed(cmd_buffer.GetVkHandle(),
+	                 index_count,
+	                 1,
+	                 first_index_id,
+	                 vertex_offset,
+	                 0);
 }
 
 //----------------------------------------------------------------------------//

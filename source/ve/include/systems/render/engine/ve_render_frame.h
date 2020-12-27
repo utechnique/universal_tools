@@ -14,9 +14,6 @@ START_NAMESPACE(render)
 class Frame
 {
 public:
-	// vertex type for rendering quads directly to a display
-	typedef Vertex<float, 2, float, 2> QuadVertex;
-
 	// Constructor.
 	Frame(CmdBuffer in_cmd_buffer, Buffer in_display_ub);
 
@@ -38,7 +35,7 @@ public:
 
 	// uniform buffer to render final image to the backbuffer
 	Buffer display_quad_ub;
-	
+
 	// descriptor set for quad shader
 	struct QuadDescriptorSet : public DescriptorSet
 	{
@@ -53,6 +50,14 @@ public:
 	{
 		alignas(16) ut::Color<4> color;
 	};
+
+	// Creates input assembly state for primitives that can be
+	// rendered directly to a display.
+	static InputAssemblyState CreateInputAssemblyState();
+
+private:
+	// vertex type for rendering quads directly to a display
+	typedef Vertex<float, 2, float, 2> QuadVertex;
 };
 
 //----------------------------------------------------------------------------//

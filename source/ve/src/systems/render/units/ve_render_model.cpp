@@ -1,24 +1,20 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
+#include "systems/render/units/ve_render_model.h"
 //----------------------------------------------------------------------------//
-#include "systems/render/engine/ve_render_unit_mgr.h"
-
+UT_REGISTER_TYPE(ve::render::Unit, ve::render::Model, "render_model")
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Mesh policy renders mesh units.
-template<> class Policy<Mesh>
+const ut::DynamicType& Model::Identify() const
 {
-public:
-	// Constructor.
-	Policy(Toolset &toolset_ref, UnitSelector& selector, Policies& policy_mgr);
+	return ut::Identify(this);
+}
 
-	// Initializes provided mesh unit.
-	void Initialize(Mesh& mesh);
-};
+void Model::Reflect(ut::meta::Snapshot& snapshot)
+{}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

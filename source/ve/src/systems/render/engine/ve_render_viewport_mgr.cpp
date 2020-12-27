@@ -170,9 +170,7 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 	                            0.0f, 1.0f,
 	                            static_cast<ut::uint32>(viewport.w()),
 	                            static_cast<ut::uint32>(viewport.h())));
-	info.input_assembly_state.topology = primitive::triangle_list;
-	info.input_assembly_state.elements = Frame::QuadVertex::CreateLayout();
-	info.input_assembly_state.stride = Frame::QuadVertex::size;
+	info.input_assembly_state = Frame::CreateInputAssemblyState();
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;
 	info.blend_state.attachments.Add(BlendState::CreateAlphaBlending());

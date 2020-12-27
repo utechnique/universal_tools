@@ -429,12 +429,41 @@ void Context::BindVertexBuffer(Buffer& buffer, size_t offset)
 	d3d11_context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &ui32_offset);
 }
 
+// Binds index buffer to the current context.
+//    @param buffer - reference to the buffer to be bound.
+//    @param offset - number of bytes between the first element
+//                    of an index buffer and the first index
+//                    that will be used.
+//    @param index_type - type of index buffer indices (16 or 32).
+void Context::BindIndexBuffer(Buffer& buffer,
+                              size_t offset,
+                              IndexType index_type)
+{
+	d3d11_context->IASetIndexBuffer(buffer.d3d11_buffer.Get(),
+	                                index_type == index_type_uint32 ?
+	                                DXGI_FORMAT_R32_UINT :
+	                                DXGI_FORMAT_R16_UINT,
+	                                static_cast<UINT>(offset));
+}
+
 // Draw non-indexed, non-instanced primitives.
 //    @param vertex_count - number of vertices to draw.
 //    @param first_vertex_id - index of the first vertex.
 void Context::Draw(ut::uint32 vertex_count, ut::uint32 first_vertex_id)
 {
 	d3d11_context->Draw(vertex_count, first_vertex_id);
+}
+
+// Draw indexed, non-instanced primitives.
+//    @param index_count - number of vertices to draw.
+//    @param first_index_id - the base index within the index buffer.
+//    @param index_count - the value added to the vertex index before
+//                         indexing into the vertex buffer.
+void Context::DrawIndexed(ut::uint32 index_count,
+                          ut::uint32 first_index_id,
+                          ut::int32 vertex_offset)
+{
+	d3d11_context->DrawIndexed(index_count, first_index_id, vertex_offset);
 }
 
 // Toggles render target's state.

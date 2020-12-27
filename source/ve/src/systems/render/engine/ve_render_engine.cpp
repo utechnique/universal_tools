@@ -143,7 +143,7 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 
 			if (!views.IsEmpty())
 			{
-				frame.quad_desc_set.tex2d.BindImage(views.GetFirst()->data->frames[tools.frame_mgr.GetCurrentFrameId()].g_buffer.depth.GetImage());
+				frame.quad_desc_set.tex2d.BindImage(views.GetFirst()->data->frames[tools.frame_mgr.GetCurrentFrameId()].g_buffer.diffuse.GetImage());
 			}
 			else
 			{
@@ -159,7 +159,7 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 		context.BeginRenderPass(rp, framebuffer, render_area, frame.clear_color);
 		context.BindPipelineState(pipeline_state);
 		context.BindDescriptorSet(frame.quad_desc_set);
-		context.BindVertexBuffer(tools.fullscreen_quad, 0);
+		context.BindVertexBuffer(tools.fullscreen_quad->vertex_buffer, 0);
 		context.Draw(6, 0);
 
 		// draw profiler info

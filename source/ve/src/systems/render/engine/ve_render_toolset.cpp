@@ -14,7 +14,8 @@ Toolset::Toolset(Device& dvc_ref) noexcept : device(dvc_ref)
                                            , shader_loader(dvc_ref)
                                            , sampler_cache(dvc_ref)
                                            , frame_mgr(dvc_ref)
-                                           , fullscreen_quad(rc_mgr.CreateFullscreenQuad().MoveOrThrow())
+                                           , fullscreen_quad(rc_mgr.CreateRect(ut::Vector<2>(0), ut::Vector<2>(1)).MoveOrThrow())
+                                           , cube(rc_mgr.CreateBox(ut::Vector<3>(0), ut::Vector<3>(1)).MoveOrThrow())
 {}
 
 //----------------------------------------------------------------------------->

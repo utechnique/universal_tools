@@ -8,7 +8,7 @@
 //----------------------------------------------------------------------------//
 // Render units.
 #include "systems/render/units/ve_render_view.h"
-#include "systems/render/units/ve_render_mesh.h"
+#include "systems/render/units/ve_render_model.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -18,7 +18,7 @@ START_NAMESPACE(render)
 using EngineUnits = ut::Container
 <
 	View,
-	Mesh
+	Model
 >;
 
 //----------------------------------------------------------------------------//

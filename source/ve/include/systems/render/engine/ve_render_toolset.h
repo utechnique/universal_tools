@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/ve_render_api.h"
+#include "systems/render/resources/ve_render_mesh.h"
 #include "ve_render_cfg.h"
 #include "ve_render_frame.h"
 #include "ve_render_rc_mgr.h"
@@ -33,8 +34,11 @@ public:
 	SamplerCache sampler_cache;
 	FrameManager frame_mgr;
 
-	// vertex buffer representing a fullscreen quad, 2 triangles, 6 vertices
-	Buffer fullscreen_quad;
+	// a mesh representing a fullscreen quad, 2 triangles, 6 vertices
+	RcRef<Mesh> fullscreen_quad;
+
+	// primitives
+	RcRef<Mesh> cube;
 
 private:
 	// Returns a configuration object. Tries to load it from file, and creates

@@ -8,12 +8,12 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 Policy<View>::Policy(Toolset &toolset,
-	UnitSelector& unit_selector,
-	Policies& engine_policies) : tools(toolset)
-	, selector(unit_selector)
-	, policies(engine_policies)
-	, geometry_pass(CreateGeometryPass(toolset.device).MoveOrThrow())
-	, geometry_pass_shader(CreateGeometryPassShader(toolset.shader_loader))
+                     UnitSelector& unit_selector,
+                     Policies& engine_policies) : tools(toolset)
+                                                , selector(unit_selector)
+                                                , policies(engine_policies)
+                                                , geometry_pass(CreateGeometryPass(toolset.device).MoveOrThrow())
+                                                , geometry_pass_shader(CreateGeometryPassShader(toolset.shader_loader))
 {}
 
 //----------------------------------------------------------------------------->
@@ -75,7 +75,21 @@ void Policy<View>::Initialize(View& view)
 			material.Move(),
 			framebuffer.Move());
 
-		if (!frames.Add(View::FrameData(ut::Move(g_buffer))))
+		// create view uniform buffer
+		Buffer::Info buffer_info;
+		buffer_info.type = Buffer::uniform;
+		buffer_info.usage = render::memory::gpu_read_cpu_write;
+		buffer_info.size = sizeof(View::FrameData::ViewUB);
+		ut::Result<Buffer, ut::Error> view_ub = tools.device.CreateBuffer(ut::Move(buffer_info));
+		if (!view_ub)
+		{
+			throw ut::Error(view_ub.MoveAlt());
+		}
+
+		View::FrameData frame_data(ut::Move(g_buffer), view_ub.Move());
+		frame_data.geometry_pass_desc_set.Connect(geometry_pass_shader);
+
+		if (!frames.Add(ut::Move(frame_data)))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
@@ -109,12 +123,33 @@ void Policy<View>::RenderEnvironment(Context& context)
 
 		View::FrameData& frame = view.data->frames[current_frame_id];
 
+		RcRef<Mesh>& mesh = tools.cube;
+
+		// update view uniform buffer
+		View::FrameData::ViewUB view_ub;
+		view_ub.view_proj = view.view_matrix * view.proj_matrix;
+		tools.rc_mgr.UpdateBuffer(context, frame.view_ub, &view_ub);
+
+		// set uniforms
+		frame.geometry_pass_desc_set.view_ub.BindUniformBuffer(frame.view_ub);
+
 		ut::Rect<ut::uint32> render_area(0, 0, view.width, view.height);
 		context.BeginRenderPass(geometry_pass, frame.g_buffer.framebuffer, render_area, ut::Color<4>(0, 0, 1, 1), 1.0f);
 		context.BindPipelineState(view.data->geometry_pass_pipeline);
-		//context.BindDescriptorSet(frame.quad_desc_set);
-		context.BindVertexBuffer(tools.fullscreen_quad, 0);
-		context.Draw(6, 0);
+		context.BindDescriptorSet(frame.geometry_pass_desc_set);
+		context.BindVertexBuffer(mesh->vertex_buffer, 0);
+
+		if (mesh->index_buffer)
+		{
+			context.BindIndexBuffer(mesh->index_buffer.Get(), 0, mesh->index_type);
+			context.DrawIndexed(mesh->face_count * Mesh::skPolygonVertices, 0, 0);
+		}
+		else
+		{
+			context.Draw(mesh->vertex_count, 0);
+		}
+
+		
 		context.EndRenderPass();
 
 		context.SetTargetState(frame.g_buffer.framebuffer, Target::Info::state_resource);
@@ -157,13 +192,11 @@ ut::Result<PipelineState, ut::Error> Policy<View>::CreateGeometryPassPipeline(ut
 		0.0f, 1.0f,
 		static_cast<ut::uint32>(width),
 		static_cast<ut::uint32>(height)));
-	info.input_assembly_state.topology = primitive::triangle_list;
-	info.input_assembly_state.elements = Frame::QuadVertex::CreateLayout();
-	info.input_assembly_state.stride = Frame::QuadVertex::size;
+	info.input_assembly_state = tools.cube->input_assembly;
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = true;
 	info.depth_stencil_state.depth_compare_op = compare::less;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.polygon_mode = RasterizationState::line;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
 	return tools.device.CreatePipelineState(ut::Move(info), geometry_pass);

@@ -8,6 +8,7 @@
 #include "systems/render/engine/ve_render_cfg.h"
 #include "systems/render/engine/ve_render_image_loader.h"
 #include "systems/render/engine/ve_render_frame.h"
+#include "systems/render/resources/ve_render_mesh.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -31,8 +32,13 @@ public:
 	                                     Buffer& buffer,
 	                                     const void* data);
 
-	// Creates vertex buffer representing a fullscreen quad.
-	ut::Result<Buffer, ut::Error> CreateFullscreenQuad();
+	// Creates a mesh representing a 2d rectangle.
+	ut::Result<RcRef<Mesh>, ut::Error> CreateRect(const ut::Vector<2>& position,
+	                                              const ut::Vector<2>& extent);
+
+	// Creates a mesh representing a box.
+	ut::Result<RcRef<Mesh>, ut::Error> CreateBox(const ut::Vector<3>& position,
+	                                             const ut::Vector<3>& extent);
 
 	// Enqueues a deletion of the desired resource.
 	//    @param id - unique identifier of the resource to be deleted.

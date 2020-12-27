@@ -1,8 +1,10 @@
 
 struct VS_INPUT
 {
-	float2 position : POSITION;
+	float3 position : POSITION;
 	float2 texcoord : TEXCOORD;
+	float3 normal : NORMAL;
+	float3 tangent : TANGENT;
 };
 
 struct PS_INPUT 
@@ -11,11 +13,15 @@ struct PS_INPUT
 	float2 texcoord  : TEXCOORD0;
 };
 
+cbuffer g_ub_view : register(b0)
+{
+	row_major float4x4 g_view_proj;
+};
+
 PS_INPUT VS(VS_INPUT input)
 {
 	PS_INPUT output;
-	output.position = float4(input.position.xy, 0.5f, 1.0f);
-	output.position.xy *= 0.5f;
+	output.position = mul(float4(input.position.xyz, 1.0f), g_view_proj);
 	output.texcoord = input.texcoord;
 	return output;
 }

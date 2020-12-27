@@ -22,6 +22,7 @@ const ut::Vector<2, int> Profiler::skFpsOffset = ut::Vector<2, int>(25, 5);
 // Constructor.
 Profiler::Profiler(Toolset &toolset_ref) noexcept : tools(toolset_ref)
                                                   , font(tools.img_loader.Load(skFontPath).MoveOrThrow())
+                                                  , display_input_assembly(Frame::CreateInputAssemblyState())
                                                   , text_buffer(CreateTextBuffer())
                                                   , text_ub(CreateUniformBuffer())
                                                   , font_width(font.GetInfo().width / skFontSize)
@@ -92,11 +93,13 @@ void Profiler::DrawInfo(Context& context, Frame& frame, ut::uint32 display_width
 // Each symbol represents a quad of two triangles, 6 vertices per symbol.
 Buffer Profiler::CreateTextBuffer()
 {
+	const ut::uint32 stride = display_input_assembly.stride;
+
 	Buffer::Info buffer_info;
 	buffer_info.type = Buffer::vertex;
 	buffer_info.usage = render::memory::gpu_read_cpu_write;
-	buffer_info.size = skTextBufferCapacity * 6 * Frame::QuadVertex::size;
-	buffer_info.stride = Frame::QuadVertex::size;
+	buffer_info.size = skTextBufferCapacity * 6 * stride;
+	buffer_info.stride = stride;
 	ut::Result<Buffer, ut::Error> buffer_result = tools.device.CreateBuffer(ut::Move(buffer_info));
 	return buffer_result.MoveOrThrow();
 }
@@ -163,7 +166,7 @@ ut::uint32 Profiler::UpdateTextBuffer(Context& context,
 	}
 
 	// get pointer to the first vertice
-	Frame::QuadVertex::Type* vertices = static_cast<Frame::QuadVertex::Type*>(map_result.Get());
+	VertexReflector vertices(display_input_assembly, map_result.Get());
 
 	// update vertices
 	const ut::uint32 text_count = static_cast<ut::uint32>(text_cache.GetNum());
@@ -183,6 +186,8 @@ ut::uint32 Profiler::UpdateTextBuffer(Context& context,
 		const ut::uint32 length = static_cast<ut::uint32>(text.Length());
 		for (ut::uint32 j = 0; j < length; j++)
 		{
+			ut::uint32 offset = j * 6;
+
 			// calculate character id in the font texture
 			char char_id = text[j] - 32;
 			if (char_id < 0)
@@ -193,22 +198,31 @@ ut::uint32 Profiler::UpdateTextBuffer(Context& context,
 			// calculate texcoord offset to the desired character
 			float tx = char_id * tex_width;
 
+			// 4 vertices
+			ut::Vector<2> pos_lu(x, y),
+			              pos_ru(x + char_width, y),
+			              pos_lb(x, y - char_height),
+			              pos_rb(x + char_width, y - char_height);
+			ut::Vector<2> tex_lu(tx, 0),
+			              tex_ru(tx + tex_width, 0),
+			              tex_lb(tx, 1),
+			              tex_rb(tx + tex_width, 1);
+
 			// first triangle
-			vertices[0].position = ut::Vector<2>(x, y);
-			vertices[0].texcoord = ut::Vector<2>(tx, 0);
-			vertices[1].position = ut::Vector<2>(x + char_width, y);
-			vertices[1].texcoord = ut::Vector<2>(tx + tex_width, 0);
-			vertices[2].position = ut::Vector<2>(x, y - char_height);
-			vertices[2].texcoord = ut::Vector<2>(tx, 1);
+			vertices.Get<vertex_traits::position>(offset + 0).Write(pos_lu);
+			vertices.Get<vertex_traits::texcoord>(offset + 0).Write(tex_lu);
+			vertices.Get<vertex_traits::position>(offset + 1).Write(pos_ru);
+			vertices.Get<vertex_traits::texcoord>(offset + 1).Write(tex_ru);
+			vertices.Get<vertex_traits::position>(offset + 2).Write(pos_lb);
+			vertices.Get<vertex_traits::texcoord>(offset + 2).Write(tex_lb);
 
 			// second triangle
-			vertices[3] = vertices[1];
-			vertices[4] = vertices[2];
-			vertices[5].position = ut::Vector<2>(x + char_width, y - char_height);
-			vertices[5].texcoord = ut::Vector<2>(tx + tex_width, 1);
-
-			// go to the next quad in buffer
-			vertices += 6;
+			vertices.Get<vertex_traits::position>(offset + 3).Write(pos_ru);
+			vertices.Get<vertex_traits::texcoord>(offset + 3).Write(tex_ru);
+			vertices.Get<vertex_traits::position>(offset + 4).Write(pos_lb);
+			vertices.Get<vertex_traits::texcoord>(offset + 4).Write(tex_lb);
+			vertices.Get<vertex_traits::position>(offset + 5).Write(pos_rb);
+			vertices.Get<vertex_traits::texcoord>(offset + 5).Write(tex_rb);
 
 			// one more symbol to draw
 			symbols_to_draw++;

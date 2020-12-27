@@ -130,10 +130,27 @@ public:
 	//                    that will be used.
 	void BindVertexBuffer(Buffer& buffer, size_t offset);
 
+	// Binds index buffer to the current context.
+	//    @param buffer - reference to the buffer to be bound.
+	//    @param offset - number of bytes between the first element
+	//                    of an index buffer and the first index
+	//                    that will be used.
+	//    @param index_type - type of index buffer indices (16 or 32).
+	void BindIndexBuffer(Buffer& buffer, size_t offset, IndexType index_type);
+
 	// Draw non-indexed, non-instanced primitives.
 	//    @param vertex_count - number of vertices to draw.
 	//    @param first_vertex_id - index of the first vertex.
 	void Draw(ut::uint32 vertex_count, ut::uint32 first_vertex_id);
+
+	// Draw indexed, non-instanced primitives.
+	//    @param index_count - number of vertices to draw.
+	//    @param first_index_id - the base index within the index buffer.
+	//    @param index_count - the value added to the vertex index before
+	//                         indexing into the vertex buffer.
+	void DrawIndexed(ut::uint32 index_count,
+	                 ut::uint32 first_index_id,
+	                 ut::int32 vertex_offset);
 
 	// Returns Context::ClearColor object initialized with multiple colors.
 	static ut::Alternate<ColorArrayRef> ClearColors(ColorArrayRef color_array)

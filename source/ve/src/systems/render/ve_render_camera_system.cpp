@@ -45,7 +45,7 @@ System::Result CameraSystem::Update()
 //    @param view - reference to the view unit to be updated.
 void CameraSystem::UpdateView(const CameraComponent& camera, View& view)
 {
-	ut::Vector<3> position(-10, 0, 0);
+	ut::Vector<3> position(-10, 4, 0);
 	ut::Vector<3> direction(1, 0, 0);
 	ut::Vector<3> up(0, 1, 0);
 	ut::Vector<3> right(0, 0, -1);

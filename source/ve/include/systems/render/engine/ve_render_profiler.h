@@ -55,6 +55,10 @@ private:
 	// font texture
 	Image font;
 
+	// input assembly state that is used to draw primitives
+	// directly to a display
+	InputAssemblyState display_input_assembly;
+
 	// buffer with separate character quads
 	Buffer text_buffer;
 

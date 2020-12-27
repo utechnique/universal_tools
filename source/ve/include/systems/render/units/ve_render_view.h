@@ -57,10 +57,25 @@ public:
 
 	struct FrameData
 	{
-		FrameData(GBuffer geometry_buffer) : g_buffer(ut::Move(geometry_buffer))
+		FrameData(GBuffer geometry_buffer,
+		          Buffer view_uniform_buffer) : g_buffer(ut::Move(geometry_buffer))
+		                                      , view_ub(ut::Move(view_uniform_buffer))
 		{}
 
 		GBuffer g_buffer;
+		Buffer view_ub;
+
+		// descriptor set for quad shader
+		struct GeometryPassDescriptorSet : public DescriptorSet
+		{
+			GeometryPassDescriptorSet() : DescriptorSet(view_ub) {}
+			Descriptor view_ub = "g_ub_view";
+		} geometry_pass_desc_set;
+
+		struct ViewUB
+		{
+			alignas(16) ut::Matrix<4, 4> view_proj;
+		};
 	};
 
 	struct GpuData : public Resource

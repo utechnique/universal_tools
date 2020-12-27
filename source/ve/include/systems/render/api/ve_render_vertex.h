@@ -31,6 +31,13 @@ public:
 	ut::uint32 offset;
 };
 
+// Type of index buffer indices.
+enum IndexType
+{
+	index_type_uint16,
+	index_type_uint32
+};
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
