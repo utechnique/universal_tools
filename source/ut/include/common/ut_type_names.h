@@ -10,28 +10,39 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
+// Unique type identifier.
+typedef uptr TypeId;
+
 // Name of the unknown or custom (user-defined) type
 template <typename T> struct Type
 {
+	// Name() function must be declared for all ut::Type specializations.
 	static inline const char* Name() { return "data"; }
+
+	// Id() function is guaranteed to be available only for intrinsic types.
+	static inline TypeId Id() { return reinterpret_cast<TypeId>(&Id); }
 };
+
 
 // Static array
 template <typename T, size_t size> struct Type<T[size]>
 {
 	static inline const char* Name() { return "static_array"; }
+	static inline TypeId Id() { return reinterpret_cast<TypeId>(&Id); }
 };
 
 // Pointer types
 template <typename T> struct Type<T*>
 {
 	static inline const char* Name() { return "raw_ptr"; }
+	static inline TypeId Id() { return reinterpret_cast<TypeId>(&Id); }
 };
 
-// Const types have the same name
+// Const types have the same name and id
 template <typename T> struct Type<const T>
 {
 	static inline const char* Name() { return Type<T>::Name(); }
+	static inline TypeId Id() { return Type<T>::Id(); }
 };
 
 // Specialization for the intrinsic types

@@ -12,6 +12,7 @@
 #include "ut_char_traits.h"
 #include "ut_numeric_types.h"
 #include "ut_type_names.h"
+#include "ut_convert.h"
 #include "ut_platform.h"
 #include "ut_assert.h"
 #include "ut_noncopyable.h"
