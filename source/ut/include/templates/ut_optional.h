@@ -232,6 +232,12 @@ public:
 		return Base::Get();
 	}
 
+	// Inheritance operator, provides access to the owned object.
+	const T* operator -> () const
+	{
+		return Base::Get();
+	}
+
 	// Use this function to get reference to the value (if present)
 	//    @return - @value reference
 	T& Get()
