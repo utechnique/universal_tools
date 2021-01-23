@@ -29,6 +29,60 @@ private:
 	// Number of elements inside this matrix.
 	static constexpr MatrixElementId size = rows * columns;
 
+	// Helper struct to perform element-wise operations like Hadamard product.
+	struct ElementWiseOperation
+	{
+		ElementWiseOperation(const Matrix& matrix)
+		{
+			for (MatrixElementId i = 0; i < size; i++)
+			{
+				table[i] = matrix.table[i];
+			}
+		}
+
+		Matrix operator * (const Matrix& right) const
+		{
+			Matrix out;
+			for (MatrixElementId i = 0; i < size; i++)
+			{
+				out.table[i] = table[i] * right.table[i];
+			}
+			return out;
+		}
+
+		Matrix operator * (Scalar scalar) const
+		{
+			Matrix out;
+			for (MatrixElementId i = 0; i < size; i++)
+			{
+				out.table[i] = table[i] * scalar;
+			}
+			return out;
+		}
+
+		Matrix operator / (const Matrix& right) const
+		{
+			Matrix out;
+			for (MatrixElementId i = 0; i < size; i++)
+			{
+				out.table[i] = table[i] / right.table[i];
+			}
+			return out;
+		}
+
+		Matrix operator / (Scalar scalar) const
+		{
+			Matrix out;
+			for (MatrixElementId i = 0; i < size; i++)
+			{
+				out.table[i] = table[i] / scalar;
+			}
+			return out;
+		}
+
+		Scalar table[size];
+	};
+
 public:
 	// "Named Constructor" to generate identity matrix.
 	static Matrix MakeIdentity()
@@ -367,6 +421,12 @@ public:
 	Scalar* GetData()
 	{
 		return static_cast<Scalar*>(table);
+	}
+
+	// Use this function to perform element-wise operations.
+	ElementWiseOperation ElementWise() const
+	{
+		return ElementWiseOperation(*this);
 	}
 
 	// Returns a constant reference to the named "X" element.
