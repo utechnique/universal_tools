@@ -4,6 +4,7 @@ require("../source/build/buildops")
 require("../source/build/workspace")
 require("../source/build/staticlib")
 require("../source/build/application")
+require("../source/build/input")
 require("../source/build/renderapi")
 require("../source/build/fltk")
 
@@ -62,6 +63,17 @@ VE_INCLUDE_DIRS =
 	RENDER_INCLUDE_DIRS
 }
 
+-- libraries for projects using ve,
+-- note thet correct order is important for gcc linker
+VE_LIBS =
+{
+	 "ve",
+	 "stb",
+	 "ut",
+	 RENDER_LIBS,
+	 INPUT_LIBS 
+}
+
 -- ve static lib
 utStaticLibProj
 {
@@ -104,7 +116,7 @@ utApplication
 	libdir = { RENDER_LIB_DIRS }, --library directories
 	libdir_32 = { RENDER_LIB_DIRS_32 }, --library directories (32 bits only)
 	libdir_64 = { RENDER_LIB_DIRS_64 }, --library directories (64 bits only)
-	libs = { "ve", "stb", "ut", RENDER_LIBS }, -- libraries (correct order is important for gcc linker)
+	libs = { VE_LIBS }, -- libraries (same names for 32 and 64 bit versions)
 	libs_release = { RENDER_LIBS_RELEASE }, -- libraries ('Release' only)
 	libs_dbg = { RENDER_LIBS_DBG }, -- libraries ('Debug' only)
 	dependencies = { "ve", "stb", "ut" }, -- dependencies

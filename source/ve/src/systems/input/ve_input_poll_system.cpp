@@ -1,0 +1,29 @@
+//----------------------------------------------------------------------------//
+//---------------------------------|  V  E  |---------------------------------//
+//----------------------------------------------------------------------------//
+#include "systems/input/ve_input_poll_system.h"
+//----------------------------------------------------------------------------//
+START_NAMESPACE(ve)
+START_NAMESPACE(input)
+//----------------------------------------------------------------------------//
+// Constructor.
+PollSystem::PollSystem(ut::SharedPtr<input::Manager> input_mgr_ptr) : System("input_polling")
+                                                                    , input_mgr(ut::Move(input_mgr_ptr))
+{}
+
+// Updates system. This function is called once per tick.
+//    @return - array of commands to be executed by owning environment,
+//              or ut::Error if system encountered fatal error.
+System::Result PollSystem::Update()
+{
+	UT_ASSERT(input_mgr);
+	input_mgr->Update();
+	return System::Result();
+}
+
+//----------------------------------------------------------------------------//
+END_NAMESPACE(input)
+END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//

@@ -7,6 +7,11 @@ UT_REGISTER_TYPE(ve::Component, ve::CameraComponent, "camera")
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
+const ut::Vector<3> CameraComponent::skDirection = ut::Vector<3>(1, 0, 0);
+const ut::Vector<3> CameraComponent::skUp = ut::Vector<3>(0, 1, 0);
+const ut::Vector<3> CameraComponent::skRight = ut::Vector<3>(0, 0, -1);
+
+//----------------------------------------------------------------------------->
 const ut::DynamicType& CameraComponent::Identify() const
 {
 	return ut::Identify(this);
@@ -14,10 +19,24 @@ const ut::DynamicType& CameraComponent::Identify() const
 
 void CameraComponent::Reflect(ut::meta::Snapshot& snapshot)
 {
-	snapshot.Add(position, "position");
-	snapshot.Add(direction, "direction");
-	snapshot.Add(tilt, "tilt");
 	snapshot.Add(field_of_view, "field_of_view");
+}
+
+//----------------------------------------------------------------------------->
+
+ut::Vector<3> CameraComponent::GetDirection(const ut::Quaternion<float>& q) const
+{
+	return q.Rotate(skDirection);
+}
+
+ut::Vector<3> CameraComponent::GetUp(const ut::Quaternion<float>& q) const
+{
+	return q.Rotate(skUp);
+}
+
+ut::Vector<3> CameraComponent::GetRight(const ut::Quaternion<float>& q) const
+{
+	return q.Rotate(skRight);
 }
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ve)

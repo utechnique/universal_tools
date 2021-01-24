@@ -3,8 +3,10 @@
 //----------------------------------------------------------------------------//
 #include "ve_default.h"
 #include "systems/ui/ve_ui.h"
+#include "systems/input/ve_input_poll_system.h"
 #include "systems/render/ve_render_system.h"
 #include "systems/render/ve_render_camera_system.h"
+#include "systems/controller/ve_free_camera_controller_system.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
@@ -18,8 +20,14 @@ Pipeline GenDefaultPipeline()
     // create render thread
 	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>(ui_frontend_thread);
 
+	// create input state shared among systems
+	ut::SharedPtr<input::Manager> input_mgr = ut::MakeShared<input::Manager>();
+
 	// build a pipeline
-	Pipeline pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread));
+	Pipeline pipeline;
+	pipeline.AddSerial(Pipeline(ut::MakeShared<input::PollSystem>(input_mgr)));
+	pipeline.AddSerial(Pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread)));
+	pipeline.AddSerial(Pipeline(ut::MakeShared<FreeCameraControllerSystem>(input_mgr)));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<render::CameraSystem>()));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<render::RenderSystem>(render_thread, ui_frontend_thread)));
 

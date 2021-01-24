@@ -7,35 +7,28 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
-// Camera is means of viewing the 3D scene.
-class CameraComponent : public Component
+// Transform composed of Scale, Rotation(as a quaternion), and Translation.
+// It can be used to convert from one space to another.
+// Transformation is applied in the order: Scale->Rotate->Translate.
+class TransformComponent : public Component
 {
 public:
 	// Explicitly declare defaulted constructors and move operator.
-	CameraComponent() = default;
-	CameraComponent(CameraComponent&&) = default;
-	CameraComponent& operator =(CameraComponent&&) = default;
+	TransformComponent() = default;
+	TransformComponent(TransformComponent&&) = default;
+	TransformComponent& operator =(TransformComponent&&) = default;
 
 	// Copying is prohibited.
-	CameraComponent(const CameraComponent&) = delete;
-	CameraComponent& operator =(const CameraComponent&) = delete;
+	TransformComponent(const TransformComponent&) = delete;
+	TransformComponent& operator =(const TransformComponent&) = delete;
 
 	// Meta routine.
 	const ut::DynamicType& Identify() const;
 	void Reflect(ut::meta::Snapshot& snapshot);
 
-	// Each of these functions returns rotated basis vector
-	ut::Vector<3> GetDirection(const ut::Quaternion<float>& q) const;
-	ut::Vector<3> GetUp(const ut::Quaternion<float>& q) const;
-	ut::Vector<3> GetRight(const ut::Quaternion<float>& q) const;
-
-	// view options
-	float field_of_view = 90.0f;
-
-	// basis
-	static const ut::Vector<3> skDirection;
-	static const ut::Vector<3> skUp;
-	static const ut::Vector<3> skRight;
+	ut::Vector<3> scale = ut::Vector<3>(1, 1, 1);
+	ut::Vector<3> translation = ut::Vector<3>(0, 0, 0);
+	ut::Quaternion<float> rotation;
 };
 
 //----------------------------------------------------------------------------//

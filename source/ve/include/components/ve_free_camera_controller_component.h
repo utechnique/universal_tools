@@ -7,35 +7,26 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
-// Camera is means of viewing the 3D scene.
-class CameraComponent : public Component
+// Free camera controller gives a user
+// the ability to control a camera directly.
+class FreeCameraControllerComponent : public Component
 {
 public:
 	// Explicitly declare defaulted constructors and move operator.
-	CameraComponent() = default;
-	CameraComponent(CameraComponent&&) = default;
-	CameraComponent& operator =(CameraComponent&&) = default;
+	FreeCameraControllerComponent() = default;
+	FreeCameraControllerComponent(FreeCameraControllerComponent&&) = default;
+	FreeCameraControllerComponent& operator =(FreeCameraControllerComponent&&) = default;
 
 	// Copying is prohibited.
-	CameraComponent(const CameraComponent&) = delete;
-	CameraComponent& operator =(const CameraComponent&) = delete;
+	FreeCameraControllerComponent(const FreeCameraControllerComponent&) = delete;
+	FreeCameraControllerComponent& operator =(const FreeCameraControllerComponent&) = delete;
 
 	// Meta routine.
 	const ut::DynamicType& Identify() const;
 	void Reflect(ut::meta::Snapshot& snapshot);
 
-	// Each of these functions returns rotated basis vector
-	ut::Vector<3> GetDirection(const ut::Quaternion<float>& q) const;
-	ut::Vector<3> GetUp(const ut::Quaternion<float>& q) const;
-	ut::Vector<3> GetRight(const ut::Quaternion<float>& q) const;
-
-	// view options
-	float field_of_view = 90.0f;
-
-	// basis
-	static const ut::Vector<3> skDirection;
-	static const ut::Vector<3> skUp;
-	static const ut::Vector<3> skRight;
+	float speed = 5.0f; // per second
+	float sensitivity = 0.25f;
 };
 
 //----------------------------------------------------------------------------//

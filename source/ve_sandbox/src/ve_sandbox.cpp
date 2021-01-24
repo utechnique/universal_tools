@@ -4,7 +4,9 @@
 #include "ve_sandbox.h"
 #include "commands/ve_cmd_add_entity.h"
 #include "components/ve_render_component.h"
+#include "components/ve_transform_component.h"
 #include "components/ve_camera_component.h"
+#include "components/ve_free_camera_controller_component.h"
 #include "systems/render/units/ve_render_view.h"
 //----------------------------------------------------------------------------//
 // Creates and runs virtual environment.
@@ -18,7 +20,11 @@ void LaunchVirtualEnvironment()
 
 	// add camera
 	ve::Entity camera;
+	ve::TransformComponent transform_component;
+	transform_component.translation = ut::Vector<3>(-10, 4, 0);
+	camera.AddComponent(ut::MakeUnique<ve::TransformComponent>(ut::Move(transform_component)));
 	camera.AddComponent(ut::MakeUnique<ve::CameraComponent>());
+	camera.AddComponent(ut::MakeUnique<ve::FreeCameraControllerComponent>());
 	ve::RenderComponent render_component;
 	render_component.units.Add(ut::MakeUnique<ve::render::View>());
 	camera.AddComponent(ut::MakeUnique<ve::RenderComponent>(ut::Move(render_component)));
