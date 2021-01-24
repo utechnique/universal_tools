@@ -183,7 +183,21 @@ public:
 	//    @return - '0' if strings are equal, or difference value
     inline int Compare(const TString& source) const
     {
-        return Compare(source.arr);
+		const size_t src_n = source.GetNum();
+		const size_t n = src_n < Base::num ? src_n : Base::num;
+
+		for (size_t i = 0; i < n; i++)
+		{
+			const T c1 = Base::arr[i];
+			const T c2 = source[i];
+
+			if (c1 != c2 || c1 == '\0')
+			{
+				return c1 - c2;
+			}
+		}
+
+		return 0;
     }
 
 	// Compares self with another string (case insensitive) and returns the result

@@ -171,6 +171,19 @@ void MatrixTask::Execute()
 		return;
 	}
 
+	// element wise
+	ut::Vector<3> vec3_elw(1, 1, 1);
+	vec3_elw = vec3_elw.ElementWise() * ut::Vector<3>(1, 2, 3);
+	vec3_elw = vec3_elw.ElementWise() * 8.0f;
+	vec3_elw = vec3_elw.ElementWise() / ut::Vector<3>(2, 2, 2);
+	vec3_elw = vec3_elw.ElementWise() / 2.0f;
+	if (vec3_elw != ut::Vector<3>(2, 4, 6))
+	{
+		report += ut::String("FAIL: Elements-wise operations.");
+		failed_test_counter.Increment();
+		return;
+	}
+
 	// different tags assignment
 	ut::Matrix<1, 4> m1x4(0.0f);
 	ut::Vector<4> vec4_tag(0.0f);
