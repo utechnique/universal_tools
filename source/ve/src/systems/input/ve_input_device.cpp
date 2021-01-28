@@ -72,7 +72,7 @@ bool Device::CompareId(const void* other_id, size_t other_id_size) const
 
 	for (size_t i = 0; i < id_size; i++)
 	{
-		const BYTE* b = static_cast<const BYTE*>(other_id) + i;
+		const ut::byte* b = static_cast<const ut::byte*>(other_id) + i;
 		if (id[i] != *b)
 		{
 			return false;

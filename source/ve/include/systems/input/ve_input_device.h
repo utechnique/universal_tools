@@ -14,7 +14,7 @@ class Device
 {
 public:
 	// Id can have different size for different devices.
-	typedef ut::Array<byte> Id;
+	typedef ut::Array<ut::byte> Id;
 
 	// Constructor.
 	//    @param device_id - unique identifier of the device.
