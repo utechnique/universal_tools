@@ -36,6 +36,7 @@ function utGenerateWorkspace()
     elseif LINUX then
         -- Librt and Libpthread are included in Bionic lib
 		links { "pthread" }
+		linkoptions { "-pthread" }
     end
     
     -- platform-specific defines
