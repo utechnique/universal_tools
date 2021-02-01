@@ -1,14 +1,12 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
-//----------------------------------------------------------------------------//
 #include "systems/input/ve_input_manager.h"
 //----------------------------------------------------------------------------//
 #if UT_WINDOWS
 #include "systems/input/ve_direct_input.h"
 #elif UT_LINUX
-
+#include "systems/input/ve_linux_input.h"
 #endif
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -20,7 +18,7 @@ Manager::Manager() : config(LoadCfg())
 #if UT_WINDOWS
 	handlers.Add(ut::MakeUnique<DirectInputHandler>());
 #elif UT_LINUX
-
+    handlers.Add(ut::MakeUnique<LinuxInputHandler>());
 #endif
 }
 

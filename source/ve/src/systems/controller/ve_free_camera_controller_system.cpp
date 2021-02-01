@@ -8,7 +8,9 @@ START_NAMESPACE(ve)
 // Constructor.
 FreeCameraControllerSystem::FreeCameraControllerSystem(ut::SharedPtr<input::Manager> input_mgr_ptr) :
 	Base("free_camera_controller"), input_mgr(ut::Move(input_mgr_ptr))
-{}
+{
+    timer.Start();
+}
 
 //----------------------------------------------------------------------------->
 // Updates transform component of the managed entities.

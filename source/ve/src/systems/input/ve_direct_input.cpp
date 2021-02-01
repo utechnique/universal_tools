@@ -14,37 +14,34 @@ START_NAMESPACE(input)
 // enumeration.
 static const size_t skDIKeyboardMap[keyboard::button_count] =
 {
-	DIK_ESCAPE,       DIK_1,           DIK_2,         DIK_3,
-	DIK_4,            DIK_5,           DIK_6,         DIK_7,
-	DIK_8,            DIK_9,           DIK_0,         DIK_MINUS,
-	DIK_EQUALS,       DIK_BACK,        DIK_TAB,       DIK_Q,
-	DIK_W,            DIK_E,           DIK_R,         DIK_T,
-	DIK_Y,            DIK_U,           DIK_I,         DIK_O,
-	DIK_P,            DIK_LBRACKET,    DIK_RBRACKET,  DIK_RETURN,
-	DIK_LCONTROL,     DIK_A,           DIK_S,         DIK_D,
-	DIK_F,            DIK_G,           DIK_H,         DIK_J,
-	DIK_K,            DIK_L,           DIK_SEMICOLON, DIK_APOSTROPHE,
-	DIK_GRAVE,        DIK_LSHIFT,      DIK_BACKSLASH, DIK_Z,
-	DIK_X,            DIK_C,           DIK_V,         DIK_B,
-	DIK_N,            DIK_M,           DIK_COMMA,     DIK_PERIOD,
-	DIK_SLASH,        DIK_RSHIFT,      DIK_MULTIPLY,  DIK_LMENU,
-	DIK_SPACE,        DIK_CAPITAL,     DIK_F1,        DIK_F2,
-	DIK_F3,           DIK_F4,          DIK_F5,        DIK_F6,
-	DIK_F7,           DIK_F8,          DIK_F9,        DIK_F10,
-	DIK_NUMLOCK,      DIK_SCROLL,      DIK_NUMPAD7,   DIK_NUMPAD8,
-	DIK_NUMPAD9,      DIK_SUBTRACT,    DIK_NUMPAD4,   DIK_NUMPAD5,
-	DIK_NUMPAD6,      DIK_ADD,         DIK_NUMPAD1,   DIK_NUMPAD2,
-	DIK_NUMPAD3,      DIK_NUMPAD0,     DIK_DECIMAL,   DIK_F11,
-	DIK_F12,          DIK_F13,         DIK_F14,       DIK_F15,
-	DIK_KANA,         DIK_CONVERT,     DIK_NOCONVERT, DIK_YEN,
-	DIK_NUMPADEQUALS, DIK_CIRCUMFLEX,  DIK_AT,        DIK_COLON,
-	DIK_UNDERLINE,    DIK_KANJI,       DIK_STOP,      DIK_AX,
-	DIK_UNLABELED,    DIK_NUMPADENTER, DIK_RCONTROL,  DIK_NUMPADCOMMA,
-	DIK_DIVIDE,       DIK_SYSRQ,       DIK_RMENU,     DIK_HOME,
-	DIK_UP,           DIK_PRIOR,       DIK_LEFT,      DIK_RIGHT,
-	DIK_END,          DIK_DOWN,        DIK_NEXT,      DIK_INSERT,
-	DIK_DELETE,       DIK_LWIN,        DIK_RWIN,      DIK_APPS,
-	DIK_PAUSE
+	DIK_ESCAPE,      DIK_1,        DIK_2,            DIK_3,
+	DIK_4,           DIK_5,        DIK_6,            DIK_7,
+	DIK_8,           DIK_9,        DIK_0,            DIK_MINUS,
+	DIK_EQUALS,      DIK_BACK,     DIK_TAB,          DIK_Q,
+	DIK_W,           DIK_E,        DIK_R,            DIK_T,
+	DIK_Y,           DIK_U,        DIK_I,            DIK_O,
+	DIK_P,           DIK_LBRACKET, DIK_RBRACKET,     DIK_RETURN,
+	DIK_LCONTROL,    DIK_A,        DIK_S,            DIK_D,
+	DIK_F,           DIK_G,        DIK_H,            DIK_J,
+	DIK_K,           DIK_L,        DIK_SEMICOLON,    DIK_APOSTROPHE,
+	DIK_GRAVE,       DIK_LSHIFT,   DIK_BACKSLASH,    DIK_Z,
+	DIK_X,           DIK_C,        DIK_V,            DIK_B,
+	DIK_N,           DIK_M,        DIK_COMMA,        DIK_PERIOD,
+	DIK_SLASH,       DIK_RSHIFT,   DIK_MULTIPLY,     DIK_LMENU,
+	DIK_SPACE,       DIK_CAPITAL,  DIK_F1,           DIK_F2,
+	DIK_F3,          DIK_F4,       DIK_F5,           DIK_F6,
+	DIK_F7,          DIK_F8,       DIK_F9,           DIK_F10,
+	DIK_NUMLOCK,     DIK_SCROLL,   DIK_NUMPAD7,      DIK_NUMPAD8,
+	DIK_NUMPAD9,     DIK_SUBTRACT, DIK_NUMPAD4,      DIK_NUMPAD5,
+	DIK_NUMPAD6,     DIK_ADD,      DIK_NUMPAD1,      DIK_NUMPAD2,
+	DIK_NUMPAD3,     DIK_NUMPAD0,  DIK_DECIMAL,      DIK_F11,
+	DIK_F12,         DIK_F13,      DIK_F14,          DIK_F15,
+	DIK_KANA,        DIK_YEN,      DIK_NUMPADEQUALS, DIK_STOP,
+	DIK_NUMPADENTER, DIK_RCONTROL, DIK_NUMPADCOMMA,  DIK_DIVIDE,
+	DIK_SYSRQ,       DIK_RMENU,    DIK_HOME,         DIK_UP,
+	DIK_PRIOR,       DIK_LEFT,     DIK_RIGHT,        DIK_END,
+	DIK_DOWN,        DIK_NEXT,     DIK_INSERT,       DIK_DELETE,
+	DIK_LWIN,        DIK_RWIN,     DIK_PAUSE
 };
 
 //----------------------------------------------------------------------------//
@@ -211,7 +208,7 @@ ut::Result<Device, ut::Error> DirectInputHandler::CreateKeyboard()
 	for (size_t i = 0; i < keyboard::button_count; i++)
 	{
 		ut::Optional<ut::Error> error = keyboard_device.AddSignal(Signal::CreateDiscrete(0),
-			keyboard::skKeyNames[i]);
+		                                                          keyboard::skKeyNames[i]);
 		if (error)
 		{
 			return ut::MakeError(error.Move());
@@ -234,7 +231,7 @@ ut::Result<Device, ut::Error> DirectInputHandler::CreateMouse()
 	for (size_t i = 0; i < mouse::button_count; i++)
 	{
 		ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateDiscrete(0),
-			mouse::skButtonNames[i]);
+		                                                       mouse::skButtonNames[i]);
 		if (error)
 		{
 			throw ut::MakeError(error.Move());
@@ -245,7 +242,7 @@ ut::Result<Device, ut::Error> DirectInputHandler::CreateMouse()
 	for (size_t i = 0; i < 2; i++)
 	{
 		ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateAnalog(0.0f),
-			mouse::skMovementNames[i]);
+		                                                       mouse::skMovementNames[i]);
 		if (error)
 		{
 			throw ut::MakeError(error.Move());
@@ -297,7 +294,7 @@ void DirectInputHandler::ProcessMouse(ut::Optional<Device&>& mouse)
 			ut::Result<Device, ut::Error> mouse_device = CreateMouse();
 			if (mouse_device)
 			{
-				UpdateKeyboard(mouse_device.Get());
+				UpdateMouse(mouse_device.Get());
 				cur_state.Add(mouse_device.Move());
 			}
 			else
