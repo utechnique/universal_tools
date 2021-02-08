@@ -120,20 +120,51 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
                                         RenderComponent& render,
                                         const ui::Viewport::Mode& mode)
 {
-	// do not render view if its viewport is inactive
+	// find render view
+	ut::Optional<render::View&> view;
 	const size_t unit_count = render.units.GetNum();
 	for (size_t i = 0; i < unit_count; i++)
 	{
 		ut::UniquePtr<render::Unit>& unit = render.units[i];
-		if (unit->Identify().GetHandle() != ut::GetPolymorphicHandle<ve::render::View>())
+		if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::View>())
 		{
-			continue;
+			view = static_cast<render::View&>(unit.GetRef());
+			break;
+		}
+	}
+
+	// update render view unit
+	if (view)
+	{
+		// do not render view if its viewport is inactive
+		view->is_active = mode.is_active;
+
+		// update resolution
+		ut::uint32 desired_width = mode.width;
+		ut::uint32 desired_height = mode.height;
+
+		switch (mode.resolution)
+		{
+		case ui::Viewport::resolution_4k:
+			desired_width = 3840;
+			desired_height = 2160;
+			break;
+		case ui::Viewport::resolution_full_hd:
+			desired_width = 1920;
+			desired_height = 1080;
+			break;
+		case ui::Viewport::resolution_hd:
+			desired_width = 1280;
+			desired_height = 720;
+			break;
 		}
 
-		render::View& view = static_cast<render::View&>(unit.GetRef());
-		view.is_active = mode.is_active;
-
-		break;
+		if (view->width != desired_width || view->height != desired_height)
+		{
+			view->width = desired_width;
+			view->height = desired_height;
+			view->Invalidate();
+		}
 	}
 
 	// update aspect ration

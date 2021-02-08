@@ -26,6 +26,10 @@ public:
 	// Abstract classes must have virtual destructor.
 	virtual ~Unit() = default;
 
+	// Makes this unit invalid, it will be recreated by associated policy on the
+	// next frame.
+	void Invalidate();
+
 private:
 	// Every unit is created with "initialized" member set to false, and only
 	// a ve::render::UnitManager object can modify it by calling Initialize()

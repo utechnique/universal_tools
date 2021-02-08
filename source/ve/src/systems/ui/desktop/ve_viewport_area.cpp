@@ -36,6 +36,16 @@ static const char* skProjectionTypeNames[skProjectionTypeCount] =
 	"Ortho Z+"
 };
 
+// Resolution variants.
+static const ut::uint32 skResolutionTypeCount = 4;
+static const char* skResolutionTypeNames[skResolutionTypeCount] =
+{
+	"Auto",
+	"4K",
+	"1080p",
+	"720p",
+};
+
 //----------------------------------------------------------------------------//
 // Constructor.
 ViewportBox::ViewportBox(const Settings& settings,
@@ -251,6 +261,7 @@ ViewportTab::ViewportTab(ViewportArea& in_viewport_area,
 	
 	layout_choice = CreateLayoutChoice(layouts, x, y);
 	proj_choice = CreateProjChoice(layout_choice->x() + layout_choice->w(), y);
+	resolution_choice = CreateResolutionChoice(proj_choice->x() + proj_choice->w(), y);
 
 	controls_group->end();
 	controls_group->resizable(nullptr);
@@ -274,6 +285,25 @@ void ViewportTab::ChangeViewportProjection(Viewport::Projection projection)
 		}
 
 		mode.projection = projection;
+		viewport.SetMode(mode);
+	}
+}
+
+// Changes viewport resolution type.
+void ViewportTab::ChangeViewportResolution(Viewport::Resolution resolution)
+{
+	ut::Array< ut::Ref<Viewport> > viewports = viewport_area.GetViewports();
+	const size_t viewport_count = viewports.GetNum();
+	for (size_t i = 0; i < viewport_count; i++)
+	{
+		Viewport& viewport = viewports[i];
+		Viewport::Mode mode = viewport.GetMode();
+		if (!mode.has_input_focus)
+		{
+			continue;
+		}
+
+		mode.resolution = resolution;
 		viewport.SetMode(mode);
 	}
 }
@@ -329,6 +359,33 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateProjChoice(int x, int y)
 	return choice;
 }
 
+// Creates resolution choice widget.
+ut::UniquePtr<Fl_Choice> ViewportTab::CreateResolutionChoice(int x, int y)
+{
+	// create widget
+	ut::UniquePtr<Fl_Choice> choice = ut::MakeUnique<Fl_Choice>(x + skElementMargin,
+	                                                            y + skElementMargin,
+	                                                            70,
+	                                                            skElementHeight);
+
+	// add resolution types
+	for (size_t i = 0; i < skResolutionTypeCount; i++)
+	{
+		int menu_id = choice->add(skResolutionTypeNames[i], 0, nullptr);
+		Fl_Menu_Item *item = (Fl_Menu_Item*)&(choice->menu()[menu_id]);
+		item->callback(ChangeResolutionCallback, this);
+	}
+
+	// choose a layout
+	choice->value(static_cast<int>(Viewport::resolution_auto));
+
+	// choose a layout
+	choice->value(0);
+
+	// success
+	return choice;
+}
+
 // Callback that is called when a layout is changed.
 void ViewportTab::ChangeLayoutCallback(Fl_Widget* widget, void* data)
 {
@@ -347,6 +404,15 @@ void ViewportTab::ChangeProjectionCallback(Fl_Widget* widget, void* data)
 	ViewportTab* tab = static_cast<ViewportTab*>(data);
 	Viewport::Projection projection = static_cast<Viewport::Projection>(choice->value());
 	tab->ChangeViewportProjection(projection);
+}
+
+// Callback that is called when a resolution type is changed.
+void ViewportTab::ChangeResolutionCallback(Fl_Widget* widget, void* data)
+{
+	const Fl_Choice* choice = static_cast<Fl_Choice*>(widget);
+	ViewportTab* tab = static_cast<ViewportTab*>(data);
+	Viewport::Resolution resolution = static_cast<Viewport::Resolution>(choice->value());
+	tab->ChangeViewportResolution(resolution);
 }
 
 //----------------------------------------------------------------------------//
@@ -782,6 +848,7 @@ void ViewportArea::SetViewportFocus(Viewport::Id id)
 		if (mode.has_input_focus)
 		{
 			tab->proj_choice->value(static_cast<int>(mode.projection));
+			tab->resolution_choice->value(static_cast<int>(mode.resolution));
 		}
 
 		box.redraw();

@@ -27,6 +27,15 @@ public:
 		orthographic_positive_z
 	};
 
+	// Resolution variants.
+	enum Resolution
+	{
+		resolution_auto, // the same as viewport
+		resolution_4k,
+		resolution_full_hd,
+		resolution_hd
+	};
+
 	// Mode describes how this viewport interacts with user and how
 	// it renders stuff.
 	struct Mode
@@ -39,6 +48,9 @@ public:
 
 		// Current projection type of this viewport.
 		Projection projection = perspective;
+
+		// Viewport resolution.
+		Resolution resolution = resolution_auto;
 
 		// Indicates if this viewport accepts input form user.
 		bool has_input_focus = false;

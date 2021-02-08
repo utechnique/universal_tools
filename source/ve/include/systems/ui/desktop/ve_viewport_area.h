@@ -128,17 +128,26 @@ public:
 	// Changes viewport projection type.
 	void ChangeViewportProjection(Viewport::Projection projection);
 
+	// Changes viewport resolution type.
+	void ChangeViewportResolution(Viewport::Resolution resolution);
+
 	// Creates layout choice widget.
 	static ut::UniquePtr<Fl_Choice> CreateLayoutChoice(LayoutArray& layouts, int x, int y);
 
 	// Creates projection choice widget.
 	ut::UniquePtr<Fl_Choice> CreateProjChoice(int x, int y);
 
+	// Creates resolution choice widget.
+	ut::UniquePtr<Fl_Choice> CreateResolutionChoice(int x, int y);
+
 	// Callback that is called when a layout is changed.
 	static void ChangeLayoutCallback(Fl_Widget* widget, void* data);
 
 	// Callback that is called when a projection type is changed.
 	static void ChangeProjectionCallback(Fl_Widget* widget, void* data);
+
+	// Callback that is called when a resolution type is changed.
+	static void ChangeResolutionCallback(Fl_Widget* widget, void* data);
 
 	// Height of the elements in pixels
 	static const ut::uint32 skElementHeight;
@@ -162,6 +171,9 @@ public:
 
 	// Combobox widget to choose a projection.
 	ut::UniquePtr<Fl_Choice> proj_choice;
+
+	// Combobox widget to choose viewport resolution.
+	ut::UniquePtr<Fl_Choice> resolution_choice;
 
 private:
 	class ViewportArea& viewport_area;

@@ -10,6 +10,13 @@ START_NAMESPACE(render)
 void Unit::Reflect(ut::meta::Snapshot& snapshot)
 {}
 
+// Makes this unit invalid, it will be recreated by associated policy on the
+// next frame.
+void Unit::Invalidate()
+{
+	initialized = false;
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
