@@ -15,6 +15,39 @@ public:
 	// Every viewport must have unique id.
 	typedef ut::uint32 Id;
 
+	// Projection types.
+	enum Projection
+	{
+		perspective,
+		orthographic_negative_x,
+		orthographic_positive_x,
+		orthographic_negative_y,
+		orthographic_positive_y,
+		orthographic_negative_z,
+		orthographic_positive_z
+	};
+
+	// Mode describes how this viewport interacts with user and how
+	// it renders stuff.
+	struct Mode
+	{
+		// Indicates if this viewport is currently active (visible).
+		bool is_active = true;
+
+		// Indicates if this viewport renders a scene in wireframe mode.
+		bool wireframe = false;
+
+		// Current projection type of this viewport.
+		Projection projection = perspective;
+
+		// Indicates if this viewport accepts input form user.
+		bool has_input_focus = false;
+
+		// Width and height of the viewport in pixels.
+		ut::uint32 width = 0;
+		ut::uint32 height = 0;
+	};
+
 	// Constructor.
 	//    @param viewport_id - id associated with this viewport.
 	//    @param viewport_name - name of the viewport.
@@ -39,14 +72,22 @@ public:
 	// Resets all signals.
 	void ResetSignals();
 
-	// Returns 'true' if this viewport is currently active
-	bool IsActive();
+	// Returns current mode. Thread-safe.
+	Mode GetMode();
 
-	// Activates this viewport.
-	void Activate();
+	// Sets new mode. Thread-safe.
+	void SetMode(const Mode& new_mode);
 
-	// Deactivates this viewport
-	void Deactivate();
+	// Returns relative mouse position inside this viewport
+	// or nothing if it's outside. Position (0,0) is located
+	// in the center of the viewport, X-axis is right, Y-axis
+	// is up. Distance to the viewport border is 1.
+	virtual ut::Optional< ut::Vector<2> > GetMousePosition();
+
+	// Returns relative mouse position offset from the call of this
+	// function or nothing if it's outside.
+	//    @param reset - boolean indicating if current offset must be reset.
+	virtual ut::Optional< ut::Vector<2> > GetMouseOffset(bool reset);
 
 	// Returns unique identifier of the viewport.
 	Id GetId() const;
@@ -55,8 +96,8 @@ public:
 	const ut::String& GetName() const;
 
 protected:
-	// Indicates if this viewport is currently active
-	ut::Synchronized<bool> active;
+	// Current mode.
+	ut::Synchronized<Mode> mode;
 
 	// Name of the viewport.
 	const ut::String name;

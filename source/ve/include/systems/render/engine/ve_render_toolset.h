@@ -40,6 +40,14 @@ public:
 	// primitives
 	RcRef<Mesh> cube;
 
+	// images
+	Image img_black;
+	Image img_white;
+	Image img_red;
+	Image img_green;
+	Image img_blue;
+	Image img_normal;
+
 private:
 	// Returns a configuration object. Tries to load it from file, and creates
 	// a default one if loading failed.

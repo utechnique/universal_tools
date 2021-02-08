@@ -37,6 +37,9 @@ private:
 	// Function for recording all commands needed to draw current frame.
 	void RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportContainer> >& active_viewports);
 
+	// Renders view units to ui viewports.
+	void DisplayToUser(Context& context, ut::Array< ut::Ref<ViewportContainer> >& active_viewports);
+
 	// Executes viewport tasks (resize, close, etc.) in a safe manner.
 	void ProcessViewportEvents();
 

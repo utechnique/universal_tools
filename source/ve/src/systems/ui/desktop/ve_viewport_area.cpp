@@ -23,15 +23,40 @@ const ut::uint32 ViewportTab::skHeight = ViewportTab::skElementHeight + Viewport
 // Offset to the tab in pixels.
 const ut::uint32 ViewportArea::skTabMargin = 2;
 
+// Projection types.
+static const ut::uint32 skProjectionTypeCount = 7;
+static const char* skProjectionTypeNames[skProjectionTypeCount] =
+{
+	"Perspective",
+	"Ortho X-",
+	"Ortho X+",
+	"Ortho Y-",
+	"Ortho Y+",
+	"Ortho Z-",
+	"Ortho Z+"
+};
+
 //----------------------------------------------------------------------------//
 // Constructor.
 ViewportBox::ViewportBox(const Settings& settings,
                          Viewport::Id id,
+                         ut::Function<void(Viewport::Id)> set_focus_cb,
                          ut::uint32 x,
                          ut::uint32 y,
                          ut::uint32 w,
                          ut::uint32 h) : Fl_Group(x, y, w, h)
+                                       , set_input_focus_cb(ut::Move(set_focus_cb))
+                                       , hover_color(fl_rgb_color(settings.viewport_hover_color.R(),
+                                                                  settings.viewport_hover_color.G(),
+                                                                  settings.viewport_hover_color.B()))
+                                       , focus_color(fl_rgb_color(settings.viewport_focus_color.R(),
+                                                                  settings.viewport_focus_color.G(),
+                                                                  settings.viewport_focus_color.B()))
+                                       , bg_color(fl_rgb_color(settings.background_color.R(),
+                                                               settings.background_color.G(),
+                                                               settings.background_color.B()))
 {
+	
 	// viewport
 	const ut::uint32 border = settings.viewport_frame_size;
 	ut::String viewport_name = ut::Print(id);
@@ -44,6 +69,12 @@ ViewportBox::ViewportBox(const Settings& settings,
 	viewport->size_range(skResizeBorder, skResizeBorder);
 	viewport->end();
 
+	// background frame
+	background = ut::MakeUnique<Fl_Box>(x, y, w, h);
+	background->box(FL_FLAT_BOX);
+	background->color(bg_color);
+	background->show();
+
 	// finish this box
 	this->resizable(viewport.Get());
 	this->end();
@@ -53,6 +84,98 @@ ViewportBox::ViewportBox(const Settings& settings,
 DesktopViewport& ViewportBox::GetViewport()
 {
 	return viewport.GetRef();
+}
+
+// Assigns correct color to the viewport frame.
+void ViewportBox::UpdateFrameColor()
+{
+	const Viewport::Mode mode = viewport->GetMode();
+	if (mode.has_input_focus)
+	{
+		background->color(focus_color);
+	}
+	else
+	{
+		background->color(bg_color);
+	}
+}
+
+// Overriden virtual function of the base class (Fl_Group).
+void ViewportBox::resize(int x, int y, int w, int h)
+{
+	UpdateFrameColor();
+
+	Fl_Group* p = parent();
+	if (p != nullptr)
+	{
+		parent()->redraw();
+	}
+	else
+	{
+		redraw();
+	}
+
+	Fl::flush();
+
+	Fl_Group::resize(x, y, w, h);
+}
+
+// Returns relative (to the viewport) cursor position.
+ut::Optional< ut::Vector<2> > ViewportBox::CalculateMousePosition() const
+{
+	const int x = Fl::event_x() - viewport->x();
+	const int y = Fl::event_y() - viewport->y();
+	const int w = viewport->w();
+	const int h = viewport->h();
+
+	float rx = static_cast<float>(x) / static_cast<float>(w);
+	rx = 2.0f * rx - 1.0f;
+	float ry = static_cast<float>(y) / static_cast<float>(h);
+	ry = 1.0f - 2.0f * ry;
+
+	ut::Optional< ut::Vector<2> > relative_position;
+	if (ut::Abs(rx) <= 1.0f && ut::Abs(ry) <= 1.0f)
+	{
+		relative_position = ut::Vector<2>(rx, ry);
+	}
+
+	return relative_position;
+}
+
+// Overriden virtual function of the base class (Fl_Group).
+// Catches mouse events.
+int ViewportBox::handle(int event)
+{
+	const Viewport::Mode mode = viewport->GetMode();
+	int ret = Fl_Group::handle(event);
+	switch (event)
+	{
+	case FL_PUSH:
+		set_input_focus_cb(viewport->GetId());
+		background->color(focus_color);
+		ret = 1;
+		break;
+	case FL_MOVE:
+	case FL_DRAG:
+		viewport->SetMousePosition(CalculateMousePosition());
+		if (!mode.has_input_focus)
+		{
+			background->color(hover_color);
+		}
+		redraw();
+		ret = 1;
+		break;
+	case FL_LEAVE:
+		viewport->SetMousePosition(ut::Optional< ut::Vector<2> >());
+		if (!mode.has_input_focus)
+		{
+			background->color(bg_color);
+		}
+		redraw();
+		ret = 1;
+		break;
+	}
+	return(ret);
 }
 
 //----------------------------------------------------------------------------//
@@ -110,27 +233,49 @@ ut::UniquePtr<Fl_RGB_Image> ViewportLayout::GenerateIcon(const IconBuffer& buffe
 
 //----------------------------------------------------------------------------//
 // Constructor.
-ViewportTab::ViewportTab(const Settings& settings,
+ViewportTab::ViewportTab(ViewportArea& in_viewport_area,
+                         const Settings& settings,
                          LayoutArray in_layouts,
                          ut::uint32 x,
                          ut::uint32 y,
                          ut::uint32 w,
                          ut::uint32 h) : Fl_Group(x, y, w, h)
+                                       , viewport_area(in_viewport_area)
                                        , background(ut::MakeUnique<Fl_Box>(x, y, w, h))
                                        , layouts(ut::Move(in_layouts))
 {
 	background->box(FL_FLAT_BOX);
 	background->color(fl_rgb_color(settings.tab_color.R(), settings.tab_color.G(), settings.tab_color.B()));
 
-	controls_group = ut::MakeUnique<Fl_Group>(x, y, skElementHeight * 3, h);
-
+	controls_group = ut::MakeUnique<Fl_Group>(x, y, skElementHeight * 10, h);
+	
 	layout_choice = CreateLayoutChoice(layouts, x, y);
+	proj_choice = CreateProjChoice(layout_choice->x() + layout_choice->w(), y);
 
 	controls_group->end();
 	controls_group->resizable(nullptr);
 
 	this->resizable(background.Get());
 	this->end();
+}
+
+// Changes viewport projection type.
+void ViewportTab::ChangeViewportProjection(Viewport::Projection projection)
+{
+	ut::Array< ut::Ref<Viewport> > viewports = viewport_area.GetViewports();
+	const size_t viewport_count = viewports.GetNum();
+	for (size_t i = 0; i < viewport_count; i++)
+	{
+		Viewport& viewport = viewports[i];
+		Viewport::Mode mode = viewport.GetMode();
+		if (!mode.has_input_focus)
+		{
+			continue;
+		}
+
+		mode.projection = projection;
+		viewport.SetMode(mode);
+	}
 }
 
 // Creates choice widget.
@@ -145,19 +290,40 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateLayoutChoice(LayoutArray& layouts, i
 	// add layout choices
 	for (size_t i = 0; i < layouts.GetNum(); i++)
 	{
-		ut::String name = ut::Print(i);
-
 		ViewportLayout& layout = layouts[i].GetRef();
 
-		int menu_id = choice->add("layout", 0, nullptr, (void*)"One");
+		int menu_id = choice->add("layout", 0, nullptr);
 		Fl_Menu_Item *item = (Fl_Menu_Item*)&(choice->menu()[menu_id]);
 		item->image(layout.icon.Release());   // note: this clobbers the item's label()
 		item->callback(ChangeLayoutCallback, &layout.apply_task);
-
 	}
 
 	// choose a layout
 	choice->value(0);
+
+	// success
+	return choice;
+}
+
+// Creates projection choice widget.
+ut::UniquePtr<Fl_Choice> ViewportTab::CreateProjChoice(int x, int y)
+{
+	// create widget
+	ut::UniquePtr<Fl_Choice> choice = ut::MakeUnique<Fl_Choice>(x + skElementMargin,
+	                                                            y + skElementMargin,
+	                                                            110,
+	                                                            skElementHeight);
+
+	// add projection types
+	for (size_t i = 0; i < skProjectionTypeCount; i++)
+	{
+		int menu_id = choice->add(skProjectionTypeNames[i], 0, nullptr);
+		Fl_Menu_Item *item = (Fl_Menu_Item*)&(choice->menu()[menu_id]);
+		item->callback(ChangeProjectionCallback, this);
+	}
+
+	// choose a layout
+	choice->value(static_cast<int>(Viewport::perspective));
 
 	// success
 	return choice;
@@ -169,6 +335,18 @@ void ViewportTab::ChangeLayoutCallback(Fl_Widget* widget, void* data)
 	UT_ASSERT(data != nullptr);
 	ut::Task<void(size_t)>* task = static_cast<ut::Task<void(size_t)>*>(data);
 	task->Execute();
+}
+
+// Callback that is called when a projection type is changed.
+void ViewportTab::ChangeProjectionCallback(Fl_Widget* widget, void* data)
+{
+	UT_ASSERT(widget != nullptr);
+	UT_ASSERT(data != nullptr);
+
+	const Fl_Choice* choice = static_cast<Fl_Choice*>(widget);
+	ViewportTab* tab = static_cast<ViewportTab*>(data);
+	Viewport::Projection projection = static_cast<Viewport::Projection>(choice->value());
+	tab->ChangeViewportProjection(projection);
 }
 
 //----------------------------------------------------------------------------//
@@ -183,7 +361,8 @@ ViewportArea::ViewportArea(const Settings& settings,
 	ut::Array< ut::UniquePtr<ViewportLayout> > layouts = GenerateDefaultLayouts();
 
 	// tab
-	tab = ut::MakeUnique<ViewportTab>(settings,
+	tab = ut::MakeUnique<ViewportTab>(*this,
+	                                  settings,
 	                                  ut::Move(layouts),
 	                                  x + skTabMargin,
 	                                  y + skTabMargin,
@@ -231,6 +410,10 @@ ViewportArea::ViewportArea(const Settings& settings,
 	const size_t active_vp_count = layout.arrangement.GetNum();
 	ut::Array< ut::Rect<int> > rects = CalculateViewportSize(layout);
 
+	// viewports call this callback when receive mouse input
+	auto set_focus_cb = ut::MemberFunction<ViewportArea, void(Viewport::Id)>(this, &ViewportArea::SetViewportFocus);
+
+	// create viewports
 	for (ut::uint32 i = 0; i < skMaxViewports; i++)
 	{
 		// generate unique id for the viewport
@@ -241,9 +424,18 @@ ViewportArea::ViewportArea(const Settings& settings,
 		{
 			viewport_boxes[i] = ut::MakeUnique<ViewportBox>(settings,
 		                                                    viewport_id,
+			                                                set_focus_cb,
 		                                                    32, 32, 32, 32);
-			viewport_boxes[i]->hide();
-			viewport_boxes[i]->GetViewport().Deactivate();
+
+			ViewportBox& box = viewport_boxes[i].GetRef();
+			Viewport& viewport = box.GetViewport();
+
+			// deactivate viewport
+			ui::Viewport::Mode mode = viewport.GetMode();
+			mode.is_active = false;
+			viewport.SetMode(mode);
+			box.hide();
+
 			continue;
 		}
 
@@ -251,6 +443,7 @@ ViewportArea::ViewportArea(const Settings& settings,
 		const ut::Rect<int>& rect = rects[i];
 		viewport_boxes[i] = ut::MakeUnique<ViewportBox>(settings,
 		                                                viewport_id,
+		                                                set_focus_cb,
 		                                                rect.offset.X(),
 		                                                rect.offset.Y(),
 		                                                rect.extent.X(),
@@ -262,6 +455,12 @@ ViewportArea::ViewportArea(const Settings& settings,
 
 	// finish the tile widget
 	this->end();
+
+	// at least one viewport must have input focus
+	if (active_vp_count > 0)
+	{
+		SetViewportFocus(viewport_boxes[0]->GetViewport().GetId());
+	}
 }
 
 // Generates and returns an array of references to the viewports.
@@ -273,6 +472,79 @@ ut::Array< ut::Ref<Viewport> > ViewportArea::GetViewports()
 		out.Add(viewport_boxes[i]->GetViewport());
 	}
 	return out;
+}
+
+// Returns an array of viewport rectangles.
+ut::Array< ut::Rect<ut::uint32> > ViewportArea::GetViewportRects() const
+{
+	ut::Array< ut::Rect<ut::uint32> > out;
+
+	for (size_t i = 0; i < skMaxViewports; i++)
+	{
+		const ViewportBox& box = viewport_boxes[i].GetRef();
+		ut::Rect<ut::uint32> rect;
+		rect.offset = ut::Vector<2, ut::uint32>(box.x(), box.y());
+		rect.extent = ut::Vector<2, ut::uint32>(box.w(), box.h());
+		out.Add(rect);
+	}
+
+	return out;
+}
+
+// Returns an array of current projections for all viewports.
+ut::Array<ut::uint32> ViewportArea::GetViewportProjections()
+{
+	ut::Array<ut::uint32> out;
+
+	for (size_t i = 0; i < skMaxViewports; i++)
+	{
+		const Viewport::Mode mode = viewport_boxes[i]->GetViewport().GetMode();
+		out.Add(static_cast<ut::uint32>(mode.projection));
+	}
+
+	return out;
+}
+
+// Updates viewport position and size.
+ut::Optional<ut::Error> ViewportArea::ResizeViewports(const ut::Array< ut::Rect<ut::uint32> >& viewport_rects)
+{
+	if (viewport_rects.GetNum() != skMaxViewports)
+	{
+		return ut::Error(ut::error::out_of_bounds);
+	}
+
+	for (size_t i = 0; i < skMaxViewports; i++)
+	{
+		ViewportBox& box = viewport_boxes[i].GetRef();
+		Viewport& viewport = viewport_boxes[i]->GetViewport();
+		const ut::Rect<ut::uint32>& rect = viewport_rects[i];
+
+		box.resize(rect.offset.X(),
+		           rect.offset.Y(),
+		           rect.extent.X(),
+		           rect.extent.Y());
+	}
+
+	return ut::Optional<ut::Error>();
+}
+
+// Updates projection type for all viewports.
+void ViewportArea::SetViewportProjections(const ut::Array<ut::uint32>& projections)
+{
+	// set projection types
+	const size_t proj_count = ut::Min<size_t>(projections.GetNum(), skMaxViewports);
+	for (size_t i = 0; i < proj_count; i++)
+	{
+		Viewport& viewport = viewport_boxes[i]->GetViewport();
+		ui::Viewport::Mode mode = viewport.GetMode();
+		mode.projection = static_cast<Viewport::Projection>(projections[i]);
+		viewport.SetMode(mode);
+
+		if (mode.has_input_focus)
+		{
+			tab->proj_choice->value(static_cast<int>(mode.projection));
+		}
+	}
 }
 
 // Changes viewport layout.
@@ -294,24 +566,37 @@ void ViewportArea::ChangeLayout(size_t layout_id)
 	// iterate all viewports
 	for (ut::uint32 i = 0; i < skMaxViewports; i++)
 	{
+		ViewportBox& box = viewport_boxes[i].GetRef();
+		DesktopViewport& viewport = box.GetViewport();
+		Viewport::Mode mode = viewport.GetMode();
+
 		// hide inactive viewports
 		if (i >= active_vp_count)
 		{
-			viewport_boxes[i]->hide();
-			viewport_boxes[i]->GetViewport().Deactivate();
+			mode.is_active = false;
+			mode.has_input_focus = false;
+			box.hide();
+			viewport.SetMode(mode);
 			continue;
 		}
 
-		// resize and activate viewport
-		viewport_boxes[i]->resize(rects[i].offset.X(),
-		                          rects[i].offset.Y(),
-		                          rects[i].extent.X(),
-		                          rects[i].extent.Y());
-		viewport_boxes[i]->show();
-		viewport_boxes[i]->GetViewport().Activate();
+		// resize viewport
+		box.resize(rects[i].offset.X(),
+		           rects[i].offset.Y(),
+		           rects[i].extent.X(),
+		           rects[i].extent.Y());
+		
+		// update width and height
+		mode.width = rects[i].extent.X();
+		mode.height = rects[i].extent.Y();
+
+		// activate viewport
+		mode.is_active = true;
+		viewport.SetMode(mode);
+		box.show();
 
 		// remove viewport from the tile widget
-		tile->remove(viewport_boxes[i].Get());
+		tile->remove(&box);
 	}
 
 	// insert all viewports back to the tile widget
@@ -323,6 +608,15 @@ void ViewportArea::ChangeLayout(size_t layout_id)
 
 	// select icon
 	tab->layout_choice->value(static_cast<int>(layout_id));
+
+	// at least one viewport must have input focus
+	if (active_vp_count > 0)
+	{
+		SetViewportFocus(viewport_boxes[0]->GetViewport().GetId());
+	}
+
+	// redraw everything
+	redraw();
 }
 
 // Returns an id of the current layout.
@@ -468,6 +762,29 @@ void ViewportArea::AdjustViewportEdges(ut::Array< ut::Rect<int> >& rects)
 				rects[j].extent.Y() = tile->h() - rects[j].offset.Y();
 			}
 		}
+	}
+}
+
+// Assigns input focus to the desired viewport. Other viewports loose focus.
+void ViewportArea::SetViewportFocus(Viewport::Id id)
+{
+	for (size_t i = 0; i < skMaxViewports; i++)
+	{
+		ViewportBox& box = viewport_boxes[i].GetRef();
+		DesktopViewport& viewport = box.GetViewport();
+		Viewport::Mode mode = viewport.GetMode();
+		
+		mode.has_input_focus = viewport.GetId() == id;
+		viewport.SetMode(mode);
+
+		box.UpdateFrameColor();
+
+		if (mode.has_input_focus)
+		{
+			tab->proj_choice->value(static_cast<int>(mode.projection));
+		}
+
+		box.redraw();
 	}
 }
 

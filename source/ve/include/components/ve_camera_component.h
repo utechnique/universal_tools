@@ -29,8 +29,24 @@ public:
 	ut::Vector<3> GetUp(const ut::Quaternion<float>& q) const;
 	ut::Vector<3> GetRight(const ut::Quaternion<float>& q) const;
 
+	// Projection types
+	enum Projection
+	{
+		perspective_projection,
+		orthographic_projection
+	};
+
 	// view options
-	float field_of_view = 90.0f;
+	Projection projection = perspective_projection;
+
+	// frustum properties (z-near, z-far, aspect ratio, etc.)
+	float near_plane = 0.1f;
+	float far_plane = 1e+5f;
+	float aspect_ratio = 2.0f;
+
+	// projection-specific properties
+	float field_of_view = 90.0f; // for perspective projection
+	float width = 10.0f; // for orthographic projection
 
 	// basis
 	static const ut::Vector<3> skDirection;

@@ -12,8 +12,7 @@ START_NAMESPACE(ui)
 //    @param viewport_id - id associated with this viewport.
 //    @param viewport_name - name of the viewport.
 Viewport::Viewport(Id viewport_id,
-                   ut::String viewport_name) : active(true)
-                                             , id(viewport_id)
+                   ut::String viewport_name) : id(viewport_id)
                                              , name(ut::Move(viewport_name))
 {}
 
@@ -40,22 +39,33 @@ void Viewport::ResetSignals()
 	close_signal.Reset();
 }
 
-// Returns 'true' if this viewport is currently active
-bool Viewport::IsActive()
+// Returns current mode. Thread-safe.
+Viewport::Mode Viewport::GetMode()
 {
-	return active.Get();
+	return mode.Get();
 }
 
-// Activates this viewport.
-void Viewport::Activate()
+// Sets new mode. Thread-safe.
+void Viewport::SetMode(const Viewport::Mode& new_mode)
 {
-	active.Set(true);
+	mode.Set(new_mode);
 }
 
-// Deactivates this viewport
-void Viewport::Deactivate()
+// Returns relative mouse position inside this viewport
+// or nothing if it's outside. Position (0,0) is located
+// in the center of the viewport, X-axis is right, Y-axis
+// is up. Distance to the viewport border is 1.
+ut::Optional< ut::Vector<2> > Viewport::GetMousePosition()
 {
-	active.Set(false);
+	return ut::Optional< ut::Vector<2> >();
+}
+
+// Returns relative mouse position offset from the previous
+// frame or nothing if it's outside.
+//    @param reset - boolean indicating if current offset must be reset.
+ut::Optional< ut::Vector<2> > Viewport::GetMouseOffset(bool reset)
+{
+	return ut::Optional< ut::Vector<2> >();
 }
 
 // Returns unique identifier of the viewport.

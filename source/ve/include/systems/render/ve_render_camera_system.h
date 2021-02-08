@@ -28,13 +28,25 @@ public:
 	System::Result Update();
 
 private:
-	// Updates view and projection matrices of the render view.
+	// Updates view matrix of the render view.
 	//    @param transform - const reference to transform component.
 	//    @param camera - const reference to camera component.
 	//    @param view - reference to the view unit to be updated.
 	static void UpdateView(const TransformComponent& transform,
 	                       const CameraComponent& camera,
 	                       View& view);
+
+	// Updates perspective projection matrix of the render view.
+	//    @param camera - const reference to camera component.
+	//    @param view - reference to the view unit to be updated.
+	static void UpdatePerspectiveProjection(const CameraComponent& camera,
+	                                        View& view);
+
+	// Updates orthographic projection matrix of the render view.
+	//    @param camera - const reference to camera component.
+	//    @param view - reference to the view unit to be updated.
+	static void UpdateOrthographicProjection(const CameraComponent& camera,
+	                                         View& view);
 };
 
 //----------------------------------------------------------------------------//

@@ -25,6 +25,7 @@ public:
 	// Constructor.
 	ViewportBox(const Settings& settings,
 	            Viewport::Id id,
+                ut::Function<void(Viewport::Id)> set_focus_cb,
 	            ut::uint32 x,
 	            ut::uint32 y,
 	            ut::uint32 w,
@@ -33,11 +34,32 @@ public:
 	// Returns a reference to the viewport widget.
 	DesktopViewport& GetViewport();
 
+	// Assigns correct color to the viewport frame.
+	void UpdateFrameColor();
+
 	// boundary for viewport resizing
 	static const ut::uint32 skResizeBorder;
 
+	// Overriden virtual function of the base class (Fl_Group).
+	void resize(int x, int y, int w, int h) override;
+
 private:
+	// Returns relative (to the viewport) cursor position.
+	ut::Optional< ut::Vector<2> > CalculateMousePosition() const;
+
+	// Overriden virtual function of the base class (Fl_Group).
+	// Catches mouse events.
+	int handle(int) override;
+
 	ut::UniquePtr<DesktopViewport> viewport;
+	ut::UniquePtr<Fl_Box> background;
+
+	ut::Function<void(Viewport::Id)> set_input_focus_cb;
+
+	// colors
+	Fl_Color hover_color;
+	Fl_Color focus_color;
+	Fl_Color bg_color;
 };
 
 //----------------------------------------------------------------------------//
@@ -89,7 +111,8 @@ public:
 	typedef ut::Array< ut::UniquePtr<ViewportLayout> > LayoutArray;
 
 	// Constructor.
-	ViewportTab(const Settings& settings,
+	ViewportTab(class ViewportArea& in_viewport_area,
+	            const Settings& settings,
 	            LayoutArray in_layouts,
 	            ut::uint32 x,
 	            ut::uint32 y,
@@ -102,11 +125,20 @@ public:
 	ViewportTab& operator = (const ViewportTab&) = delete;
 	ViewportTab& operator = (ViewportTab&&) = delete;
 
-	// Creates choice widget.
+	// Changes viewport projection type.
+	void ChangeViewportProjection(Viewport::Projection projection);
+
+	// Creates layout choice widget.
 	static ut::UniquePtr<Fl_Choice> CreateLayoutChoice(LayoutArray& layouts, int x, int y);
+
+	// Creates projection choice widget.
+	ut::UniquePtr<Fl_Choice> CreateProjChoice(int x, int y);
 
 	// Callback that is called when a layout is changed.
 	static void ChangeLayoutCallback(Fl_Widget* widget, void* data);
+
+	// Callback that is called when a projection type is changed.
+	static void ChangeProjectionCallback(Fl_Widget* widget, void* data);
 
 	// Height of the elements in pixels
 	static const ut::uint32 skElementHeight;
@@ -127,6 +159,12 @@ public:
 
 	// Combobox widget to choose a layout.
 	ut::UniquePtr<Fl_Choice> layout_choice;
+
+	// Combobox widget to choose a projection.
+	ut::UniquePtr<Fl_Choice> proj_choice;
+
+private:
+	class ViewportArea& viewport_area;
 };
 
 //----------------------------------------------------------------------------//
@@ -149,6 +187,18 @@ public:
 	// Generates and returns an array of references to the viewports.
 	ut::Array< ut::Ref<Viewport> > GetViewports();
 
+	// Returns an array of viewport rectangles.
+	ut::Array< ut::Rect<ut::uint32> > GetViewportRects() const;
+
+	// Returns an array of current projections for all viewports.
+	ut::Array<ut::uint32> GetViewportProjections();
+
+	// Updates position and size for all viewports.
+	ut::Optional<ut::Error> ResizeViewports(const ut::Array< ut::Rect<ut::uint32> >& viewport_rects);
+
+	// Updates projection type for all viewports.
+	void SetViewportProjections(const ut::Array<ut::uint32>& projections);
+
 	// Changes viewport layout.
 	//    @param layout_id - id of the layout to be set.
 	void ChangeLayout(size_t layout_id);
@@ -165,6 +215,9 @@ private:
 
 	// Modifies provided rects so that they had zero margin.
 	void AdjustViewportEdges(ut::Array< ut::Rect<int> >& layout_rects);
+
+	// Assigns input focus to the desired viewport. Other viewports loose focus.
+	void SetViewportFocus(Viewport::Id id);
 
 	// Tab widget.
 	ut::UniquePtr<ViewportTab> tab;

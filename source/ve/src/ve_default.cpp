@@ -6,7 +6,7 @@
 #include "systems/input/ve_input_poll_system.h"
 #include "systems/render/ve_render_system.h"
 #include "systems/render/ve_render_camera_system.h"
-#include "systems/controller/ve_free_camera_controller_system.h"
+#include "systems/editor/ve_editor_camera_system.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
@@ -27,7 +27,7 @@ Pipeline GenDefaultPipeline()
 	Pipeline pipeline;
 	pipeline.AddSerial(Pipeline(ut::MakeShared<input::PollSystem>(input_mgr)));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread)));
-	pipeline.AddSerial(Pipeline(ut::MakeShared<FreeCameraControllerSystem>(input_mgr)));
+	pipeline.AddSerial(Pipeline(ut::MakeShared<editor::ViewportCameraSystem>(ui_frontend_thread, input_mgr)));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<render::CameraSystem>()));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<render::RenderSystem>(render_thread, ui_frontend_thread)));
 

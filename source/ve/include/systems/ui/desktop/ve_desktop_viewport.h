@@ -35,10 +35,25 @@ public:
 	// Destructors, close signal is triggered here.
     ~DesktopViewport();
 
+	// Returns relative mouse position inside this viewport
+	// or nothing if it's outside.
+	ut::Optional< ut::Vector<2> > GetMousePosition() override;
+
+	// Returns relative mouse position offset from the previous
+	// frame or nothing if it's outside.
+	//    @param reset - boolean indicating if current offset must be reset.
+	ut::Optional< ut::Vector<2> > GetMouseOffset(bool reset) override;
+
+	// Assigns new relative mouse position for the current frame.
+	void SetMousePosition(ut::Optional< ut::Vector<2> > position);
+
 	// Resizes UI widget if resizing is pending.
 	void ResizeCanvas();
 
 private:
+	// Updates width and height of the current mode.
+	void UpdateSize(int w, int h);
+
 	// Forces viewport to call closure signal.
 	void CloseSignal();
 
@@ -49,6 +64,11 @@ private:
 	// indicates if resize action is pending and represents a rect with new
 	// position and size of the window
 	ut::Optional< ut::Rect<int> > resize_task;
+
+	// relative mouse position for the current frame:
+	// center is (0,0), X is right, Y is up, distance to the border is 1
+	ut::Synchronized< ut::Optional< ut::Vector<2> > > cur_mouse_position;
+	ut::Synchronized< ut::Optional< ut::Vector<2> > > prev_mouse_position;
 };
 
 // UI viewport for the current platform.

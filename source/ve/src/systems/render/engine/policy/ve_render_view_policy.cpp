@@ -115,11 +115,17 @@ void Policy<View>::RenderEnvironment(Context& context)
 {
 	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
 
-	ut::Array< ut::Ref<View> > views = selector.Get<View>();
+	ut::Array< ut::Ref<View> >& views = selector.Get<View>();
 	const size_t view_count = views.GetNum();
 	for (size_t i = 0; i < view_count; i++)
 	{
 		View& view = views[i];
+
+		// skip if view is inactive
+		if (!view.is_active)
+		{
+			continue;
+		}
 
 		View::FrameData& frame = view.data->frames[current_frame_id];
 
@@ -134,7 +140,7 @@ void Policy<View>::RenderEnvironment(Context& context)
 		frame.geometry_pass_desc_set.view_ub.BindUniformBuffer(frame.view_ub);
 
 		ut::Rect<ut::uint32> render_area(0, 0, view.width, view.height);
-		context.BeginRenderPass(geometry_pass, frame.g_buffer.framebuffer, render_area, ut::Color<4>(0, 0, 1, 1), 1.0f);
+		context.BeginRenderPass(geometry_pass, frame.g_buffer.framebuffer, render_area, ut::Color<4>(0.01f, 0.01f, 0.01f, 1.0f), 1.0f);
 		context.BindPipelineState(view.data->geometry_pass_pipeline);
 		context.BindDescriptorSet(frame.geometry_pass_desc_set);
 		context.BindVertexBuffer(mesh->vertex_buffer, 0);
@@ -148,7 +154,6 @@ void Policy<View>::RenderEnvironment(Context& context)
 		{
 			context.Draw(mesh->vertex_count, 0);
 		}
-
 		
 		context.EndRenderPass();
 

@@ -194,6 +194,32 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateBox(const ut::Vector<3
 }
 
 //----------------------------------------------------------------------------->
+// Creates an image filled with solid color.
+ut::Result<Image, ut::Error> ResourceManager::CreateImage(ut::uint32 width,
+                                                          ut::uint32 height,
+                                                          const ut::Color<4, ut::byte>& color)
+{
+	Image::Info img_info;
+	img_info.type = Image::type_2D;
+	img_info.format = pixel::r8g8b8a8_unorm;
+	img_info.usage = render::memory::gpu_immutable;
+	img_info.width = width;
+	img_info.height = height;
+	img_info.depth = 1;
+	img_info.mip_count = 1;
+	img_info.data.Resize(img_info.width * img_info.height * pixel::GetSize(img_info.format));
+	ut::Color<4, ut::byte>* pixels = reinterpret_cast<ut::Color<4, ut::byte>*>(img_info.data.GetAddress());
+	for (size_t i = 0; i < img_info.height; i++)
+	{
+		for (size_t j = 0; j < img_info.width; j++)
+		{
+			pixels[i * img_info.width + j] = color;
+		}
+	}
+	return device.CreateImage(ut::Move(img_info));
+}
+
+//----------------------------------------------------------------------------->
 // Enqueues a deletion of the desired resource.
 //    @param id - unique identifier of the resource to be deleted.
 void ResourceManager::DeleteResource(Resource::Id id)

@@ -31,11 +31,24 @@ System::Result CameraSystem::Update()
 		for (size_t i = 0; i < count; i++)
 		{
 			ut::UniquePtr<Unit>& unit = render.units[i];
-			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::View>())
+			if (unit->Identify().GetHandle() != ut::GetPolymorphicHandle<ve::render::View>())
 			{
-				UpdateView(transform, camera, static_cast<View&>(unit.GetRef()));
-				break;
+				continue;
 			}
+
+			View& view = static_cast<View&>(unit.GetRef());
+
+			UpdateView(transform, camera, view);
+			if (camera.projection == CameraComponent::perspective_projection)
+			{
+				UpdatePerspectiveProjection(camera, view);
+			}
+			else if (camera.projection == CameraComponent::orthographic_projection)
+			{
+				UpdateOrthographicProjection(camera, view);
+			}
+
+			break;
 		}
 	}
 
@@ -61,7 +74,7 @@ void CameraSystem::UpdateView(const TransformComponent& transform,
 	view.view_matrix(0, 0) = right.X();
 	view.view_matrix(0, 1) = up.X();
 	view.view_matrix(0, 2) = direction.X();
-	view.view_matrix(0, 4) = 0.0f;
+	view.view_matrix(0, 3) = 0.0f;
 	view.view_matrix(1, 0) = right.Y();
 	view.view_matrix(1, 1) = up.Y();
 	view.view_matrix(1, 2) = direction.Y();
@@ -74,19 +87,41 @@ void CameraSystem::UpdateView(const TransformComponent& transform,
 	view.view_matrix(3, 1) = -position.Dot(up);
 	view.view_matrix(3, 2) = -position.Dot(direction);
 	view.view_matrix(3, 3) = 1.0f;
+}
 
-	// calculate projection matrix
-	float fov = ut::ToRadiands(camera.field_of_view);
-	float aspect_ratio = static_cast<float>(view.width) /
-	                     static_cast<float>(view.height);
+//----------------------------------------------------------------------------->
+// Updates perspective projection matrix of the render view.
+//    @param camera - const reference to camera component.
+//    @param view - reference to the view unit to be updated.
+void CameraSystem::UpdatePerspectiveProjection(const CameraComponent& camera,
+                                               View& view)
+{
+	const float fov = ut::ToRadiands(camera.field_of_view);
 	const float scale_y = 1.0f / ut::Tan(fov / 2.0f);
-	const float scale_x = scale_y / aspect_ratio;
-	const float zn = view.near_plane;
-	const float zf = view.far_plane;
+	const float scale_x = scale_y / camera.aspect_ratio;
+	const float zn = camera.near_plane;
+	const float zf = camera.far_plane;
 	view.proj_matrix = ut::Matrix<4, 4>(scale_x, 0,       0,                 0,
 	                                    0,       scale_y, 0,                 0,
 	                                    0,       0,       zf / (zf - zn),    1,
 	                                    0,       0,      -zn*zf / (zf - zn), 0);
+}
+
+//----------------------------------------------------------------------------->
+// Updates perspective projection matrix of the render view.
+//    @param camera - const reference to camera component.
+//    @param view - reference to the view unit to be updated.
+void CameraSystem::UpdateOrthographicProjection(const CameraComponent& camera,
+                                                View& view)
+{
+	const float height = camera.width / camera.aspect_ratio;
+	const float zn = camera.near_plane;
+	const float zf = camera.far_plane;
+	view.proj_matrix = ut::Matrix<4, 4>::MakeIdentity();
+	view.proj_matrix(0, 0) = 2.0f / camera.width;
+	view.proj_matrix(1, 1) = 2.0f / height;
+	view.proj_matrix(2, 2) = 1.0f / (zf - zn);
+	view.proj_matrix(3, 2) = zn / (zn - zf);
 }
 
 //----------------------------------------------------------------------------//

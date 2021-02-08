@@ -19,7 +19,11 @@ const ut::DynamicType& CameraComponent::Identify() const
 
 void CameraComponent::Reflect(ut::meta::Snapshot& snapshot)
 {
+	snapshot.Add(near_plane, "near_plane");
+	snapshot.Add(far_plane, "far_plane");
+	snapshot.Add(aspect_ratio, "aspect_ratio");
 	snapshot.Add(field_of_view, "field_of_view");
+	snapshot.Add(width, "width");
 }
 
 //----------------------------------------------------------------------------->

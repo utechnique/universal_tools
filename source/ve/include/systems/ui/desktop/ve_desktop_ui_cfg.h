@@ -27,6 +27,8 @@ public:
 	ut::Color<3, ut::uint32> background_color;
 	ut::Color<3, ut::uint32> foreground_color;
 	ut::Color<3, ut::uint32> tab_color;
+	ut::Color<3, ut::uint32> viewport_hover_color;
+	ut::Color<3, ut::uint32> viewport_focus_color;
 
 	// main window
 	ut::Rect<ut::uint32> window;
@@ -37,6 +39,9 @@ public:
 	// selected layout
 	ut::uint32 layout_id;
 
+	// viewports
+	ut::Array<ut::uint32> projections;
+	ut::Array< ut::Rect<ut::uint32> > viewports;
 };
 
 //----------------------------------------------------------------------------//

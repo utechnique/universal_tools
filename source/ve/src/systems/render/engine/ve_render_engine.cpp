@@ -75,7 +75,8 @@ void Engine::ProcessNextFrame()
 	for (size_t i = 0; i < viewports.GetNum(); i++)
 	{
 		ui::PlatformViewport& viewport = viewports[i].Get<ui::PlatformViewport&>();
-		if (viewport.IsActive())
+		const ui::Viewport::Mode mode = viewport.GetMode();
+		if (mode.is_active)
 		{
 			active_viewports.Add(viewports[i]);
 		}
@@ -102,14 +103,21 @@ void Engine::ProcessNextFrame()
 // Function for recording all commands needed to draw current frame.
 void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportContainer> >& active_viewports)
 {
-	// get current frame
-	Frame& frame = tools.frame_mgr.GetCurrentFrame();
-
 	// render environment to view units
 	Policy<View>& view_policy = unit_mgr.policies.Get<View>();
 	view_policy.RenderEnvironment(context);
 
-	// display rendered image to user
+	// display view units to user
+	DisplayToUser(context, active_viewports);
+}
+
+// Renders view units to ui viewports.
+void Engine::DisplayToUser(Context& context, ut::Array< ut::Ref<ViewportContainer> >& active_viewports)
+{
+	Frame& frame = tools.frame_mgr.GetCurrentFrame();
+	ut::Array< ut::Ref<View> >& views = unit_mgr.selector.Get<View>();
+	const size_t view_count = views.GetNum();
+	
 	for (size_t i = 0; i < active_viewports.GetNum(); i++)
 	{
 		ui::PlatformViewport& ui_viewport = active_viewports[i]->Get<ui::PlatformViewport&>();
@@ -133,29 +141,24 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 			throw update_ub_error.Move();
 		}
 
-		// draw quad
+		// find appropriate view unit
+		ut::Optional<Image&> view_img;
+		for (size_t unit_index = 0; unit_index < view_count; unit_index++)
+		{
+			View& view = views[unit_index];
+			if (view.viewport_id == ui_viewport.GetId())
+			{
+				view_img = view.data->frames[tools.frame_mgr.GetCurrentFrameId()].g_buffer.diffuse.GetImage();
+				break;
+			}
+		}
+
+		// set shader resources
 		frame.quad_desc_set.ub.BindUniformBuffer(frame.display_quad_ub);
 		frame.quad_desc_set.sampler.BindSampler(tools.sampler_cache.linear_clamp);
+		frame.quad_desc_set.tex2d.BindImage(view_img ? view_img.Get() : tools.img_black);
 
-		if (ui_viewport.GetId() == 0)
-		{
-			ut::Array< ut::Ref<View> > views = unit_mgr.selector.Get<View>();
-
-			if (!views.IsEmpty())
-			{
-				frame.quad_desc_set.tex2d.BindImage(views.GetFirst()->data->frames[tools.frame_mgr.GetCurrentFrameId()].g_buffer.diffuse.GetImage());
-			}
-			else
-			{
-				frame.quad_desc_set.tex2d.BindImage(img_2d.GetRef());
-			}
-		}
-		else
-		{
-			frame.quad_desc_set.tex2d.BindImage(img_2d.GetRef());
-		}
-
-
+		// draw quad
 		context.BeginRenderPass(rp, framebuffer, render_area, frame.clear_color);
 		context.BindPipelineState(pipeline_state);
 		context.BindDescriptorSet(frame.quad_desc_set);

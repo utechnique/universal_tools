@@ -31,11 +31,12 @@ public:
 	ut::Matrix<4, 4, float> view_matrix;
 	ut::Matrix<4, 4, float> proj_matrix;
 
-	float near_plane = 0.1f;
-	float far_plane = 1e+5f;
-
 	ut::uint32 width = 640;
 	ut::uint32 height = 480;
+
+	ui::Viewport::Id viewport_id = 0;
+
+	bool is_active = true;
 
 	struct GBuffer
 	{

@@ -16,6 +16,12 @@ Toolset::Toolset(Device& dvc_ref) noexcept : device(dvc_ref)
                                            , frame_mgr(dvc_ref)
                                            , fullscreen_quad(rc_mgr.CreateRect(ut::Vector<2>(0), ut::Vector<2>(1)).MoveOrThrow())
                                            , cube(rc_mgr.CreateBox(ut::Vector<3>(0), ut::Vector<3>(1)).MoveOrThrow())
+                                           , img_black(rc_mgr.CreateImage(1, 1, ut::Color<4, ut::byte>(0, 0, 0, 255)).MoveOrThrow())
+                                           , img_white(rc_mgr.CreateImage(1, 1, ut::Color<4, ut::byte>(255, 255, 255, 255)).MoveOrThrow())
+                                           , img_red(rc_mgr.CreateImage(1, 1, ut::Color<4, ut::byte>(255, 0, 0, 255)).MoveOrThrow())
+                                           , img_green(rc_mgr.CreateImage(1, 1, ut::Color<4, ut::byte>(0, 255, 0, 255)).MoveOrThrow())
+                                           , img_blue(rc_mgr.CreateImage(1, 1, ut::Color<4, ut::byte>(0, 0, 255, 255)).MoveOrThrow())
+                                           , img_normal(rc_mgr.CreateImage(1, 1, ut::Color<4, ut::byte>(127, 127, 255, 255)).MoveOrThrow())
 {}
 
 //----------------------------------------------------------------------------->

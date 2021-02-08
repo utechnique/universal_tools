@@ -40,6 +40,11 @@ public:
 	ut::Result<RcRef<Mesh>, ut::Error> CreateBox(const ut::Vector<3>& position,
 	                                             const ut::Vector<3>& extent);
 
+	// Creates an image filled with solid color.
+	ut::Result<Image, ut::Error> CreateImage(ut::uint32 width,
+	                                         ut::uint32 height,
+	                                         const ut::Color<4, ut::byte>& color);
+
 	// Enqueues a deletion of the desired resource.
 	//    @param id - unique identifier of the resource to be deleted.
 	void DeleteResource(Resource::Id id);

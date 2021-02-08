@@ -121,7 +121,11 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	window->callback(DesktopFrontend::OnCloseCallback, this);
 
 	// viewport container
-	viewport_area = ut::MakeUnique<ViewportArea>(cfg, 0, 0, window->w(), window->h());
+	viewport_area = ut::MakeUnique<ViewportArea>(cfg,
+	                                             0,
+	                                             0,
+	                                             window->w(),
+	                                             window->h());
 	viewports = viewport_area->GetViewports();
 
 	// adjust main window
@@ -135,6 +139,10 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 
 	// select layout
 	viewport_area->ChangeLayout(cfg.layout_id);
+
+	// update viewports according to the cfg data
+	viewport_area->ResizeViewports(cfg.viewports);
+	viewport_area->SetViewportProjections(cfg.projections);
 
 	// success
 	return ut::Optional<ut::Error>();
@@ -181,6 +189,10 @@ void DesktopFrontend::SaveCfg()
 
 	// viewport parameters
 	cfg.layout_id = viewport_area->GetCurrentLayoutId();
+
+	// viewports
+	cfg.projections = viewport_area->GetViewportProjections();
+	cfg.viewports = viewport_area->GetViewportRects();
 
 	// save to file
 	cfg.Save();
