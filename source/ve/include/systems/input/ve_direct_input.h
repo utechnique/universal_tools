@@ -35,6 +35,7 @@ private:
 	{
 		LONG x;
 		LONG y;
+		LONG z; // wheel
 		BYTE lmb;
 		BYTE rmb;
 		BYTE mmb;

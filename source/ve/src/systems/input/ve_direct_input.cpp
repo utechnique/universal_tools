@@ -144,9 +144,10 @@ HRESULT DirectInputHandler::InitMouseDevice()
 	{
 		{ &GUID_XAxis, FIELD_OFFSET(DIMouseState, x), DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 }, // X axis
 		{ &GUID_YAxis, FIELD_OFFSET(DIMouseState, y), DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 }, // Y axis
+		{ &GUID_ZAxis, FIELD_OFFSET(DIMouseState, z), DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 }, // Z axis
 		{ 0, FIELD_OFFSET(DIMouseState, lmb), DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 }, // Button 0
 		{ 0, FIELD_OFFSET(DIMouseState, rmb), DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 }, // Button 1 (optional)
-		{ 0, FIELD_OFFSET(DIMouseState, mmb), DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 }  // Button 2 (optional)
+		{ 0, FIELD_OFFSET(DIMouseState, mmb), DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },  // Button 2 (optional)
 	};
 	DWORD num_mouse_objects = sizeof(object_formats) / sizeof(DIOBJECTDATAFORMAT);
 
@@ -238,8 +239,8 @@ ut::Result<Device, ut::Error> DirectInputHandler::CreateMouse()
 		}
 	}
 
-	// XY movement
-	for (size_t i = 0; i < 2; i++)
+	// XY movement and wheel
+	for (size_t i = 0; i < mouse::movement_count; i++)
 	{
 		ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateAnalog(0.0f),
 		                                                       mouse::skMovementNames[i]);
@@ -385,13 +386,16 @@ void DirectInputHandler::UpdateMouse(Device& mouse)
 	{
 		const float offset_x = static_cast<float>(mouse_state.x - prev_mouse_state->x);
 		const float offset_y = static_cast<float>(mouse_state.y - prev_mouse_state->y);
+		const float offset_z = static_cast<float>(mouse_state.z - prev_mouse_state->z);
 		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_x, offset_x);
 		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_y, offset_y);
+		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_wheel, offset_z);
 	}
 	else
 	{
 		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_x, 0.0f);
 		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_y, 0.0f);
+		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_wheel, 0.0f);
 	}
 
 	prev_mouse_state = mouse_state;

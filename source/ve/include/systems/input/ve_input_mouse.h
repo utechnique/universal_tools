@@ -15,8 +15,6 @@ enum Button
 	button_lbutton,
 	button_rbutton,
 	button_mbutton,
-	button_wheel_down,
-	button_wheel_up,
 	button_count
 };
 
@@ -24,6 +22,8 @@ enum Movement
 {
 	movement_x,
 	movement_y,
+	movement_wheel,
+	movement_count,
 };
 
 static const char* skButtonNames[button_count] =
@@ -31,14 +31,13 @@ static const char* skButtonNames[button_count] =
 	"LMB",
 	"RMB",
 	"MMB",
-	"WheelDown",
-	"WheelUp"
 };
 
-static const char* skMovementNames[2] =
+static const char* skMovementNames[movement_count] =
 {
 	"MouseX",
-	"MouseY"
+	"MouseY",
+	"MouseWheel"
 };
 
 //----------------------------------------------------------------------------//
