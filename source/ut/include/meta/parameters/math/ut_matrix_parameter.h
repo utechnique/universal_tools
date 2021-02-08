@@ -63,7 +63,7 @@ public:
 };
 
 // Specialization for vectors.
-template<> inline Optional<String> GetMatrixElementName<MatrixVertorTag>(MatrixElementId id)
+template<> inline Optional<String> GetMatrixElementName<MatrixVectorTag>(MatrixElementId id)
 {
 	switch (id)
 	{

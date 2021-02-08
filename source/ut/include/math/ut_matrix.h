@@ -14,7 +14,7 @@ typedef uint32 MatrixElementId;
 
 // Matrix tags.
 struct MatrixGeneralTag {};
-struct MatrixVertorTag {};
+struct MatrixVectorTag {};
 struct MatrixColorTag {};
 
 // ut::Matrix is a complete template class for matrices with custom static size.
@@ -607,7 +607,7 @@ private:
 //----------------------------------------------------------------------------//
 // Vector is defined as a matrix with only one row.
 template<MatrixElementId dim, typename Scalar = float>
-using Vector = Matrix<1, dim, Scalar, MatrixVertorTag>;
+using Vector = Matrix<1, dim, Scalar, MatrixVectorTag>;
 
 // Color is a vector too.
 template<MatrixElementId dim, typename Scalar = float>
