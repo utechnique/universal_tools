@@ -25,8 +25,7 @@ ViewportManager::~ViewportManager()
 	// to the non-existent viewport manager, causing access violation
 	for (ut::uint32 i = 0; i < viewports.GetNum(); i++)
 	{
-		ui::PlatformViewport& viewport = viewports[i].Get<ui::PlatformViewport&>();
-		viewport.ResetSignals();
+		viewports[i].ui_widget.ResetSignals();
 	}
 
 	// close viewports manually
@@ -53,7 +52,7 @@ void ViewportManager::OpenViewports(ui::Frontend& frontend)
 		ui::PlatformViewport& viewport = static_cast<ui::PlatformViewport&>(viewport_ptr.Get());
 
 		// create render resources for the viewport
-		ut::Result<ViewportContainer, ut::Error> result = ut::MakeError(ut::error::empty);
+		ut::Result<Proxy, ut::Error> result = ut::MakeError(ut::error::empty);
 		render_thread->Enqueue([&](Device& device) { result = CreateDisplay(device, viewport); });
 		if (!result)
 		{
@@ -107,9 +106,15 @@ void ViewportManager::SetVerticalSynchronization(bool status)
 //    @param device - reference to the render device.
 //    @param viewport - reference to the viewport.
 //    @return - container with all render resources, or error if failed.
-ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::CreateDisplay(Device& device,
-                                                                                         ui::PlatformViewport& viewport)
+ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Device& device,
+                                                                             ui::PlatformViewport& viewport)
 {
+	// shaders must be initialized at this point
+	UT_ASSERT(display_quad_vs);
+	UT_ASSERT(display_quad_ps);
+	UT_ASSERT(display_quad_rgb2srgb_ps);
+	UT_ASSERT(display_quad_srgb2rgb_ps);
+
 	// create display for the viewport in the render thread
 	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport, vertical_synchronization);
 	if (!display_result)
@@ -162,8 +167,8 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 	
 	// create pipeline state for displaying images to user
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = display_quad_shader->stages[Shader::vertex].Get();
-	info.stages[Shader::pixel] = display_quad_shader->stages[Shader::pixel].Get();
+	info.stages[Shader::vertex] = display_quad_vs.Get();
+	info.stages[Shader::pixel] = display_quad_ps.Get();
 	info.viewports.Add(Viewport(0.0f, 0.0f,
 	                            static_cast<float>(viewport.w()),
 	                            static_cast<float>(viewport.h()),
@@ -174,18 +179,36 @@ ut::Result<ViewportManager::ViewportContainer, ut::Error> ViewportManager::Creat
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;
 	info.blend_state.attachments.Add(BlendState::CreateAlphaBlending());
-	ut::Result<PipelineState, ut::Error> pipeline_result = device.CreatePipelineState(ut::Move(info), rp_result.Get());
-	if (!pipeline_result)
+	ut::Result<PipelineState, ut::Error> pipeline = device.CreatePipelineState(info, rp_result.Get());
+	if (!pipeline)
 	{
-		return ut::MakeError(pipeline_result.MoveAlt());
+		return ut::MakeError(pipeline.MoveAlt());
+	}
+
+	// pipeline with rgb->srgb conversion
+	info.stages[Shader::pixel] = display_quad_rgb2srgb_ps.Get();
+	ut::Result<PipelineState, ut::Error> rgb2srgb_pipeline = device.CreatePipelineState(info, rp_result.Get());
+	if (!rgb2srgb_pipeline)
+	{
+		return ut::MakeError(rgb2srgb_pipeline.MoveAlt());
+	}
+
+	// pipeline with srgb->rgb conversion
+	info.stages[Shader::pixel] = display_quad_srgb2rgb_ps.Get();
+	ut::Result<PipelineState, ut::Error> srgb2rgb_pipeline = device.CreatePipelineState(info, rp_result.Get());
+	if (!srgb2rgb_pipeline)
+	{
+		return ut::MakeError(srgb2rgb_pipeline.MoveAlt());
 	}
 
 	// success
-	return ViewportContainer(viewport,
-	                         display_result.Move(),
-	                         rp_result.Move(),
-	                         pipeline_result.Move(),
-	                         ut::Move(framebuffers));
+	return Proxy(viewport,
+	             display_result.Move(),
+	             rp_result.Move(),
+	             pipeline.Move(),
+	             rgb2srgb_pipeline.Move(),
+	             srgb2rgb_pipeline.Move(),
+	             ut::Move(framebuffers));
 }
 
 // Resizes a display associated with provided viewport.
@@ -202,13 +225,13 @@ void ViewportManager::ResizeViewport(ui::Viewport::Id id, ut::uint32 w, ut::uint
 		}
 
 		// get viewport reference
-		ui::PlatformViewport& viewport = viewports[find_result.Get()].Get<ui::PlatformViewport&>();
+		ui::PlatformViewport& ui_widget = viewports[find_result.Get()].ui_widget;
 
 		// delete current container
 		viewports.Remove(find_result.Get());
 
 		// re-create render resources
-		ut::Result<ViewportContainer, ut::Error> vp_container_result = CreateDisplay(device, viewport);
+		ut::Result<Proxy, ut::Error> vp_container_result = CreateDisplay(device, ui_widget);
 		if (!vp_container_result)
 		{
 			throw ut::Error(vp_container_result.MoveAlt());
@@ -265,7 +288,7 @@ void ViewportManager::EnqueueResize(ui::Viewport::Id id, ut::uint32 w, ut::uint3
 	}
 
 	// manually resize UI area
-	ui::PlatformViewport& ui_widget = viewports[viewport_array_id.Get()].Get<ui::PlatformViewport&>();
+	ui::PlatformViewport& ui_widget = viewports[viewport_array_id.Get()].ui_widget;
 	ui_widget.ResizeCanvas();
 
 	// enqueue resize task, display will be resized in render
@@ -291,14 +314,29 @@ ut::Optional<size_t> ViewportManager::FindViewport(ui::Viewport::Id id)
 	const size_t count = viewports.GetNum();
 	for (size_t i = count; i--;)
 	{
-		ui::PlatformViewport& viewport = viewports[i].Get<ui::PlatformViewport&>();
-		if (viewport.GetId() == id)
+		if (viewports[i].ui_widget.GetId() == id)
 		{
 			return i;
 		}
 	}
 	return ut::Optional<size_t>();
 }
+
+// Proxy constructor.
+ViewportManager::Proxy::Proxy(ui::PlatformViewport& in_ui_viewport,
+                              Display in_display,
+                              RenderPass in_quad_pass,
+                              PipelineState in_pipeline_state,
+                              PipelineState in_pipeline_rgb2srgb,
+                              PipelineState in_pipeline_srgb2rgb,
+                              ut::Array<Framebuffer> in_framebuffers) : ui_widget(in_ui_viewport)
+                                                                      , display(ut::Move(in_display))
+                                                                      , quad_pass(ut::Move(in_quad_pass))
+                                                                      , pipeline_state(ut::Move(in_pipeline_state))
+                                                                      , pipeline_rgb2srgb(ut::Move(in_pipeline_rgb2srgb))
+                                                                      , pipeline_srgb2rgb(ut::Move(in_pipeline_srgb2rgb))
+                                                                      , framebuffers(ut::Move(in_framebuffers))
+{}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

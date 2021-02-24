@@ -25,6 +25,11 @@ Settings::Settings() : background_color(51, 51, 55)
 	projections.Add(Viewport::orthographic_negative_y);
 	projections.Add(Viewport::orthographic_positive_x);
 	projections.Add(Viewport::orthographic_positive_z);
+
+	render_modes.Add(Viewport::render_mode_complete);
+	render_modes.Add(Viewport::render_mode_diffuse);
+	render_modes.Add(Viewport::render_mode_diffuse);
+	render_modes.Add(Viewport::render_mode_diffuse);
 }
 
 // Registers data into reflection tree.
@@ -46,6 +51,7 @@ void Settings::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot.Add(layout_id, "layout_id");
 	snapshot.Add(projections, "projections");
 	snapshot.Add(viewports, "viewports");
+	snapshot.Add(render_modes, "render_modes");
 }
 
 //----------------------------------------------------------------------------//

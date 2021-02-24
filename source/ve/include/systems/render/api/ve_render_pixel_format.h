@@ -187,6 +187,13 @@ namespace pixel
 		return format == d24_unorm_s8_uint ||
 		       format == d32_float_s8_uint;
 	}
+
+	// Checks if provided pixel format is in srgb color space.
+	constexpr bool IsSrgb(Format format)
+	{
+		return format == r8g8b8a8_srgb ||
+		       format == b8g8r8a8_srgb;
+	}
 }
 
 //----------------------------------------------------------------------------//

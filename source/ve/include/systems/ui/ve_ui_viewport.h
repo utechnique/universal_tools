@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/ui/ve_ui_platform.h"
+
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
@@ -36,15 +37,19 @@ public:
 		resolution_hd
 	};
 
+	// Rendering mode.
+	enum RenderMode
+	{
+		render_mode_complete,
+		render_mode_diffuse,
+	};
+
 	// Mode describes how this viewport interacts with user and how
 	// it renders stuff.
 	struct Mode
 	{
 		// Indicates if this viewport is currently active (visible).
 		bool is_active = true;
-
-		// Indicates if this viewport renders a scene in wireframe mode.
-		bool wireframe = false;
 
 		// Current projection type of this viewport.
 		Projection projection = perspective;
@@ -58,6 +63,10 @@ public:
 		// Width and height of the viewport in pixels.
 		ut::uint32 width = 0;
 		ut::uint32 height = 0;
+
+		// Rendering mode affects what parts of the rendering
+		// pipeline will be displayed to user.
+		ut::uint32 render_mode = render_mode_complete;
 	};
 
 	// Constructor.

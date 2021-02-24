@@ -8,6 +8,7 @@
 
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_unit_mgr.h"
+#include "systems/render/engine/post_process/ve_post_process_mgr.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -49,6 +50,9 @@ private:
 	Toolset& tools;
 	Policies& policies;
 	UnitSelector& selector;
+
+	// post-process manager applies post-process effects
+	postprocess::Manager post_process_mgr;
 };
 
 //----------------------------------------------------------------------------//

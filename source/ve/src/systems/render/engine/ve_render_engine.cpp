@@ -16,10 +16,11 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	// set vertical synchronization for viewports
 	SetVerticalSynchronization(tools.config.vsync);
 
-	// load display shaders
-	ut::Result<Shader, ut::Error> display_vs = tools.shader_loader.Load(Shader::vertex, "display_vs", "VS", "display.hlsl");
-	ut::Result<Shader, ut::Error> display_ps = tools.shader_loader.Load(Shader::pixel, "display_ps", "PS", "display.hlsl");
-	display_quad_shader = ut::MakeUnique<BoundShader>(display_vs.MoveOrThrow(), display_ps.MoveOrThrow());
+	// set display shaders
+	display_quad_vs = tools.shaders.quad_vs;
+	display_quad_ps = tools.shaders.img_quad_ps;
+	display_quad_rgb2srgb_ps = tools.shaders.img_quad_rgb2srgb_ps;
+	display_quad_srgb2rgb_ps = tools.shaders.img_quad_srgb2rgb_ps;
 
 	// 2d image
 	ImageLoader::Info img_info_2d;
@@ -30,7 +31,7 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 
 	// initialize per-frame data
 	ut::Optional<ut::Error> frames_error = tools.frame_mgr.AllocateFrames(tools.config.frames_in_flight,
-	                                                                      display_quad_shader.GetRef());
+	                                                                      display_quad_ps.Get());
 	if (frames_error)
 	{
 		throw frames_error.Move();
@@ -71,11 +72,11 @@ void Engine::ProcessNextFrame()
 	ProcessViewportEvents();
 
 	// get active viewports
-	ut::Array< ut::Ref<ViewportContainer> > active_viewports;
+	ut::Array< ut::Ref<ViewportManager::Proxy> > active_viewports;
 	for (size_t i = 0; i < viewports.GetNum(); i++)
 	{
-		ui::PlatformViewport& viewport = viewports[i].Get<ui::PlatformViewport&>();
-		const ui::Viewport::Mode mode = viewport.GetMode();
+		ui::PlatformViewport& viewport_ui_widget = viewports[i].ui_widget;
+		const ui::Viewport::Mode mode = viewport_ui_widget.GetMode();
 		if (mode.is_active)
 		{
 			active_viewports.Add(viewports[i]);
@@ -86,7 +87,7 @@ void Engine::ProcessNextFrame()
 	ut::Array< ut::Ref<Display> > display_array;
 	for (size_t i = 0; i < active_viewports.GetNum(); i++)
 	{
-		display_array.Add(active_viewports[i]->Get<Display>());
+		display_array.Add(active_viewports[i]->display);
 		device.AcquireNextDisplayBuffer(display_array.GetLast());
 	}
 
@@ -101,7 +102,7 @@ void Engine::ProcessNextFrame()
 }
 
 // Function for recording all commands needed to draw current frame.
-void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportContainer> >& active_viewports)
+void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports)
 {
 	// render environment to view units
 	Policy<View>& view_policy = unit_mgr.policies.Get<View>();
@@ -112,67 +113,89 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportCo
 }
 
 // Renders view units to ui viewports.
-void Engine::DisplayToUser(Context& context, ut::Array< ut::Ref<ViewportContainer> >& active_viewports)
+void Engine::DisplayToUser(Context& context, ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports)
 {
-	Frame& frame = tools.frame_mgr.GetCurrentFrame();
 	ut::Array< ut::Ref<View> >& views = unit_mgr.selector.Get<View>();
 	const size_t view_count = views.GetNum();
 	
 	for (size_t i = 0; i < active_viewports.GetNum(); i++)
 	{
-		ui::PlatformViewport& ui_viewport = active_viewports[i]->Get<ui::PlatformViewport&>();
-		Display& display = active_viewports[i]->Get<Display>();
-		RenderPass& rp = active_viewports[i]->Get<RenderPass>();
-		PipelineState& pipeline_state = active_viewports[i]->Get<PipelineState>();
-		ut::Array<Framebuffer>& framebuffers = active_viewports[i]->Get< ut::Array<Framebuffer> >();
-
-		Framebuffer& framebuffer = framebuffers[display.GetCurrentBufferId()];
-		const Framebuffer::Info& fb_info = framebuffer.GetInfo();
-		ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-
-		// update uniform buffer
-		Frame::DisplayUB display_ub;
-		display_ub.color = ut::Color<4>(1, 1, 1, 1);
-		ut::Optional<ut::Error> update_ub_error = tools.rc_mgr.UpdateBuffer(context,
-		                                                                    frame.display_quad_ub,
-		                                                                    &display_ub);
-		if (update_ub_error)
-		{
-			throw update_ub_error.Move();
-		}
-
-		// find appropriate view unit
-		ut::Optional<Image&> view_img;
+		// find appropriate view unit and extract an image
+		ut::Optional<Image&> image;
+		const ui::PlatformViewport& ui_viewport_widget = active_viewports[i]->ui_widget;
 		for (size_t unit_index = 0; unit_index < view_count; unit_index++)
 		{
 			View& view = views[unit_index];
-			if (view.viewport_id == ui_viewport.GetId())
+			if (view.viewport_id == ui_viewport_widget.GetId())
 			{
-				view_img = view.data->frames[tools.frame_mgr.GetCurrentFrameId()].g_buffer.diffuse.GetImage();
+				image = view.data->frames[tools.frame_mgr.GetCurrentFrameId()].final_img;
 				break;
 			}
 		}
 
-		// set shader resources
-		frame.quad_desc_set.ub.BindUniformBuffer(frame.display_quad_ub);
-		frame.quad_desc_set.sampler.BindSampler(tools.sampler_cache.linear_clamp);
-		frame.quad_desc_set.tex2d.BindImage(view_img ? view_img.Get() : tools.img_black);
-
-		// draw quad
-		context.BeginRenderPass(rp, framebuffer, render_area, frame.clear_color);
-		context.BindPipelineState(pipeline_state);
-		context.BindDescriptorSet(frame.quad_desc_set);
-		context.BindVertexBuffer(tools.fullscreen_quad->vertex_buffer, 0);
-		context.Draw(6, 0);
-
-		// draw profiler info
-		if (ui_viewport.GetId() == 0)
-		{
-			profiler.DrawInfo(context, frame, display.GetWidth(), display.GetHeight());
-		}
-
-		context.EndRenderPass();
+		// display to user
+		DisplayImage(context,
+		             image ? image.Get() : tools.img_black,
+		             active_viewports[i],
+		             ui_viewport_widget.GetId() == 0);
 	}
+}
+
+// Displays provided image to the provided ui viewport.
+void Engine::DisplayImage(Context& context,
+                          Image& image,
+                          ViewportManager::Proxy& viewport,
+                          bool display_profiler)
+{
+	Frame& frame = tools.frame_mgr.GetCurrentFrame();
+
+	// get framebuffer
+	const ut::uint32 display_buffer_id = viewport.display.GetCurrentBufferId();
+	Framebuffer& framebuffer = viewport.framebuffers[display_buffer_id];
+	const Framebuffer::Info& fb_info = framebuffer.GetInfo();
+
+	// update uniform buffer
+	Frame::DisplayUB display_ub;
+	display_ub.color = ut::Color<4>(1);
+	ut::Optional<ut::Error> update_ub_error = tools.rc_mgr.UpdateBuffer(context,
+	                                                                    frame.display_quad_ub,
+	                                                                    &display_ub);
+	if (update_ub_error)
+	{
+		throw update_ub_error.Move();
+	}
+
+	// check if rgb->srgb or srgb->rgb conversions are needed
+	const bool src_is_srgb = pixel::IsSrgb(image.GetInfo().format);
+	const bool dst_is_srgb = pixel::IsSrgb(viewport.display.GetTarget(display_buffer_id).GetInfo().format);
+	const bool needs_rgb2srgb = dst_is_srgb && !src_is_srgb;
+	const bool needs_srgb2rgb = !dst_is_srgb && src_is_srgb;
+
+	// choose pipeline state according to the color space conversion type
+	PipelineState& pipeline_state = needs_rgb2srgb ? viewport.pipeline_rgb2srgb :
+		                            needs_srgb2rgb ? viewport.pipeline_srgb2rgb :
+	                                viewport.pipeline_state;
+
+	// set shader resources
+	frame.quad_desc_set.ub.BindUniformBuffer(frame.display_quad_ub);
+	frame.quad_desc_set.sampler.BindSampler(tools.sampler_cache.linear_clamp);
+	frame.quad_desc_set.tex2d.BindImage(image);
+
+	// draw quad
+	const ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
+	context.BeginRenderPass(viewport.quad_pass, framebuffer, render_area, frame.clear_color);
+	context.BindPipelineState(pipeline_state);
+	context.BindDescriptorSet(frame.quad_desc_set);
+	context.BindVertexBuffer(tools.fullscreen_quad->vertex_buffer, 0);
+	context.Draw(6, 0);
+
+	// draw profiler info
+	if (display_profiler)
+	{
+		profiler.DrawInfo(context, frame, fb_info.width, fb_info.height);
+	}
+
+	context.EndRenderPass();
 }
 
 // Executes viewport tasks (resize, close, etc.) in a safe manner.

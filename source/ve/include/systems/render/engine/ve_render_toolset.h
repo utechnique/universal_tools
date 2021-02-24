@@ -11,6 +11,7 @@
 #include "ve_render_image_loader.h"
 #include "ve_shader_loader.h"
 #include "ve_sampler_cache.h"
+
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -47,6 +48,15 @@ public:
 	Image img_green;
 	Image img_blue;
 	Image img_normal;
+
+	// common shaders
+	struct Shaders
+	{
+		Shader quad_vs;
+		Shader img_quad_ps;
+		Shader img_quad_rgb2srgb_ps;
+		Shader img_quad_srgb2rgb_ps;
+	} shaders;
 
 private:
 	// Returns a configuration object. Tries to load it from file, and creates

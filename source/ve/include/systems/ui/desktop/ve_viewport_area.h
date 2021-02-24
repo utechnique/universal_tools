@@ -131,6 +131,9 @@ public:
 	// Changes viewport resolution type.
 	void ChangeViewportResolution(Viewport::Resolution resolution);
 
+	// Changes viewport rendering mode.
+	void ChangeViewportRenderMode(Viewport::RenderMode render_mode);
+
 	// Creates layout choice widget.
 	static ut::UniquePtr<Fl_Choice> CreateLayoutChoice(LayoutArray& layouts, int x, int y);
 
@@ -140,6 +143,9 @@ public:
 	// Creates resolution choice widget.
 	ut::UniquePtr<Fl_Choice> CreateResolutionChoice(int x, int y);
 
+	// Creates rendering mode choice widget.
+	ut::UniquePtr<Fl_Choice> CreateRenderModeChoice(int x, int y);
+
 	// Callback that is called when a layout is changed.
 	static void ChangeLayoutCallback(Fl_Widget* widget, void* data);
 
@@ -148,6 +154,9 @@ public:
 
 	// Callback that is called when a resolution type is changed.
 	static void ChangeResolutionCallback(Fl_Widget* widget, void* data);
+
+	// Callback that is called when a render mode is changed.
+	static void ChangeRenderModeCallback(Fl_Widget* widget, void* data);
 
 	// Height of the elements in pixels
 	static const ut::uint32 skElementHeight;
@@ -175,8 +184,14 @@ public:
 	// Combobox widget to choose viewport resolution.
 	ut::UniquePtr<Fl_Choice> resolution_choice;
 
+	// Combobox widget to choose rendering mode.
+	ut::UniquePtr<Fl_Choice> render_mode_choice;
+
 private:
 	class ViewportArea& viewport_area;
+
+	// Size of the text font for all tab elements.
+	static const ut::uint32 skFontSize;
 };
 
 //----------------------------------------------------------------------------//
@@ -205,11 +220,17 @@ public:
 	// Returns an array of current projections for all viewports.
 	ut::Array<ut::uint32> GetViewportProjections();
 
+	// Returns an array of current render modes for all viewports.
+	ut::Array<ut::uint32> GetViewportRenderModes();
+
 	// Updates position and size for all viewports.
 	ut::Optional<ut::Error> ResizeViewports(const ut::Array< ut::Rect<ut::uint32> >& viewport_rects);
 
 	// Updates projection type for all viewports.
 	void SetViewportProjections(const ut::Array<ut::uint32>& projections);
+
+	// Updates render modes for all viewports.
+	void SetViewportRenderModes(const ut::Array<ut::uint32>& render_modes);
 
 	// Changes viewport layout.
 	//    @param layout_id - id of the layout to be set.

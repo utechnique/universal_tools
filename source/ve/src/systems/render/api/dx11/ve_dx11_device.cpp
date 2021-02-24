@@ -665,6 +665,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 
 	// initialize render target info
 	Target::Info target_info;
+	target_info.format = backbuffer_info.format;
 	target_info.usage = Target::Info::usage_present;
 
 	// create render target that will be associated with provided viewport

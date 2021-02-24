@@ -143,6 +143,7 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	// update viewports according to the cfg data
 	viewport_area->ResizeViewports(cfg.viewports);
 	viewport_area->SetViewportProjections(cfg.projections);
+	viewport_area->SetViewportRenderModes(cfg.render_modes);
 
 	// success
 	return ut::Optional<ut::Error>();
@@ -193,6 +194,7 @@ void DesktopFrontend::SaveCfg()
 	// viewports
 	cfg.projections = viewport_area->GetViewportProjections();
 	cfg.viewports = viewport_area->GetViewportRects();
+	cfg.render_modes = viewport_area->GetViewportRenderModes();
 
 	// save to file
 	cfg.Save();

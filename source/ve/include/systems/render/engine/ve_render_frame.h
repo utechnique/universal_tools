@@ -71,11 +71,11 @@ public:
 
 	// Allocates desired number of frames.
 	//    @param frame_count - number of frames.
-	//    @param display_quad_shader - shader that renders a quad
-	//                                 directly to the backbuffer.
+	//    @param display_quad_ps - pixel shader rendering a quad directly
+	//                             to the backbuffer.
 	//    @return - optional error if failed.
 	ut::Optional<ut::Error> AllocateFrames(ut::uint32 frame_count,
-	                                       BoundShader& display_quad_shader);
+	                                       Shader& display_quad_ps);
 
 	// Returns a reference to the current frame.
 	Frame& GetCurrentFrame();

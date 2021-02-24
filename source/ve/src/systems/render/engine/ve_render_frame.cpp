@@ -38,11 +38,11 @@ FrameManager::FrameManager(Device& device_ref) : device(device_ref)
 
 // Allocates desired number of frames.
 //    @param frame_count - number of frames.
-//    @param display_quad_shader - shader that renders a quad directly to the
-//                                 backbuffer.
+//    @param display_quad_ps - pixel shader rendering a quad directly
+//                             to the backbuffer.
 //    @return - optional error if failed.
 ut::Optional<ut::Error> FrameManager::AllocateFrames(ut::uint32 frame_count,
-                                                     BoundShader& display_quad_shader)
+                                                     Shader& display_quad_ps)
 {
 	if (!frames.IsEmpty())
 	{
@@ -80,7 +80,7 @@ ut::Optional<ut::Error> FrameManager::AllocateFrames(ut::uint32 frame_count,
 		}
 
 		// connect descriptors
-		frames.GetLast().quad_desc_set.Connect(display_quad_shader);
+		frames.GetLast().quad_desc_set.Connect(display_quad_ps);
 	}
 
 	return ut::Optional<ut::Error>();

@@ -12,7 +12,7 @@ START_NAMESPACE(ui)
 const ut::uint32 ViewportBox::skResizeBorder = 64;
 
 // Height of the elements in pixels.
-const ut::uint32 ViewportTab::skElementHeight = 32;
+const ut::uint32 ViewportTab::skElementHeight = 24;
 
 // Element margin in pixels.
 const ut::uint32 ViewportTab::skElementMargin = 2;
@@ -22,6 +22,9 @@ const ut::uint32 ViewportTab::skHeight = ViewportTab::skElementHeight + Viewport
 
 // Offset to the tab in pixels.
 const ut::uint32 ViewportArea::skTabMargin = 2;
+
+// Size of the text font for all tab elements.
+const ut::uint32 ViewportTab::skFontSize = 14;
 
 // Projection types.
 static const ut::uint32 skProjectionTypeCount = 7;
@@ -44,6 +47,14 @@ static const char* skResolutionTypeNames[skResolutionTypeCount] =
 	"4K",
 	"1080p",
 	"720p",
+};
+
+// Render mode variants.
+static const ut::uint32 skRenderModeCount = 2;
+static const char* skRenderModeNames[skRenderModeCount] =
+{
+	"Complete",
+	"G-Buffer (Diffuse)",
 };
 
 //----------------------------------------------------------------------------//
@@ -203,7 +214,7 @@ ViewportLayout::IconBuffer ViewportLayout::GenerateIconData(const Arrangement& a
 {
 	IconBuffer icon_buffer(size * size);
 
-	const float margin = 0.04f;
+	const float margin = 0.06f;
 
 	const size_t element_count = arrangement.GetNum();
 
@@ -257,11 +268,12 @@ ViewportTab::ViewportTab(ViewportArea& in_viewport_area,
 	background->box(FL_FLAT_BOX);
 	background->color(fl_rgb_color(settings.tab_color.R(), settings.tab_color.G(), settings.tab_color.B()));
 
-	controls_group = ut::MakeUnique<Fl_Group>(x, y, skElementHeight * 10, h);
+	controls_group = ut::MakeUnique<Fl_Group>(x, y, skElementHeight * 20, h);
 	
 	layout_choice = CreateLayoutChoice(layouts, x, y);
 	proj_choice = CreateProjChoice(layout_choice->x() + layout_choice->w(), y);
 	resolution_choice = CreateResolutionChoice(proj_choice->x() + proj_choice->w(), y);
+	render_mode_choice = CreateRenderModeChoice(resolution_choice->x() + resolution_choice->w(), y);
 
 	controls_group->end();
 	controls_group->resizable(nullptr);
@@ -308,13 +320,32 @@ void ViewportTab::ChangeViewportResolution(Viewport::Resolution resolution)
 	}
 }
 
+// Changes viewport rendering mode.
+void ViewportTab::ChangeViewportRenderMode(Viewport::RenderMode render_mode)
+{
+	ut::Array< ut::Ref<Viewport> > viewports = viewport_area.GetViewports();
+	const size_t viewport_count = viewports.GetNum();
+	for (size_t i = 0; i < viewport_count; i++)
+	{
+		Viewport& viewport = viewports[i];
+		Viewport::Mode mode = viewport.GetMode();
+		if (!mode.has_input_focus)
+		{
+			continue;
+		}
+
+		mode.render_mode = render_mode;
+		viewport.SetMode(mode);
+	}
+}
+
 // Creates choice widget.
 ut::UniquePtr<Fl_Choice> ViewportTab::CreateLayoutChoice(LayoutArray& layouts, int x, int y)
 {
 	// create widget
 	ut::UniquePtr<Fl_Choice> choice = ut::MakeUnique<Fl_Choice>(x + skElementMargin,
 	                                                            y + skElementMargin,
-	                                                            skElementHeight * 2,
+	                                                            56,
 	                                                            skElementHeight);
 
 	// add layout choices
@@ -350,6 +381,7 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateProjChoice(int x, int y)
 		int menu_id = choice->add(skProjectionTypeNames[i], 0, nullptr);
 		Fl_Menu_Item *item = (Fl_Menu_Item*)&(choice->menu()[menu_id]);
 		item->callback(ChangeProjectionCallback, this);
+		item->labelsize(skFontSize);
 	}
 
 	// choose a layout
@@ -374,6 +406,35 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateResolutionChoice(int x, int y)
 		int menu_id = choice->add(skResolutionTypeNames[i], 0, nullptr);
 		Fl_Menu_Item *item = (Fl_Menu_Item*)&(choice->menu()[menu_id]);
 		item->callback(ChangeResolutionCallback, this);
+		item->labelsize(skFontSize);
+	}
+
+	// choose a layout
+	choice->value(static_cast<int>(Viewport::resolution_auto));
+
+	// choose a layout
+	choice->value(0);
+
+	// success
+	return choice;
+}
+
+// Creates rendering mode choice widget.
+ut::UniquePtr<Fl_Choice> ViewportTab::CreateRenderModeChoice(int x, int y)
+{
+	// create widget
+	ut::UniquePtr<Fl_Choice> choice = ut::MakeUnique<Fl_Choice>(x + skElementMargin,
+	                                                            y + skElementMargin,
+	                                                            145,
+	                                                            skElementHeight);
+
+	// add mode types
+	for (size_t i = 0; i < skRenderModeCount; i++)
+	{
+		int menu_id = choice->add(skRenderModeNames[i], 0, nullptr);
+		Fl_Menu_Item *item = (Fl_Menu_Item*)&(choice->menu()[menu_id]);
+		item->callback(ChangeRenderModeCallback, this);
+		item->labelsize(skFontSize);
 	}
 
 	// choose a layout
@@ -413,6 +474,15 @@ void ViewportTab::ChangeResolutionCallback(Fl_Widget* widget, void* data)
 	ViewportTab* tab = static_cast<ViewportTab*>(data);
 	Viewport::Resolution resolution = static_cast<Viewport::Resolution>(choice->value());
 	tab->ChangeViewportResolution(resolution);
+}
+
+// Callback that is called when a render mode is changed.
+void ViewportTab::ChangeRenderModeCallback(Fl_Widget* widget, void* data)
+{
+	const Fl_Choice* choice = static_cast<Fl_Choice*>(widget);
+	ViewportTab* tab = static_cast<ViewportTab*>(data);
+	Viewport::RenderMode render_mode = static_cast<Viewport::RenderMode>(choice->value());
+	tab->ChangeViewportRenderMode(render_mode);
 }
 
 //----------------------------------------------------------------------------//
@@ -571,6 +641,20 @@ ut::Array<ut::uint32> ViewportArea::GetViewportProjections()
 	return out;
 }
 
+// Returns an array of current render modes for all viewports.
+ut::Array<ut::uint32> ViewportArea::GetViewportRenderModes()
+{
+	ut::Array<ut::uint32> out;
+
+	for (size_t i = 0; i < skMaxViewports; i++)
+	{
+		const Viewport::Mode mode = viewport_boxes[i]->GetViewport().GetMode();
+		out.Add(static_cast<ut::uint32>(mode.render_mode));
+	}
+
+	return out;
+}
+
 // Updates viewport position and size.
 ut::Optional<ut::Error> ViewportArea::ResizeViewports(const ut::Array< ut::Rect<ut::uint32> >& viewport_rects)
 {
@@ -597,7 +681,6 @@ ut::Optional<ut::Error> ViewportArea::ResizeViewports(const ut::Array< ut::Rect<
 // Updates projection type for all viewports.
 void ViewportArea::SetViewportProjections(const ut::Array<ut::uint32>& projections)
 {
-	// set projection types
 	const size_t proj_count = ut::Min<size_t>(projections.GetNum(), skMaxViewports);
 	for (size_t i = 0; i < proj_count; i++)
 	{
@@ -609,6 +692,24 @@ void ViewportArea::SetViewportProjections(const ut::Array<ut::uint32>& projectio
 		if (mode.has_input_focus)
 		{
 			tab->proj_choice->value(static_cast<int>(mode.projection));
+		}
+	}
+}
+
+// Updates render modes for all viewports.
+void ViewportArea::SetViewportRenderModes(const ut::Array<ut::uint32>& render_modes)
+{
+	const size_t proj_count = ut::Min<size_t>(render_modes.GetNum(), skMaxViewports);
+	for (size_t i = 0; i < proj_count; i++)
+	{
+		Viewport& viewport = viewport_boxes[i]->GetViewport();
+		ui::Viewport::Mode mode = viewport.GetMode();
+		mode.render_mode = static_cast<Viewport::RenderMode>(render_modes[i]);
+		viewport.SetMode(mode);
+
+		if (mode.has_input_focus)
+		{
+			tab->proj_choice->value(static_cast<int>(mode.render_mode));
 		}
 	}
 }
@@ -849,6 +950,7 @@ void ViewportArea::SetViewportFocus(Viewport::Id id)
 		{
 			tab->proj_choice->value(static_cast<int>(mode.projection));
 			tab->resolution_choice->value(static_cast<int>(mode.resolution));
+			tab->render_mode_choice->value(static_cast<int>(mode.render_mode));
 		}
 
 		box.redraw();

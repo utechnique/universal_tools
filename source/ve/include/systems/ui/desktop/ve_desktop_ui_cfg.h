@@ -42,6 +42,7 @@ public:
 	// viewports
 	ut::Array<ut::uint32> projections;
 	ut::Array< ut::Rect<ut::uint32> > viewports;
+	ut::Array<ut::uint32> render_modes;
 };
 
 //----------------------------------------------------------------------------//

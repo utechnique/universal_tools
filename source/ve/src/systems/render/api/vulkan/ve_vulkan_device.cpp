@@ -736,7 +736,8 @@ ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(con
 		// check features
 		if (!features.geometryShader ||
 			!features.tessellationShader ||
-			!features.fillModeNonSolid)
+			!features.fillModeNonSolid ||
+			!features.shaderImageGatherExtended)
 		{
 			continue;
 		}
@@ -937,6 +938,7 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 	features.geometryShader = VK_TRUE;
 	features.tessellationShader = VK_TRUE;
 	features.fillModeNonSolid = VK_TRUE;
+	features.shaderImageGatherExtended = VK_TRUE;
 
 	// VkDeviceCreateInfo
 	VkDeviceCreateInfo device_info = {};
@@ -1797,6 +1799,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 
 		// initialize render target info
 		Target::Info target_info;
+		target_info.format = info.format;
 		target_info.usage = Target::Info::usage_present;
 
 		// create final target for the current buffer

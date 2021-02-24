@@ -6,6 +6,22 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
+// Generates an array of macros for quad shader enabling rgb->srgb or
+// srgb->rgb conversion.
+//    @param rgb_to_srgb - 'true' to convert from rgb to srgb and
+//                         'false' to convert from srgb to rgb.
+//    @return - an array of macros.
+Shader::Macros GenQuadShaderConversionMacros(bool rgb_to_srgb)
+{
+	Shader::Macros out;
+	Shader::MacroDefinition conversion;
+	conversion.name = rgb_to_srgb ? "RGB_TO_SRGB" : "SRGB_TO_RGB";
+	conversion.value = "1";
+	out.Add(ut::Move(conversion));
+	return out;
+}
+
+//----------------------------------------------------------------------------//
 // Constructor.
 Toolset::Toolset(Device& dvc_ref) noexcept : device(dvc_ref)
                                            , config(LoadCfg())
@@ -22,6 +38,27 @@ Toolset::Toolset(Device& dvc_ref) noexcept : device(dvc_ref)
                                            , img_green(rc_mgr.CreateImage(1, 1, ut::Color<4, ut::byte>(0, 255, 0, 255)).MoveOrThrow())
                                            , img_blue(rc_mgr.CreateImage(1, 1, ut::Color<4, ut::byte>(0, 0, 255, 255)).MoveOrThrow())
                                            , img_normal(rc_mgr.CreateImage(1, 1, ut::Color<4, ut::byte>(127, 127, 255, 255)).MoveOrThrow())
+                                           , shaders
+                                             {
+                                                 shader_loader.Load(Shader::vertex,
+                                                                    "quad_vs",
+                                                                    "VS",
+                                                                    "quad_vs.hlsl").MoveOrThrow(),
+                                                 shader_loader.Load(Shader::pixel,
+                                                                    "img_quad_ps",
+                                                                    "PS",
+                                                                    "img_quad_ps.hlsl").MoveOrThrow(),
+												 shader_loader.Load(Shader::pixel,
+                                                                    "img_quad_rgb2srgb_ps",
+                                                                    "PS",
+                                                                    "img_quad_ps.hlsl",
+                                                                    GenQuadShaderConversionMacros(true)).MoveOrThrow(),
+                                                 shader_loader.Load(Shader::pixel,
+                                                                    "img_quad_srgb2rgb_ps",
+                                                                    "PS",
+                                                                    "img_quad_ps.hlsl",
+                                                                    GenQuadShaderConversionMacros(false)).MoveOrThrow()
+                                             }
 {}
 
 //----------------------------------------------------------------------------->

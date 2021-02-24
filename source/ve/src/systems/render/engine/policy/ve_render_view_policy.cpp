@@ -14,6 +14,7 @@ Policy<View>::Policy(Toolset &toolset,
                                                 , policies(engine_policies)
                                                 , geometry_pass(CreateGeometryPass(toolset.device).MoveOrThrow())
                                                 , geometry_pass_shader(CreateGeometryPassShader(toolset.shader_loader))
+                                                , post_process_mgr(toolset)
 {}
 
 //----------------------------------------------------------------------------->
@@ -42,7 +43,7 @@ void Policy<View>::Initialize(View& view)
 		ut::Result<Target, ut::Error> diffuse = tools.device.CreateTarget(info);
 		if (!diffuse)
 		{
-			throw ut::Error(depth.MoveAlt());
+			throw ut::Error(diffuse.MoveAlt());
 		}
 
 		ut::Result<Target, ut::Error> normal = tools.device.CreateTarget(info);
@@ -62,18 +63,18 @@ void Policy<View>::Initialize(View& view)
 
 		// create framebuffer
 		ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(geometry_pass,
-			ut::Move(color_targets),
-			depth.Get());
+		                                                                                ut::Move(color_targets),
+		                                                                                depth.Get());
 		if (!framebuffer)
 		{
 			throw ut::Error(framebuffer.MoveAlt());
 		}
 
 		View::GBuffer g_buffer(depth.Move(),
-			diffuse.Move(),
-			normal.Move(),
-			material.Move(),
-			framebuffer.Move());
+		                       diffuse.Move(),
+		                       normal.Move(),
+		                       material.Move(),
+		                       framebuffer.Move());
 
 		// create view uniform buffer
 		Buffer::Info buffer_info;
@@ -86,7 +87,37 @@ void Policy<View>::Initialize(View& view)
 			throw ut::Error(view_ub.MoveAlt());
 		}
 
-		View::FrameData frame_data(ut::Move(g_buffer), view_ub.Move());
+		// post-process
+		ut::Result<postprocess::ViewData, ut::Error> post_process_data = post_process_mgr.CreateViewData(view.width,
+		                                                                                                 view.height,
+		                                                                                                 view.format);
+		if (!post_process_data)
+		{
+			throw ut::Error(post_process_data.MoveAlt());
+		}
+
+		// final target
+		info.format = view.format;
+		info.usage = Target::Info::usage_color;
+		ut::Result<Target, ut::Error> final = tools.device.CreateTarget(info);
+		if (!final)
+		{
+			throw ut::Error(final.MoveAlt());
+		}
+
+		// final framebuffer
+		color_targets.Empty();
+		color_targets.Add(final.Get());
+		ut::Result<Framebuffer, ut::Error> final_framebuffer = tools.device.CreateFramebuffer(post_process_data->pass,
+		                                                                                      ut::Move(color_targets));
+		if (!final_framebuffer)
+		{
+			throw ut::Error(final_framebuffer.MoveAlt());
+		}
+
+		View::FrameData frame_data(ut::Move(g_buffer),
+		                           post_process_data.Move(),
+		                           view_ub.Move());
 		frame_data.geometry_pass_desc_set.Connect(geometry_pass_shader);
 
 		if (!frames.Add(ut::Move(frame_data)))
@@ -121,13 +152,17 @@ void Policy<View>::RenderEnvironment(Context& context)
 	{
 		View& view = views[i];
 
+		// get current frame
+		View::FrameData& frame = view.data->frames[current_frame_id];
+
+		// reset final image
+		frame.final_img = ut::Optional<Image&>();
+
 		// skip if view is inactive
 		if (!view.is_active)
 		{
 			continue;
 		}
-
-		View::FrameData& frame = view.data->frames[current_frame_id];
 
 		RcRef<Mesh>& mesh = tools.cube;
 
@@ -140,7 +175,7 @@ void Policy<View>::RenderEnvironment(Context& context)
 		frame.geometry_pass_desc_set.view_ub.BindUniformBuffer(frame.view_ub);
 
 		ut::Rect<ut::uint32> render_area(0, 0, view.width, view.height);
-		context.BeginRenderPass(geometry_pass, frame.g_buffer.framebuffer, render_area, ut::Color<4>(0.01f, 0.01f, 0.01f, 1.0f), 1.0f);
+		context.BeginRenderPass(geometry_pass, frame.g_buffer.framebuffer, render_area, ut::Color<4>(0.11f, 0.11f, 0.11f, 1.0f), 1.0f);
 		context.BindPipelineState(view.data->geometry_pass_pipeline);
 		context.BindDescriptorSet(frame.geometry_pass_desc_set);
 		context.BindVertexBuffer(mesh->vertex_buffer, 0);
@@ -158,6 +193,17 @@ void Policy<View>::RenderEnvironment(Context& context)
 		context.EndRenderPass();
 
 		context.SetTargetState(frame.g_buffer.framebuffer, Target::Info::state_resource);
+
+		if (view.mode == View::mode_diffuse)
+		{
+			frame.final_img = frame.g_buffer.diffuse.GetImage();
+			continue;
+		}
+
+		// postprocess
+		frame.final_img = post_process_mgr.ApplyEffects(context,
+		                                                frame.post_process,
+		                                                frame.g_buffer.diffuse.GetImage());
 	}
 }
 
@@ -186,23 +232,24 @@ BoundShader Policy<View>::CreateGeometryPassShader(ShaderLoader& shader_loader)
 //----------------------------------------------------------------------------->
 // Creates pipeline for rendering geometry to a g-buffer.
 ut::Result<PipelineState, ut::Error> Policy<View>::CreateGeometryPassPipeline(ut::uint32 width,
-	ut::uint32 height)
+                                                                              ut::uint32 height)
 {
 	PipelineState::Info info;
 	info.stages[Shader::vertex] = geometry_pass_shader.stages[Shader::vertex].Get();
 	info.stages[Shader::pixel] = geometry_pass_shader.stages[Shader::pixel].Get();
 	info.viewports.Add(Viewport(0.0f, 0.0f,
-		static_cast<float>(width),
-		static_cast<float>(height),
-		0.0f, 1.0f,
-		static_cast<ut::uint32>(width),
-		static_cast<ut::uint32>(height)));
+	                            static_cast<float>(width),
+	                            static_cast<float>(height),
+	                            0.0f, 1.0f,
+	                            static_cast<ut::uint32>(width),
+	                            static_cast<ut::uint32>(height)));
 	info.input_assembly_state = tools.cube->input_assembly;
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = true;
 	info.depth_stencil_state.depth_compare_op = compare::less;
 	info.rasterization_state.polygon_mode = RasterizationState::line;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.rasterization_state.line_width = 1.0f;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
 	return tools.device.CreatePipelineState(ut::Move(info), geometry_pass);
 }

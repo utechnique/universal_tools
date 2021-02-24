@@ -139,6 +139,13 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 		// do not render view if its viewport is inactive
 		view->is_active = mode.is_active;
 
+		// update mode
+		switch (mode.render_mode)
+		{
+			case ui::Viewport::render_mode_complete: view->mode = render::View::mode_complete; break;
+			case ui::Viewport::render_mode_diffuse: view->mode = render::View::mode_diffuse; break;
+		}
+
 		// update resolution
 		ut::uint32 desired_width = mode.width;
 		ut::uint32 desired_height = mode.height;

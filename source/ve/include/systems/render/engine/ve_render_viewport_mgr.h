@@ -32,13 +32,33 @@ public:
 	void OpenViewports(ui::Frontend& frontend);
 
 protected:
-	// Type of the container with ui viewport reference
-	// and all associated rendering resources.
-	typedef ut::Container<ui::PlatformViewport&,
-	                      Display,
-	                      RenderPass,
-	                      PipelineState,
-	                      ut::Array<Framebuffer> > ViewportContainer;
+	// Resources needed to render textured quads directly to the backbuffer.
+	struct Proxy
+	{
+		// Constructor.
+		Proxy(ui::PlatformViewport& in_ui_viewport,
+		      Display in_display,
+		      RenderPass in_quad_pass,
+		      PipelineState in_pipeline_state,
+		      PipelineState in_pipeline_rgb2srgb,
+		      PipelineState in_pipeline_srgb2rgb,
+		      ut::Array<Framebuffer> in_framebuffers);
+
+		// ui viewport widget
+		ui::PlatformViewport& ui_widget;
+
+		// render display
+		Display display;
+
+		// render pass rendering textured quads
+		RenderPass quad_pass;
+		PipelineState pipeline_state;
+		PipelineState pipeline_rgb2srgb;
+		PipelineState pipeline_srgb2rgb;
+
+		// framebuffers for a swapchain
+		ut::Array<Framebuffer> framebuffers;
+	};
 
 	// Synchronizes all viewport events. Must be called after previous frame is
 	// finished and before the next one starts.
@@ -54,10 +74,14 @@ protected:
 	void SetVerticalSynchronization(bool status);
 
 	// Array of viewports
-	ut::Array<ViewportContainer> viewports;
+	ut::Array<Proxy> viewports;
 
-	// shader rendering a quad to the backbuffer
-	ut::UniquePtr<BoundShader> display_quad_shader;
+	// shaders rendering a quad to the backbuffer
+	ut::Optional<Shader&> display_quad_vs, display_quad_ps;
+
+	// pixel shaders drawing a quad to the backbuffer
+	// with color space conversion.
+	ut::Optional<Shader&> display_quad_rgb2srgb_ps, display_quad_srgb2rgb_ps;
 
 private:
 	// Viewport tasks are executed once per frame in a special synchronization
@@ -70,8 +94,8 @@ private:
 	//    @param device - reference to the render device.
 	//    @param viewport - reference to the viewport.
 	//    @return - container with all render resources, or error if failed.
-	ut::Result<ViewportContainer, ut::Error> CreateDisplay(Device& device,
-	                                                       ui::PlatformViewport& viewport);
+	ut::Result<Proxy, ut::Error> CreateDisplay(Device& device,
+	                                           ui::PlatformViewport& viewport);
 
     // Resizes a display associated with provided viewport.
 	//    @param id - id of the viewport whose render display must be resized.
