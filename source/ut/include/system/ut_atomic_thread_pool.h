@@ -146,6 +146,12 @@ public:
 		}
 	}
 
+	// Returns the number of threads in this pool.
+	size_t GetThreadCount() const
+	{
+		return size;
+	}
+
 	// Creates a scheduler with custom combiner.
 	template<typename Combiner>
 	Scheduler<ReturnType, Combiner, pool_sync::atomic> CreateScheduler()
