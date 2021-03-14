@@ -2,7 +2,6 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/render/units/ve_render_view.h"
-#include "systems/render/engine/ve_pipeline_permutations.h"
 #include "systems/render/engine/lighting/ve_deferred_shading.h"
 #include "systems/render/engine/policy/ve_render_model_policy.h"
 
