@@ -41,7 +41,7 @@ ut::Result<Fxaa::ViewData, ut::Error> Fxaa::CreateViewData(RenderPass& postproce
 	                            static_cast<float>(height),
 	                            0.0f, 1.0f,
 	                            width, height));
-	info.input_assembly_state = tools.fullscreen_quad->input_assembly;
+	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->input_assembly;
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::never;
@@ -113,7 +113,7 @@ void Fxaa::Apply(Context& context,
 	context.BeginRenderPass(pass, fb, render_area, ut::Color<4>(0), 1.0f);
 	context.BindPipelineState(data.pipeline_state);
 	context.BindDescriptorSet(data.desc_set);
-	context.BindVertexBuffer(tools.fullscreen_quad->vertex_buffer, 0);
+	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
 	context.EndRenderPass();
 }

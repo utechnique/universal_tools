@@ -130,6 +130,20 @@ public:
 	//                    that will be used.
 	void BindVertexBuffer(Buffer& buffer, size_t offset);
 
+	// Binds vertex and instance buffers to the current context.
+	//    @param vertex_buffer - reference to the vertex buffer to be bound.
+	//    @param vertex_offset - number of bytes between the first element
+	//                           of a vertex buffer and the first element
+	//                           that will be used.
+	//    @param instance_buffer - reference to the instance buffer to be bound.
+	//    @param instance_offset - number of bytes between the first element
+	//                             of an instance buffer and the first element
+	//                             that will be used.
+	void BindVertexAndInstanceBuffer(Buffer& vertex_buffer,
+	                                 size_t vertex_offset,
+	                                 Buffer& instance_buffer,
+	                                 size_t instance_offset);
+
 	// Binds index buffer to the current context.
 	//    @param buffer - reference to the buffer to be bound.
 	//    @param offset - number of bytes between the first element
@@ -143,14 +157,39 @@ public:
 	//    @param first_vertex_id - index of the first vertex.
 	void Draw(ut::uint32 vertex_count, ut::uint32 first_vertex_id);
 
+	// Draw non-indexed, instanced primitives.
+	//    @param vertex_count - number of vertices to draw.
+	//    @param instance_count - number of instances to draw.
+	//    @param first_vertex_id - index of the first vertex.
+	//    @param first_instance_id - a value added to each index before reading
+	//                               per-instance data from a vertex buffer.
+	void DrawInstanced(ut::uint32 vertex_count,
+	                   ut::uint32 instance_count,
+	                   ut::uint32 first_vertex_id,
+	                   ut::uint32 first_instance_id);
+
 	// Draw indexed, non-instanced primitives.
 	//    @param index_count - number of vertices to draw.
 	//    @param first_index_id - the base index within the index buffer.
-	//    @param index_count - the value added to the vertex index before
-	//                         indexing into the vertex buffer.
+	//    @param vertex_offset - the value added to the vertex index before
+	//                           indexing into the vertex buffer.
 	void DrawIndexed(ut::uint32 index_count,
 	                 ut::uint32 first_index_id,
 	                 ut::int32 vertex_offset);
+
+	// Draw indexed, instanced primitives.
+	//    @param index_count - number of vertices to draw.
+	//    @param instance_count - number of instances to draw.
+	//    @param first_index_id - the base index within the index buffer.
+	//    @param vertex_offset - the value added to the vertex index before
+	//                           indexing into the vertex buffer.
+	//    @param first_instance_id - a value added to each index before reading
+	//                               per-instance data from a vertex buffer.
+	void DrawIndexedInstanced(ut::uint32 index_count,
+	                          ut::uint32 instance_count,
+	                          ut::uint32 first_index_id,
+	                          ut::int32 vertex_offset,
+	                          ut::uint32 first_instance_id);
 
 	// Returns Context::ClearColor object initialized with multiple colors.
 	static ut::Alternate<ColorArrayRef> ClearColors(ColorArrayRef color_array)

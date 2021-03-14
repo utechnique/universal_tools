@@ -429,6 +429,32 @@ void Context::BindVertexBuffer(Buffer& buffer, size_t offset)
 	d3d11_context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, &ui32_offset);
 }
 
+// Binds vertex and instance buffers to the current context.
+//    @param vertex_buffer - reference to the vertex buffer to be bound.
+//    @param vertex_offset - number of bytes between the first element
+//                           of a vertex buffer and the first element
+//                           that will be used.
+//    @param instance_buffer - reference to the instance buffer to be bound.
+//    @param instance_offset - number of bytes between the first element
+//                             of an instance buffer and the first element
+//                             that will be used.
+void Context::BindVertexAndInstanceBuffer(Buffer& vertex_buffer,
+                                          size_t vertex_offset,
+                                          Buffer& instance_buffer,
+                                          size_t instance_offset)
+{
+	ID3D11Buffer* vbuffer = vertex_buffer.d3d11_buffer.Get();
+	ID3D11Buffer* ibuffer = instance_buffer.d3d11_buffer.Get();
+	UINT vertex_stride = vertex_buffer.info.stride;
+	UINT ui32_vertex_offset = static_cast<UINT>(vertex_offset);
+	UINT ui32_instance_offset = static_cast<UINT>(instance_offset);
+
+	ID3D11Buffer* buffers[] = { vbuffer, ibuffer };
+	UINT stride[] = { vertex_buffer.info.stride, instance_buffer.info.stride };
+	UINT offset[] = { ui32_vertex_offset, ui32_instance_offset };
+	d3d11_context->IASetVertexBuffers(0, 2, buffers, stride, offset);
+}
+
 // Binds index buffer to the current context.
 //    @param buffer - reference to the buffer to be bound.
 //    @param offset - number of bytes between the first element
@@ -454,16 +480,54 @@ void Context::Draw(ut::uint32 vertex_count, ut::uint32 first_vertex_id)
 	d3d11_context->Draw(vertex_count, first_vertex_id);
 }
 
+// Draw non-indexed, instanced primitives.
+//    @param vertex_count - number of vertices to draw.
+//    @param instance_count - number of instances to draw.
+//    @param first_vertex_id - index of the first vertex.
+//    @param first_instance_id - a value added to each index before reading
+//                               per-instance data from a vertex buffer.
+void Context::DrawInstanced(ut::uint32 vertex_count,
+                            ut::uint32 instance_count,
+                            ut::uint32 first_vertex_id,
+                            ut::uint32 first_instance_id)
+{
+	d3d11_context->DrawInstanced(vertex_count,
+	                             instance_count,
+	                             first_vertex_id,
+	                             first_instance_id);
+}
+
 // Draw indexed, non-instanced primitives.
 //    @param index_count - number of vertices to draw.
 //    @param first_index_id - the base index within the index buffer.
-//    @param index_count - the value added to the vertex index before
-//                         indexing into the vertex buffer.
+//    @param vertex_offset - the value added to the vertex index before
+//                           indexing into the vertex buffer.
 void Context::DrawIndexed(ut::uint32 index_count,
                           ut::uint32 first_index_id,
                           ut::int32 vertex_offset)
 {
 	d3d11_context->DrawIndexed(index_count, first_index_id, vertex_offset);
+}
+
+// Draw indexed, instanced primitives.
+//    @param index_count - number of vertices to draw.
+//    @param instance_count - number of instances to draw.
+//    @param first_index_id - the base index within the index buffer.
+//    @param vertex_offset - the value added to the vertex index before
+//                           indexing into the vertex buffer.
+//    @param first_instance_id - a value added to each index before reading
+//                               per-instance data from a vertex buffer.
+void Context::DrawIndexedInstanced(ut::uint32 index_count,
+                                   ut::uint32 instance_count,
+                                   ut::uint32 first_index_id,
+                                   ut::int32 vertex_offset,
+                                   ut::uint32 first_instance_id)
+{
+	d3d11_context->DrawIndexedInstanced(index_count,
+	                                    instance_count,
+	                                    first_index_id,
+	                                    vertex_offset,
+	                                    first_instance_id);
 }
 
 // Toggles render target's state.

@@ -734,12 +734,20 @@ ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(con
 		vkGetPhysicalDeviceFeatures(devices[i], &features);
 
 		// check features
-		if (!features.geometryShader ||
-			!features.tessellationShader ||
-			!features.fillModeNonSolid ||
+		if (!features.fillModeNonSolid ||
 			!features.shaderImageGatherExtended)
 		{
 			continue;
+		}
+
+		if (features.geometryShader)
+		{
+			score += 1;
+		}
+
+		if (features.tessellationShader)
+		{
+			score += 1;
 		}
 
 		// it's better to use discrete gpu
@@ -902,10 +910,10 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 		throw ut::Error(ut::error::not_supported, "Vulkan: no suitable GPU.");
 	}
 
-	// extract gpu name
+	// extract gpu name, properties and features
 	gpu = preferred_gpu.Get();
-	VkPhysicalDeviceProperties gpu_properties;
 	vkGetPhysicalDeviceProperties(gpu, &gpu_properties);
+	vkGetPhysicalDeviceFeatures(gpu, &gpu_features);
 	ut::log.Lock() << "Vulkan: using " << gpu_properties.deviceName << " for rendering." << ut::cret;
 
 	// retrieve queue family properties
@@ -932,14 +940,6 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 	// get device extensions
 	ut::Array<const char*> extensions = GetDeviceVkInstanceExtensions();
 
-	// enumerate features to be enabled
-	VkPhysicalDeviceFeatures features;
-	ut::memory::Set(&features, 0, sizeof(VkPhysicalDeviceFeatures));
-	features.geometryShader = VK_TRUE;
-	features.tessellationShader = VK_TRUE;
-	features.fillModeNonSolid = VK_TRUE;
-	features.shaderImageGatherExtended = VK_TRUE;
-
 	// VkDeviceCreateInfo
 	VkDeviceCreateInfo device_info = {};
 	device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -950,7 +950,7 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 	device_info.ppEnabledExtensionNames = extensions.GetAddress();
 	device_info.enabledLayerCount = 0;
 	device_info.ppEnabledLayerNames = nullptr;
-	device_info.pEnabledFeatures = &features;
+	device_info.pEnabledFeatures = &gpu_features; // enable all features
 
 	// create device
 	VkDevice out_device;
@@ -1034,7 +1034,20 @@ VkAttachmentStoreOp ConvertStoreOpToVulkan(RenderTargetSlot::StoreOperation stor
 //----------------------------------------------------------------------------//
 // Constructor.
 Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : PlatformDevice()
-{}
+{
+	info.max_uniform_buffer_size = gpu_properties.limits.maxUniformBufferRange;
+	info.max_storage_buffer_size = gpu_properties.limits.maxStorageBufferRange;
+	info.max_1D_image_dimension = gpu_properties.limits.maxImageDimension1D;
+	info.max_2D_image_dimension = gpu_properties.limits.maxImageDimension2D;
+	info.max_3D_image_dimension = gpu_properties.limits.maxImageDimension3D;
+	info.max_cube_image_dimension = gpu_properties.limits.maxImageDimensionCube;
+	info.max_image_array_size = gpu_properties.limits.maxImageArrayLayers;
+	info.supports_geometry_shader = gpu_features.geometryShader == 0 ? false : true;
+	info.supports_tesselation_shader = gpu_features.tessellationShader == 0 ? false : true;
+	info.supports_wide_lines = gpu_features.wideLines == 0 ? false : true;
+	info.supports_async_rc_mapping = true;
+	info.supports_sv_instance_offset = true;
+}
 
 // Move constructor.
 Device::Device(Device&&) noexcept = default;
@@ -1981,7 +1994,7 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 		}
 
 		// initialize reference
-		depth_reference.attachment = 1;
+		depth_reference.attachment = static_cast<uint32_t>(color_references.GetNum());
 		depth_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	}
 
@@ -2316,34 +2329,49 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	VkVertexInputBindingDescription vertex_binding;
 	vertex_binding.binding = 0;
 	vertex_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	vertex_binding.stride = info.input_assembly_state.stride;
+	vertex_binding.stride = info.input_assembly_state.vertex_stride;
+
+	// instance binding
+	VkVertexInputBindingDescription instance_binding;
+	instance_binding.binding = 1;
+	instance_binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+	instance_binding.stride = info.input_assembly_state.instance_stride;
 
 	// vertex attributes
-	ut::Array<VkVertexInputAttributeDescription> vertex_attributes;
-	for (size_t i = 0; i < info.input_assembly_state.elements.GetNum(); i++)
+	const size_t vertex_element_count = info.input_assembly_state.elements.GetNum();
+	const size_t instance_element_count = info.input_assembly_state.instance_elements.GetNum();
+	const size_t input_element_count = vertex_element_count + instance_element_count;
+	ut::Array<VkVertexInputAttributeDescription> vertex_attributes(input_element_count);
+	for (size_t i = 0; i < vertex_element_count; i++)
 	{
 		VertexElement& element = info.input_assembly_state.elements[i];
-
-		VkVertexInputAttributeDescription attribute_desc;
+		VkVertexInputAttributeDescription& attribute_desc = vertex_attributes[i];
 		attribute_desc.binding = 0;
 		attribute_desc.location = static_cast<uint32_t>(i);
 		attribute_desc.format = ConvertPixelFormatToVulkan(element.format);
 		attribute_desc.offset = element.offset;
+	}
 
-		if (!vertex_attributes.Add(attribute_desc))
-		{
-			return ut::MakeError(ut::error::out_of_memory);
-		}
+	// per-instance elements
+	for (size_t i = vertex_element_count; i < input_element_count; i++)
+	{
+		VertexElement& element = info.input_assembly_state.instance_elements[i - vertex_element_count];
+		VkVertexInputAttributeDescription& attribute_desc = vertex_attributes[i];
+		attribute_desc.binding = 1;
+		attribute_desc.location = static_cast<uint32_t>(i);
+		attribute_desc.format = ConvertPixelFormatToVulkan(element.format);
+		attribute_desc.offset = element.offset;
 	}
 
 	// vertex input state
+	VkVertexInputBindingDescription input_bindings[] = { vertex_binding, instance_binding };
 	VkPipelineVertexInputStateCreateInfo vertex_input;
 	ut::memory::Set(&vertex_input, 0, sizeof(vertex_input));
 	vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertex_input.pNext = nullptr;
 	vertex_input.flags = 0;
-	vertex_input.vertexBindingDescriptionCount = 1;
-	vertex_input.pVertexBindingDescriptions = &vertex_binding;
+	vertex_input.vertexBindingDescriptionCount = instance_element_count == 0 ? 1 : 2;
+	vertex_input.pVertexBindingDescriptions = input_bindings;
 	vertex_input.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attributes.GetNum());
 	vertex_input.pVertexAttributeDescriptions = vertex_attributes.GetAddress();
 
@@ -2580,8 +2608,6 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	{
 		return ut::MakeError(VulkanError(res, "vkCreateGraphicsPipelines"));
 	}
-
-	// create descriptor pool
 
 	// success
 	PlatformPipelineState platform_pipeline_state(device.GetVkHandle(), pipeline, pipeline_layout, descriptor_set_layout);

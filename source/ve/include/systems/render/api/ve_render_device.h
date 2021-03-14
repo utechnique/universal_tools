@@ -29,6 +29,29 @@ public:
 	// Type of a special thread for rendering.
 	typedef DedicatedThread<Device> Thread;
 
+	// Information about the physical device limits and features.
+	struct Info
+	{
+		size_t max_uniform_buffer_size = 0;
+		size_t uniform_buffer_padding = 16;
+		size_t max_storage_buffer_size = 0;
+		ut::uint32 max_1D_image_dimension = 0;
+		ut::uint32 max_2D_image_dimension = 0;
+		ut::uint32 max_3D_image_dimension = 0;
+		ut::uint32 max_cube_image_dimension = 0;
+		ut::uint32 max_image_array_size = 0;
+		bool supports_geometry_shader = false;
+		bool supports_tesselation_shader = false;
+		bool supports_wide_lines = false;
+
+		// true if Context::MapBuffer() and Context::MapImage() are thread-safe
+		bool supports_async_rc_mapping = false;
+
+		// true if Context::DrawInstanced() and Context::DrawIndexInstanced()
+		// affect SV_InstanceID starting value
+		bool supports_sv_instance_offset = false;
+	};
+
 	// Constructor.
 	Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend);
 
@@ -146,6 +169,16 @@ public:
 	// Call this function to wait on the host for the completion of all
 	// queue operations for all queues on this device.
 	void WaitIdle();
+
+	// Returns a const reference to the object with
+	// information about this device.
+	const Info& GetInfo() const
+	{
+		return info;
+	}
+
+private:
+	Info info;
 };
 
 //----------------------------------------------------------------------------//

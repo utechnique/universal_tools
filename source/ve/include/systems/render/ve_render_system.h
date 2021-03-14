@@ -8,14 +8,16 @@
 #include "systems/ui/ve_ui.h"
 #include "engine/ve_render_engine.h"
 #include "components/ve_render_component.h"
+#include "components/ve_transform_component.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // ve::render::RenderSystem is a system responsible for drawing visible
 // components and displaying the result to user.
-class RenderSystem : public ComponentSystem<RenderComponent>
+class RenderSystem : public ComponentSystem<RenderComponent, TransformComponent>
 {
+	typedef ComponentSystem<RenderComponent, TransformComponent> Base;
 public:
 	// Constructor.
 	RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread,
@@ -30,8 +32,12 @@ public:
 	System::Result Update();
 
 private:
-	// Links render units with render engine and renders a new frame.
-	void ProcessFrame();
+	// Initializes a portion of units.
+	void InitializeUnitsJob(size_t first_entity_id, size_t entity_count);
+
+	// Updates the unit cache of the rendering engine, also calculates a
+	// transform matrix for every unit.
+	void InitializeUnits();
 
 	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
 	ut::SharedPtr<Device::Thread> render_thread;

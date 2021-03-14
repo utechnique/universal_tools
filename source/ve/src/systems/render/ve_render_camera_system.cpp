@@ -28,9 +28,9 @@ System::Result CameraSystem::Update()
 
 		// search for the view unit
 		const size_t unit_count = render.units.GetNum();
-		for (size_t i = 0; i < count; i++)
+		for (size_t j = 0; j < unit_count; j++)
 		{
-			ut::UniquePtr<Unit>& unit = render.units[i];
+			ut::UniquePtr<Unit>& unit = render.units[j];
 			if (unit->Identify().GetHandle() != ut::GetPolymorphicHandle<ve::render::View>())
 			{
 				continue;

@@ -8,6 +8,7 @@
 
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_unit_mgr.h"
+#include "systems/render/engine/lighting/ve_lighting_manager.h"
 #include "systems/render/engine/post_process/ve_post_process_mgr.h"
 
 //----------------------------------------------------------------------------//
@@ -28,30 +29,17 @@ public:
 	void RenderEnvironment(Context& context);
 
 private:
-	// Creates a render pass for rendering geometry to a g-buffer.
-	static ut::Result<RenderPass, ut::Error> CreateGeometryPass(Device& device);
-
-	// Creates shaders for rendering geometry to a g-buffer.
-	static BoundShader CreateGeometryPassShader(ShaderLoader& shader_loader);
-
-	// Creates pipeline for rendering geometry to a g-buffer.
-	ut::Result<PipelineState, ut::Error> CreateGeometryPassPipeline(ut::uint32 width,
-	                                                                ut::uint32 height);
-
 	// G-Buffer target format.
 	static constexpr pixel::Format skDepthFormat = pixel::d24_unorm_s8_uint;
 	static constexpr pixel::Format skGBufferFormat = pixel::r8g8b8a8_unorm;
-
-	// render resources
-	RenderPass geometry_pass;
-	BoundShader geometry_pass_shader;
 
 	// policy tools
 	Toolset& tools;
 	Policies& policies;
 	UnitSelector& selector;
 
-	// post-process manager applies post-process effects
+	// managers
+	lighting::Manager lighting_mgr;
 	postprocess::Manager post_process_mgr;
 };
 

@@ -7,6 +7,7 @@
 #include "systems/render/ve_render_api.h"
 #include "systems/render/ve_render_resource.h"
 #include "systems/render/engine/post_process/ve_post_process_view_data.h"
+#include "systems/render/engine/lighting/ve_lighting_view_data.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -21,6 +22,7 @@ public:
 	{
 		mode_complete,
 		mode_diffuse,
+		mode_normal,
 	};
 
 	// Explicitly declare defaulted constructors and move operator.
@@ -50,62 +52,40 @@ public:
 
 	bool is_active = true;
 
-	struct GBuffer
+	struct Uniforms
 	{
-		GBuffer(Target depth_target,
-		        Target diffuse_target,
-		        Target normal_target,
-		        Target material_target,
-		        Framebuffer geometry_fb) : depth(ut::Move(depth_target))
-		                                  , diffuse(ut::Move(diffuse_target))
-		                                  , normal(ut::Move(normal_target))
-		                                  , material(ut::Move(material_target))
-		                                  , framebuffer(ut::Move(geometry_fb))
-		{}
-
-		Target depth, diffuse, normal, material;
-		Framebuffer framebuffer;
-		
+		alignas(16) ut::Matrix<4, 4> view_proj;
 	};
 
 	struct FrameData
 	{
-		FrameData(GBuffer geometry_buffer,
-		          postprocess::ViewData post_process_data,
-		          Buffer view_uniform_buffer) : g_buffer(ut::Move(geometry_buffer))
-		                                      , post_process(ut::Move(post_process_data))
-		                                      , view_ub(ut::Move(view_uniform_buffer))                                            
+		FrameData(Buffer view_uniform_buffer,
+		          Target depth_stencil_buffer,
+		          lighting::ViewData lighting_data,
+		          postprocess::ViewData post_process_data) : uniform_buffer(ut::Move(view_uniform_buffer))
+		                                                   , depth_stencil(ut::Move(depth_stencil_buffer))
+		                                                   , lighting(ut::Move(lighting_data))
+		                                                   , post_process(ut::Move(post_process_data))                                           
 		{}
 
-		GBuffer g_buffer;
+		Buffer uniform_buffer;
+		Target depth_stencil;
+		lighting::ViewData lighting;
 		postprocess::ViewData post_process;
 		ut::Optional<Image&> final_img;
-
-		Buffer view_ub;
-
-		// descriptor set for quad shader
-		struct GeometryPassDescriptorSet : public DescriptorSet
-		{
-			GeometryPassDescriptorSet() : DescriptorSet(view_ub) {}
-			Descriptor view_ub = "g_ub_view";
-		} geometry_pass_desc_set;
-
-		struct ViewUB
-		{
-			alignas(16) ut::Matrix<4, 4> view_proj;
-		};
 	};
 
 	struct GpuData : public Resource
 	{
-		GpuData(ut::Array<FrameData> in_frames,
-		        PipelineState gbuffer_pipeline) : frames(ut::Move(in_frames))
-		                                        , geometry_pass_pipeline(ut::Move(gbuffer_pipeline))
+		GpuData(ut::Array<FrameData> in_frames) : frames(ut::Move(in_frames))
 		{}
 
-		ut::Array<FrameData> frames;
+		const ut::DynamicType& Identify() const override
+		{
+			return ut::Identify(this);
+		}
 
-		PipelineState geometry_pass_pipeline;
+		ut::Array<FrameData> frames;
 	};
 
 	RcRef<GpuData> data;

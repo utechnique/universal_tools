@@ -27,6 +27,12 @@ public:
 	// render device
 	Device& device;
 
+	// parallelizes cpu work
+	typedef ut::Scheduler<void, ut::DefaultCombiner<void>,
+	                      ut::pool_sync::cond_var> DefaultScheduler;
+	ut::ThreadPool<void, ut::pool_sync::cond_var> pool;
+	DefaultScheduler scheduler;
+
 	// tools
 	Config<Settings> config;
 	ResourceManager rc_mgr;
@@ -34,20 +40,6 @@ public:
 	ShaderLoader shader_loader;
 	SamplerCache sampler_cache;
 	FrameManager frame_mgr;
-
-	// a mesh representing a fullscreen quad, 2 triangles, 6 vertices
-	RcRef<Mesh> fullscreen_quad;
-
-	// primitives
-	RcRef<Mesh> cube;
-
-	// images
-	Image img_black;
-	Image img_white;
-	Image img_red;
-	Image img_green;
-	Image img_blue;
-	Image img_normal;
 
 	// common shaders
 	struct Shaders

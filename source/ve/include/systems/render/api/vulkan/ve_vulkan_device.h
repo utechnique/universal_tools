@@ -52,6 +52,10 @@ protected:
 	// physical device that is used for rendering
 	VkPhysicalDevice gpu;
 
+	// properties and features of the physical device
+	VkPhysicalDeviceProperties gpu_properties;
+	VkPhysicalDeviceFeatures gpu_features;
+
 	// queue families available on physical device
 	ut::Map<vulkan_queue::FamilyType, vulkan_queue::Family> queue_families;
 

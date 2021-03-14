@@ -185,7 +185,16 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 		return ut::MakeError(pipeline.MoveAlt());
 	}
 
+	// alpha blend disabled
+	info.blend_state.attachments.GetFirst() = BlendState::CreateNoBlending();
+	ut::Result<PipelineState, ut::Error> pipeline_no_alpha = device.CreatePipelineState(info, rp_result.Get());
+	if (!pipeline_no_alpha)
+	{
+		return ut::MakeError(pipeline_no_alpha.MoveAlt());
+	}
+
 	// pipeline with rgb->srgb conversion
+	info.blend_state.attachments.GetFirst() = BlendState::CreateAlphaBlending();
 	info.stages[Shader::pixel] = display_quad_rgb2srgb_ps.Get();
 	ut::Result<PipelineState, ut::Error> rgb2srgb_pipeline = device.CreatePipelineState(info, rp_result.Get());
 	if (!rgb2srgb_pipeline)
@@ -193,7 +202,16 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 		return ut::MakeError(rgb2srgb_pipeline.MoveAlt());
 	}
 
+	// rgb->srgb with alpha blend disabled
+	info.blend_state.attachments.GetFirst() = BlendState::CreateNoBlending();
+	ut::Result<PipelineState, ut::Error> rgb2srgb_pipeline_no_alpha = device.CreatePipelineState(info, rp_result.Get());
+	if (!rgb2srgb_pipeline_no_alpha)
+	{
+		return ut::MakeError(rgb2srgb_pipeline_no_alpha.MoveAlt());
+	}
+
 	// pipeline with srgb->rgb conversion
+	info.blend_state.attachments.GetFirst() = BlendState::CreateAlphaBlending();
 	info.stages[Shader::pixel] = display_quad_srgb2rgb_ps.Get();
 	ut::Result<PipelineState, ut::Error> srgb2rgb_pipeline = device.CreatePipelineState(info, rp_result.Get());
 	if (!srgb2rgb_pipeline)
@@ -201,13 +219,24 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 		return ut::MakeError(srgb2rgb_pipeline.MoveAlt());
 	}
 
+	// srgb->rgb with alpha blend disabled
+	info.blend_state.attachments.GetFirst() = BlendState::CreateNoBlending();
+	ut::Result<PipelineState, ut::Error> srgb2rgb_pipeline_no_alpha = device.CreatePipelineState(info, rp_result.Get());
+	if (!srgb2rgb_pipeline_no_alpha)
+	{
+		return ut::MakeError(srgb2rgb_pipeline_no_alpha.MoveAlt());
+	}
+
 	// success
 	return Proxy(viewport,
 	             display_result.Move(),
 	             rp_result.Move(),
 	             pipeline.Move(),
+	             pipeline_no_alpha.Move(),
 	             rgb2srgb_pipeline.Move(),
+	             rgb2srgb_pipeline_no_alpha.Move(),
 	             srgb2rgb_pipeline.Move(),
+	             srgb2rgb_pipeline_no_alpha.Move(),
 	             ut::Move(framebuffers));
 }
 
@@ -327,14 +356,20 @@ ViewportManager::Proxy::Proxy(ui::PlatformViewport& in_ui_viewport,
                               Display in_display,
                               RenderPass in_quad_pass,
                               PipelineState in_pipeline_state,
+                              PipelineState in_pipeline_state_no_alpha,
                               PipelineState in_pipeline_rgb2srgb,
+                              PipelineState in_pipeline_rgb2srgb_no_alpha,
                               PipelineState in_pipeline_srgb2rgb,
+                              PipelineState in_pipeline_srgb2rgb_no_alpha,
                               ut::Array<Framebuffer> in_framebuffers) : ui_widget(in_ui_viewport)
                                                                       , display(ut::Move(in_display))
                                                                       , quad_pass(ut::Move(in_quad_pass))
                                                                       , pipeline_state(ut::Move(in_pipeline_state))
+                                                                      , pipeline_state_no_alpha(ut::Move(in_pipeline_state_no_alpha))
                                                                       , pipeline_rgb2srgb(ut::Move(in_pipeline_rgb2srgb))
+                                                                      , pipeline_rgb2srgb_no_alpha(ut::Move(in_pipeline_rgb2srgb_no_alpha))
                                                                       , pipeline_srgb2rgb(ut::Move(in_pipeline_srgb2rgb))
+                                                                      , pipeline_srgb2rgb_no_alpha(ut::Move(in_pipeline_srgb2rgb_no_alpha))
                                                                       , framebuffers(ut::Move(in_framebuffers))
 {}
 

@@ -18,7 +18,8 @@ namespace vertex_traits
 		texcoord,
 		normal,
 		tangent,
-		displacement,
+		bone_weight,
+		bone_id,
 		component_count
 	};
 
@@ -51,16 +52,23 @@ namespace vertex_traits
 		static const char* GetName() { return "TANGENT"; }
 	};
 
-	template<typename S, int d> struct Component<displacement, S, d>
+	template<typename S, int d> struct Component<bone_weight, S, d>
 	{
-		ut::Vector<d, S> displacement;
-		static const char* GetName() { return "DISPLACEMENT"; }
+		ut::Vector<d, S> bone_weight;
+		static const char* GetName() { return "WEIGHTS"; }
+	};
+
+	template<typename S, int d> struct Component<bone_id, S, d>
+	{
+		ut::Vector<d, S> bone_id;
+		static const char* GetName() { return "BONES"; }
 	};
 
 	template<typename S, int d>
 	pixel::Format GenerateFormat()
 	{
 		static_assert(sizeof(S) != 0, "Unsupported vertex vector component format.");
+		return pixel::unknown;
 	}
 
 	template<> inline pixel::Format GenerateFormat<ut::int32, 1>() { return pixel::r32_sint; }
@@ -120,11 +128,12 @@ namespace vertex_traits
 
 //----------------------------------------------------------------------------//
 // Universal vertex type that contains actual vertex type (Vertex<>::Type) and
-template<typename PositionType     = void, int position_dim     = 0,
-         typename TexcoordType     = void, int texcoord_dim     = 0,
-         typename NormalType       = void, int normal_dim       = 0,
-         typename TangentType      = void, int tangent_dim      = 0,
-         typename DisplacementType = void, int displacement_dim = 0>
+template<typename PositionType = void, int position_dim = 0,
+         typename TexcoordType = void, int texcoord_dim = 0,
+         typename NormalType   = void, int normal_dim   = 0,
+         typename TangentType  = void, int tangent_dim  = 0,
+         typename WeightsType  = void, int weights_dim  = 0,
+         typename BonesType    = void, int bones_dim    = 0>
 struct Vertex
 {
 	// vector trait wrapper
@@ -153,9 +162,10 @@ struct Vertex
 		VectorTrait<vertex_traits::texcoord, TexcoordType, texcoord_dim>,
 		VectorTrait<vertex_traits::normal, NormalType, normal_dim>,
 		VectorTrait<vertex_traits::tangent, TangentType, tangent_dim>,
-		VectorTrait<vertex_traits::displacement, DisplacementType, displacement_dim>
+		VectorTrait<vertex_traits::bone_weight, WeightsType, weights_dim>,
+		VectorTrait<vertex_traits::bone_id, BonesType, bones_dim>
 	> Traits;
-	static_assert(Traits::size == vertex_traits::component_count,
+	static_assert(static_cast<ut::uint32>(Traits::size) == static_cast<ut::uint32>(vertex_traits::component_count),
 		"All components from ve::render::vertex_traits enumerations must be "
 		"included in ve::render::Vertex::Traits container.");
 
@@ -348,7 +358,7 @@ public:
 	{
 		ut::byte* out = static_cast<ut::byte*>(buffer);
 		return Component(component_map[component],
-		                 out + vertex_id * input_assembly.stride);
+		                 out + vertex_id * input_assembly.vertex_stride);
 	}
 
 private:

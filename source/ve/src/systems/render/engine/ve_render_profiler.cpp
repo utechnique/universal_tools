@@ -93,7 +93,7 @@ void Profiler::DrawInfo(Context& context, Frame& frame, ut::uint32 display_width
 // Each symbol represents a quad of two triangles, 6 vertices per symbol.
 Buffer Profiler::CreateTextBuffer()
 {
-	const ut::uint32 stride = display_input_assembly.stride;
+	const ut::uint32 stride = display_input_assembly.vertex_stride;
 
 	Buffer::Info buffer_info;
 	buffer_info.type = Buffer::vertex;

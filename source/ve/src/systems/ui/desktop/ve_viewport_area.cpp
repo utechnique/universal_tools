@@ -50,11 +50,12 @@ static const char* skResolutionTypeNames[skResolutionTypeCount] =
 };
 
 // Render mode variants.
-static const ut::uint32 skRenderModeCount = 2;
+static const ut::uint32 skRenderModeCount = 3;
 static const char* skRenderModeNames[skRenderModeCount] =
 {
 	"Complete",
 	"G-Buffer (Diffuse)",
+	"G-Buffer (Normal)",
 };
 
 //----------------------------------------------------------------------------//
@@ -663,14 +664,20 @@ ut::Optional<ut::Error> ViewportArea::ResizeViewports(const ut::Array< ut::Rect<
 		return ut::Error(ut::error::out_of_bounds);
 	}
 
+	const size_t visible_viewports = tab->layouts[GetCurrentLayoutId()]->arrangement.GetNum();
+
 	for (size_t i = 0; i < skMaxViewports; i++)
 	{
 		ViewportBox& box = viewport_boxes[i].GetRef();
 		Viewport& viewport = viewport_boxes[i]->GetViewport();
 		const ut::Rect<ut::uint32>& rect = viewport_rects[i];
 
-		box.resize(rect.offset.X(),
-		           rect.offset.Y(),
+		// viewport must be shifted beyond the parent widget
+		// to remove dummy resize areas
+		const bool shift_out = i < visible_viewports;
+
+		box.resize(rect.offset.X() + (shift_out ? 0 : w()),
+		           rect.offset.Y() + (shift_out ? 0 : h()),
 		           rect.extent.X(),
 		           rect.extent.Y());
 	}
@@ -709,7 +716,7 @@ void ViewportArea::SetViewportRenderModes(const ut::Array<ut::uint32>& render_mo
 
 		if (mode.has_input_focus)
 		{
-			tab->proj_choice->value(static_cast<int>(mode.render_mode));
+			tab->render_mode_choice->value(static_cast<int>(mode.render_mode));
 		}
 	}
 }
@@ -740,10 +747,18 @@ void ViewportArea::ChangeLayout(size_t layout_id)
 		// hide inactive viewports
 		if (i >= active_vp_count)
 		{
+			// hide viewport widget
+			box.hide();
+
+			// viewport must be shifted beyond the parent widget
+			// to remove dummy resize areas
+			box.resize(w(), h(), box.w(), box.h());
+
+			// deactivate viewport
 			mode.is_active = false;
 			mode.has_input_focus = false;
-			box.hide();
 			viewport.SetMode(mode);
+
 			continue;
 		}
 

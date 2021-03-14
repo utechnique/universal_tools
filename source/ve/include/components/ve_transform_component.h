@@ -26,6 +26,9 @@ public:
 	const ut::DynamicType& Identify() const;
 	void Reflect(ut::meta::Snapshot& snapshot);
 
+	// Returns a 4x4 matrix representation.
+	ut::Matrix<4, 4> ToMatrix() const;
+
 	ut::Vector<3> scale = ut::Vector<3>(1, 1, 1);
 	ut::Vector<3> translation = ut::Vector<3>(0, 0, 0);
 	ut::Quaternion<float> rotation;

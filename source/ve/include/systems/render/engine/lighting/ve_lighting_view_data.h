@@ -1,26 +1,36 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/units/ve_render_view.h"
+#pragma once
 //----------------------------------------------------------------------------//
-UT_REGISTER_TYPE(ve::render::Unit, ve::render::View, "render_view")
-UT_REGISTER_TYPE(ve::render::Resource, ve::render::View::GpuData, "view")
+#include "ve_deferred_shading.h"
+
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
+START_NAMESPACE(lighting)
 //----------------------------------------------------------------------------//
-const ut::DynamicType& View::Identify() const
+// ve::render::lighting::ViewData encapsulates render targets, uniform
+// buffers, pipelines and other resources needed to apply lighting techniques.
+class ViewData
 {
-	return ut::Identify(this);
-}
+public:
+	// Constructor.
+	ViewData(DeferredShading::ViewData in_deferred_shading);
 
-void View::Reflect(ut::meta::Snapshot& snapshot)
-{
-	snapshot.Add(view_matrix, "view");
-	snapshot.Add(proj_matrix, "projection");
-}
+	// Move constructor and operator.
+	ViewData(ViewData&&) = default;
+	ViewData& operator =(ViewData&&) = default;
+
+	// Copying is prohibited.
+	ViewData(const ViewData&) = delete;
+	ViewData& operator =(const ViewData&) = delete;
+
+	DeferredShading::ViewData deferred_shading;
+};
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(lighting)
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//

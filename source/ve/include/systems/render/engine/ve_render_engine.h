@@ -22,16 +22,23 @@ public:
 	// Constructor.
 	Engine(Device& render_device, ViewportManager viewport_mgr);
 
-	// Resets all previously added unit links.
-	void UnlinkUnits();
+	// Includes provided units to the rendering scene.
+	void RegisterEntity(Entity::Id id,
+	                    ut::Array< ut::UniquePtr<Unit> >& units);
 
-	// Adds references to the provided units, these units will participate
-	// in the rendering process.
-	void LinkUnits(ut::Array< ut::UniquePtr<Unit> >& units);
+	// Excludes units of the specified entity from the rendering scene.
+	void UnregisterEntity(Entity::Id id);
+
+	// Initializes a unit with the correct policy.
+	void InitializeUnit(Unit& unit);
 
 	// Renders the whole environment to the internal images and presents
 	// the result to user.
 	void ProcessNextFrame();
+	
+	// Returns a reference to the rendering thread pool, 
+	// use it to parallelize cpu work.
+	ut::ThreadPool<void, ut::pool_sync::cond_var>& GetThreadPool();
 
 private:
 	// Function for recording all commands needed to draw current frame.
@@ -49,6 +56,10 @@ private:
 	// Executes viewport tasks (resize, close, etc.) in a safe manner.
 	void ProcessViewportEvents();
 
+	// Calculates world transform matrix for the specified units.
+	void UpdateUnitsTransform(ut::Array< ut::UniquePtr<Unit> >& units,
+	                          const ut::Matrix<4, 4>& entity_transform);
+
 	// render device
 	Device& device;
 
@@ -60,9 +71,6 @@ private:
 
 	// measures performance
 	Profiler profiler;
-
-	// test
-	ut::UniquePtr<Image> img_2d;
 };
 
 //----------------------------------------------------------------------------//

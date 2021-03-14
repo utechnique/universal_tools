@@ -42,6 +42,7 @@ public:
 	{
 		render_mode_complete,
 		render_mode_diffuse,
+		render_mode_normal
 	};
 
 	// Mode describes how this viewport interacts with user and how

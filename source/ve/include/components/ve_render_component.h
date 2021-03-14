@@ -28,6 +28,10 @@ public:
 
 	// Render units.
 	ut::Array< ut::UniquePtr<render::Unit> > units;
+
+	// This cache is used to track if unit array has changed
+	// since the previous frame.
+	ut::Array<render::Unit*> cache;
 };
 
 //----------------------------------------------------------------------------//

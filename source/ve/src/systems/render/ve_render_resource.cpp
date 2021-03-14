@@ -8,10 +8,12 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-ReferencedResource::ReferencedResource(ut::UniquePtr<Resource> unique_rc,
+ReferencedResource::ReferencedResource(ResourceManager& rc_mgr,
+                                       ut::UniquePtr<Resource> unique_rc,
                                        Resource::Id rc_id,
-                                       ResourceManager& rc_mgr) : ptr(ut::Move(unique_rc))
-                                                                , ref_counter(ut::MakeShared<Counter>(rc_mgr, rc_id))
+                                       ut::Optional<ut::String> rc_name) : ptr(ut::Move(unique_rc))
+                                                                         , ref_counter(ut::MakeShared<Counter>(rc_mgr, rc_id))
+                                                                         , name(ut::Move(rc_name))
 {}
 
 // Counter constructor.

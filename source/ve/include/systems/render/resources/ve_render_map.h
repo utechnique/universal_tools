@@ -1,30 +1,24 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/engine/policy/ve_render_model_policy.h"
+#pragma once
+//----------------------------------------------------------------------------//
+#include "systems/render/ve_render_resource.h"
+#include "systems/render/ve_render_api.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Constructor.
-Policy<Model>::Policy(Toolset &toolset,
-                      UnitSelector& unit_selector,
-                      Policies& engine_policies) : tools(toolset)
-                                                 , batcher(toolset)
-{}
-
-
-// Initializes a provided model unit.
-void Policy<Model>::Initialize(Model& model)
+// Represents an image as a render resource.
+class Map : public Image, public Resource
 {
-	// load mesh
-	ut::Result<RcRef<Mesh>, ut::Error> mesh = tools.rc_mgr.Find<Mesh>(model.name);
-	if (!mesh)
-	{
-		throw ut::Error(ut::error::not_found);
-	}
-	model.mesh = mesh.Move();
-}
+public:
+	// Constructor.
+	Map(Image in_img);
+
+	// Identify() method must be implemented for the polymorphic types.
+	const ut::DynamicType& Identify() const override;
+};
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

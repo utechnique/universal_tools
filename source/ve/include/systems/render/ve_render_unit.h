@@ -30,10 +30,23 @@ public:
 	// next frame.
 	void Invalidate();
 
+	// Returns true if this unit was fully initialized by the render engine and
+	// can parcitipate in rendering.
+	bool IsInitialized() const
+	{
+		return initialized;
+	}
+
+	// Local transform in the entity-space.
+	ut::Matrix<4, 4> local_trasform = ut::Matrix<4, 4>::MakeIdentity();
+
+	// Don't use, for internal use only.
+	ut::Matrix<4, 4> world_trasform;
+
 private:
-	// Every unit is created with "initialized" member set to false, and only
-	// a ve::render::UnitManager object can modify it by calling Initialize()
-	// method of the corresponding policy.
+	// Every unit is created with "initialized" member set to 'false', and only
+	// a ve::render::UnitManager object can set it to 'true' by calling
+	// Initialize() method of the corresponding policy.
 	bool initialized = false;
 };
 
@@ -46,7 +59,8 @@ private:
 //                                                  3 ve::render::Policies&
 //
 //    2) "void Initialize(Unit& unit)" member function where "Unit" is a type
-//        of the specialized unit.
+//        of the specialized unit. Note that this function must be thread-safe
+//        and it can be called from the outside of the rendering thread.
 template<class UnitType> struct Policy;
 
 //----------------------------------------------------------------------------//

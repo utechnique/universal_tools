@@ -46,10 +46,12 @@ private:
 	//    @param camera - reference to the camera component.
 	//    @param render - reference to the render component.
 	//    @param mode - const reference to the mode of the associated viewport.
+	//    @param viewport_id - id of the viewport associated with the camera.
 	void UpdateCamera(TransformComponent& transform,
 	                  CameraComponent& camera,
 	                  RenderComponent& render,
-	                  const ui::Viewport::Mode& mode);
+	                  const ui::Viewport::Mode& mode,
+	                  ui::Viewport::Id viewport_id);
 
 	// Updates transform component of the perspective camera.
 	//    @param transform - reference to the transform component.

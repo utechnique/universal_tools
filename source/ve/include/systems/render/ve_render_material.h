@@ -1,30 +1,33 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/engine/policy/ve_render_model_policy.h"
+#pragma once
+//----------------------------------------------------------------------------//
+#include "systems/render/ve_render_resource.h"
+#include "systems/render/resources/ve_render_map.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Constructor.
-Policy<Model>::Policy(Toolset &toolset,
-                      UnitSelector& unit_selector,
-                      Policies& engine_policies) : tools(toolset)
-                                                 , batcher(toolset)
-{}
-
-
-// Initializes a provided model unit.
-void Policy<Model>::Initialize(Model& model)
+// A Material is a collection of assets and options that can be applied to a
+// mesh to control its visual look.
+class Material
 {
-	// load mesh
-	ut::Result<RcRef<Mesh>, ut::Error> mesh = tools.rc_mgr.Find<Mesh>(model.name);
-	if (!mesh)
+public:
+	enum Alpha
 	{
-		throw ut::Error(ut::error::not_found);
-	}
-	model.mesh = mesh.Move();
-}
+		alpha_opaque,
+		alpha_test,
+		alpha_transparent,
+	};
+
+	RcRef<Map> diffuse;
+	RcRef<Map> normal;
+	RcRef<Map> material;
+
+	Alpha alpha = alpha_opaque;
+	bool double_sided = false;
+};
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

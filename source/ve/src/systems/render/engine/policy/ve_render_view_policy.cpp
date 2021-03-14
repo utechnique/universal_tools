@@ -12,8 +12,7 @@ Policy<View>::Policy(Toolset &toolset,
                      Policies& engine_policies) : tools(toolset)
                                                 , selector(unit_selector)
                                                 , policies(engine_policies)
-                                                , geometry_pass(CreateGeometryPass(toolset.device).MoveOrThrow())
-                                                , geometry_pass_shader(CreateGeometryPassShader(toolset.shader_loader))
+                                                , lighting_mgr(toolset)
                                                 , post_process_mgr(toolset)
 {}
 
@@ -24,6 +23,18 @@ void Policy<View>::Initialize(View& view)
 	ut::Array<View::FrameData> frames;
 	for (ut::uint32 i = 0; i < tools.config.frames_in_flight; i++)
 	{
+		// create view uniform buffer
+		Buffer::Info buffer_info;
+		buffer_info.type = Buffer::uniform;
+		buffer_info.usage = render::memory::gpu_read_cpu_write;
+		buffer_info.size = sizeof(View::Uniforms);
+		ut::Result<Buffer, ut::Error> view_ub = tools.device.CreateBuffer(ut::Move(buffer_info));
+		if (!view_ub)
+		{
+			throw ut::Error(view_ub.MoveAlt());
+		}
+
+		// depth stencil
 		Target::Info info;
 		info.type = Image::type_2D;
 		info.format = skDepthFormat;
@@ -32,59 +43,19 @@ void Policy<View>::Initialize(View& view)
 		info.width = view.width;
 		info.height = view.height;
 		info.depth = 1;
-		ut::Result<Target, ut::Error> depth = tools.device.CreateTarget(info);
-		if (!depth)
+		ut::Result<Target, ut::Error> depth_stencil = tools.device.CreateTarget(info);
+		if (!depth_stencil)
 		{
-			throw ut::Error(depth.MoveAlt());
+			throw ut::Error(depth_stencil.MoveAlt());
 		}
 
-		info.format = skGBufferFormat;
-		info.usage = Target::Info::usage_color;
-		ut::Result<Target, ut::Error> diffuse = tools.device.CreateTarget(info);
-		if (!diffuse)
+		// lighting
+		ut::Result<lighting::ViewData, ut::Error> lighting_data = lighting_mgr.CreateViewData(depth_stencil.Get(),
+		                                                                                      view.width,
+		                                                                                      view.height);
+		if (!lighting_data)
 		{
-			throw ut::Error(diffuse.MoveAlt());
-		}
-
-		ut::Result<Target, ut::Error> normal = tools.device.CreateTarget(info);
-		if (!normal)
-		{
-			throw ut::Error(normal.MoveAlt());
-		}
-
-		ut::Result<Target, ut::Error> material = tools.device.CreateTarget(info);
-		if (!material)
-		{
-			throw ut::Error(material.MoveAlt());
-		}
-
-		ut::Array< ut::Ref<Target> > color_targets;
-		color_targets.Add(diffuse.Get());
-
-		// create framebuffer
-		ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(geometry_pass,
-		                                                                                ut::Move(color_targets),
-		                                                                                depth.Get());
-		if (!framebuffer)
-		{
-			throw ut::Error(framebuffer.MoveAlt());
-		}
-
-		View::GBuffer g_buffer(depth.Move(),
-		                       diffuse.Move(),
-		                       normal.Move(),
-		                       material.Move(),
-		                       framebuffer.Move());
-
-		// create view uniform buffer
-		Buffer::Info buffer_info;
-		buffer_info.type = Buffer::uniform;
-		buffer_info.usage = render::memory::gpu_read_cpu_write;
-		buffer_info.size = sizeof(View::FrameData::ViewUB);
-		ut::Result<Buffer, ut::Error> view_ub = tools.device.CreateBuffer(ut::Move(buffer_info));
-		if (!view_ub)
-		{
-			throw ut::Error(view_ub.MoveAlt());
+			throw ut::Error(lighting_data.MoveAlt());
 		}
 
 		// post-process
@@ -96,48 +67,19 @@ void Policy<View>::Initialize(View& view)
 			throw ut::Error(post_process_data.MoveAlt());
 		}
 
-		// final target
-		info.format = view.format;
-		info.usage = Target::Info::usage_color;
-		ut::Result<Target, ut::Error> final = tools.device.CreateTarget(info);
-		if (!final)
-		{
-			throw ut::Error(final.MoveAlt());
-		}
-
-		// final framebuffer
-		color_targets.Empty();
-		color_targets.Add(final.Get());
-		ut::Result<Framebuffer, ut::Error> final_framebuffer = tools.device.CreateFramebuffer(post_process_data->pass,
-		                                                                                      ut::Move(color_targets));
-		if (!final_framebuffer)
-		{
-			throw ut::Error(final_framebuffer.MoveAlt());
-		}
-
-		View::FrameData frame_data(ut::Move(g_buffer),
-		                           post_process_data.Move(),
-		                           view_ub.Move());
-		frame_data.geometry_pass_desc_set.Connect(geometry_pass_shader);
-
+		// add frame
+		View::FrameData frame_data(view_ub.Move(),
+		                           depth_stencil.Move(),
+		                           lighting_data.Move(),
+		                           post_process_data.Move());
 		if (!frames.Add(ut::Move(frame_data)))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
 	}
 
-	// pipeline state
-	ut::Result<PipelineState, ut::Error> pipeline = CreateGeometryPassPipeline(view.width, view.height);
-	if (!pipeline)
-	{
-		throw ut::Error(pipeline.MoveAlt());
-	}
-
-	View::GpuData gpu_data(ut::Move(frames), pipeline.Move());
-
+	View::GpuData gpu_data(ut::Move(frames));
 	view.data = tools.rc_mgr.AddResource(ut::Move(gpu_data));
-
-	view.data.Get();
 }
 
 //----------------------------------------------------------------------------->
@@ -145,8 +87,9 @@ void Policy<View>::Initialize(View& view)
 void Policy<View>::RenderEnvironment(Context& context)
 {
 	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
-
+	Policy<Model>& model_policy = policies.Get<Model>();
 	ut::Array< ut::Ref<View> >& views = selector.Get<View>();
+
 	const size_t view_count = views.GetNum();
 	for (size_t i = 0; i < view_count; i++)
 	{
@@ -164,94 +107,38 @@ void Policy<View>::RenderEnvironment(Context& context)
 			continue;
 		}
 
-		RcRef<Mesh>& mesh = tools.cube;
+		// calculate view-projection matrix
+		const ut::Matrix<4, 4> view_proj = view.view_matrix * view.proj_matrix;
 
 		// update view uniform buffer
-		View::FrameData::ViewUB view_ub;
-		view_ub.view_proj = view.view_matrix * view.proj_matrix;
-		tools.rc_mgr.UpdateBuffer(context, frame.view_ub, &view_ub);
+		View::Uniforms view_uniforms;
+		view_uniforms.view_proj = view_proj;
+		tools.rc_mgr.UpdateBuffer(context, frame.uniform_buffer, &view_uniforms);
 
-		// set uniforms
-		frame.geometry_pass_desc_set.view_ub.BindUniformBuffer(frame.view_ub);
+		// bake deferred shading data
+		lighting_mgr.deferred_shading.BakeModels(context,
+		                                         frame.lighting.deferred_shading,
+		                                         frame.uniform_buffer,
+		                                         model_policy.batcher);
+		context.SetTargetState(frame.lighting.deferred_shading.framebuffer, Target::Info::state_resource);
 
-		ut::Rect<ut::uint32> render_area(0, 0, view.width, view.height);
-		context.BeginRenderPass(geometry_pass, frame.g_buffer.framebuffer, render_area, ut::Color<4>(0.11f, 0.11f, 0.11f, 1.0f), 1.0f);
-		context.BindPipelineState(view.data->geometry_pass_pipeline);
-		context.BindDescriptorSet(frame.geometry_pass_desc_set);
-		context.BindVertexBuffer(mesh->vertex_buffer, 0);
-
-		if (mesh->index_buffer)
-		{
-			context.BindIndexBuffer(mesh->index_buffer.Get(), 0, mesh->index_type);
-			context.DrawIndexed(mesh->face_count * Mesh::skPolygonVertices, 0, 0);
-		}
-		else
-		{
-			context.Draw(mesh->vertex_count, 0);
-		}
-		
-		context.EndRenderPass();
-
-		context.SetTargetState(frame.g_buffer.framebuffer, Target::Info::state_resource);
 
 		if (view.mode == View::mode_diffuse)
 		{
-			frame.final_img = frame.g_buffer.diffuse.GetImage();
+			frame.final_img = frame.lighting.deferred_shading.diffuse.GetImage();
+			continue;
+		}
+		else if (view.mode == View::mode_normal)
+		{
+			frame.final_img = frame.lighting.deferred_shading.normal.GetImage();
 			continue;
 		}
 
 		// postprocess
 		frame.final_img = post_process_mgr.ApplyEffects(context,
 		                                                frame.post_process,
-		                                                frame.g_buffer.diffuse.GetImage());
+		                                                frame.lighting.deferred_shading.diffuse.GetImage());
 	}
-}
-
-//----------------------------------------------------------------------------->
-// Creates a render pass for a g-buffer.
-ut::Result<RenderPass, ut::Error> Policy<View>::CreateGeometryPass(Device& device)
-{
-	RenderTargetSlot depth_slot(skDepthFormat, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
-	RenderTargetSlot color_slot(skGBufferFormat, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
-
-	ut::Array<RenderTargetSlot> color_slots;
-	color_slots.Add(color_slot);
-
-	return device.CreateRenderPass(ut::Move(color_slots), depth_slot);
-}
-
-//----------------------------------------------------------------------------->
-// Creates shaders for rendering geometry to a g-buffer.
-BoundShader Policy<View>::CreateGeometryPassShader(ShaderLoader& shader_loader)
-{
-	ut::Result<Shader, ut::Error> vs = shader_loader.Load(Shader::vertex, "geometry_pass_vs", "VS", "geometry_pass.hlsl");
-	ut::Result<Shader, ut::Error> ps = shader_loader.Load(Shader::pixel, "geometry_pass_ps", "PS", "geometry_pass.hlsl");
-	return BoundShader(vs.MoveOrThrow(), ps.MoveOrThrow());
-}
-
-//----------------------------------------------------------------------------->
-// Creates pipeline for rendering geometry to a g-buffer.
-ut::Result<PipelineState, ut::Error> Policy<View>::CreateGeometryPassPipeline(ut::uint32 width,
-                                                                              ut::uint32 height)
-{
-	PipelineState::Info info;
-	info.stages[Shader::vertex] = geometry_pass_shader.stages[Shader::vertex].Get();
-	info.stages[Shader::pixel] = geometry_pass_shader.stages[Shader::pixel].Get();
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            static_cast<ut::uint32>(width),
-	                            static_cast<ut::uint32>(height)));
-	info.input_assembly_state = tools.cube->input_assembly;
-	info.depth_stencil_state.depth_test_enable = true;
-	info.depth_stencil_state.depth_write_enable = true;
-	info.depth_stencil_state.depth_compare_op = compare::less;
-	info.rasterization_state.polygon_mode = RasterizationState::line;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
-	info.rasterization_state.line_width = 1.0f;
-	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
-	return tools.device.CreatePipelineState(ut::Move(info), geometry_pass);
 }
 
 //----------------------------------------------------------------------------//

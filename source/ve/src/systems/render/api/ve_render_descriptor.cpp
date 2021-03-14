@@ -257,7 +257,7 @@ void DescriptorSet::Validate()
 			const ut::Optional<Descriptor::Binding>& b1 = d1.GetBinding();
 			const ut::Optional<Descriptor::Binding>& b2 = d2.GetBinding();
 
-			if (!b1 && !b2)
+			if (!b1 || !b2)
 			{
 				continue;
 			}

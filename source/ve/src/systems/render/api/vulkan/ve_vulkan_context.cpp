@@ -345,6 +345,25 @@ void Context::BindVertexBuffer(Buffer& buffer, size_t offset)
 	vkCmdBindVertexBuffers(cmd_buffer.GetVkHandle(), 0, 1, vertex_buffers, offsets);
 }
 
+// Binds vertex and instance buffers to the current context.
+//    @param vertex_buffer - reference to the vertex buffer to be bound.
+//    @param vertex_offset - number of bytes between the first element
+//                           of a vertex buffer and the first element
+//                           that will be used.
+//    @param instance_buffer - reference to the instance buffer to be bound.
+//    @param instance_offset - number of bytes between the first element
+//                             of an instance buffer and the first element
+//                             that will be used.
+void Context::BindVertexAndInstanceBuffer(Buffer& vertex_buffer,
+                                          size_t vertex_offset,
+                                          Buffer& instance_buffer,
+                                          size_t instance_offset)
+{
+	VkBuffer buffers[] = { vertex_buffer.GetVkHandle(), instance_buffer.GetVkHandle() };
+	VkDeviceSize offsets[] = { vertex_offset, instance_offset };
+	vkCmdBindVertexBuffers(cmd_buffer.GetVkHandle(), 0, 2, buffers, offsets);
+}
+
 // Binds index buffer to the current context.
 //    @param buffer - reference to the buffer to be bound.
 //    @param offset - number of bytes between the first element
@@ -371,11 +390,29 @@ void Context::Draw(ut::uint32 vertex_count, ut::uint32 first_vertex_id)
 	vkCmdDraw(cmd_buffer.GetVkHandle(), vertex_count, 1, first_vertex_id, 0);
 }
 
+// Draw non-indexed, instanced primitives.
+//    @param vertex_count - number of vertices to draw.
+//    @param instance_count - number of instances to draw.
+//    @param first_vertex_id - index of the first vertex.
+//    @param first_instance_id - a value added to each index before reading
+//                               per-instance data from a vertex buffer.
+void Context::DrawInstanced(ut::uint32 vertex_count,
+                            ut::uint32 instance_count,
+                            ut::uint32 first_vertex_id,
+                            ut::uint32 first_instance_id)
+{
+	vkCmdDraw(cmd_buffer.GetVkHandle(),
+	          vertex_count,
+	          instance_count,
+	          first_vertex_id,
+	          first_instance_id);
+}
+
 // Draw indexed, non-instanced primitives.
 //    @param index_count - number of vertices to draw.
 //    @param first_index_id - the base index within the index buffer.
-//    @param index_count - the value added to the vertex index before
-//                         indexing into the vertex buffer.
+//    @param vertex_offset - the value added to the vertex index before
+//                           indexing into the vertex buffer.
 void Context::DrawIndexed(ut::uint32 index_count,
                           ut::uint32 first_index_id,
                           ut::int32 vertex_offset)
@@ -386,6 +423,28 @@ void Context::DrawIndexed(ut::uint32 index_count,
 	                 first_index_id,
 	                 vertex_offset,
 	                 0);
+}
+
+// Draw indexed, instanced primitives.
+//    @param index_count - number of vertices to draw.
+//    @param instance_count - number of instances to draw.
+//    @param first_index_id - the base index within the index buffer.
+//    @param vertex_offset - the value added to the vertex index before
+//                           indexing into the vertex buffer.
+//    @param first_instance_id - a value added to each index before reading
+//                               per-instance data from a vertex buffer.
+void Context::DrawIndexedInstanced(ut::uint32 index_count,
+                                   ut::uint32 instance_count,
+                                   ut::uint32 first_index_id,
+                                   ut::int32 vertex_offset,
+                                   ut::uint32 first_instance_id)
+{
+	vkCmdDrawIndexed(cmd_buffer.GetVkHandle(),
+	                 index_count,
+	                 instance_count,
+	                 first_index_id,
+	                 vertex_offset,
+	                 first_instance_id);
 }
 
 //----------------------------------------------------------------------------//

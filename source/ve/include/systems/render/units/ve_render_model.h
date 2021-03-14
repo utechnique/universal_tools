@@ -26,7 +26,41 @@ public:
 	const ut::DynamicType& Identify() const;
 	void Reflect(ut::meta::Snapshot& snapshot);
 
-	ut::Array< RcRef<Mesh> > lods;
+	RcRef<Mesh> mesh;
+	ut::String name;
+
+	ut::Color<3> diffuse_add = ut::Color<3>(0);
+	ut::Color<3> diffuse_mul = ut::Color<3>(1);
+	ut::Color<3> material_add = ut::Color<3>(0);
+	ut::Color<3> material_mul = ut::Color<3>(1);
+
+	// It makes sense to store shader uniforms in one big buffer instead of
+	// many small. It saves time on updating buffers.
+	struct Batch
+	{
+		Buffer transform;
+		Buffer material;
+	};
+
+	struct DrawCall
+	{
+		Model& model;
+		Entity::Id entity_id;
+		ut::uint32 subset_id;
+	};
+
+	struct TransformBuffer
+	{
+		ut::Matrix<4, 4> transform;
+	};
+
+	struct MaterialBuffer
+	{
+		ut::Vector<4> diffuse_add;
+		ut::Vector<4> diffuse_mul;
+		ut::Vector<4> material_add;
+		ut::Vector<4> material_mul;
+	};
 };
 
 //----------------------------------------------------------------------------//

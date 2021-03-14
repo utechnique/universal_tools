@@ -74,7 +74,7 @@ ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(ui::Vie
 		FreeCameraControllerComponent& controller = set.Get<FreeCameraControllerComponent>();
 
 		// update camera properties that are not affected by user input
-		UpdateCamera(transform, camera, render, mode);
+		UpdateCamera(transform, camera, render, mode, viewport_id);
 
 		// update camera position and direction
 		if (mode.has_input_focus)
@@ -115,10 +115,12 @@ ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(ui::Vie
 //    @param camera - reference to the camera component.
 //    @param render - reference to the render component.
 //    @param mode - const reference to the mode of the associated viewport.
+//    @param viewport_id - id of the viewport associated with the camera.
 void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
                                         CameraComponent& camera,
                                         RenderComponent& render,
-                                        const ui::Viewport::Mode& mode)
+                                        const ui::Viewport::Mode& mode,
+                                        ui::Viewport::Id viewport_id)
 {
 	// find render view
 	ut::Optional<render::View&> view;
@@ -133,45 +135,51 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 		}
 	}
 
-	// update render view unit
-	if (view)
+	// re-create view unit if it was somehow removed
+	if (!view)
 	{
-		// do not render view if its viewport is inactive
-		view->is_active = mode.is_active;
+		render::View render_view;
+		render_view.viewport_id = viewport_id;
+		render.units.Add(ut::MakeUnique<render::View>(ut::Move(render_view)));
+		view = static_cast<render::View&>(render.units.GetLast().GetRef());
+	}
 
-		// update mode
-		switch (mode.render_mode)
-		{
-			case ui::Viewport::render_mode_complete: view->mode = render::View::mode_complete; break;
-			case ui::Viewport::render_mode_diffuse: view->mode = render::View::mode_diffuse; break;
-		}
+	// do not render view if its viewport is inactive
+	view->is_active = mode.is_active;
 
-		// update resolution
-		ut::uint32 desired_width = mode.width;
-		ut::uint32 desired_height = mode.height;
+	// update mode
+	switch (mode.render_mode)
+	{
+		case ui::Viewport::render_mode_complete: view->mode = render::View::mode_complete; break;
+		case ui::Viewport::render_mode_diffuse: view->mode = render::View::mode_diffuse; break;
+		case ui::Viewport::render_mode_normal: view->mode = render::View::mode_normal; break;
+	}
 
-		switch (mode.resolution)
-		{
-		case ui::Viewport::resolution_4k:
-			desired_width = 3840;
-			desired_height = 2160;
-			break;
-		case ui::Viewport::resolution_full_hd:
-			desired_width = 1920;
-			desired_height = 1080;
-			break;
-		case ui::Viewport::resolution_hd:
-			desired_width = 1280;
-			desired_height = 720;
-			break;
-		}
+	// update resolution
+	ut::uint32 desired_width = mode.width;
+	ut::uint32 desired_height = mode.height;
 
-		if (view->width != desired_width || view->height != desired_height)
-		{
-			view->width = desired_width;
-			view->height = desired_height;
-			view->Invalidate();
-		}
+	switch (mode.resolution)
+	{
+	case ui::Viewport::resolution_4k:
+		desired_width = 3840;
+		desired_height = 2160;
+		break;
+	case ui::Viewport::resolution_full_hd:
+		desired_width = 1920;
+		desired_height = 1080;
+		break;
+	case ui::Viewport::resolution_hd:
+		desired_width = 1280;
+		desired_height = 720;
+		break;
+	}
+
+	if (view->width != desired_width || view->height != desired_height)
+	{
+		view->width = desired_width;
+		view->height = desired_height;
+		view->Invalidate();
 	}
 
 	// update aspect ration

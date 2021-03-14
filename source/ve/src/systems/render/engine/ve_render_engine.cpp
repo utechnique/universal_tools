@@ -22,13 +22,6 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	display_quad_rgb2srgb_ps = tools.shaders.img_quad_rgb2srgb_ps;
 	display_quad_srgb2rgb_ps = tools.shaders.img_quad_srgb2rgb_ps;
 
-	// 2d image
-	ImageLoader::Info img_info_2d;
-	img_info_2d.srgb = true;
-	img_info_2d.high_quality_mips = false;
-	ut::Result<Image, ut::Error> img2d_result = tools.img_loader.Load("maps/lazb.jpg", img_info_2d);
-	img_2d = ut::MakeUnique<Image>(img2d_result.MoveOrThrow());
-
 	// initialize per-frame data
 	ut::Optional<ut::Error> frames_error = tools.frame_mgr.AllocateFrames(tools.config.frames_in_flight,
 	                                                                      display_quad_ps.Get());
@@ -41,18 +34,34 @@ Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportMa
 	tools.shader_loader.SaveCache();
 }
 
-// Resets all previously added unit links.
-void Engine::UnlinkUnits()
+// Includes provided units to the rendering scene.
+void Engine::RegisterEntity(Entity::Id id,
+                            ut::Array< ut::UniquePtr<Unit> >& units)
 {
-	unit_mgr.selector.Reset();
+	unit_mgr.selector.Select(id, units);
+
+	// model units must be registered separately
+	Policy<Model>& model_policy = unit_mgr.policies.Get<Model>();
+	model_policy.batcher.Register(id, units);
 }
 
-// Adds references to the provided units, these units will participate
-// in the rendering process.
-void Engine::LinkUnits(ut::Array< ut::UniquePtr<Unit> >& units)
+// Excludes units of the specified entity from the rendering scene.
+void Engine::UnregisterEntity(Entity::Id id)
 {
-	unit_mgr.selector.Select(units);
-	unit_mgr.InitializeUnits();
+	unit_mgr.selector.Remove(id);
+
+	// model units must be unregistered separately
+	Policy<Model>& model_policy = unit_mgr.policies.Get<Model>();
+	model_policy.batcher.Unregister(id);
+}
+
+// Initializes a unit with the correct policy.
+void Engine::InitializeUnit(Unit& unit)
+{
+	if (!unit.IsInitialized())
+	{
+		unit_mgr.InitializeUnit(unit);
+	}
 }
 
 // Renders the whole environment to the internal images and presents
@@ -101,9 +110,20 @@ void Engine::ProcessNextFrame()
 	tools.frame_mgr.SwapFrames();
 }
 
+// Returns a reference to the rendering thread pool, 
+// use it to parallelize cpu work.
+ut::ThreadPool<void, ut::pool_sync::cond_var>& Engine::GetThreadPool()
+{
+	return tools.pool;
+}
+
 // Function for recording all commands needed to draw current frame.
 void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports)
 {
+	// generate global transform buffer for all model units
+	Policy<Model>& model_policy = unit_mgr.policies.Get<Model>();
+	model_policy.batcher.UpdateBuffers(context);
+
 	// render environment to view units
 	Policy<View>& view_policy = unit_mgr.policies.Get<View>();
 	view_policy.RenderEnvironment(context);
@@ -135,7 +155,7 @@ void Engine::DisplayToUser(Context& context, ut::Array< ut::Ref<ViewportManager:
 
 		// display to user
 		DisplayImage(context,
-		             image ? image.Get() : tools.img_black,
+		             image ? image.Get() : tools.rc_mgr.img_black.Get(),
 		             active_viewports[i],
 		             ui_viewport_widget.GetId() == 0);
 	}
@@ -172,13 +192,13 @@ void Engine::DisplayImage(Context& context,
 	const bool needs_srgb2rgb = !dst_is_srgb && src_is_srgb;
 
 	// choose pipeline state according to the color space conversion type
-	PipelineState& pipeline_state = needs_rgb2srgb ? viewport.pipeline_rgb2srgb :
-		                            needs_srgb2rgb ? viewport.pipeline_srgb2rgb :
-	                                viewport.pipeline_state;
+	PipelineState& pipeline_state = needs_rgb2srgb ? viewport.pipeline_rgb2srgb_no_alpha :
+		                            needs_srgb2rgb ? viewport.pipeline_srgb2rgb_no_alpha :
+	                                viewport.pipeline_state_no_alpha;
 
 	// set shader resources
 	frame.quad_desc_set.ub.BindUniformBuffer(frame.display_quad_ub);
-	frame.quad_desc_set.sampler.BindSampler(tools.sampler_cache.linear_clamp);
+	frame.quad_desc_set.sampler.BindSampler(tools.sampler_cache.point_clamp);
 	frame.quad_desc_set.tex2d.BindImage(image);
 
 	// draw quad
@@ -186,12 +206,13 @@ void Engine::DisplayImage(Context& context,
 	context.BeginRenderPass(viewport.quad_pass, framebuffer, render_area, frame.clear_color);
 	context.BindPipelineState(pipeline_state);
 	context.BindDescriptorSet(frame.quad_desc_set);
-	context.BindVertexBuffer(tools.fullscreen_quad->vertex_buffer, 0);
+	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
 
 	// draw profiler info
 	if (display_profiler)
 	{
+		context.BindPipelineState(viewport.pipeline_state);
 		profiler.DrawInfo(context, frame, fb_info.width, fb_info.height);
 	}
 
@@ -213,6 +234,17 @@ void Engine::ProcessViewportEvents()
 
 		// viewport tasks can now be executed safely
 		ExecuteViewportTasks();
+	}
+}
+
+// Calculates world transform matrix for the specified units.
+void Engine::UpdateUnitsTransform(ut::Array< ut::UniquePtr<Unit> >& units,
+                                  const ut::Matrix<4, 4>& entity_transform)
+{
+	const size_t unit_count = units.GetNum();
+	for (size_t i = 0; i < unit_count; i++)
+	{
+		units[i]->world_trasform = entity_transform * units[i]->local_trasform;
 	}
 }
 

@@ -40,8 +40,11 @@ protected:
 		      Display in_display,
 		      RenderPass in_quad_pass,
 		      PipelineState in_pipeline_state,
+		      PipelineState in_pipeline_state_no_alpha,
 		      PipelineState in_pipeline_rgb2srgb,
+		      PipelineState in_pipeline_rgb2srgb_no_alpha,
 		      PipelineState in_pipeline_srgb2rgb,
+		      PipelineState in_pipeline_srgb2rgb_no_alpha,
 		      ut::Array<Framebuffer> in_framebuffers);
 
 		// ui viewport widget
@@ -52,9 +55,9 @@ protected:
 
 		// render pass rendering textured quads
 		RenderPass quad_pass;
-		PipelineState pipeline_state;
-		PipelineState pipeline_rgb2srgb;
-		PipelineState pipeline_srgb2rgb;
+		PipelineState pipeline_state, pipeline_state_no_alpha;
+		PipelineState pipeline_rgb2srgb, pipeline_rgb2srgb_no_alpha;
+		PipelineState pipeline_srgb2rgb, pipeline_srgb2rgb_no_alpha;
 
 		// framebuffers for a swapchain
 		ut::Array<Framebuffer> framebuffers;

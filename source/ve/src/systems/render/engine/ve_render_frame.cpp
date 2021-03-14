@@ -26,7 +26,7 @@ InputAssemblyState Frame::CreateInputAssemblyState()
 	InputAssemblyState input_assembly;
 	input_assembly.topology = primitive::triangle_list;
 	input_assembly.elements = QuadVertex::CreateLayout();
-	input_assembly.stride = QuadVertex::size;
+	input_assembly.vertex_stride = QuadVertex::size;
 	return input_assembly;
 }
 

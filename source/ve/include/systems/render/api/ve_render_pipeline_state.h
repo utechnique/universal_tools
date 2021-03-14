@@ -24,10 +24,16 @@ public:
 	primitive::Topology topology;
 
 	// stride (in bytes) to the next primitive
-	ut::uint32 stride;
+	ut::uint32 vertex_stride;
+
+	// stride (in bytes) to the next instance
+	ut::uint32 instance_stride;
 
 	// elements a primitive's vertex consists of
 	ut::Array<VertexElement> elements;
+
+	// per-instance elements
+	ut::Array<VertexElement> instance_elements;
 };
 
 //----------------------------------------------------------------------------//

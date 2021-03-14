@@ -1,32 +1,18 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/engine/policy/ve_render_model_policy.h"
+#include "systems/render/engine/lighting/ve_lighting_view_data.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
+START_NAMESPACE(lighting)
 //----------------------------------------------------------------------------//
 // Constructor.
-Policy<Model>::Policy(Toolset &toolset,
-                      UnitSelector& unit_selector,
-                      Policies& engine_policies) : tools(toolset)
-                                                 , batcher(toolset)
+ViewData::ViewData(DeferredShading::ViewData in_deferred_shading) : deferred_shading(ut::Move(in_deferred_shading))
 {}
 
-
-// Initializes a provided model unit.
-void Policy<Model>::Initialize(Model& model)
-{
-	// load mesh
-	ut::Result<RcRef<Mesh>, ut::Error> mesh = tools.rc_mgr.Find<Mesh>(model.name);
-	if (!mesh)
-	{
-		throw ut::Error(ut::error::not_found);
-	}
-	model.mesh = mesh.Move();
-}
-
 //----------------------------------------------------------------------------//
+END_NAMESPACE(lighting)
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//

@@ -12,6 +12,20 @@ START_NAMESPACE(render)
 class ResourceManager;
 
 //----------------------------------------------------------------------------//
+// Path to the internal engine resources.
+namespace engine_rc
+{
+	static const char* skDir = "*engine/";
+	static const char* skBox = "box";
+	static const char* skBlack = "black";
+	static const char* skWhite = "white";
+	static const char* skRed = "red";
+	static const char* skGreen = "green";
+	static const char* skBlue = "blue";
+	static const char* skNormal = "normal";
+}
+
+//----------------------------------------------------------------------------//
 // ve::render::Resource is a class encapsulating gpu data that can be created,
 // modified or deleted only from the render thread by it's resource manager.
 // Such resources are very delicate and have very special lifecycle due to
@@ -19,7 +33,7 @@ class ResourceManager;
 // thread, the only valid way to use it - create an empty ve::render::RcRef
 // reference to the resource in a render unit and wait till render engine
 // initializes it using appropriate unit policy template.
-class Resource
+class Resource : public ut::Polymorphic
 {
 public:
 	// Type of the unique resource identifier.
@@ -40,6 +54,10 @@ public:
 
 	// Polymorphic classes must have virtual destructor.
 	virtual ~Resource() = default;
+
+	// All resources must be dynamically identifiable. Don't forget to register
+	// resource classes via UT_REGISTER_TYPE macro.
+	virtual const ut::DynamicType& Identify() const = 0;
 };
 
 //----------------------------------------------------------------------------//
@@ -75,9 +93,10 @@ class ReferencedResource
 
 public:
 	// Constructor.
-	ReferencedResource(ut::UniquePtr<Resource> unique_rc,
+	ReferencedResource(ResourceManager& rc_mgr,
+	                   ut::UniquePtr<Resource> unique_rc,
 	                   Resource::Id rc_id,
-	                   ResourceManager& rc_mgr);
+	                   ut::Optional<ut::String> rc_name = ut::Optional<ut::String>());
 
 private:
 
@@ -86,6 +105,9 @@ private:
 
 	// Reference counter.
 	ut::SharedPtr<Counter> ref_counter;
+
+	// Unique name of the resource.
+	ut::Optional<ut::String> name;
 };
 
 

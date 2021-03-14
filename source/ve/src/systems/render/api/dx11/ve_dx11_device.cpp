@@ -225,7 +225,20 @@ ut::Optional<ut::Error> PlatformDevice::ExtractBackBufferTextureAndView(IDXGISwa
 //----------------------------------------------------------------------------//
 // Constructor.
 Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : PlatformDevice(CreateDX11Device())
-{}
+{
+	info.max_uniform_buffer_size = 65536;
+	info.max_storage_buffer_size = 268435456;
+	info.max_1D_image_dimension = 16384;
+	info.max_2D_image_dimension = 16384;
+	info.max_3D_image_dimension = 16384;
+	info.max_cube_image_dimension = 16384;
+	info.max_image_array_size = 2048;
+	info.supports_geometry_shader = true;
+	info.supports_tesselation_shader = true;
+	info.supports_wide_lines = false;
+	info.supports_async_rc_mapping = false;
+	info.supports_sv_instance_offset = false;
+}
 
 // Move constructor.
 Device::Device(Device&&) noexcept = default;
@@ -797,7 +810,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	buffer_desc.MiscFlags = 0;
 
 	// allignment for uniform buffers
-	if (info.type == Buffer::uniform)
+	if (info.type == Buffer::uniform && (buffer_desc.ByteWidth % 16 != 0))
 	{
 		buffer_desc.ByteWidth += (16 - buffer_desc.ByteWidth % 16);
 	}
@@ -998,10 +1011,12 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	ID3D11RasterizerState* rasterizer_state = nullptr;
 	ID3D11DepthStencilState* depthstencil_state = nullptr;
 
-	// descriptors of dx11 input layout elements
-	const UINT input_element_count = static_cast<UINT>(info.input_assembly_state.elements.GetNum());
+	// descriptors of dx11 input layout per-vertex elements
+	const UINT vertex_element_count = static_cast<UINT>(info.input_assembly_state.elements.GetNum());
+	const UINT instance_element_count = static_cast<UINT>(info.input_assembly_state.instance_elements.GetNum());
+	UINT input_element_count = vertex_element_count + instance_element_count;
 	ut::Array<D3D11_INPUT_ELEMENT_DESC> input_el_desc(input_element_count);
-	for (UINT i = 0; i < input_element_count; i++)
+	for (UINT i = 0; i < vertex_element_count; i++)
 	{
 		VertexElement& element = info.input_assembly_state.elements[i];
 
@@ -1013,6 +1028,21 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		desc.AlignedByteOffset = element.offset;
 		desc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 		desc.InstanceDataStepRate = 0;
+	}
+
+	// per-instance elements
+	for (UINT i = vertex_element_count; i < input_element_count; i++)
+	{
+		VertexElement& element = info.input_assembly_state.instance_elements[i - vertex_element_count];
+
+		D3D11_INPUT_ELEMENT_DESC& desc = input_el_desc[i];
+		desc.SemanticName = element.semantic_name;
+		desc.SemanticIndex = 0;
+		desc.Format = ConvertPixelFormatToDX11(element.format);
+		desc.InputSlot = 1;
+		desc.AlignedByteOffset = element.offset;
+		desc.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA;
+		desc.InstanceDataStepRate = 1;
 	}
 
 	// create dx11 input layout

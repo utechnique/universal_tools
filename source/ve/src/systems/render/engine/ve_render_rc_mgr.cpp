@@ -9,11 +9,17 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 ResourceManager::ResourceManager(Device& device_ref,
-                                 const Config<Settings>& cfg) noexcept : device(device_ref)
-                                                                       , frame_counter(0)
-                                                                       , frames_in_flight(cfg.frames_in_flight)
-                                                                       , garbage(cfg.frames_in_flight)
-{}
+                                 const Config<Settings>& cfg) : device(device_ref)
+                                                              , frame_counter(0)
+                                                              , frames_in_flight(cfg.frames_in_flight)
+                                                              , garbage(cfg.frames_in_flight)
+{
+	ut::Optional<ut::Error> engine_rc_error = CreateEngineResources();
+	if (engine_rc_error)
+	{
+		throw ut::Error(engine_rc_error.Move());
+	}
+}
 
 //----------------------------------------------------------------------------->
 // Updates buffer contents with provided data. Can be used as a convenient
@@ -45,7 +51,8 @@ ut::Optional<ut::Error> ResourceManager::UpdateBuffer(Context& context,
 ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateRect(const ut::Vector<2>& position,
                                                                const ut::Vector<2>& extent)
 {
-	typedef Vertex<float, 2, float, 2> QuadVertex;
+	constexpr Mesh::VertexFormat vertex_format = Mesh::vertex_pos2_texcoord2_float;
+	typedef MeshVertex<vertex_format>::Type QuadVertex;
 
 	Buffer::Info buffer_info;
 	buffer_info.type = Buffer::vertex;
@@ -73,25 +80,25 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateRect(const ut::Vector<
 	{
 		return ut::MakeError(vertex_buffer.MoveAlt());
 	}
-	
-	InputAssemblyState primitive_info;
-	primitive_info.topology = primitive::triangle_list;
-	primitive_info.stride = QuadVertex::size;
-	primitive_info.elements = QuadVertex::CreateLayout();
 
-	return AddResource<Mesh>(Mesh(2, 6,
-	                              vertex_buffer.Move(),
-	                              ut::Optional<Buffer>(),
-	                              index_type_uint32,
-	                              ut::Move(primitive_info)));
+	Mesh mesh(2, 6,
+	          vertex_buffer.Move(),
+	          ut::Optional<Buffer>(),
+	          index_type_uint32,
+	          vertex_format,
+	          ut::Array<Mesh::Subset>());
+
+	return AddResource<Mesh>(ut::Move(mesh));
 }
 
 //----------------------------------------------------------------------------->
 // Creates a mesh representing a box.
 ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateBox(const ut::Vector<3>& position,
-                                                              const ut::Vector<3>& extent)
+                                                              const ut::Vector<3>& extent,
+                                                              ut::Optional<ut::String> name)
 {
-	typedef Vertex<float, 3, float, 2, float, 3, float, 3> CubeVertex;
+	constexpr Mesh::VertexFormat vertex_format = Mesh::vertex_pos3_texcoord2_normal3_tangent3_float;
+	typedef MeshVertex<vertex_format>::Type CubeVertex;
 
 	constexpr ut::uint32 vertex_count = 24;
 	constexpr ut::uint32 face_count = 12;
@@ -181,23 +188,35 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateBox(const ut::Vector<3
 		return ut::MakeError(index_buffer.MoveAlt());
 	}
 
-	InputAssemblyState primitive_info;
-	primitive_info.topology = primitive::triangle_list;
-	primitive_info.stride = CubeVertex::size;
-	primitive_info.elements = CubeVertex::CreateLayout();
+	ut::Result<Material, ut::Error> default_material = CreateDefaultMaterial();
+	if (!default_material)
+	{
+		return ut::MakeError(default_material.MoveAlt());
+	}
 
-	return AddResource<Mesh>(Mesh(face_count, vertex_count,
-	                              vertex_buffer.Move(),
-	                              index_buffer.Move(),
-	                              index_type_uint32,
-	                              ut::Move(primitive_info)));
+	ut::Array<Mesh::Subset> subsets;
+	Mesh::Subset subset;
+	subset.index_offset = 0;
+	subset.index_count = face_count * Mesh::skPolygonVertices;
+	subset.material = default_material.Move();
+	subsets.Add(ut::Move(subset));
+
+	Mesh mesh(face_count, vertex_count,
+	          vertex_buffer.Move(),
+	          index_buffer.Move(),
+	          index_type_uint32,
+	          vertex_format,
+	          ut::Move(subsets));
+
+	return AddResource<Mesh>(ut::Move(mesh), ut::Move(name));
 }
 
 //----------------------------------------------------------------------------->
 // Creates an image filled with solid color.
-ut::Result<Image, ut::Error> ResourceManager::CreateImage(ut::uint32 width,
-                                                          ut::uint32 height,
-                                                          const ut::Color<4, ut::byte>& color)
+ut::Result<RcRef<Map>, ut::Error> ResourceManager::CreateImage(ut::uint32 width,
+                                                               ut::uint32 height,
+                                                               const ut::Color<4, ut::byte>& color,
+                                                               ut::Optional<ut::String> name)
 {
 	Image::Info img_info;
 	img_info.type = Image::type_2D;
@@ -216,7 +235,14 @@ ut::Result<Image, ut::Error> ResourceManager::CreateImage(ut::uint32 width,
 			pixels[i * img_info.width + j] = color;
 		}
 	}
-	return device.CreateImage(ut::Move(img_info));
+
+	ut::Result<Image, ut::Error> image = device.CreateImage(ut::Move(img_info));
+	if (!image)
+	{
+		return ut::MakeError(image.MoveAlt());
+	}
+
+	return AddResource<Map>(Map(image.Move()), name);
 }
 
 //----------------------------------------------------------------------------->
@@ -232,6 +258,12 @@ void ResourceManager::DeleteResource(Resource::Id id)
 	if (!resource)
 	{
 		return;
+	}
+
+	// remove name entry
+	if (resource->name)
+	{
+		names.Remove(resource->name.Get());
 	}
 
 	// move the resource to the deletion queue, also note that
@@ -264,6 +296,119 @@ void ResourceManager::Update()
 
 	// delete unused resources
 	garbage[frame_counter].Empty();
+}
+
+//----------------------------------------------------------------------------->
+// Creates a default material (white, roughness is 1, albedo is 0)
+ut::Result<Material, ut::Error> ResourceManager::CreateDefaultMaterial()
+{
+	const ut::String engine_rc_dir(engine_rc::skDir);
+	ut::Result<RcRef<Map>, ut::Error> diffuse_map = Find<Map>(engine_rc_dir + engine_rc::skWhite);
+	if (!diffuse_map)
+	{
+		return ut::MakeError(diffuse_map.MoveAlt());
+	}
+
+	ut::Result<RcRef<Map>, ut::Error> normal_map = Find<Map>(engine_rc_dir + engine_rc::skNormal);
+	if (!normal_map)
+	{
+		return ut::MakeError(normal_map.MoveAlt());
+	}
+
+	ut::Result<RcRef<Map>, ut::Error> material_map = Find<Map>(engine_rc_dir + engine_rc::skRed);
+	if (!material_map)
+	{
+		return ut::MakeError(material_map.MoveAlt());
+	}
+
+	Material material;
+	material.diffuse = diffuse_map.Move();
+	material.normal = normal_map.Move();
+	material.material = material_map.Move();
+	material.alpha = Material::alpha_opaque;
+	material.double_sided = false;
+
+	return material;
+}
+
+//----------------------------------------------------------------------------->
+// Creates internal engine resources (primitives, common 1x1 textures, etc.)
+ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
+{
+	const ut::String engine_rc_dir(engine_rc::skDir);
+
+	// fullscreen rect
+	ut::Result<RcRef<Mesh>, ut::Error> mesh = CreateRect(ut::Vector<2>(0), ut::Vector<2>(1));
+	if (!mesh)
+	{
+		return mesh.MoveAlt();
+	}
+	fullscreen_quad = mesh.Move();
+
+	// 1x1 black image
+	ut::Result<RcRef<Map>, ut::Error> map = CreateImage(1, 1, ut::Color<4, ut::byte>(0, 0, 0, 255),
+	                                                    engine_rc_dir + engine_rc::skBlack);
+	if (!map)
+	{
+		return map.MoveAlt();
+	}
+	img_black = map.Move();
+
+	// 1x1 white image
+	map = CreateImage(1, 1, ut::Color<4, ut::byte>(255, 255, 255, 255),
+	                  engine_rc_dir + engine_rc::skWhite);
+	if (!map)
+	{
+		return map.MoveAlt();
+	}
+	img_white = map.Move();
+
+	// 1x1 red image
+	map = CreateImage(1, 1, ut::Color<4, ut::byte>(255, 0, 0, 255),
+	                  engine_rc_dir + engine_rc::skRed);
+	if (!map)
+	{
+		return map.MoveAlt();
+	}
+	img_red = map.Move();
+
+	// 1x1 green image
+	map = CreateImage(1, 1, ut::Color<4, ut::byte>(0, 255, 0, 255),
+	                  engine_rc_dir + engine_rc::skGreen);
+	if (!map)
+	{
+		return map.MoveAlt();
+	}
+	img_green = map.Move();
+
+	// 1x1 blue image
+	map = CreateImage(1, 1, ut::Color<4, ut::byte>(0, 0, 255, 255),
+	                  engine_rc_dir + engine_rc::skBlue);
+	if (!map)
+	{
+		return map.MoveAlt();
+	}
+	img_blue = map.Move();
+
+	// 1x1 normal map
+	map = CreateImage(1, 1, ut::Color<4, ut::byte>(127, 127, 255, 255),
+	                  engine_rc_dir + engine_rc::skNormal);
+	if (!map)
+	{
+		return map.MoveAlt();
+	}
+	img_normal = map.Move();
+
+	// cube
+	mesh = CreateBox(ut::Vector<3>(0), ut::Vector<3>(1), engine_rc_dir + engine_rc::skBox);
+	if (!mesh)
+	{
+		return mesh.MoveAlt();
+	}
+	cube = mesh.Move();
+
+	// success
+	return ut::Optional<ut::Error>();
 }
 
 //----------------------------------------------------------------------------//

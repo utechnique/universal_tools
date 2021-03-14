@@ -3,39 +3,40 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/render/engine/ve_render_unit_mgr.h"
-#include "systems/render/engine/ve_render_model_batcher.h"
+#include "systems/render/engine/ve_render_toolset.h"
+#include "systems/render/units/ve_render_view.h"
+#include "ve_deferred_shading.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
+START_NAMESPACE(lighting)
 //----------------------------------------------------------------------------//
-// Mesh policy renders mesh units.
-template<> class Policy<Model>
+// Lighting manager encapsulates different lighting techniques.
+class Manager
 {
 public:
-	// Per-frame gpu resources.
-	struct FrameData
-	{
-		ut::Array<Model::Batch> batches;
-	};
-
 	// Constructor.
-	Policy(Toolset &toolset_ref,
-	       UnitSelector& unit_selector,
-	       Policies& policy_mgr);
+	Manager(Toolset& toolset);
 
-	// Initializes a provided model unit.
-	void Initialize(Model& mesh);
-
-	// batcher gathers model units into batches
-	ModelBatcher batcher;
+	// Creates lighting (per-view) data.
+	//    @param depth_stencil - reference to the depth buffer.
+	//    @param width - width of the view in pixels.
+	//    @param height - height of the view in pixels.
+	//    @return - a new lighting::ViewData object or error if failed.
+	ut::Result<lighting::ViewData, ut::Error> CreateViewData(Target& depth_stencil,
+	                                                         ut::uint32 width,
+	                                                         ut::uint32 height);
 
 private:
-	Toolset &tools;
+	Toolset& tools;
+
+public:
+	DeferredShading deferred_shading;
 };
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(lighting)
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
