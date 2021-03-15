@@ -7,6 +7,53 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
+// Helper function to compute tangents.
+//    @param vertices - a pointer to the first vertice, all vertices must have
+//                      initialized position and texture coordinats.
+//    @param indices - a pointer to the first index.
+//    @param vertex_count - the number of vertices to initialize.
+//    @param index_count - the number of indices.
+template<typename VertexType, typename IndexType = ut::uint32>
+void ComputeTangents(VertexType* vertices,
+                     IndexType* indices,
+                     size_t vertex_count,
+                     size_t index_count)
+{
+	for (size_t i = 0; i < index_count; i = i + 3)
+	{
+		VertexType& v0 = vertices[indices[i]];
+		VertexType& v1 = vertices[indices[i + 1]];
+		VertexType& v2 = vertices[indices[i + 2]];
+		
+		const ut::Vector<3> positions[3] = { v0.position, v1.position, v2.position };
+		const ut::Vector<2> texcoords[3] = { v0.texcoord, v1.texcoord, v2.texcoord };
+		const ut::Vector<3> d1 = positions[2] - positions[0];
+		const ut::Vector<3> d2 = positions[1] - positions[0];
+		const ut::Vector<2> lt1(texcoords[1].X() - texcoords[0].X(), texcoords[1].Y() - texcoords[0].Y());
+		const ut::Vector<2> lt2(texcoords[2].X() - texcoords[0].X(), texcoords[2].Y() - texcoords[0].Y());
+		const float r = lt1.X() * lt2.Y() - lt2.X() * lt1.Y();
+		const float tmp = ut::Abs(r) <= 0.0001f ? 1.0f : (1.0f / r);
+
+		ut::Vector<3> tangent;
+		tangent.X() = lt2.Y() * d2.X() - lt1.Y() * d1.X();
+		tangent.Y() = lt2.Y() * d2.Y() - lt1.Y() * d1.Y();
+		tangent.Z() = lt2.Y() * d2.Z() - lt1.Y() * d1.Z();
+		tangent = tangent.ElementWise() * tmp;
+		tangent = tangent.Normalize();
+
+		v0.tangent += tangent;
+		v1.tangent += tangent;
+		v2.tangent += tangent;
+	}
+
+	// normalize tangents
+	for (size_t i = 0; i < vertex_count; i++)
+	{
+		vertices[i].tangent = vertices[i].tangent.Normalize();
+	}
+}
+
+//----------------------------------------------------------------------------//
 // Constructor.
 ResourceManager::ResourceManager(Device& device_ref,
                                  const Config<Settings>& cfg) : device(device_ref)
@@ -150,12 +197,6 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateBox(const ut::Vector<3
 		v[i].position += position;
 	}
 
-	ut::Result<Buffer, ut::Error> vertex_buffer = device.CreateBuffer(ut::Move(vertex_buffer_info));
-	if (!vertex_buffer)
-	{
-		return ut::MakeError(vertex_buffer.MoveAlt());
-	}
-
 	Buffer::Info index_buffer_info;
 	index_buffer_info.type = Buffer::index;
 	index_buffer_info.usage = render::memory::gpu_immutable;
@@ -164,36 +205,45 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateBox(const ut::Vector<3
 	index_buffer_info.data.Resize(index_buffer_info.size);
 	ut::uint32* indices = reinterpret_cast<ut::uint32*>(index_buffer_info.data.GetAddress());
 
+	// indices
 	indices[0] = 3;   indices[1] = 1;   indices[2] = 0;
 	indices[3] = 2;   indices[4] = 1;   indices[5] = 3;
-
 	indices[6] = 6;   indices[7]  = 4;  indices[8]  = 5;
 	indices[9] = 7;   indices[10] = 4;  indices[11] = 6;
-
 	indices[12] = 11; indices[13] = 9;  indices[14] = 8;
 	indices[15] = 10; indices[16] = 9;  indices[17] = 11;
-
 	indices[18] = 14; indices[19] = 12; indices[20] = 13;
 	indices[21] = 15; indices[22] = 12; indices[23] = 14;
-
 	indices[24] = 19; indices[25] = 17; indices[26] = 16;
 	indices[27] = 18; indices[28] = 17; indices[29] = 19;
-
 	indices[30] = 22; indices[31] = 20; indices[32] = 21;
 	indices[33] = 23; indices[34] = 20; indices[35] = 22;
 
+	// tangents
+	ComputeTangents<CubeVertex::Type>(v, indices, vertex_count, face_count * 3);
+
+	// create vertex buffer
+	ut::Result<Buffer, ut::Error> vertex_buffer = device.CreateBuffer(ut::Move(vertex_buffer_info));
+	if (!vertex_buffer)
+	{
+		return ut::MakeError(vertex_buffer.MoveAlt());
+	}
+
+	// create index buffer
 	ut::Result<Buffer, ut::Error> index_buffer = device.CreateBuffer(ut::Move(index_buffer_info));
 	if (!index_buffer)
 	{
 		return ut::MakeError(index_buffer.MoveAlt());
 	}
 
+	// create material
 	ut::Result<Material, ut::Error> default_material = CreateDefaultMaterial();
 	if (!default_material)
 	{
 		return ut::MakeError(default_material.MoveAlt());
 	}
 
+	// initialize subsets
 	ut::Array<Mesh::Subset> subsets;
 	Mesh::Subset subset;
 	subset.index_offset = 0;
@@ -201,6 +251,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateBox(const ut::Vector<3
 	subset.material = default_material.Move();
 	subsets.Add(ut::Move(subset));
 
+	// create mesh
 	Mesh mesh(face_count, vertex_count,
 	          vertex_buffer.Move(),
 	          index_buffer.Move(),

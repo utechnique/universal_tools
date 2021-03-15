@@ -80,7 +80,7 @@ private:
 	BoundShader model_gpass_shader;
 
 	// G-Buffer target format.
-	static constexpr pixel::Format skGBufferFormat = pixel::r8g8b8a8_unorm;
+	static constexpr pixel::Format skGBufferFormat = pixel::r16g16b16a16_float;
 };
 
 //----------------------------------------------------------------------------//
