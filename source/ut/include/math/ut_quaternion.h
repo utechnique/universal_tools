@@ -54,9 +54,9 @@ public:
 	{
 		Quaternion q;
 
-		Scalar yaw = angles.X();
-		Scalar pitch = angles.Y();
-		Scalar roll = angles.Z();
+		const Scalar yaw = ut::ToRadiands(angles.X());
+		const Scalar pitch = ut::ToRadiands(angles.Y());
+		const Scalar roll = ut::ToRadiands(angles.Z());
 
 		const Scalar two = static_cast<Scalar>(2);
 
