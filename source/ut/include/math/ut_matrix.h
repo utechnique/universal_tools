@@ -20,7 +20,7 @@ struct MatrixColorTag {};
 // ut::Matrix is a complete template class for matrices with custom static size.
 // It can represent both matrix and vector (as a matrix with only one row).
 template<MatrixElementId rows,
-         MatrixElementId columns,
+         MatrixElementId columns = rows,
          typename Scalar = float,
          typename Tag = MatrixGeneralTag>
 class Matrix
@@ -368,6 +368,46 @@ public:
 
 				out(i, j) = out(i, j) / LU(i, i);
 			}
+		}
+
+		return out;
+	}
+
+	// Returns a submatrix of this matrix.
+	template<MatrixElementId height,
+	         MatrixElementId width = height,
+	         MatrixElementId row_offset = 0,
+	         MatrixElementId column_offset = 0>
+	Matrix<height, width, Scalar, Tag> Submatrix() const
+	{
+		static_assert(row_offset + height <= rows, "Height of the submatrix is too big.");
+		static_assert(column_offset + width <= columns, "Width of the submatrix is too big.");
+
+		Matrix<height, width, Scalar, Tag> out;
+		for (MatrixElementId row = 0; row < height; row++)
+		{
+			for (MatrixElementId column = 0; column < width; column++)
+			{
+				out(row, column) = this->operator()(row + row_offset, column + column_offset);
+			}
+		}
+
+		return out;
+	}
+
+	// Returns a subvector.
+	template<MatrixElementId width,
+	         MatrixElementId row_offset = 0,
+	         MatrixElementId column_offset = 0>
+	Matrix<1, width, Scalar, MatrixVectorTag> Subvector() const
+	{
+		static_assert(row_offset < rows, "Subvector offset is too big.");
+		static_assert(column_offset + width <= columns, "Width of the subvector is too big.");
+
+		Matrix<1, width, Scalar, MatrixVectorTag> out;
+		for (MatrixElementId column = 0; column < width; column++)
+		{
+			out(0, column) = this->operator()(row_offset, column + column_offset);
 		}
 
 		return out;
