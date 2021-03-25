@@ -54,9 +54,9 @@ public:
 	{
 		Quaternion q;
 
-		Scalar yaw = angles.X();
-		Scalar pitch = angles.Y();
-		Scalar roll = angles.Z();
+		const Scalar yaw = ToRadiands(angles.X());
+		const Scalar pitch = ToRadiands(angles.Y());
+		const Scalar roll = ToRadiands(angles.Z());
 
 		const Scalar two = static_cast<Scalar>(2);
 
@@ -66,6 +66,51 @@ public:
 		q.r = Cos(yaw / two) * Cos(pitch / two) * Cos(roll / two) + Sin(yaw / two) * Sin(pitch / two) * Sin(roll / two);
 
 		return q;
+	}
+
+	// Creates a new quaternion representing a rotation
+	// from one axis to another.
+	//    @param v0 - first axis (must be normalized).
+	//    @param v1 - second axis (must be normalized).
+	//    @return - a new quaternion.
+	static Quaternion MakeShortestRotation(const Vector<3, Scalar>& v0,
+	                                       const Vector<3, Scalar>& v1) 
+	{
+		Vector<3, Scalar> c = v0.Cross(v1);
+		const Scalar d = v0.Dot(v1);
+
+		const Scalar zero = static_cast<Scalar>(0);
+		const Scalar one = static_cast<Scalar>(1);
+		const Scalar two = static_cast<Scalar>(2);
+
+		if (d < -one + Precision<Scalar>::epsilon)
+		{
+			Vector<3, Scalar> n;
+
+			if (Abs(v0.Z()) > Precision<Scalar>::epsilon)
+			{
+				const float a = v0.Y() * v0.Y() + v0.Z() * v0.Z();
+				const float k = one / Sqrt(a);
+				n.X() = zero;
+				n.Y() = -v0.Z() * k;
+				n.Z() = v0.Y() * k;
+			}
+			else
+			{
+				const float a = v0.X() * v0.X() + v0.Y() * v0.Y();
+				const float k = one / Sqrt(a);
+				n.X() = -v0.Z() * k;
+				n.Y() = v0.X() * k;
+				n.Z() = zero;
+			}
+
+			return Quaternion(zero, n.X(), n.Y(), n.Z());
+		}
+
+		const Scalar s = Sqrt((one + d) * two);
+		const Scalar rs = one / s;
+
+		return Quaternion(s / two, c.X() * rs, c.Y() * rs, c.Z() * rs);
 	}
 
 	// Constructor.
