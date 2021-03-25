@@ -52,6 +52,9 @@ public:
 	template<typename ResourceType>
 	ut::Result<RcRef<ResourceType>, ut::Error> Find(const ut::String& name)
 	{
+		// lock resources
+		ut::ScopeRWLock scope_lock(lock, ut::access_read);
+
 		// find resource id by name
 		ut::Optional<Resource::Id&> id = names.Find(name);
 		if (!id)

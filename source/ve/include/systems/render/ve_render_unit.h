@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut.h"
+#include "ve_transform.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -17,6 +17,15 @@ class Unit : public ut::Polymorphic, public ut::meta::Reflective
 {
 	template<typename UnitContainer> friend struct UnitInitializer;
 public:
+	// Explicitly declare defaulted constructors and move operator.
+	Unit() = default;
+	Unit(Unit&&) = default;
+	Unit& operator =(Unit&&) = default;
+
+	// Copying is prohibited.
+	Unit(const Unit&) = delete;
+	Unit& operator =(const Unit&) = delete;
+
 	// Identify() method must be implemented for the polymorphic types.
 	virtual const ut::DynamicType& Identify() const = 0;
 
@@ -38,10 +47,11 @@ public:
 	}
 
 	// Local transform in the entity-space.
-	ut::Matrix<4, 4> local_trasform = ut::Matrix<4, 4>::MakeIdentity();
+	Transform local_trasform;
 
 	// Don't use, for internal use only.
-	ut::Matrix<4, 4> world_trasform;
+	Transform world_transform;
+	ut::Matrix<4, 4> world_matrix;
 
 private:
 	// Every unit is created with "initialized" member set to 'false', and only

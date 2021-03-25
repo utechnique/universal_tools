@@ -237,17 +237,6 @@ void Engine::ProcessViewportEvents()
 	}
 }
 
-// Calculates world transform matrix for the specified units.
-void Engine::UpdateUnitsTransform(ut::Array< ut::UniquePtr<Unit> >& units,
-                                  const ut::Matrix<4, 4>& entity_transform)
-{
-	const size_t unit_count = units.GetNum();
-	for (size_t i = 0; i < unit_count; i++)
-	{
-		units[i]->world_trasform = entity_transform * units[i]->local_trasform;
-	}
-}
-
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)

@@ -9,6 +9,9 @@
 // Render units.
 #include "systems/render/units/ve_render_view.h"
 #include "systems/render/units/ve_render_model.h"
+#include "systems/render/units/ve_render_directional_light.h"
+#include "systems/render/units/ve_render_point_light.h"
+#include "systems/render/units/ve_render_spot_light.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -18,7 +21,10 @@ START_NAMESPACE(render)
 using EngineUnits = ut::Container
 <
 	View,
-	Model
+	Model,
+	DirectionalLight,
+	PointLight,
+	SpotLight
 >;
 
 //----------------------------------------------------------------------------//
@@ -223,9 +229,9 @@ class UnitManagerTemplate< ut::Container<Units...> > : private Policy<Units>...
 {
 public:
 	// Constructor.
-	UnitManagerTemplate(Toolset &toolset_ref) noexcept : Policy<Units>(toolset_ref, selector, policies)...
-                                                       , tools(toolset_ref)
-	                                                   , policies(static_cast<Policy<Units>&>(*this)...)
+	UnitManagerTemplate(Toolset &toolset_ref) : Policy<Units>(toolset_ref, selector, policies)...
+                                              , tools(toolset_ref)
+	                                          , policies(static_cast<Policy<Units>&>(*this)...)
 	{}
 
 	// Initializes a unit via the corresponding policy.

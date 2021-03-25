@@ -14,26 +14,6 @@ START_NAMESPACE(render)
 class Model : public Unit
 {
 public:
-	// Explicitly declare defaulted constructors and move operator.
-	Model() = default;
-	Model(Model&&) = default;
-	Model& operator =(Model&&) = default;
-
-	// Copying is prohibited.
-	Model(const Model&) = delete;
-	Model& operator =(const Model&) = delete;
-
-	const ut::DynamicType& Identify() const;
-	void Reflect(ut::meta::Snapshot& snapshot);
-
-	RcRef<Mesh> mesh;
-	ut::String name;
-
-	ut::Color<3> diffuse_add = ut::Color<3>(0);
-	ut::Color<3> diffuse_mul = ut::Color<3>(1);
-	ut::Color<3> material_add = ut::Color<3>(0);
-	ut::Color<3> material_mul = ut::Color<3>(1);
-
 	// It makes sense to store shader uniforms in one big buffer instead of
 	// many small. It saves time on updating buffers.
 	struct Batch
@@ -42,6 +22,8 @@ public:
 		Buffer material;
 	};
 
+	// Engine divides a model unit into pieces that can be rendered 
+	// using only one drawcall.
 	struct DrawCall
 	{
 		Model& model;
@@ -49,11 +31,13 @@ public:
 		ut::uint32 subset_id;
 	};
 
+	// CPU representation of the transform uniform buffer.
 	struct TransformBuffer
 	{
 		ut::Matrix<4, 4> transform;
 	};
 
+	// CPU representation of the material uniform buffer.
 	struct MaterialBuffer
 	{
 		ut::Vector<4> diffuse_add;
@@ -61,6 +45,34 @@ public:
 		ut::Vector<4> material_add;
 		ut::Vector<4> material_mul;
 	};
+
+	// Identify() method must be implemented for the polymorphic types.
+	const ut::DynamicType& Identify() const;
+
+	// Registers this model unit into the reflection tree.
+	//    @param snapshot - reference to the reflection tree.
+	void Reflect(ut::meta::Snapshot& snapshot);
+
+	// Reference to the mesh asset.
+	RcRef<Mesh> mesh;
+
+	// The resource name of the mesh asset. It is needed for the render engine
+	// to be able to initialize @mesh reference.
+	ut::String name;
+
+	// Color that is added to the diffuse component of all mesh materials.
+	ut::Color<3> diffuse_add = ut::Color<3>(0);
+
+	// Color that is multiplied with the diffuse
+	// component of all mesh materials.
+	ut::Color<3> diffuse_mul = ut::Color<3>(1);
+
+	// Color that is added to the material component of all mesh materials.
+	ut::Color<3> material_add = ut::Color<3>(0);
+
+	// Color that is multiplied with the material
+	// component of all mesh materials.
+	ut::Color<3> material_mul = ut::Color<3>(1);
 };
 
 //----------------------------------------------------------------------------//

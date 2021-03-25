@@ -23,7 +23,6 @@ Texture2D g_tex2d : register(t1);
 SamplerState g_sampler : register(s2);
 
 //----------------------------------------------------------------------------//
-
 struct PS_INPUT 
 {
 	float4 position  : SV_POSITION;
@@ -31,7 +30,7 @@ struct PS_INPUT
 };
 
 //----------------------------------------------------------------------------//
-
+// Pixel shader entry point.
 float4 PS(PS_INPUT input) : SV_Target
 {
 	float4 c = g_tex2d.Sample(g_sampler, input.texcoord) * g_color;

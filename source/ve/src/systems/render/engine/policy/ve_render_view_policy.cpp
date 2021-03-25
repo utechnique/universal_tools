@@ -68,17 +68,19 @@ void Policy<View>::Initialize(View& view)
 		}
 
 		// add frame
-		View::FrameData frame_data(view_ub.Move(),
-		                           depth_stencil.Move(),
-		                           lighting_data.Move(),
-		                           post_process_data.Move());
+		View::FrameData frame_data{ view_ub.Move(),
+		                            depth_stencil.Move(),
+		                            lighting_data.Move(),
+		                            post_process_data.Move(),
+		                            ut::Optional<Image&>()};
 		if (!frames.Add(ut::Move(frame_data)))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
 	}
 
-	View::GpuData gpu_data(ut::Move(frames));
+	View::GpuData gpu_data;
+	gpu_data.frames = ut::Move(frames);
 	view.data = tools.rc_mgr.AddResource(ut::Move(gpu_data));
 }
 
@@ -90,6 +92,15 @@ void Policy<View>::RenderEnvironment(Context& context)
 	Policy<Model>& model_policy = policies.Get<Model>();
 	ut::Array< ut::Ref<View> >& views = selector.Get<View>();
 
+	// extract light units
+	Light::Sources lights{ selector.Get<DirectionalLight>(),
+	                       selector.Get<PointLight>(),
+	                       selector.Get<SpotLight>() };
+
+	// update lights
+	lighting_mgr.UpdateLightUniforms(context, lights);
+
+	// render final image for all view units
 	const size_t view_count = views.GetNum();
 	for (size_t i = 0; i < view_count; i++)
 	{
@@ -109,10 +120,18 @@ void Policy<View>::RenderEnvironment(Context& context)
 
 		// calculate view-projection matrix
 		const ut::Matrix<4, 4> view_proj = view.view_matrix * view.proj_matrix;
+		const ut::Optional< ut::Matrix<4, 4> > view_proj_inversed = view_proj.Invert();
 
 		// update view uniform buffer
 		View::Uniforms view_uniforms;
 		view_uniforms.view_proj = view_proj;
+		if (view_proj_inversed)
+		{
+			view_uniforms.view_proj_inversed = view_proj_inversed.Get();
+		}
+		view_uniforms.camera_position.X() = view.camera_position.X();
+		view_uniforms.camera_position.Y() = view.camera_position.Y();
+		view_uniforms.camera_position.Z() = view.camera_position.Z();
 		tools.rc_mgr.UpdateBuffer(context, frame.uniform_buffer, &view_uniforms);
 
 		// bake deferred shading data
@@ -120,8 +139,8 @@ void Policy<View>::RenderEnvironment(Context& context)
 		                                         frame.lighting.deferred_shading,
 		                                         frame.uniform_buffer,
 		                                         model_policy.batcher);
-		context.SetTargetState(frame.lighting.deferred_shading.framebuffer, Target::Info::state_resource);
-
+		context.SetTargetState(frame.lighting.deferred_shading.geometry_framebuffer,
+		                       Target::Info::state_resource);
 
 		if (view.mode == View::mode_diffuse)
 		{
@@ -134,10 +153,18 @@ void Policy<View>::RenderEnvironment(Context& context)
 			continue;
 		}
 
+		// apply lighting
+		lighting_mgr.deferred_shading.Shade(context,
+		                                    frame.lighting.deferred_shading,
+		                                    frame.uniform_buffer,
+		                                    frame.depth_stencil.GetImage(),
+		                                    lights);
+		context.SetTargetState(frame.lighting.light_buffer, Target::Info::state_resource);
+
 		// postprocess
 		frame.final_img = post_process_mgr.ApplyEffects(context,
 		                                                frame.post_process,
-		                                                frame.lighting.deferred_shading.diffuse.GetImage());
+		                                                frame.lighting.light_buffer.GetImage());
 	}
 }
 

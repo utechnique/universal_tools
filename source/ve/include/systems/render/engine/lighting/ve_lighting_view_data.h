@@ -16,7 +16,8 @@ class ViewData
 {
 public:
 	// Constructor.
-	ViewData(DeferredShading::ViewData in_deferred_shading);
+	ViewData(Target in_light_buffer,
+	         DeferredShading::ViewData in_deferred_shading);
 
 	// Move constructor and operator.
 	ViewData(ViewData&&) = default;
@@ -25,7 +26,8 @@ public:
 	// Copying is prohibited.
 	ViewData(const ViewData&) = delete;
 	ViewData& operator =(const ViewData&) = delete;
-
+	
+	Target light_buffer;
 	DeferredShading::ViewData deferred_shading;
 };
 

@@ -70,6 +70,9 @@ void CameraSystem::UpdateView(const TransformComponent& transform,
 	const ut::Vector<3> up = camera.GetUp(transform.rotation);
 	const ut::Vector<3> right = camera.GetRight(transform.rotation);
 
+	// update position
+	view.camera_position = position;
+
 	// calculate view matrix
 	view.view_matrix(0, 0) = right.X();
 	view.view_matrix(0, 1) = up.X();

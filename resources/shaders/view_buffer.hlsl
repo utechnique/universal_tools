@@ -1,30 +1,25 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-// Vertex shader for rendering 2d quads, vertex input is position (x,y) and
-// texture coordinate (u,v).
+// Uniform buffer for light sources. Include this file to the final shader file
+// to have access to the view buffer.
 //----------------------------------------------------------------------------//
-struct VS_INPUT
-{
-	float2 position : POSITION;
-	float2 texcoord : TEXCOORD;
-};
-
-struct VS_OUTPUT_PS_INPUT
-{
-	float4 position  : SV_POSITION;
-	float2 texcoord  : TEXCOORD0;
-};
+#include "preprocessor.hlsl"
 
 //----------------------------------------------------------------------------//
-// Vertex shader entry point.
-VS_OUTPUT_PS_INPUT VS(VS_INPUT input)
+// You can manually define UB_ID_VIEW macro before including this file to
+// control binding id of the view buffer.
+#ifndef UB_ID_VIEW
+#define UB_ID_VIEW 0
+#endif
+
+//----------------------------------------------------------------------------//
+cbuffer g_ub_view : register(SET_BUFFER_INDEX(UB_ID_VIEW))
 {
-	VS_OUTPUT_PS_INPUT output;
-	output.position = float4(input.position.xy, 0.0f, 1.0f);
-	output.texcoord = input.texcoord;
-	return output;
-}
+	row_major float4x4 g_view_proj;
+	row_major float4x4 g_inv_view_proj;
+	float4 g_camera_position;
+};
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

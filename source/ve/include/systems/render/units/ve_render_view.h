@@ -18,6 +18,7 @@ START_NAMESPACE(render)
 class View : public Unit
 {
 public:
+	// Available modes.
 	enum Mode
 	{
 		mode_complete,
@@ -25,49 +26,17 @@ public:
 		mode_normal,
 	};
 
-	// Explicitly declare defaulted constructors and move operator.
-	View() = default;
-	View(View&&) = default;
-	View& operator =(View&&) = default;
-
-	// Copying is prohibited.
-	View(const View&) = delete;
-	View& operator =(const View&) = delete;
-
-	const ut::DynamicType& Identify() const;
-	void Reflect(ut::meta::Snapshot& snapshot);
-
-	ut::Matrix<4, 4, float> view_matrix;
-	ut::Matrix<4, 4, float> proj_matrix;
-
-	Mode mode = mode_complete;
-
-	// final image format
-	pixel::Format format = pixel::r8g8b8a8_srgb;
-
-	ut::uint32 width = 640;
-	ut::uint32 height = 480;
-
-	ui::Viewport::Id viewport_id = 0;
-
-	bool is_active = true;
-
+	// Per-view uniform buffer representation.
 	struct Uniforms
 	{
 		alignas(16) ut::Matrix<4, 4> view_proj;
+		alignas(16) ut::Matrix<4, 4> view_proj_inversed;
+		alignas(16) ut::Vector<4> camera_position;
 	};
 
+	// Per-frame gpu data.
 	struct FrameData
 	{
-		FrameData(Buffer view_uniform_buffer,
-		          Target depth_stencil_buffer,
-		          lighting::ViewData lighting_data,
-		          postprocess::ViewData post_process_data) : uniform_buffer(ut::Move(view_uniform_buffer))
-		                                                   , depth_stencil(ut::Move(depth_stencil_buffer))
-		                                                   , lighting(ut::Move(lighting_data))
-		                                                   , post_process(ut::Move(post_process_data))                                           
-		{}
-
 		Buffer uniform_buffer;
 		Target depth_stencil;
 		lighting::ViewData lighting;
@@ -75,19 +44,44 @@ public:
 		ut::Optional<Image&> final_img;
 	};
 
+	// Gpu resources.
 	struct GpuData : public Resource
 	{
-		GpuData(ut::Array<FrameData> in_frames) : frames(ut::Move(in_frames))
-		{}
-
-		const ut::DynamicType& Identify() const override
-		{
-			return ut::Identify(this);
-		}
-
+		const ut::DynamicType& Identify() const { return ut::Identify(this); }
 		ut::Array<FrameData> frames;
 	};
 
+	// Identify() method must be implemented for the polymorphic types.
+	const ut::DynamicType& Identify() const;
+
+	// Registers this view unit into the reflection tree.
+	//    @param snapshot - reference to the reflection tree.
+	void Reflect(ut::meta::Snapshot& snapshot);
+
+	// Current mode.
+	Mode mode = mode_complete;
+
+	// View matrices.
+	ut::Matrix<4, 4, float> view_matrix;
+	ut::Matrix<4, 4, float> proj_matrix;
+
+	// Position of the camera associated with this view.
+	ut::Vector<3> camera_position;
+
+	// Final image format
+	pixel::Format format = pixel::r8g8b8a8_srgb;
+
+	// View metrics in pixels.
+	ut::uint32 width = 640;
+	ut::uint32 height = 480;
+
+	// The identifier of the UI widget associated with this view.
+	ui::Viewport::Id viewport_id = 0;
+
+	// Indicates if this viewport will be processed by the render engine.
+	bool is_active = true;
+
+	// GPU resources.
 	RcRef<GpuData> data;
 };
 

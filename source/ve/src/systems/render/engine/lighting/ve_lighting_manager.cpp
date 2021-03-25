@@ -21,14 +21,129 @@ ut::Result<lighting::ViewData, ut::Error> Manager::CreateViewData(Target& depth_
                                                                   ut::uint32 width,
                                                                   ut::uint32 height)
 {
+	// light buffer
+	Target::Info info;
+	info.type = Image::type_2D;
+	info.format = skLightBufferFormat;
+	info.usage = Target::Info::usage_color;
+	info.mip_count = 1;
+	info.width = width;
+	info.height = height;
+	info.depth = 1;
+	ut::Result<Target, ut::Error> light_buffer = tools.device.CreateTarget(info);
+	if (!light_buffer)
+	{
+		return ut::MakeError(light_buffer.MoveAlt());
+	}
+
 	ut::Result<DeferredShading::ViewData, ut::Error> def_sh_data = deferred_shading.CreateViewData(depth_stencil,
+	                                                                                               light_buffer.Get(),
 	                                                                                               width, height);
 	if (!def_sh_data)
 	{
 		return ut::MakeError(def_sh_data.MoveAlt());
 	}
 
-	return lighting::ViewData(def_sh_data.Move());
+	return lighting::ViewData(light_buffer.Move(), def_sh_data.Move());
+}
+
+// Updates uniform buffers for the provided light units.
+void Manager::UpdateLightUniforms(Context& context, Light::Sources& lights)
+{
+	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
+
+	// directional lights
+	const size_t directional_light_count = lights.directional.GetNum();
+	for (size_t i = 0; i < directional_light_count; i++)
+	{
+		DirectionalLight& light = lights.directional[i];
+		UpdateLightUniforms(context,
+		                    light.data->frames[current_frame_id].uniform_buffer,
+		                    light.world_transform.translation,
+		                    light.color,
+		                    Light::GetDirection(light.world_transform.rotation),
+		                    ut::Vector<3>(0),
+		                    light.intensity,
+		                    0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	}
+
+	// point lights
+	const size_t point_light_count = lights.point.GetNum();
+	for (size_t i = 0; i < point_light_count; i++)
+	{
+		PointLight& light = lights.point[i];
+		UpdateLightUniforms(context,
+		                    light.data->frames[current_frame_id].uniform_buffer,
+		                    light.world_transform.translation,
+		                    light.color,
+		                    ut::Vector<3>(0),
+		                    Light::GetTubeDirection(light.world_transform.rotation),
+		                    light.intensity,
+		                    light.attenuation_distance,
+		                    0.0f, 0.0f,
+		                    light.shape_radius,
+		                    light.shape_length);
+	}
+
+	// spot lights
+	const size_t spot_light_count = lights.spot.GetNum();
+	for (size_t i = 0; i < spot_light_count; i++)
+	{
+		SpotLight& light = lights.spot[i];
+		UpdateLightUniforms(context,
+		                    light.data->frames[current_frame_id].uniform_buffer,
+		                    light.world_transform.translation,
+		                    light.color,
+		                    Light::GetDirection(light.world_transform.rotation),
+		                    Light::GetTubeDirection(light.world_transform.rotation),
+		                    light.intensity,
+		                    light.attenuation_distance,
+		                    light.inner_cone,
+		                    light.outer_cone,
+		                    light.shape_radius,
+		                    light.shape_length);
+	}
+}
+
+// Updates light source buffer with provided data.
+void Manager::UpdateLightUniforms(Context& context,
+                                  Buffer& buffer,
+                                  const ut::Vector<3>& position,
+                                  const ut::Color<3>& color,
+                                  const ut::Vector<3>& direction,
+                                  const ut::Vector<3>& orientation,
+                                  float intensity,
+                                  float attenuation_distance,
+                                  float inner_cone,
+                                  float outer_cone,
+                                  float shape_radius,
+                                  float shape_length)
+{
+	DirectionalLight::Uniforms uniforms;
+
+	uniforms.position.X() = position.X();
+	uniforms.position.Y() = position.Y();
+	uniforms.position.Z() = position.Z();
+
+	uniforms.direction.X() = direction.X();
+	uniforms.direction.Y() = direction.Y();
+	uniforms.direction.Z() = direction.Z();
+	uniforms.direction.W() = shape_radius;
+
+	uniforms.color.R() = color.R() * intensity;
+	uniforms.color.G() = color.G() * intensity;
+	uniforms.color.B() = color.B() * intensity;
+	uniforms.color.A() = shape_length;
+
+	uniforms.attenuation.X() = attenuation_distance;
+	uniforms.attenuation.Y() = ut::Cos(ut::ToRadiands(inner_cone));
+	uniforms.attenuation.Z() = ut::Cos(ut::ToRadiands(outer_cone));
+
+	uniforms.orientation.X() = orientation.X();
+	uniforms.orientation.Y() = orientation.Y();
+	uniforms.orientation.Z() = orientation.Z();
+
+	tools.rc_mgr.UpdateBuffer(context, buffer, &uniforms);
 }
 
 //----------------------------------------------------------------------------//

@@ -56,10 +56,6 @@ private:
 	// Executes viewport tasks (resize, close, etc.) in a safe manner.
 	void ProcessViewportEvents();
 
-	// Calculates world transform matrix for the specified units.
-	void UpdateUnitsTransform(ut::Array< ut::UniquePtr<Unit> >& units,
-	                          const ut::Matrix<4, 4>& entity_transform);
-
 	// render device
 	Device& device;
 

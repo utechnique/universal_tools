@@ -227,7 +227,7 @@ ut::Result<ut::String, ut::Error> ShaderCache::Reader::ReadShaderFileText(const 
 	ut::Result<ut::File, ut::Error> open_result = OpenResourceFile(filename);
 	if (!open_result)
 	{
-		ut::log.Lock() << "Render: image file " << filename << " not found." << ut::cret;
+		ut::log.Lock() << "Render: shader file " << filename << " not found." << ut::cret;
 		return ut::MakeError(open_result.MoveAlt());
 	}
 	ut::File& file = open_result.Get();
@@ -250,11 +250,14 @@ ut::Result<ut::String, ut::Error> ShaderCache::Reader::ReadShaderFileText(const 
 		return ut::MakeError(read_error.Move());
 	}
 
+	// get final shader file name
+	const ut::String shader_filename = file.GetPath();
+
 	// close the file
 	file.Close();
 
 	// include all files to the final shader code
-	ut::Result<ut::String, ut::Error> final_code = ProcessIncludes(ut::Move(text), file.GetPath().GetIsolatedLocation(true));
+	ut::Result<ut::String, ut::Error> final_code = ProcessIncludes(ut::Move(text), shader_filename.GetIsolatedLocation(true));
 	if (!final_code)
 	{
 		ut::log.Lock() << "Shader cache: error parsing includes in shader " << filename << ut::cret;

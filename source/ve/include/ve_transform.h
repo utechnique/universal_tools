@@ -3,32 +3,32 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_component.h"
-#include "ve_transform.h"
+#include "ut.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 // Transform composed of Scale, Rotation(as a quaternion), and Translation.
 // It can be used to convert from one space to another.
 // Transformation is applied in the order: Scale->Rotate->Translate.
-class TransformComponent : public Component, public Transform
+class Transform : public ut::meta::Reflective
 {
 public:
-	// Explicitly declare defaulted constructors and move operator.
-	TransformComponent() = default;
-	TransformComponent(TransformComponent&&) = default;
-	TransformComponent& operator =(TransformComponent&&) = default;
+	// Returns multiplied transform of 2 transforms.
+	Transform operator*(const Transform& right) const;
 
-	// Copying is prohibited.
-	TransformComponent(const TransformComponent&) = delete;
-	TransformComponent& operator =(const TransformComponent&) = delete;
-
-	// Identify() method must be implemented for polymorphic types.
-	const ut::DynamicType& Identify() const override;
+	// Multiplication assignment operator.
+	Transform& operator*=(const Transform& right);
 
 	// Registers transform info into the reflection tree.
 	//    @param snapshot - reference to the reflection tree.
 	void Reflect(ut::meta::Snapshot& snapshot);
+
+	// Returns a 4x4 matrix representation.
+	ut::Matrix<4, 4> ToMatrix() const;
+
+	ut::Vector<3> scale = ut::Vector<3>(1, 1, 1);
+	ut::Vector<3> translation = ut::Vector<3>(0, 0, 0);
+	ut::Quaternion<float> rotation;
 };
 
 //----------------------------------------------------------------------------//

@@ -1,3 +1,6 @@
+#define UB_ID_VIEW 0
+
+#include "view_buffer.hlsl"
 
 struct VS_INPUT
 {
@@ -30,11 +33,6 @@ struct Material
 	float4 diffuse_mul;
 	float4 material_add;
 	float4 material_mul;
-};
-
-cbuffer g_ub_view : register(b0)
-{
-	row_major float4x4 g_view_proj;
 };
 
 cbuffer g_ub_transform : register(b1)

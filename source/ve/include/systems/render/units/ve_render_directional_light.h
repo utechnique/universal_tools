@@ -3,35 +3,45 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_component.h"
-#include "ve_transform.h"
+#include "systems/render/ve_render_unit.h"
+#include "systems/render/ve_render_resource.h"
+#include "systems/render/engine/lighting/ve_light_source.h"
+
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
+START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Transform composed of Scale, Rotation(as a quaternion), and Translation.
-// It can be used to convert from one space to another.
-// Transformation is applied in the order: Scale->Rotate->Translate.
-class TransformComponent : public Component, public Transform
+// ve::render::DirectionalLight simulates light that is being emitted from a
+// source that is infinitely far away.
+class DirectionalLight : public Unit, public Light
 {
 public:
-	// Explicitly declare defaulted constructors and move operator.
-	TransformComponent() = default;
-	TransformComponent(TransformComponent&&) = default;
-	TransformComponent& operator =(TransformComponent&&) = default;
+	// Per-frame gpu data.
+	struct FrameData
+	{
+		Buffer uniform_buffer;
+	};
 
-	// Copying is prohibited.
-	TransformComponent(const TransformComponent&) = delete;
-	TransformComponent& operator =(const TransformComponent&) = delete;
+	// Contains all rendering resources owned by this unit. 
+	struct GpuData : public Resource
+	{
+		const ut::DynamicType& Identify() const { return ut::Identify(this); }
+		ut::Array<FrameData> frames;
+	};
 
-	// Identify() method must be implemented for polymorphic types.
+	// Identify() method must be implemented for the polymorphic types.
 	const ut::DynamicType& Identify() const override;
 
-	// Registers transform info into the reflection tree.
+	// Registers light source info into the reflection tree.
 	//    @param snapshot - reference to the reflection tree.
-	void Reflect(ut::meta::Snapshot& snapshot);
+	void Reflect(ut::meta::Snapshot& snapshot) override;
+
+	// GPU resources owned by this unit. 
+	RcRef<GpuData> data;
 };
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

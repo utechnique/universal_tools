@@ -8,7 +8,9 @@ START_NAMESPACE(render)
 START_NAMESPACE(lighting)
 //----------------------------------------------------------------------------//
 // Constructor.
-ViewData::ViewData(DeferredShading::ViewData in_deferred_shading) : deferred_shading(ut::Move(in_deferred_shading))
+ViewData::ViewData(Target in_light_buffer,
+                   DeferredShading::ViewData in_deferred_shading) : light_buffer(ut::Move(in_light_buffer)),
+                                                                    deferred_shading(ut::Move(in_deferred_shading))
 {}
 
 //----------------------------------------------------------------------------//

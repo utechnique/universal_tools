@@ -6,7 +6,6 @@
 #include "systems/render/engine/ve_render_toolset.h"
 #include "systems/render/units/ve_render_view.h"
 #include "ve_deferred_shading.h"
-
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -28,11 +27,29 @@ public:
 	                                                         ut::uint32 width,
 	                                                         ut::uint32 height);
 
-private:
-	Toolset& tools;
+	// Updates uniform buffers for the provided light units.
+	void UpdateLightUniforms(Context& context, Light::Sources& lights);
 
-public:
+	// light techniques
 	DeferredShading deferred_shading;
+
+private:
+	// Updates light source buffer with provided data.
+	void UpdateLightUniforms(Context& context,
+	                         Buffer& buffer,
+	                         const ut::Vector<3>& position,
+	                         const ut::Color<3>& color,
+	                         const ut::Vector<3>& direction,
+	                         const ut::Vector<3>& orientation,
+	                         float intensity,
+	                         float attenuation_distance,
+	                         float inner_cone,
+	                         float outer_cone,
+	                         float shape_radius,
+	                         float shape_length);
+
+	Toolset& tools;
+	static constexpr pixel::Format skLightBufferFormat = pixel::r16g16b16a16_float;
 };
 
 //----------------------------------------------------------------------------//

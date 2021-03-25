@@ -56,9 +56,6 @@ void RenderSystem::InitializeUnitsJob(size_t first_entity_id, size_t entity_coun
 		RenderComponent& render_component = entities[i].Get<RenderComponent>();
 		TransformComponent& transform_component = entities[i].Get<TransformComponent>();
 
-		// calculate the transform matrix of the entity
-		ut::Matrix<4, 4> transform = transform_component.ToMatrix();
-
 		// an entity must be re-registered if it has obtained new units
 		// or any of the old units has been removed
 		bool changed = false;
@@ -77,7 +74,8 @@ void RenderSystem::InitializeUnitsJob(size_t first_entity_id, size_t entity_coun
 			Unit* unit = render_component.units[j].Get();
 
 			// calculate final transform matrix of the unit
-			unit->world_trasform = transform * unit->local_trasform;
+			unit->world_transform = transform_component * unit->local_trasform;
+			unit->world_matrix = unit->world_transform.ToMatrix();
 
 			// initialize rendering resources (buffers, textures, etc.)
 			engine->InitializeUnit(*unit);

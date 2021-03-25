@@ -91,7 +91,7 @@ void ModelBatcher::UpdateBatch(Context& context,
 	{
 		Model::DrawCall& dc = dc_start[j];
 		Model& model = dc.model;
-		ut::memory::Copy(transform_memory + j, &model.world_trasform, sizeof(ut::Matrix<4, 4>));
+		ut::memory::Copy(transform_memory + j, &model.world_matrix, sizeof(ut::Matrix<4, 4>));
 
 		Model::MaterialBuffer& material = material_memory[j];
 		ut::memory::Copy(&material.diffuse_add, &model.diffuse_add, sizeof(ut::Color<3>));
