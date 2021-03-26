@@ -24,6 +24,8 @@ public:
 		static State CreateForColorTarget();
 		static State CreateForDepthStencilTarget();
 		static State CreateForShaderResource();
+		static State CreateForTransferSrc();
+		static State CreateForTransferDst();
 
 		State(VkImageLayout in_layout,
 		      VkAccessFlags in_access_mask,

@@ -204,9 +204,16 @@ ut::Optional<Shader::Info&> ShaderCache::Find(Shader::Stage stage,
 	// check if macros match
 	for (size_t i = 0; i < macros_count; i++)
 	{
-		if (info->macros[i].name != macros[i].name || info->macros[i].value != macros[i].value)
+		const ut::String& old_name = info->macros[i].name;
+		const ut::String& new_name = macros[i].name;
+		const ut::String& old_value = info->macros[i].value;
+		const ut::String& new_value = macros[i].value;
+		if (old_name != new_name || old_value != new_value)
 		{
-			ut::log.Lock() << "Shader cache: cached version of \"" << shader_name << "\" has at least one mismatched macro value." << ut::cret;
+			ut::log.Lock() << "Shader cache: cached version of \"" << shader_name
+				<< "\" has at least one mismatched macro value: (old) "
+				<< old_name << " " << old_value << " (new) " << new_name << " " << new_value
+				<< ut::cret;
 			return ut::Optional<Shader::Info&>();
 		}
 	}

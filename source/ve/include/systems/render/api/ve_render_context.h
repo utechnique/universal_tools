@@ -68,6 +68,11 @@ public:
 	// Unmaps a previously mapped memory object associated with provided image.
 	void UnmapImage(Image& image);
 
+	// Copies data between render targets.
+	//    @param dst - the destination target, must be in transfer_dst state.
+	//    @param src - the source target, must be in transfer_src state.
+	void CopyTarget(Target& dst, Target& src);
+
 	// Toggles render target's state.
 	//    @param target - reference to the target.
 	//    @param state - new state of the target.

@@ -234,6 +234,32 @@ void Context::UnmapImage(Image& image)
 	}
 }
 
+// Copies data between render targets.
+//    @param dst - the destination target, must be in transfer_dst state.
+//    @param src - the source target, must be in transfer_src state.
+void Context::CopyTarget(Target& dst, Target& src)
+{
+	const Target::Info& src_info = src.GetInfo();
+	const Target::Info& dst_info = dst.GetInfo();
+	Image& src_image = src.GetImage();
+	Image& dst_image = dst.GetImage();
+
+	if (src_info.format != dst_info.format ||
+	    src_info.type != dst_info.type)
+	{
+		throw ut::Error(ut::error::types_not_match,
+		                "Unable to copy images with different formats.");
+	}
+
+	const UINT array_slices = src_info.type == Image::type_cube ? 6 : 1;
+	for (ut::uint32 cubeface = 0; cubeface < array_slices; cubeface++)
+	{
+		const UINT sub_resource = D3D11CalcSubresource(0, cubeface, 1);
+		d3d11_context->CopySubresourceRegion(dst_image.tex2d.Get(), sub_resource, 0, 0, 0,
+		                                     src_image.tex2d.Get(), sub_resource, NULL);
+	}
+}
+
 // Begin a new render pass.
 //    @param render_pass - reference to the render pass object.
 //    @param framebuffer - reference to the framebuffer to be bound.

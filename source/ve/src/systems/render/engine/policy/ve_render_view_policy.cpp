@@ -135,20 +135,24 @@ void Policy<View>::RenderEnvironment(Context& context)
 		tools.rc_mgr.UpdateBuffer(context, frame.uniform_buffer, &view_uniforms);
 
 		// bake deferred shading data
-		lighting_mgr.deferred_shading.BakeModels(context,
-		                                         frame.lighting.deferred_shading,
-		                                         frame.uniform_buffer,
-		                                         model_policy.batcher);
-		context.SetTargetState(frame.lighting.deferred_shading.geometry_framebuffer,
-		                       Target::Info::state_resource);
+		lighting_mgr.deferred_shading.BakeGeometry(context,
+		                                           frame.depth_stencil,
+		                                           frame.lighting.deferred_shading,
+		                                           frame.uniform_buffer,
+		                                           model_policy.batcher);
 
+		// exit if the view mode is set to show one of the g-buffer targets
 		if (view.mode == View::mode_diffuse)
 		{
+			context.SetTargetState(frame.lighting.deferred_shading.diffuse,
+			                       Target::Info::state_resource);
 			frame.final_img = frame.lighting.deferred_shading.diffuse.GetImage();
 			continue;
 		}
 		else if (view.mode == View::mode_normal)
 		{
+			context.SetTargetState(frame.lighting.deferred_shading.normal,
+			                       Target::Info::state_resource);
 			frame.final_img = frame.lighting.deferred_shading.normal.GetImage();
 			continue;
 		}
@@ -157,7 +161,6 @@ void Policy<View>::RenderEnvironment(Context& context)
 		lighting_mgr.deferred_shading.Shade(context,
 		                                    frame.lighting.deferred_shading,
 		                                    frame.uniform_buffer,
-		                                    frame.depth_stencil.GetImage(),
 		                                    lights);
 		context.SetTargetState(frame.lighting.light_buffer, Target::Info::state_resource);
 

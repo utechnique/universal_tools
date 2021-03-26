@@ -192,6 +192,90 @@ void Context::UnmapImage(Image& image)
 	}
 }
 
+// Copies data between render targets.
+//    @param dst - the destination target, must be in transfer_dst state.
+//    @param src - the source target, must be in transfer_src state.
+void Context::CopyTarget(Target& dst, Target& src)
+{
+	const Target::Info& src_info = src.GetInfo();
+	const Target::Info& dst_info = dst.GetInfo();
+	Image& src_image = src.GetImage();
+	Image& dst_image = dst.GetImage();
+
+	if (src_info.format != dst_info.format ||
+	    src_info.type != dst_info.type)
+	{
+		throw ut::Error(ut::error::types_not_match,
+		                "Unable to copy images with different formats.");
+	}
+	const Image::Type type = src_info.type;
+
+	// calculate metrics of the region to copy
+	const ut::uint32 width = ut::Min(src_info.width, dst_info.width);
+	const ut::uint32 height = ut::Min(src_info.height, dst_info.height);
+	const ut::uint32 depth = ut::Min(src_info.depth, dst_info.depth);
+
+	// calculate the number of subresources
+	const ut::uint32 mip_count = ut::Min(src_info.mip_count, dst_info.mip_count);
+	const ut::uint32 cubeface_count = type == Image::type_cube ? 6 : 1;
+	const ut::uint32 subresource_count = cubeface_count * mip_count;
+	ut::Array<VkImageCopy> regions(subresource_count);
+
+	// initialize copy regions
+	for (ut::uint32 cubeface = 0; cubeface < cubeface_count; cubeface++)
+	{
+		ut::uint32 mip_width = width;
+		ut::uint32 mip_height = height;
+		ut::uint32 mip_depth = depth;
+
+		for (ut::uint32 mip = 0; mip < mip_count; mip++)
+		{
+			VkImageCopy& region = regions[cubeface * mip_count + mip];
+
+			region.srcSubresource.aspectMask = src_image.aspect_mask;
+			region.srcSubresource.mipLevel = mip;
+			region.srcSubresource.baseArrayLayer = cubeface;
+			region.srcSubresource.layerCount = 1;
+			region.srcOffset.x = 0;
+			region.srcOffset.y = 0;
+			region.srcOffset.z = 0;
+
+			region.dstSubresource.aspectMask = dst_image.aspect_mask;
+			region.dstSubresource.mipLevel = mip;
+			region.dstSubresource.baseArrayLayer = cubeface;
+			region.dstSubresource.layerCount = 1;
+			region.dstOffset.x = 0;
+			region.dstOffset.y = 0;
+			region.dstOffset.z = 0;
+
+			region.extent.width = mip_width;
+			region.extent.height = mip_height;
+			region.extent.depth = mip_depth;
+
+			// calculate metrics of the next mip
+			mip_width /= 2;
+			if (type == Image::type_2D)
+			{
+				mip_height /= 2;
+			}
+			else if (type == Image::type_3D)
+			{
+				mip_height /= 2;
+				mip_depth /= 2;
+			}
+		}
+	}
+
+	// copy images
+	vkCmdCopyImage(cmd_buffer.GetVkHandle(),
+	               src_image.GetVkHandle(),
+	               src_image.GetLayout(),
+	               dst_image.GetVkHandle(),
+	               dst_image.GetLayout(),
+	               subresource_count,
+	               regions.GetAddress());
+}
+
 // Toggles render target's state.
 //    @param targets - reference to the shared target data array.
 //    @param state - new state of the target.
@@ -221,6 +305,14 @@ void Context::SetTargetState(ut::Array<SharedTargetData>& targets, Target::Info:
 			{
 				image_state = PlatformImage::State::CreateForColorTarget();
 			}
+		}
+		else if (state == Target::Info::state_transfer_src)
+		{
+			image_state = PlatformImage::State::CreateForTransferSrc();
+		}
+		else if (state == Target::Info::state_transfer_dst)
+		{
+			image_state = PlatformImage::State::CreateForTransferDst();
 		}
 
 		// create transition request and update state information

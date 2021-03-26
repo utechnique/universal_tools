@@ -41,7 +41,13 @@ struct TargetData : public PlatformRenderTarget
 			state_target,
 
 			// image can be used as a shader resource but can't be rendered to
-			state_resource
+			state_resource,
+
+			// image can be used as a transfer source
+			state_transfer_src,
+
+			// image can be used as a transfer destination
+			state_transfer_dst
 		};
 
 		Image::Type type = Image::type_2D;

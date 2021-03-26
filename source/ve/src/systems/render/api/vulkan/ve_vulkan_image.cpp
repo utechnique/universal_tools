@@ -69,6 +69,22 @@ PlatformImage::State PlatformImage::State::CreateForShaderResource()
 	             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 }
 
+// Creates image state that makes possible to use it as a transfer source.
+PlatformImage::State PlatformImage::State::CreateForTransferSrc()
+{
+	return State(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	             VK_ACCESS_TRANSFER_READ_BIT,
+	             VK_PIPELINE_STAGE_TRANSFER_BIT);
+}
+
+// Creates image state that makes possible to use it as a transfer destination.
+PlatformImage::State PlatformImage::State::CreateForTransferDst()
+{
+	return State(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	             VK_ACCESS_TRANSFER_WRITE_BIT,
+	             VK_PIPELINE_STAGE_TRANSFER_BIT);
+}
+
 // Constructor.
 PlatformImage::State::State(VkImageLayout in_layout,
                             VkAccessFlags in_access_mask,

@@ -1128,6 +1128,9 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		image_usage |= (is_depth_buffer || is_stencil_buffer) ?
 		               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT :
 		               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+		image_usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		image_usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	}
 
 	// initialize info

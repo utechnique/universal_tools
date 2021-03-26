@@ -4,6 +4,7 @@
 #include "systems/render/units/ve_render_view.h"
 #include "systems/render/engine/lighting/ve_deferred_shading.h"
 #include "systems/render/engine/policy/ve_render_model_policy.h"
+#include "systems/render/engine/ve_render_stencil_ref.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -32,6 +33,9 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
                                                                                  ut::uint32 width,
                                                                                  ut::uint32 height)
 {
+	const pixel::Format depth_stencil_format = depth_stencil.GetInfo().format;
+
+	// target info
 	Target::Info info;
 	info.type = Image::type_2D;
 	info.format = skGBufferFormat;
@@ -55,15 +59,25 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 		return ut::MakeError(normal.MoveAlt());
 	}
 
+	// depth
+	info.format = depth_stencil_format;
+	info.usage = Target::Info::usage_depth;
+	ut::Result<Target, ut::Error> depth = tools.device.CreateTarget(info);
+	if (!depth)
+	{
+		return ut::MakeError(depth.MoveAlt());
+	}
+
 	// render pass
-	ut::Result<RenderPass, ut::Error> geometry_pass = CreateGeometryPass(depth_stencil.GetInfo().format);
+	ut::Result<RenderPass, ut::Error> geometry_pass = CreateGeometryPass(depth_stencil_format);
 	if (!geometry_pass)
 	{
 		return ut::MakeError(geometry_pass.MoveAlt());
 	}
 
 	// light pass
-	ut::Result<RenderPass, ut::Error> light_pass = CreateLightPass(light_buffer.GetInfo().format);
+	ut::Result<RenderPass, ut::Error> light_pass = CreateLightPass(depth_stencil_format,
+	                                                               light_buffer.GetInfo().format);
 	if (!light_pass)
 	{
 		return ut::MakeError(light_pass.MoveAlt());
@@ -85,7 +99,8 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 	color_targets.Empty();
 	color_targets.Add(light_buffer);
 	ut::Result<Framebuffer, ut::Error> light_framebuffer = tools.device.CreateFramebuffer(light_pass.Get(),
-	                                                                                      ut::Move(color_targets));
+	                                                                                      ut::Move(color_targets),
+	                                                                                      depth_stencil);
 	if (!light_framebuffer)
 	{
 		return ut::MakeError(light_framebuffer.MoveAlt());
@@ -119,6 +134,7 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 	{
 		diffuse.Move(),
 		normal.Move(),
+		depth.Move(),
 		geometry_pass.Move(),
 		light_pass.Move(),
 		gpass_framebuffer.Move(),
@@ -152,11 +168,21 @@ BoundShader DeferredShading::CreateModelGPassShader()
 Shader DeferredShading::CreateLightPassShader(Light::SourceType source_type)
 {
 	const char* light_type_str;
+	const char* shader_sufix;
 	switch (source_type)
 	{
-	case Light::source_directional: light_type_str = "DIRECTIONAL_LIGHT"; break;
-	case Light::source_point: light_type_str = "POINT_LIGHT"; break;
-	case Light::source_spot: light_type_str = "SPOT_LIGHT"; break;
+	case Light::source_directional:
+		light_type_str = "DIRECTIONAL_LIGHT";
+		shader_sufix = "directional";
+		break;
+	case Light::source_point:
+		light_type_str = "POINT_LIGHT";
+		shader_sufix = "point";
+		break;
+	case Light::source_spot:
+		light_type_str = "SPOT_LIGHT";
+		shader_sufix = "spot";
+		break;
 	default: throw ut::Error(ut::error::not_implemented);
 	}
 
@@ -167,7 +193,7 @@ Shader DeferredShading::CreateLightPassShader(Light::SourceType source_type)
 	macros.Add(ut::Move(source_type_macro));
 
 	ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::pixel,
-	                                                            "deferred_shading_ps",
+	                                                            ut::String("deferred_shading_ps_") + shader_sufix,
 	                                                            "PS",
 	                                                            "deferred_shading.hlsl",
 	                                                            macros);
@@ -188,12 +214,14 @@ ut::Result<RenderPass, ut::Error> DeferredShading::CreateGeometryPass(pixel::For
 }
 
 // Creates a render pass for the shading techniques.
-ut::Result<RenderPass, ut::Error> DeferredShading::CreateLightPass(pixel::Format light_buffer_format)
+ut::Result<RenderPass, ut::Error> DeferredShading::CreateLightPass(pixel::Format depth_stencil_format,
+                                                                   pixel::Format light_buffer_format)
 {
+	RenderTargetSlot depth_slot(depth_stencil_format, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
 	RenderTargetSlot color_slot(light_buffer_format, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
-	return tools.device.CreateRenderPass(ut::Move(color_slots));
+	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot);
 }
 
 // Creates a pipeline state to render geometry to the g-buffer.
@@ -214,6 +242,14 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateModelGPassPipeline(R
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = true;
 	info.depth_stencil_state.depth_compare_op = compare::less;
+	info.depth_stencil_state.stencil_test_enable = true;
+	info.depth_stencil_state.back.compare_op = compare::always;
+	info.depth_stencil_state.back.fail_op = StencilOpState::replace;
+	info.depth_stencil_state.back.pass_op = StencilOpState::replace;
+	info.depth_stencil_state.back.compare_mask = stencilref_opaque;
+	info.depth_stencil_state.front = info.depth_stencil_state.back;
+	info.depth_stencil_state.stencil_write_mask = stencilref_opaque;
+	info.depth_stencil_state.stencil_reference = stencilref_opaque;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = RasterizationState::back_culling;
 	info.rasterization_state.line_width = 1.0f;
@@ -241,10 +277,109 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateLightPassPipeline(Re
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::never;
+	info.depth_stencil_state.stencil_test_enable = true;
+	info.depth_stencil_state.back.compare_op = compare::equal;
+	info.depth_stencil_state.back.fail_op = StencilOpState::keep;
+	info.depth_stencil_state.back.pass_op = StencilOpState::keep;
+	info.depth_stencil_state.back.compare_mask = stencilref_opaque;
+	info.depth_stencil_state.front = info.depth_stencil_state.back;
+	info.depth_stencil_state.stencil_write_mask = 0x0;
+	info.depth_stencil_state.stencil_reference = stencilref_opaque;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;
 	info.blend_state.attachments.Add(BlendState::CreateAdditiveBlending());
 	return tools.device.CreatePipelineState(ut::Move(info), light_pass);
+}
+
+// Renders scnene to the g-buffer.
+void DeferredShading::BakeGeometry(Context& context,
+                                   Target& depth_stencil,
+                                   DeferredShading::ViewData& data,
+                                   Buffer& view_uniform_buffer,
+                                   ModelBatcher& batcher)
+{
+	BakeModels(context, data, view_uniform_buffer, batcher);
+
+	// copy depth to the intermediate buffer
+	context.SetTargetState(depth_stencil, Target::Info::state_transfer_src);
+	context.SetTargetState(data.depth, Target::Info::state_transfer_dst);
+	context.CopyTarget(data.depth, depth_stencil);
+}
+
+// Applies lighting techniques to the provided target.
+void DeferredShading::Shade(Context& context,
+                            DeferredShading::ViewData& data,
+                            Buffer& view_uniform_buffer,
+                            Light::Sources& lights)
+{
+	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
+
+	// set the g-buffer as a shader resource
+	context.SetTargetState(data.diffuse, Target::Info::state_resource);
+	context.SetTargetState(data.normal, Target::Info::state_resource);
+	context.SetTargetState(data.depth, Target::Info::state_resource);
+
+	// begin a render pass
+	const Framebuffer::Info& fb_info = data.light_framebuffer.GetInfo();
+	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
+	context.BeginRenderPass(data.light_pass, data.light_framebuffer, render_area, ut::Color<4>(0));
+
+	// set shader resources
+	lightpass_desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
+	lightpass_desc_set.sampler.BindSampler(tools.sampler_cache.point_clamp);
+	lightpass_desc_set.depth.BindImage(data.depth.GetImage());
+	lightpass_desc_set.diffuse.BindImage(data.diffuse.GetImage());
+	lightpass_desc_set.normal.BindImage(data.normal.GetImage());
+
+	// set quad vertex buffer
+	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
+
+	// directional lights
+	const size_t directional_light_count = lights.directional.GetNum();
+	if (directional_light_count > 0)
+	{
+		context.BindPipelineState(data.light_pipeline[Light::source_directional]);
+		for (size_t i = 0; i < directional_light_count; i++)
+		{
+			DirectionalLight& light = lights.directional[i];
+			DirectionalLight::FrameData& light_data = light.data->frames[current_frame_id];
+			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
+			context.BindDescriptorSet(lightpass_desc_set);
+			context.Draw(6, 0);
+		}
+	}
+
+	// point lights
+	const size_t point_light_count = lights.point.GetNum();
+	if (point_light_count > 0)
+	{
+		context.BindPipelineState(data.light_pipeline[Light::source_point]);
+		for (size_t i = 0; i < point_light_count; i++)
+		{
+			PointLight& light = lights.point[i];
+			PointLight::FrameData& light_data = light.data->frames[current_frame_id];
+			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
+			context.BindDescriptorSet(lightpass_desc_set);
+			context.Draw(6, 0);
+		}
+	}
+
+	// spot lights
+	const size_t spot_light_count = lights.spot.GetNum();
+	if (spot_light_count > 0)
+	{
+		context.BindPipelineState(data.light_pipeline[Light::source_spot]);
+		for (size_t i = 0; i < spot_light_count; i++)
+		{
+			SpotLight& light = lights.spot[i];
+			SpotLight::FrameData& light_data = light.data->frames[current_frame_id];
+			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
+			context.BindDescriptorSet(lightpass_desc_set);
+			context.Draw(6, 0);
+		}
+	}
+
+	context.EndRenderPass();
 }
 
 // Helper function to draw a model's subset.
@@ -272,7 +407,6 @@ inline void PerformModelDrawCall(Context& context,
 		                      0,
 		                      first_instance_id);
 	}
-
 }
 
 // Renders model units to the g-buffer.
@@ -418,78 +552,6 @@ void DeferredShading::BakeModels(Context& context,
 			PerformModelDrawCall(context, index_buffer,
 			                     index_offset, index_count,
 			                     instance_count, i, batch_size);
-		}
-	}
-
-	context.EndRenderPass();
-}
-
-// Applies lighting techniques to the provided target.
-void DeferredShading::Shade(Context& context,
-                            DeferredShading::ViewData& data,
-                            Buffer& view_uniform_buffer,
-                            Image& depth_buffer,
-                            Light::Sources& lights)
-{
-	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
-
-	// begin a render pass
-	const Framebuffer::Info& fb_info = data.light_framebuffer.GetInfo();
-	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-	context.BeginRenderPass(data.light_pass, data.light_framebuffer, render_area, ut::Color<4>(0));
-
-	// set shader resources
-	lightpass_desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
-	lightpass_desc_set.sampler.BindSampler(tools.sampler_cache.point_clamp);
-	lightpass_desc_set.depth.BindImage(depth_buffer);
-	lightpass_desc_set.diffuse.BindImage(data.diffuse.GetImage());
-	lightpass_desc_set.normal.BindImage(data.normal.GetImage());
-
-	// set quad vertex buffer
-	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
-
-	// directional lights
-	const size_t directional_light_count = lights.directional.GetNum();
-	if (directional_light_count > 0)
-	{
-		context.BindPipelineState(data.light_pipeline[Light::source_directional]);
-		for (size_t i = 0; i < directional_light_count; i++)
-		{
-			DirectionalLight& light = lights.directional[i];
-			DirectionalLight::FrameData& light_data = light.data->frames[current_frame_id];
-			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
-			context.BindDescriptorSet(lightpass_desc_set);
-			context.Draw(6, 0);
-		}
-	}
-
-	// point lights
-	const size_t point_light_count = lights.point.GetNum();
-	if (point_light_count > 0)
-	{
-		context.BindPipelineState(data.light_pipeline[Light::source_point]);
-		for (size_t i = 0; i < point_light_count; i++)
-		{
-			PointLight& light = lights.point[i];
-			PointLight::FrameData& light_data = light.data->frames[current_frame_id];
-			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
-			context.BindDescriptorSet(lightpass_desc_set);
-			context.Draw(6, 0);
-		}
-	}
-
-	// spot lights
-	const size_t spot_light_count = lights.spot.GetNum();
-	if (spot_light_count > 0)
-	{
-		context.BindPipelineState(data.light_pipeline[Light::source_spot]);
-		for (size_t i = 0; i < spot_light_count; i++)
-		{
-			SpotLight& light = lights.spot[i];
-			SpotLight::FrameData& light_data = light.data->frames[current_frame_id];
-			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
-			context.BindDescriptorSet(lightpass_desc_set);
-			context.Draw(6, 0);
 		}
 	}
 

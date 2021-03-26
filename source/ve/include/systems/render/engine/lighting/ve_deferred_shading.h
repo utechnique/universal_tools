@@ -23,6 +23,7 @@ public:
 	{
 		Target diffuse;
 		Target normal;
+		Target depth;
 		RenderPass geometry_pass;
 		RenderPass light_pass;
 		Framebuffer geometry_framebuffer;
@@ -45,20 +46,26 @@ public:
 	                                                                ut::uint32 width,
 	                                                                ut::uint32 height);
 
+	// Renders scnene to the g-buffer.
+	void BakeGeometry(Context& context,
+	                  Target& depth_stencil,
+	                  DeferredShading::ViewData& data,
+	                  Buffer& view_uniform_buffer,
+	                  ModelBatcher& batcher);
+
+	// Applies lighting techniques to the provided target.
+	void Shade(Context& context,
+	           DeferredShading::ViewData& data,
+	           Buffer& view_uniform_buffer,
+	           Light::Sources& lights);
+
+private:
 	// Renders model units to the g-buffer.
 	void BakeModels(Context& context,
 	                DeferredShading::ViewData& data,
 	                Buffer& view_uniform_buffer,
 	                ModelBatcher& batcher);
 
-	// Applies lighting techniques to the provided target.
-	void Shade(Context& context,
-	           DeferredShading::ViewData& data,
-	           Buffer& view_uniform_buffer,
-	           Image& depth_buffer,
-	           Light::Sources& lights);
-
-private:
 	// Creates shaders for rendering geometry to the g-buffer.
 	BoundShader CreateModelGPassShader();
 
@@ -69,7 +76,8 @@ private:
 	ut::Result<RenderPass, ut::Error> CreateGeometryPass(pixel::Format depth_stencil_format);
 
 	// Creates a render pass for the shading techniques.
-	ut::Result<RenderPass, ut::Error> CreateLightPass(pixel::Format light_buffer_format);
+	ut::Result<RenderPass, ut::Error> CreateLightPass(pixel::Format depth_stencil_format,
+	                                                  pixel::Format light_buffer_format);
 
 	// Creates a pipeline state to render geometry to the g-buffer.
 	ut::Result<PipelineState, ut::Error> CreateModelGPassPipeline(RenderPass& geometry_pass,
