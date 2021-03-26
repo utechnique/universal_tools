@@ -1,22 +1,24 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/resources/ve_render_map.h"
+#pragma once
 //----------------------------------------------------------------------------//
-UT_REGISTER_TYPE(ve::render::Resource, ve::render::Map, "map")
+#include "systems/render/ve_render_api.h"
+#include "systems/render/engine/ve_render_resource.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Constructor.
-Map::Map(Image in_img) : Image(ut::Move(in_img))
-{}
-
-// Identify() method must be implemented for the polymorphic types.
-const ut::DynamicType& Map::Identify() const
+// Represents an image as a render resource.
+class Map : public Image, public Resource
 {
-	return ut::Identify(this);
-}
+public:
+	// Constructor.
+	Map(Image in_img);
+
+	// Identify() method must be implemented for the polymorphic types.
+	const ut::DynamicType& Identify() const override;
+};
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

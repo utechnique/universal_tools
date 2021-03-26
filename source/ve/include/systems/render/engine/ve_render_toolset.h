@@ -4,7 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/ve_render_api.h"
-#include "systems/render/resources/ve_render_mesh.h"
+#include "resources/ve_render_mesh.h"
 #include "ve_render_cfg.h"
 #include "ve_render_frame.h"
 #include "ve_render_rc_mgr.h"

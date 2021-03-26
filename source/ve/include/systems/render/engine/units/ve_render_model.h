@@ -3,9 +3,8 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/render/ve_render_unit.h"
-#include "systems/render/ve_render_api.h"
-#include "systems/render/resources/ve_render_mesh.h"
+#include "systems/render/engine/ve_render_unit.h"
+#include "systems/render/engine/resources/ve_render_mesh.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)

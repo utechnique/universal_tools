@@ -3,8 +3,8 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/render/ve_render_resource.h"
-#include "systems/render/ve_render_material.h"
+#include "systems/render/engine/ve_render_resource.h"
+#include "systems/render/engine/ve_render_material.h"
 #include "systems/render/engine/ve_render_vertex_factory.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)

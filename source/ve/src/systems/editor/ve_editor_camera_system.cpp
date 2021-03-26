@@ -2,7 +2,7 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/editor/ve_editor_camera_system.h"
-#include "systems/render/units/ve_render_view.h"
+#include "systems/render/engine/units/ve_render_view.h"
 #include "commands/ve_cmd_add_entity.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)

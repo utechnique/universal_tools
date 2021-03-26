@@ -3,8 +3,8 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/render/engine/ve_render_toolset.h"
-#include "systems/render/units/ve_render_model.h"
+#include "ve_render_toolset.h"
+#include "units/ve_render_model.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)

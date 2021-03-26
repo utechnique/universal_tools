@@ -1,33 +1,29 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
+#include "systems/render/engine/units/ve_render_point_light.h"
 //----------------------------------------------------------------------------//
-#include "systems/render/ve_render_resource.h"
-#include "systems/render/resources/ve_render_map.h"
+UT_REGISTER_TYPE(ve::render::Unit, ve::render::PointLight, "point_light")
+UT_REGISTER_TYPE(ve::render::Resource, ve::render::PointLight::GpuData, "point_light")
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// A Material is a collection of assets and options that can be applied to a
-// mesh to control its visual look.
-class Material
+// Identify() method must be implemented for the polymorphic types.
+const ut::DynamicType& PointLight::Identify() const
 {
-public:
-	enum Alpha
-	{
-		alpha_opaque,
-		alpha_test,
-		alpha_transparent,
-	};
+	return ut::Identify(this);
+}
 
-	RcRef<Map> diffuse;
-	RcRef<Map> normal;
-	RcRef<Map> material;
-
-	Alpha alpha = alpha_opaque;
-	bool double_sided = false;
-};
+// Registers light source info into the reflection tree.
+//    @param snapshot - reference to the reflection tree.
+void PointLight::Reflect(ut::meta::Snapshot& snapshot)
+{
+	Light::Reflect(snapshot);
+	snapshot.Add(attenuation_distance, "attenuation_distance");
+	snapshot.Add(shape_radius, "shape_radius");
+	snapshot.Add(shape_length, "shape_length");
+}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

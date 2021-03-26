@@ -3,9 +3,8 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/render/ve_render_unit.h"
-#include "systems/render/ve_render_api.h"
-#include "systems/render/ve_render_resource.h"
+#include "systems/render/engine/ve_render_unit.h"
+#include "systems/render/engine/ve_render_resource.h"
 #include "systems/render/engine/post_process/ve_post_process_view_data.h"
 #include "systems/render/engine/lighting/ve_lighting_view_data.h"
 //----------------------------------------------------------------------------//

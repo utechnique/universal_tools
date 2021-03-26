@@ -3,15 +3,16 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/render/ve_render_unit.h"
-#include "systems/render/ve_render_resource.h"
+#include "systems/render/engine/ve_render_unit.h"
+#include "systems/render/engine/ve_render_resource.h"
 #include "systems/render/engine/lighting/ve_light_source.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// ve::render::SpotLight emits light from a single point in a cone shape. 
-class SpotLight : public Unit, public Light
+// ve::render::PointLight works much like a real world light bulb, emitting
+// light in all directions from the light bulb's tungsten filament.
+class PointLight : public Unit, public Light
 {
 public:
 	// Per-frame gpu data.
@@ -32,13 +33,7 @@ public:
 
 	// Registers light source info into the reflection tree.
 	//    @param snapshot - reference to the reflection tree.
-	void Reflect(ut::meta::Snapshot& snapshot);
-
-	// The inner cone angle of the spot light, in degrees.
-	float inner_cone = 30.0f;
-
-	// The outer cone angle of the spot light, in degrees.
-	float outer_cone = 45.0f;
+	void Reflect(ut::meta::Snapshot& snapshot) override;
 
 	// Bounds the light's visible influence.
 	float attenuation_distance = 30.0f;
@@ -51,6 +46,10 @@ public:
 
 	// GPU resources owned by this unit. 
 	RcRef<GpuData> data;
+
+	// This vector is the original shape direction (before transformation)
+	// in the case if this light source represents a tube (@shape_length > 0). 
+	static const ut::Vector<3> skTubeDirection;
 };
 
 //----------------------------------------------------------------------------//

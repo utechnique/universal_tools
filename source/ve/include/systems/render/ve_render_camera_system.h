@@ -7,7 +7,7 @@
 #include "components/ve_transform_component.h"
 #include "components/ve_camera_component.h"
 #include "components/ve_render_component.h"
-#include "systems/render/units/ve_render_view.h"
+#include "systems/render/engine/units/ve_render_view.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)

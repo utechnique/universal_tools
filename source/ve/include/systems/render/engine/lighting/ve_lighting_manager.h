@@ -4,7 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_toolset.h"
-#include "systems/render/units/ve_render_view.h"
+#include "systems/render/engine/units/ve_render_view.h"
 #include "ve_deferred_shading.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)

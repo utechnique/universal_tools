@@ -1,26 +1,21 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/units/ve_render_view.h"
+#include "systems/render/engine/resources/ve_render_map.h"
 //----------------------------------------------------------------------------//
-UT_REGISTER_TYPE(ve::render::Unit, ve::render::View, "render_view")
-UT_REGISTER_TYPE(ve::render::Resource, ve::render::View::GpuData, "view")
+UT_REGISTER_TYPE(ve::render::Resource, ve::render::Map, "map")
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
+// Constructor.
+Map::Map(Image in_img) : Image(ut::Move(in_img))
+{}
+
 // Identify() method must be implemented for the polymorphic types.
-const ut::DynamicType& View::Identify() const
+const ut::DynamicType& Map::Identify() const
 {
 	return ut::Identify(this);
-}
-
-// Registers this view unit into the reflection tree.
-//    @param snapshot - reference to the reflection tree.
-void View::Reflect(ut::meta::Snapshot& snapshot)
-{
-	snapshot.Add(view_matrix, "view");
-	snapshot.Add(proj_matrix, "projection");
 }
 
 //----------------------------------------------------------------------------//

@@ -1,26 +1,23 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/units/ve_render_directional_light.h"
+#include "systems/render/engine/units/ve_render_model.h"
 //----------------------------------------------------------------------------//
-UT_REGISTER_TYPE(ve::render::Unit, ve::render::DirectionalLight, "directional_light")
-UT_REGISTER_TYPE(ve::render::Resource, ve::render::DirectionalLight::GpuData, "directional_light")
+UT_REGISTER_TYPE(ve::render::Unit, ve::render::Model, "render_model")
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Identify() method must be implemented for the polymorphic types.
-const ut::DynamicType& DirectionalLight::Identify() const
+const ut::DynamicType& Model::Identify() const
 {
 	return ut::Identify(this);
 }
 
-// Registers light source info into the reflection tree.
+// Registers this model unit into the reflection tree.
 //    @param snapshot - reference to the reflection tree.
-void DirectionalLight::Reflect(ut::meta::Snapshot& snapshot)
-{
-	Light::Reflect(snapshot);
-}
+void Model::Reflect(ut::meta::Snapshot& snapshot)
+{}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

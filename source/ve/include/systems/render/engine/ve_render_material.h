@@ -1,23 +1,33 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/units/ve_render_model.h"
+#pragma once
 //----------------------------------------------------------------------------//
-UT_REGISTER_TYPE(ve::render::Unit, ve::render::Model, "render_model")
+#include "systems/render/engine/ve_render_resource.h"
+#include "systems/render/engine/resources/ve_render_map.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Identify() method must be implemented for the polymorphic types.
-const ut::DynamicType& Model::Identify() const
+// A Material is a collection of assets and options that can be applied to a
+// mesh to control its visual look.
+class Material
 {
-	return ut::Identify(this);
-}
+public:
+	enum Alpha
+	{
+		alpha_opaque,
+		alpha_test,
+		alpha_transparent,
+	};
 
-// Registers this model unit into the reflection tree.
-//    @param snapshot - reference to the reflection tree.
-void Model::Reflect(ut::meta::Snapshot& snapshot)
-{}
+	RcRef<Map> diffuse;
+	RcRef<Map> normal;
+	RcRef<Map> material;
+
+	Alpha alpha = alpha_opaque;
+	bool double_sided = false;
+};
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

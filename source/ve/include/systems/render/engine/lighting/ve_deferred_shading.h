@@ -5,9 +5,9 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_toolset.h"
 #include "systems/render/engine/ve_render_model_batcher.h"
-#include "systems/render/units/ve_render_directional_light.h"
-#include "systems/render/units/ve_render_point_light.h"
-#include "systems/render/units/ve_render_spot_light.h"
+#include "systems/render/engine/units/ve_render_directional_light.h"
+#include "systems/render/engine/units/ve_render_point_light.h"
+#include "systems/render/engine/units/ve_render_spot_light.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)

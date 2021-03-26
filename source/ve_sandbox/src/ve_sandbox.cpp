@@ -5,10 +5,10 @@
 #include "commands/ve_cmd_add_entity.h"
 #include "components/ve_render_component.h"
 #include "components/ve_transform_component.h"
-#include "systems/render/units/ve_render_model.h"
-#include "systems/render/units/ve_render_directional_light.h"
-#include "systems/render/units/ve_render_point_light.h"
-#include "systems/render/units/ve_render_spot_light.h"
+#include "systems/render/engine/units/ve_render_model.h"
+#include "systems/render/engine/units/ve_render_directional_light.h"
+#include "systems/render/engine/units/ve_render_point_light.h"
+#include "systems/render/engine/units/ve_render_spot_light.h"
 //----------------------------------------------------------------------------//
 // Creates a box with random color and scale.
 ve::Entity CreateRandomBox(const ut::Vector<3>& position)
