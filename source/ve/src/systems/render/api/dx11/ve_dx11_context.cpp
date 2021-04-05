@@ -299,7 +299,7 @@ void Context::ClearTarget(Target& target,
 
 	for (ut::uint32 slice = first_slice; slice < last_slice; slice++)
 	{
-		for (ut::uint32 mip = first_slice; mip < mip_count; mip++)
+		for (ut::uint32 mip = first_slice; mip < last_mip; mip++)
 		{
 			FLOAT clear_color[4] = { color.R(), color.G(), color.B(), color.A() };
 			PlatformRenderTarget::CombinedRTV& view = target->slice_target_views[slice].mips[mip];
