@@ -46,7 +46,8 @@ public:
 	ut::Result<RcRef<Map>, ut::Error> CreateImage(ut::uint32 width,
 	                                              ut::uint32 height,
 	                                              const ut::Color<4, ut::byte>& color,
-	                                              ut::Optional<ut::String> name);
+	                                              ut::Optional<ut::String> name,
+	                                              bool is_cubemap = false);
 
 	// Finds a resource by name.
 	template<typename ResourceType>

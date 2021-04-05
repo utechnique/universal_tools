@@ -71,34 +71,68 @@ public:
 	// Copies data between render targets.
 	//    @param dst - the destination target, must be in transfer_dst state.
 	//    @param src - the source target, must be in transfer_src state.
-	void CopyTarget(Target& dst, Target& src);
+	//    @param first_slice - first array slice id.
+	//    @param slice_count - the number of slices to copy,
+	//                         0 means all remaining.
+	//    @param first_mip - first mip id.
+	//    @param mip_count - the number of mips to copy,
+	//                       0 means all remaining.
+	void CopyTarget(Target& dst,
+	                Target& src,
+	                ut::uint32 first_slice = 0,
+	                ut::uint32 slice_count = 0,
+	                ut::uint32 first_mip = 0,
+	                ut::uint32 mip_count = 0);
 
-	// Toggles render target's state.
-	//    @param target - reference to the target.
-	//    @param state - new state of the target.
-	inline void SetTargetState(Target& target, Target::Info::State state)
+	// Clears provided render target. This function is slow, don't use it often,
+	// call BeginRenderPass() instead to clear targets.
+	//    @param target - target to be cleared.
+	//    @param color - clear color.
+	//    @param first_slice - first array slice id.
+	//    @param slice_count - the number of slices to copy,
+	//                         0 means all remaining.
+	//    @param first_mip - first mip id.
+	//    @param mip_count - the number of mips to copy,
+	//                       0 means all remaining.
+	void ClearTarget(Target& target,
+	                 ut::Color<4> color,
+	                 ut::uint32 first_slice = 0,
+	                 ut::uint32 slice_count = 0,
+	                 ut::uint32 first_mip = 0,
+	                 ut::uint32 mip_count = 0);
+
+	// Uses the largest mipmap level of the provided target to recursively
+	// generate the lower levels of the mip and stops with the smallest level.
+	//    @param target - reference to the render target.
+	//    @param new_state - optional target state to be set after all mip levels
+	//                       were generated.
+	void GenerateMips(Target& target,
+	                  const ut::Optional<Target::Info::State>& new_state = ut::Optional<Target::Info::State>());
+
+	// Toggles specified state for all provided targets.
+	//    @param targets - array of references to render targets.
+	//    @param state - the new state.
+	template<ut::uint32 target_count>
+	void SetTargetState(ut::Ref<Target> targets[],
+	                    Target::Info::State state)
 	{
-		ut::Array<SharedTargetData> target_data;
-		target_data.Add(target);
-		SetTargetState(target_data, state);
+		SharedTargetData* shared_targets[target_count];
+		for (ut::uint32 i = 0; i < target_count; i++)
+		{
+			shared_targets[i] = &targets[i].Get();
+		}
+
+		SetTargetState(shared_targets, target_count, state);
 	}
 
-	// Toggles render target state for all targets in the provided framebuffer.
-	//    @param framebuffer - reference to the framebuffer.
+	// Toggles specified state for a single render target.
+	//    @param target - reference to the target.
 	//    @param state - new state of the target.
-	inline void SetTargetState(Framebuffer& framebuffer, Target::Info::State state)
+	inline void SetTargetState(Target& target,
+	                           Target::Info::State state)
 	{
-		const ut::uint32 color_target_count = static_cast<ut::uint32>(framebuffer.color_targets.GetNum());
-		ut::Array<SharedTargetData> target_data(color_target_count);
-		for (ut::uint32 i = 0; i < color_target_count; i++)
-		{
-			target_data[i] = framebuffer.color_targets[i];
-		}
-		if (framebuffer.depth_stencil_target)
-		{
-			target_data.Add(framebuffer.depth_stencil_target.Get());
-		}
-		SetTargetState(target_data, state);
+		SharedTargetData* targets[1] = { &target };
+		SetTargetState(targets, 1, state);
 	}
 
 	// Begin a new render pass.
@@ -204,9 +238,12 @@ public:
 
 private:
 	// Toggles render target's state.
-	//    @param targets - reference to the shared target data array.
-	//    @param state - new state of the target.
-	void SetTargetState(ut::Array<SharedTargetData>& targets, Target::Info::State state);
+	//    @param targets - array of pointers to render targets.
+	//    @param target_count - the number of elements in @targets array.
+	//    @param state - the new state.
+	void SetTargetState(SharedTargetData** targets,
+	                    ut::uint32 target_count,
+	                    Target::Info::State state);
 };
 
 //----------------------------------------------------------------------------//

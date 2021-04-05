@@ -18,6 +18,13 @@ START_NAMESPACE(lighting)
 class DeferredShading
 {
 public:
+	enum IblPreset
+	{
+		ibl_off,
+		ibl_on,
+		ibl_preset_count
+	};
+
 	// Per-view gpu data.
 	struct ViewData
 	{
@@ -26,51 +33,61 @@ public:
 		Target depth;
 		RenderPass geometry_pass;
 		RenderPass light_pass;
-		Framebuffer geometry_framebuffer;
-		Framebuffer light_framebuffer;
+		ut::Array<Framebuffer> geometry_framebuffer;
+		ut::Array<Framebuffer> light_framebuffer;
 		PipelineState model_pipeline;
-		PipelineState light_pipeline[Light::source_type_count];
+		PipelineState light_pipeline[ibl_preset_count][Light::source_type_count];
+		PipelineState ibl_pipeline;
 	};
 
 	// Constructor.
-	DeferredShading(Toolset& toolset);
+	DeferredShading(Toolset& toolset, ut::uint32 ibl_mip_count);
 
 	// Creates deferred shading (per-view) data.
 	//    @param depth_stencil - reference to the depth buffer.
 	//    @param light_buffer - reference to the light buffer.
 	//    @param width - width of the view in pixels.
 	//    @param height - height of the view in pixels.
+	//    @param is_cube - 'true' to create as a cubemap.
 	//    @return - a new DeferredShading::ViewData object or error if failed.
 	ut::Result<DeferredShading::ViewData, ut::Error> CreateViewData(Target& depth_stencil,
 	                                                                Target& light_buffer,
 	                                                                ut::uint32 width,
-	                                                                ut::uint32 height);
+	                                                                ut::uint32 height,
+	                                                                bool is_cube);
 
 	// Renders scnene to the g-buffer.
 	void BakeGeometry(Context& context,
 	                  Target& depth_stencil,
 	                  DeferredShading::ViewData& data,
 	                  Buffer& view_uniform_buffer,
-	                  ModelBatcher& batcher);
+	                  ModelBatcher& batcher,
+	                  Image::Cube::Face cubeface = Image::Cube::positive_x);
 
 	// Applies lighting techniques to the provided target.
 	void Shade(Context& context,
 	           DeferredShading::ViewData& data,
 	           Buffer& view_uniform_buffer,
-	           Light::Sources& lights);
+	           Light::Sources& lights,
+	           ut::Optional<Image&> ibl_cubemap,
+	           Image::Cube::Face cubeface = Image::Cube::positive_x);
 
 private:
 	// Renders model units to the g-buffer.
 	void BakeModels(Context& context,
 	                DeferredShading::ViewData& data,
 	                Buffer& view_uniform_buffer,
-	                ModelBatcher& batcher);
+	                ModelBatcher& batcher,
+	                Image::Cube::Face cubeface);
 
 	// Creates shaders for rendering geometry to the g-buffer.
 	BoundShader CreateModelGPassShader();
 
 	// Creates a shader for the lighting pass.
-	Shader CreateLightPassShader(Light::SourceType source_type);
+	Shader CreateLightPassShader(Light::SourceType source_type, bool ibl_on);
+
+	// Creates a pixel shader for the image based lighting.
+	Shader CreateIblShader(ut::uint32 ibl_mip_count);
 
 	// Creates a render pass for the g-buffer.
 	ut::Result<RenderPass, ut::Error> CreateGeometryPass(pixel::Format depth_stencil_format);
@@ -88,11 +105,18 @@ private:
 	ut::Result<PipelineState, ut::Error> CreateLightPassPipeline(RenderPass& light_pass,
 	                                                             ut::uint32 width,
 	                                                             ut::uint32 height,
-	                                                             Light::SourceType source_type);
+	                                                             Light::SourceType source_type,
+	                                                             IblPreset ibl_preset);
+
+	// Creates a pipeline state to apply image based lighting.
+	ut::Result<PipelineState, ut::Error> CreateIblPipeline(RenderPass& light_pass,
+	                                                       ut::uint32 width,
+	                                                       ut::uint32 height);
 
 	Toolset& tools;
 	BoundShader model_gpass_shader;
-	Shader light_shader[Light::source_type_count];
+	Shader light_shader[ibl_preset_count][Light::source_type_count];
+	Shader ibl_shader;
 
 	struct GPassModelDescriptorSet : public DescriptorSet
 	{
@@ -108,6 +132,21 @@ private:
 		Descriptor normal = "g_tex2d_normal";
 		Descriptor material = "g_tex2d_material";
 	} gpass_desc_set;
+
+	struct IblDescriptorSet : public DescriptorSet
+	{
+		IblDescriptorSet() : DescriptorSet(view_ub, sampler, depth, ibl_sampler,
+		                                   diffuse, normal, ibl_cubemap)
+		{}
+
+		Descriptor view_ub = "g_ub_view";
+		Descriptor sampler = "g_sampler";
+		Descriptor ibl_sampler = "g_ibl_sampler";
+		Descriptor depth = "g_tex2d_depth";
+		Descriptor diffuse = "g_tex2d_diffuse";
+		Descriptor normal = "g_tex2d_normal";
+		Descriptor ibl_cubemap = "g_ibl_cubemap";
+	} ibl_desc_set;
 
 	struct LightPassDescriptorSet : public DescriptorSet
 	{

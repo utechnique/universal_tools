@@ -6,6 +6,7 @@
 #include "systems/render/engine/ve_render_toolset.h"
 #include "systems/render/engine/units/ve_render_view.h"
 #include "ve_deferred_shading.h"
+#include "ve_image_based_lighting.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -22,15 +23,19 @@ public:
 	//    @param depth_stencil - reference to the depth buffer.
 	//    @param width - width of the view in pixels.
 	//    @param height - height of the view in pixels.
+	//    @param is_cube - 'true' to create as a cubemap.
 	//    @return - a new lighting::ViewData object or error if failed.
 	ut::Result<lighting::ViewData, ut::Error> CreateViewData(Target& depth_stencil,
 	                                                         ut::uint32 width,
-	                                                         ut::uint32 height);
+	                                                         ut::uint32 height,
+	                                                         bool is_cube,
+	                                                         ut::uint32 light_buffer_mip_count = 1);
 
 	// Updates uniform buffers for the provided light units.
 	void UpdateLightUniforms(Context& context, Light::Sources& lights);
 
 	// light techniques
+	IBL ibl;
 	DeferredShading deferred_shading;
 
 private:

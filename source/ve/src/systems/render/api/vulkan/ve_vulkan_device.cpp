@@ -1313,23 +1313,14 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 					                        1); // array count
 				}
 
-				// calculate metrics of the next mip
-				ut::uint32 mip_size = pixel_size * mip_width;
-				mip_width /= 2;
-
-				if (is_2d || is_3d)
-				{
-					mip_size *= mip_height;
-					mip_height /= 2;
-				}
-
-				if (is_3d)
-				{
-					mip_size *= mip_depth;
-					mip_depth /= 2;
-				}
-
+				// move to the next mip
+				ut::uint32 mip_size = pixel_size * mip_width * mip_height * mip_depth;
 				mip_data += mip_size;
+
+				// calculate metrics of the next mip
+				mip_width = ut::Max<ut::uint32>(mip_width / 2, 1);
+				mip_height = ut::Max<ut::uint32>(mip_height / 2, 1);
+				mip_depth = ut::Max<ut::uint32>(mip_depth / 2, 1);
 			}
 		}
 
@@ -1491,12 +1482,53 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 		return ut::MakeError(image.MoveAlt());
 	}
 
-	// target is always created in 'target' state
+	// copy target information
 	Target::Info target_info(info);
+
+	// target is always created in the 'target' state
 	target_info.state = Target::Info::state_target;
 
+	// create a render target view for all mips
+	const VkFormat format = ConvertPixelFormatToVulkan(img_info.format);
+	const ut::uint32 slice_count = info.type == Image::type_cube ? 6 : 1;
+	ut::Array<PlatformRenderTarget::SliceView> slice_views;
+	for (ut::uint32 slice = 0; slice < slice_count; slice++)
+	{
+		PlatformRenderTarget::SliceView slice_view;
+		for (ut::uint32 mip = 0; mip < info.mip_count; mip++)
+		{
+			VkImageViewCreateInfo view_info;
+			view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			view_info.pNext = nullptr;
+			view_info.flags = 0;
+			view_info.image = image->GetVkHandle();
+			view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			view_info.format = format;
+			view_info.components.r = VK_COMPONENT_SWIZZLE_R;
+			view_info.components.g = VK_COMPONENT_SWIZZLE_G;
+			view_info.components.b = VK_COMPONENT_SWIZZLE_B;
+			view_info.components.a = VK_COMPONENT_SWIZZLE_A;
+			view_info.subresourceRange.aspectMask = image->aspect_mask;
+			view_info.subresourceRange.baseMipLevel = mip;
+			view_info.subresourceRange.levelCount = 1;
+			view_info.subresourceRange.baseArrayLayer = slice;
+			view_info.subresourceRange.layerCount = 1;
+
+			VkImageView target_view_handle;
+			VkResult res = vkCreateImageView(device.GetVkHandle(), &view_info, nullptr, &target_view_handle);
+			if (res != VK_SUCCESS)
+			{
+				return ut::MakeError(VulkanError(res, "vkCreateImageView(render target)"));
+			}
+
+			slice_view.mips.Add(VkRc<vk::image_view>(target_view_handle, device.GetVkHandle()));
+		}
+
+		slice_views.Add(ut::Move(slice_view));
+	}
+
 	// success
-	return Target(PlatformRenderTarget(), image.Move(), info);
+	return Target(PlatformRenderTarget(ut::Move(slice_views)), image.Move(), ut::Move(target_info));
 }
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
@@ -1782,12 +1814,14 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		color_image_view.subresourceRange.layerCount = 1;
 
 		// create image view for the current buffer
+		ut::Array<PlatformRenderTarget::SliceView> target_views(1);
 		VkImageView view;
 		res = vkCreateImageView(device.GetVkHandle(), &color_image_view, nullptr, &view);
 		if (res != VK_SUCCESS)
 		{
 			return ut::MakeError(VulkanError(res, "vkCreateImageView(swapchain)"));
 		}
+		target_views.GetFirst().mips.Add(VkRc<vk::image_view>(view, device.GetVkHandle()));
 
 		// stub texture
 		Image::Info info;
@@ -1803,10 +1837,13 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		info.height = swapchain_extent.height;
 		info.depth = 1;
 
+		// image state
 		PlatformImage::State img_state(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_HOST_BIT);
+
+		// create dummy image
 		PlatformImage empty_img(device.GetVkHandle(),
 		                        VK_NULL_HANDLE, // handle
-		                        view, // view
+		                        VK_NULL_HANDLE, // view
 			                    nullptr, // cube faces
 		                        VK_NULL_HANDLE, // memory
 		                        VK_IMAGE_ASPECT_COLOR_BIT, // aspect_mask
@@ -1817,9 +1854,12 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		Target::Info target_info;
 		target_info.format = info.format;
 		target_info.usage = Target::Info::usage_present;
+		target_info.state = Target::Info::state_target;
 
 		// create final target for the current buffer
-		Target target(PlatformRenderTarget(), ut::Move(image), target_info);
+		Target target(PlatformRenderTarget(ut::Move(target_views)),
+		              ut::Move(image),
+		              ut::Move(target_info));
 		if (!targets.Add(ut::Move(target)))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
@@ -1912,24 +1952,16 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 		color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-		// initial layout
-		if (in_color_slots[i].load_op == RenderTargetSlot::load_clear)
-		{
-			color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		}
-		else
-		{
-			color_attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		}
-
 		// final layout
 		if (in_color_slots[i].present_surface)
 		{
+			color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			has_present_surface = true;
 		}
 		else
 		{
+			color_attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		}
 
@@ -1974,17 +2006,8 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 		depth_attachment.stencilLoadOp = ConvertLoadOpToVulkan(depth_stencil_slot.load_op);
 		depth_attachment.stencilStoreOp = ConvertStoreOpToVulkan(depth_stencil_slot.store_op);
 
-		// initial layout
-		if (depth_stencil_slot.load_op == RenderTargetSlot::load_clear)
-		{
-			depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		}
-		else
-		{
-			depth_attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		}
-
-		// final layout
+		// both layouts must match
+		depth_attachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		// no flags
@@ -2059,29 +2082,31 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 
 // Creates a framebuffer. All targets must have the same width and height.
 //    @param render_pass - const reference to the renderpass to be bound to.
-//    @param color_targets - array of references to the colored render
-//                           targets to be bound to a render pass.
-//    @param depth_stencil_target - optional reference to the depth-stencil
-//                                  target to be bound to a render pass.
+//    @param color_attachments - array of color attachments to be bound
+//                               to the render pass.
+//    @param ds_attachment - optional depth-stencil attachment to be
+//                           bound to a render pass.
 //    @return - new framebuffer or error if failed.
 ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& render_pass,
-	                                                         ut::Array< ut::Ref<Target> > color_targets,
-	                                                         ut::Optional<Target&> depth_stencil_target)
+	                                                         ut::Array<Framebuffer::Attachment> color_attachments,
+	                                                         ut::Optional<Framebuffer::Attachment> ds_attachment)
 {
 	// determine width and heights of the framebuffer in pixels
 	ut::uint32 width;
 	ut::uint32 height;
-	if (color_targets.GetNum() != 0)
+	if (color_attachments.GetNum() != 0)
 	{
-		const Target& color_target = color_targets.GetFirst();
-		width = color_target->image.GetInfo().width;
-		height = color_target->image.GetInfo().height;
+		const Framebuffer::Attachment& attachment = color_attachments.GetFirst();
+		const Image& color_img = attachment.target->image;
+		width = ut::Max<ut::uint32>(color_img.GetInfo().width >> attachment.mip, 1);
+		height = ut::Max<ut::uint32>(color_img.GetInfo().height >> attachment.mip, 1);
 	}
-	else if (depth_stencil_target)
+	else if (ds_attachment)
 	{
-		const Target& ds_target = depth_stencil_target.Get();
-		width = ds_target->image.GetInfo().width;
-		height = ds_target->image.GetInfo().height;
+		const Framebuffer::Attachment& attachment = ds_attachment.Get();
+		const Image& ds_img = attachment.target->image;
+		width = ut::Max<ut::uint32>(ds_img.GetInfo().width >> attachment.mip, 1);
+		height = ut::Max<ut::uint32>(ds_img.GetInfo().height >> attachment.mip, 1);
 	}
 	else
 	{
@@ -2089,40 +2114,28 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	}
 
 	// color attachments
-	ut::Array<VkImageView> images;
-	const size_t color_target_count = color_targets.GetNum();
+	ut::Array<VkImageView> image_views;
+	const size_t color_target_count = color_attachments.GetNum();
 	for (size_t i = 0; i < color_target_count; i++)
 	{
-		const Target& color_target = color_targets[i];
-
-		// check width and height
-		const Image::Info& img_info = color_target->image.GetInfo();
-		if (img_info.width != width || img_info.height != height)
-		{
-			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));
-		}
+		const Framebuffer::Attachment& attachment = color_attachments[i];
+		const TargetData& target = attachment.target.GetRef();
 
 		// add attachment
-		if (!images.Add(color_target->image.view.GetVkHandle()))
+		if (!image_views.Add(target.slice_views[attachment.array_slice].mips[attachment.mip].GetVkHandle()))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
 		}
 	}
 
 	// depth attachment
-	if (depth_stencil_target)
+	if (ds_attachment)
 	{
-		const Target& ds_target = depth_stencil_target.Get();
-
-		// check width and height
-		const Image::Info& img_info = ds_target->image.GetInfo();
-		if (img_info.width != width || img_info.height != height)
-		{
-			return ut::MakeError(ut::Error(ut::error::invalid_arg, "Vulkan: different width/height for framebuffer."));
-		}
+		const Framebuffer::Attachment& attachment = ds_attachment.Get();
+		const TargetData& target = attachment.target.GetRef();
 
 		// add attachment
-		if (!images.Add(ds_target->image.view.GetVkHandle()))
+		if (!image_views.Add(target.slice_views[attachment.array_slice].mips[attachment.mip].GetVkHandle()))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
 		}
@@ -2133,8 +2146,8 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	vk_fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	vk_fb_info.pNext = nullptr;
 	vk_fb_info.renderPass = render_pass.GetVkHandle();
-	vk_fb_info.attachmentCount = static_cast<uint32_t>(images.GetNum());
-	vk_fb_info.pAttachments = images.GetAddress();
+	vk_fb_info.attachmentCount = static_cast<uint32_t>(image_views.GetNum());
+	vk_fb_info.pAttachments = image_views.GetAddress();
 	vk_fb_info.width = static_cast<uint32_t>(width);
 	vk_fb_info.height = static_cast<uint32_t>(height);
 	vk_fb_info.layers = 1;
@@ -2152,27 +2165,13 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	framebuffer_info.width = width;
 	framebuffer_info.height = height;
 
-	// colored shared target data
-	ut::Array<SharedTargetData> color_shared_data;
-	for (size_t i = 0; i < color_target_count; i++)
-	{
-		color_shared_data.Add(color_targets[i]);
-	}
-
-	// colored depth stencil target data
-	ut::Optional<SharedTargetData> depth_stencil_shared_data;
-	if (depth_stencil_target)
-	{
-		depth_stencil_shared_data = depth_stencil_target.Get();
-	}
-
 	// success
 	PlatformFramebuffer platform_framebuffer(device.GetVkHandle(),
 	                                         framebuffer);
 	return Framebuffer(ut::Move(platform_framebuffer),
 	                   framebuffer_info,
-	                   ut::Move(color_shared_data),
-	                   ut::Move(depth_stencil_shared_data));
+	                   ut::Move(color_attachments),
+	                   ut::Move(ds_attachment));
 }
 
 // Creates a buffer.
@@ -2539,17 +2538,39 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		for (size_t param_id = 0; param_id < shader.info.parameters.GetNum(); param_id++)
 		{
 			Shader::Parameter& parameter = shader.info.parameters[param_id];
+			const ut::uint32 binding_id = parameter.GetBinding();
 
-			VkDescriptorSetLayoutBinding dslb;
-			dslb.binding = parameter.GetBinding();
-			dslb.descriptorCount = parameter.GetElementCount();
-			dslb.pImmutableSamplers = nullptr;
-			dslb.stageFlags = PlatformShader::ConvertTypeToVkStage(shader.info.stage);
-			dslb.descriptorType = ConvertShaderParameterTypeToVulkan(parameter.GetType());
-
-			if (!layout_bindings.Add(dslb))
+			// check if this binding already exists
+			ut::Optional<VkDescriptorSetLayoutBinding&> binding_slot;
+			const size_t binding_count = layout_bindings.GetNum();
+			for (size_t binding_slot_id = 0; binding_slot_id < binding_count; binding_slot_id++)
 			{
-				return ut::MakeError(ut::error::out_of_memory);
+				if (layout_bindings[binding_slot_id].binding == binding_id)
+				{
+					binding_slot = layout_bindings[binding_slot_id];
+					break;
+				}
+			}
+
+			// just add shader stage flag if this binding already exists or
+			// create a new dsl binding otherwise
+			if (binding_slot)
+			{
+				binding_slot->stageFlags |= PlatformShader::ConvertTypeToVkStage(shader.info.stage);
+			}
+			else
+			{
+				VkDescriptorSetLayoutBinding dslb;
+				dslb.binding = binding_id;
+				dslb.descriptorCount = parameter.GetElementCount();
+				dslb.pImmutableSamplers = nullptr;
+				dslb.stageFlags = PlatformShader::ConvertTypeToVkStage(shader.info.stage);
+				dslb.descriptorType = ConvertShaderParameterTypeToVulkan(parameter.GetType());
+
+				if (!layout_bindings.Add(dslb))
+				{
+					return ut::MakeError(ut::error::out_of_memory);
+				}
 			}
 		}
 	}

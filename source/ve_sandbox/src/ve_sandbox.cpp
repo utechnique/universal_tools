@@ -35,6 +35,12 @@ ve::Entity CreateRandomBox(const ut::Vector<3>& position)
 	box_model.diffuse_mul.G() = r2 / 1000.0f;
 	box_model.diffuse_mul.B() = r3 / 1000.0f;
 
+	const bool is_metallic = rand() % 10 == 0;
+	float roughness = static_cast<float>(rand() % 255) / 255.0f;
+
+	box_model.material_mul.X() = roughness;
+	box_model.material_add.Y() = is_metallic ? 1.0f : 0.0f;
+
 	// render component
 	ve::RenderComponent render_component;
 	render_component.units.Add(ut::MakeUnique<ve::render::Model>(ut::Move(box_model)));

@@ -147,7 +147,7 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 	for (ut::uint32 i = 0; i < buffer_count; i++)
 	{
 		// initialize framebuffer info
-		ut::Array< ut::Ref<Target> > color_targets;
+		ut::Array<Framebuffer::Attachment> color_targets;
 		color_targets.Add(display_result.Get().GetTarget(i));
 
 		// create framebuffer

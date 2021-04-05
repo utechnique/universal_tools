@@ -33,12 +33,21 @@ public:
 		alignas(16) ut::Vector<4> camera_position;
 	};
 
+	// Represents a set of buffers and targets
+	// to render the environment.
+	struct SceneBuffer
+	{
+		ut::Array<Buffer> view_ub; // 6 for a cubemap, 1 otherwise
+		Target depth_stencil;
+		lighting::ViewData lighting;
+	};
+
 	// Per-frame gpu data.
 	struct FrameData
 	{
-		Buffer uniform_buffer;
-		Target depth_stencil;
-		lighting::ViewData lighting;
+		SceneBuffer environment_map;
+		SceneBuffer scene;
+		lighting::IBL::ViewData ibl;
 		postprocess::ViewData post_process;
 		ut::Optional<Image&> final_img;
 	};
@@ -73,6 +82,10 @@ public:
 	// View metrics in pixels.
 	ut::uint32 width = 640;
 	ut::uint32 height = 480;
+
+	// near and far frustum planes
+	float znear = 0.1f;
+	float zfar = 1e+5f;
 
 	// The identifier of the UI widget associated with this view.
 	ui::Viewport::Id viewport_id = 0;

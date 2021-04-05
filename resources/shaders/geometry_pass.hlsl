@@ -78,7 +78,7 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 	float3 normal_color = g_tex2d_normal.Sample(g_sampler, input.texcoord).rgb;
 	float3 material_color = g_tex2d_material.Sample(g_sampler, input.texcoord).rgb * material.material_mul.rgb + material.material_add.rgb;
 	float roughness = material_color.r;
-	float albedo = material_color.g;
+	float metallic = material_color.g;
 
 	// calculate final normal
 	float3 tbn_normal = normalize(-1 + (2 * normal_color));
@@ -86,7 +86,7 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 
 	// output
 	output.diffuse = float4(diffuse_color.rgb, roughness);
-	output.normal = float4(normal, albedo);
+	output.normal = float4(normal, metallic);
 
 	return output;
 }

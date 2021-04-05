@@ -46,16 +46,25 @@ protected:
 	struct ImageTransitionRequest
 	{
 		PlatformImage& image;
+		PlatformImage::State old_state;
 		PlatformImage::State new_state;
+		bool update_image_state;
+		ut::uint32 first_slice;
+		ut::uint32 slice_count;
+		ut::uint32 first_mip;
+		ut::uint32 mip_count;
 	};
 
 	// Performs image layout transition.
 	//    @param requests - array of transition requests.
 	//    @param cmd_buffer - command buffer handle to record transition command.
-	static void ChangeImageState(ut::Array<ImageTransitionRequest>& requests,
-	                             VkCommandBuffer cmd_buffer);
+	void ChangeImageState(ut::Array<ImageTransitionRequest>& requests);
 
+	// vulkan device associated with this context
 	VkDevice device;
+
+	// reference to the buffer containing all commands recorded
+	// by this context
 	PlatformCmdBuffer& cmd_buffer;
 };
 

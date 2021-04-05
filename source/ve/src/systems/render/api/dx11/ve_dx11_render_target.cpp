@@ -9,9 +9,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformRenderTarget::PlatformRenderTarget(ID3D11RenderTargetView* rtv_ptr,
-                                           ID3D11DepthStencilView* dsv_ptr) : rtv(rtv_ptr)
-                                                                            , dsv(dsv_ptr)
+PlatformRenderTarget::PlatformRenderTarget(ut::Array<SliceRTV> in_rtv_slices) : slice_target_views(ut::Move(in_rtv_slices))
 {}
 
 // Move constructor.

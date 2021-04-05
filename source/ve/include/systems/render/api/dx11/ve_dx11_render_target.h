@@ -17,8 +17,21 @@ class PlatformRenderTarget
 	friend class Device;
 	friend class Context;
 public:
-	PlatformRenderTarget(ID3D11RenderTargetView* rtv_ptr,
-	                     ID3D11DepthStencilView* dsv_ptr);
+	// Manages both render target view and depth-stencil view.
+	struct CombinedRTV
+	{
+		ut::ComPtr<ID3D11RenderTargetView> rtv;
+		ut::ComPtr<ID3D11DepthStencilView> dsv;
+	};
+
+	// A set of render target views for all mips in a texture slice. 
+	struct SliceRTV
+	{
+		ut::Array<CombinedRTV> mips;
+	};
+
+	// Constructor.
+	PlatformRenderTarget(ut::Array<SliceRTV> in_rtv_slices);
 
 	// Move constructor.
 	PlatformRenderTarget(PlatformRenderTarget&&) noexcept;
@@ -31,8 +44,7 @@ public:
 	PlatformRenderTarget& operator =(const PlatformRenderTarget&) = delete;
 
 private:
-	ut::ComPtr<ID3D11RenderTargetView> rtv;
-	ut::ComPtr<ID3D11DepthStencilView> dsv;
+	ut::Array<SliceRTV> slice_target_views;
 };
 
 //----------------------------------------------------------------------------//

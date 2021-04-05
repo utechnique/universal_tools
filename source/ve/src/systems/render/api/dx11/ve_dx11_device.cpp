@@ -384,6 +384,11 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		tex2d_desc.BindFlags = bind_flags;
 		tex2d_desc.CPUAccessFlags = cpu_access;
 		tex2d_desc.MiscFlags = is_cube ? D3D11_RESOURCE_MISC_TEXTURECUBE : 0;
+		if (is_render_target && info.mip_count > 1)
+		{
+			tex2d_desc.MiscFlags |= D3D11_RESOURCE_MISC_GENERATE_MIPS;
+		}
+
 		result = d3d11_device->CreateTexture2D(&tex2d_desc, subrc_data, &tex2D);
 		if (FAILED(result))
 		{
@@ -574,53 +579,64 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 	// check if image is a cubemap
 	const bool is_cube = info.type == Image::type_cube;
 
-	// create render target view
-	ID3D11RenderTargetView* rtv = nullptr;
-	ID3D11DepthStencilView* dsv = nullptr;
-	if (info.usage == Target::Info::usage_depth)
+	// create render target views
+	const ut::uint32 slice_count = is_cube ? 6 : 1;
+	ut::Array<PlatformRenderTarget::SliceRTV> slice_target_views(slice_count);
+	for (ut::uint32 slice = 0; slice < slice_count; slice++)
 	{
-		D3D11_DEPTH_STENCIL_VIEW_DESC desc;
-		desc.Format = ConvertPixelFormatToDX11(info.format);
-		desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-		desc.Flags = 0;
-		desc.Texture2D.MipSlice = 0;
-		if (is_cube)
+		for (ut::uint32 mip = 0; mip < info.mip_count; mip++)
 		{
-			desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
-			desc.Texture2DArray.FirstArraySlice = 0;
-			desc.Texture2DArray.ArraySize = 6;
-			desc.Texture2DArray.MipSlice = 0;
-		}
+			ID3D11RenderTargetView* rtv = nullptr;
+			ID3D11DepthStencilView* dsv = nullptr;
+			if (info.usage == Target::Info::usage_depth)
+			{
+				D3D11_DEPTH_STENCIL_VIEW_DESC desc;
+				desc.Format = ConvertPixelFormatToDX11(info.format);
+				desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+				desc.Flags = 0;
+				desc.Texture2D.MipSlice = mip;
+				if (is_cube)
+				{
+					desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+					desc.Texture2DArray.FirstArraySlice = slice;
+					desc.Texture2DArray.ArraySize = 1;
+					desc.Texture2DArray.MipSlice = mip;
+				}
 
-		HRESULT result = d3d11_device->CreateDepthStencilView(tex2d, &desc, &dsv);
-		if (FAILED(result))
-		{
-			return ut::MakeError(ut::error::fail, ut::Print(result) + " CreateDepthStencilView() failed.");
-		}
-	}
-	else
-	{
-		D3D11_RENDER_TARGET_VIEW_DESC desc;
-		desc.Format = ConvertPixelFormatToDX11(info.format);
-		desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-		desc.Texture2D.MipSlice = 0;
-		if (is_cube)
-		{
-			desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
-			desc.Texture2DArray.FirstArraySlice = 0;
-			desc.Texture2DArray.ArraySize = 6;
-			desc.Texture2DArray.MipSlice = 0;
-		}
+				HRESULT result = d3d11_device->CreateDepthStencilView(tex2d, &desc, &dsv);
+				if (FAILED(result))
+				{
+					return ut::MakeError(ut::error::fail, ut::Print(result) + " CreateDepthStencilView() failed.");
+				}
+			}
+			else
+			{
+				D3D11_RENDER_TARGET_VIEW_DESC desc;
+				desc.Format = ConvertPixelFormatToDX11(info.format);
+				desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+				desc.Texture2D.MipSlice = mip;
+				if (is_cube)
+				{
+					desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DARRAY;
+					desc.Texture2DArray.FirstArraySlice = slice;
+					desc.Texture2DArray.ArraySize = 1;
+					desc.Texture2DArray.MipSlice = mip;
+				}
 
-		HRESULT result = d3d11_device->CreateRenderTargetView(tex2d, &desc, &rtv);
-		if (FAILED(result))
-		{
-			return ut::MakeError(ut::error::fail, ut::Print(result) + " CreateRenderTargetView() failed.");
+				HRESULT result = d3d11_device->CreateRenderTargetView(tex2d, &desc, &rtv);
+				if (FAILED(result))
+				{
+					return ut::MakeError(ut::error::fail, ut::Print(result) + " CreateRenderTargetView() failed.");
+				}
+			}
+
+			slice_target_views[slice].mips.Add({ ut::ComPtr<ID3D11RenderTargetView>(rtv),
+			                                     ut::ComPtr<ID3D11DepthStencilView>(dsv) });
 		}
 	}
 
 	// success
-	return Target(PlatformRenderTarget(rtv, dsv),
+	return Target(PlatformRenderTarget(ut::Move(slice_target_views)),
 	              image.Move(),
 	              info);
 }
@@ -675,6 +691,9 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	{
 		return ut::MakeError(extract_error.Move());
 	}
+	ut::Array<PlatformRenderTarget::SliceRTV> slice_target_views(1);
+	slice_target_views.GetFirst().mips.Add({ ut::ComPtr<ID3D11RenderTargetView>(rtv),
+	                                         ut::ComPtr<ID3D11DepthStencilView>(nullptr) });
 
 	// initialize render target info
 	Target::Info target_info;
@@ -683,7 +702,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 
 	// create render target that will be associated with provided viewport
 	Image texture(PlatformImage(backbuffer, nullptr), ut::Move(backbuffer_info));
-	Target target(PlatformRenderTarget(rtv, nullptr), ut::Move(texture), target_info);
+	Target target(PlatformRenderTarget(ut::Move(slice_target_views)), ut::Move(texture), target_info);
 
 	// dx11 does swapping manually, so there is only one buffer available for engine
 	ut::Array<Target> display_targets;
@@ -715,56 +734,37 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 	return RenderPass(PlatformRenderPass(), ut::Move(in_color_slots), ut::Move(in_depth_stencil_slot));
 }
 
-// Creates framebuffer. All targets must have the same width and height.
+// Creates a framebuffer. All targets must have the same width and height.
 //    @param render_pass - const reference to the renderpass to be bound to.
-//    @param color_targets - array of references to the colored render
-//                           targets to be bound to a render pass.
-//    @param depth_stencil_target - optional reference to the depth-stencil
-//                                  target to be bound to a render pass.
+//    @param color_targets - array of color attachments to be bound
+//                           to the render pass.
+//    @param depth_stencil_target - optional depth-stencil attachment to be
+//                                  bound to a render pass.
 //    @return - new framebuffer or error if failed.
 ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& render_pass,
-	                                                         ut::Array< ut::Ref<Target> > color_targets,
-	                                                         ut::Optional<Target&> depth_stencil_target)
+	                                                         ut::Array<Framebuffer::Attachment> color_attachments,
+	                                                         ut::Optional<Framebuffer::Attachment> ds_attachment)
 {
 	// determine width and heights of the framebuffer in pixels
 	ut::uint32 width;
 	ut::uint32 height;
-	if (color_targets.GetNum() != 0)
+	if (color_attachments.GetNum() != 0)
 	{
-		const Target& color_target = color_targets.GetFirst();
-		width = color_target->image.GetInfo().width;
-		height = color_target->image.GetInfo().height;
+		const Framebuffer::Attachment& attachment = color_attachments.GetFirst();
+		const Image& color_img = attachment.target->image;
+		width = ut::Max<ut::uint32>(color_img.GetInfo().width >> attachment.mip, 1);
+		height = ut::Max<ut::uint32>(color_img.GetInfo().height >> attachment.mip, 1);
 	}
-	else if (depth_stencil_target)
+	else if (ds_attachment)
 	{
-		const Target& ds_target = depth_stencil_target.Get();
-		width = ds_target->image.GetInfo().width;
-		height = ds_target->image.GetInfo().height;
+		const Framebuffer::Attachment& attachment = ds_attachment.Get();
+		const Image& ds_img = attachment.target->image;
+		width = ut::Max<ut::uint32>(ds_img.GetInfo().width >> attachment.mip, 1);
+		height = ut::Max<ut::uint32>(ds_img.GetInfo().height >> attachment.mip, 1);
 	}
 	else
 	{
 		return ut::MakeError(ut::error::invalid_arg, "DirectX 11: no targets for the framebuffer.");
-	}
-
-	// check width and height of the color targets
-	const ut::uint32 color_target_count = static_cast<ut::uint32>(color_targets.GetNum());
-	for (ut::uint32 i = 0; i < color_target_count; i++)
-	{
-		const Image::Info& img_info = color_targets[i]->GetImage().GetInfo();
-		if (img_info.width != width || img_info.height != height)
-		{
-			return ut::MakeError(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer.");
-		}
-	}
-
-	// check width and height of the depth target
-	if (depth_stencil_target)
-	{
-		const Image::Info& img_info = depth_stencil_target->GetImage().GetInfo();
-		if (img_info.width != width || img_info.height != height)
-		{
-			return ut::MakeError(ut::error::invalid_arg, "DirectX 11: different width/height for the framebuffer.");
-		}
 	}
 
 	// initialize info
@@ -772,26 +772,11 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	info.width = width;
 	info.height = height;
 
-	// share color targets
-	ut::Array<SharedTargetData> color_shared_data(color_target_count);
-	for (ut::uint32 i = 0; i < color_target_count; i++)
-	{
-		color_shared_data[i] = color_targets[i];
-	}
-
-	// share depth stencil target
-	ut::Optional<SharedTargetData> depth_stencil_shared_data;
-	if (depth_stencil_target)
-	{
-		depth_stencil_shared_data = depth_stencil_target.Get();
-	}
-
-
 	// success
 	return Framebuffer(PlatformFramebuffer(),
 	                   info,
-	                   ut::Move(color_shared_data),
-	                   ut::Move(depth_stencil_shared_data));
+	                   ut::Move(color_attachments),
+	                   ut::Move(ds_attachment));
 }
 
 // Creates a buffer.

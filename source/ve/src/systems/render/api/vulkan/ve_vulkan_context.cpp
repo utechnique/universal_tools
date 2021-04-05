@@ -12,6 +12,33 @@ START_NAMESPACE(render)
 const ut::uint32 skMaxClearValues = 16;
 
 //----------------------------------------------------------------------------//
+// Returns appropriate image state for the provided target info.
+PlatformImage::State CreateTargetImageState(Target::Info target_info,
+                                            Target::Info::State state)
+{
+	if (state == Target::Info::state_target)
+	{
+		if (target_info.usage == Target::Info::usage_depth)
+		{
+			return PlatformImage::State::CreateForDepthStencilTarget();
+		}
+		else
+		{
+			return PlatformImage::State::CreateForColorTarget();
+		}
+	}
+	else if (state == Target::Info::state_transfer_src)
+	{
+		return PlatformImage::State::CreateForTransferSrc();
+	}
+	else if (state == Target::Info::state_transfer_dst)
+	{
+		return PlatformImage::State::CreateForTransferDst();
+	}
+	return PlatformImage::State::CreateForShaderResource();
+}
+
+//----------------------------------------------------------------------------//
 // Constructor.
 PlatformContext::PlatformContext(VkDevice device_handle,
                                  PlatformCmdBuffer& cmd_buffer_ref) : device(device_handle)
@@ -24,11 +51,9 @@ PlatformContext::PlatformContext(PlatformContext&&) noexcept = default;
 // Performs image layout transition.
 //    @param requests - array of transition requests.
 //    @param cmd_buffer - command buffer handle to record transition command.
-void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& requests,
-                                       VkCommandBuffer cmd_buffer)
+void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& requests)
 {
 	ut::Array<ImageTransitionGroup> transition_groups;
-
 	const ut::uint32 request_count = static_cast<ut::uint32>(requests.GetNum());
 	for (ut::uint32 i = 0; i < request_count; i++)
 	{
@@ -38,17 +63,17 @@ void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& reques
 		VkImageMemoryBarrier barrier;
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		barrier.pNext = nullptr;
-		barrier.oldLayout = request.image.state.layout;
+		barrier.oldLayout = request.old_state.layout;
 		barrier.newLayout = request.new_state.layout;
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.image = request.image.GetVkHandle();
 		barrier.subresourceRange.aspectMask = request.image.aspect_mask;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-		barrier.srcAccessMask = request.image.state.access_mask;
+		barrier.subresourceRange.baseMipLevel = request.first_mip;
+		barrier.subresourceRange.levelCount = request.mip_count;
+		barrier.subresourceRange.baseArrayLayer = request.first_slice;
+		barrier.subresourceRange.layerCount = request.slice_count;
+		barrier.srcAccessMask = request.old_state.access_mask;
 		barrier.dstAccessMask = request.new_state.access_mask;
 
 		// search this transition variant
@@ -57,7 +82,7 @@ void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& reques
 		for (ut::uint32 t = 0; t < group_count; t++)
 		{
 			ImageTransitionGroup& current_group = transition_groups[t];
-			if (current_group.old_stage == request.image.state.stages &&
+			if (current_group.old_stage == request.old_state.stages &&
 				current_group.new_stage == request.new_state.stages)
 			{
 				suitable_group = current_group; break;
@@ -67,13 +92,16 @@ void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& reques
 		// if there is no such transition - add a new group
 		if (!suitable_group)
 		{
-			transition_groups.Add({ 0, request.image.state.stages, request.new_state.stages });
+			transition_groups.Add({ 0, request.old_state.stages, request.new_state.stages });
 			suitable_group = transition_groups.GetLast();
 		}
 
-		// update state information
+		// create memory barrier and update state information
 		suitable_group->barriers.Add(barrier);
-		request.image.state = request.new_state;
+		if (request.update_image_state)
+		{
+			request.image.state = request.new_state;
+		}
 	}
 
 	// perform pipeline barriers - one for each group
@@ -82,7 +110,7 @@ void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& reques
 	{
 		ImageTransitionGroup& group = transition_groups[t];
 		const uint32_t barrier_count = static_cast<uint32_t>(group.barriers.GetNum());
-		vkCmdPipelineBarrier(cmd_buffer,
+		vkCmdPipelineBarrier(cmd_buffer.GetVkHandle(),
 		                     group.old_stage,
 		                     group.new_stage,
 		                     0, 0, nullptr, 0, nullptr,
@@ -195,7 +223,16 @@ void Context::UnmapImage(Image& image)
 // Copies data between render targets.
 //    @param dst - the destination target, must be in transfer_dst state.
 //    @param src - the source target, must be in transfer_src state.
-void Context::CopyTarget(Target& dst, Target& src)
+//    @param first_slice - first array slice id.
+//    @param slice_count - the number of slices to copy.
+//    @param first_mip - first mip id.
+//    @param mip_count - the number of mips to copy.
+void Context::CopyTarget(Target& dst,
+                         Target& src,
+                         ut::uint32 first_slice,
+                         ut::uint32 slice_count,
+                         ut::uint32 first_mip,
+                         ut::uint32 mip_count)
 {
 	const Target::Info& src_info = src.GetInfo();
 	const Target::Info& dst_info = dst.GetInfo();
@@ -216,25 +253,26 @@ void Context::CopyTarget(Target& dst, Target& src)
 	const ut::uint32 depth = ut::Min(src_info.depth, dst_info.depth);
 
 	// calculate the number of subresources
-	const ut::uint32 mip_count = ut::Min(src_info.mip_count, dst_info.mip_count);
-	const ut::uint32 cubeface_count = type == Image::type_cube ? 6 : 1;
-	const ut::uint32 subresource_count = cubeface_count * mip_count;
-	ut::Array<VkImageCopy> regions(subresource_count);
+	const ut::uint32 img_slice_count = type == Image::type_cube ? 6 : 1;
+	const ut::uint32 img_mip_count = ut::Min(src_info.mip_count, dst_info.mip_count);
+	const ut::uint32 slice_end = slice_count == 0 ? img_slice_count : (first_slice + slice_count);
+	const ut::uint32 mip_end = mip_count == 0 ? img_mip_count : (first_mip + mip_count);
 
 	// initialize copy regions
-	for (ut::uint32 cubeface = 0; cubeface < cubeface_count; cubeface++)
+	ut::Array<VkImageCopy> img_copy_regions;
+	for (ut::uint32 slice = first_slice; slice < slice_end; slice++)
 	{
 		ut::uint32 mip_width = width;
 		ut::uint32 mip_height = height;
 		ut::uint32 mip_depth = depth;
 
-		for (ut::uint32 mip = 0; mip < mip_count; mip++)
+		for (ut::uint32 mip = first_mip; mip < mip_end; mip++)
 		{
-			VkImageCopy& region = regions[cubeface * mip_count + mip];
+			VkImageCopy region;
 
 			region.srcSubresource.aspectMask = src_image.aspect_mask;
 			region.srcSubresource.mipLevel = mip;
-			region.srcSubresource.baseArrayLayer = cubeface;
+			region.srcSubresource.baseArrayLayer = slice;
 			region.srcSubresource.layerCount = 1;
 			region.srcOffset.x = 0;
 			region.srcOffset.y = 0;
@@ -242,7 +280,7 @@ void Context::CopyTarget(Target& dst, Target& src)
 
 			region.dstSubresource.aspectMask = dst_image.aspect_mask;
 			region.dstSubresource.mipLevel = mip;
-			region.dstSubresource.baseArrayLayer = cubeface;
+			region.dstSubresource.baseArrayLayer = slice;
 			region.dstSubresource.layerCount = 1;
 			region.dstOffset.x = 0;
 			region.dstOffset.y = 0;
@@ -252,17 +290,12 @@ void Context::CopyTarget(Target& dst, Target& src)
 			region.extent.height = mip_height;
 			region.extent.depth = mip_depth;
 
+			img_copy_regions.Add(region);
+
 			// calculate metrics of the next mip
-			mip_width /= 2;
-			if (type == Image::type_2D)
-			{
-				mip_height /= 2;
-			}
-			else if (type == Image::type_3D)
-			{
-				mip_height /= 2;
-				mip_depth /= 2;
-			}
+			mip_width = ut::Max<ut::uint32>(mip_width / 2, 1);
+			mip_height = ut::Max<ut::uint32>(mip_height / 2, 1);
+			mip_depth = ut::Max<ut::uint32>(mip_depth / 2, 1);
 		}
 	}
 
@@ -272,21 +305,158 @@ void Context::CopyTarget(Target& dst, Target& src)
 	               src_image.GetLayout(),
 	               dst_image.GetVkHandle(),
 	               dst_image.GetLayout(),
-	               subresource_count,
-	               regions.GetAddress());
+	               static_cast<uint32_t>(img_copy_regions.GetNum()),
+	               img_copy_regions.GetAddress());
+}
+
+// Clears provided render target. This function is slow, don't use it often,
+// call BeginRenderPass() instead to clear targets.
+//    @param target - target to be cleared.
+//    @param color - clear color.
+//    @param first_slice - first array slice id.
+//    @param slice_count - the number of slices to copy,
+//                         0 means all remaining.
+//    @param first_mip - first mip id.
+//    @param mip_count - the number of mips to copy,
+//                       0 means all remaining.
+void Context::ClearTarget(Target& target,
+                          ut::Color<4> color,
+                          ut::uint32 first_slice,
+                          ut::uint32 slice_count,
+                          ut::uint32 first_mip,
+                          ut::uint32 mip_count)
+{
+	const Target::Info& info = target.GetInfo();
+	Target::Info::State img_state = info.state;
+	Image& img = target.GetImage();
+
+	// clear requires transfer_dst state
+	SetTargetState(target, Target::Info::state_transfer_dst);
+
+	VkClearColorValue clear_color;
+	clear_color.float32[0] = color.R();
+	clear_color.float32[1] = color.G();
+	clear_color.float32[2] = color.B();
+	clear_color.float32[3] = color.A();
+
+	VkImageSubresourceRange range;
+	range.aspectMask = img.aspect_mask;
+	range.baseMipLevel = first_mip;
+	range.levelCount = mip_count == 0 ? VK_REMAINING_MIP_LEVELS : mip_count;
+	range.baseArrayLayer = first_slice;
+	range.layerCount = slice_count == 0 ? VK_REMAINING_ARRAY_LAYERS : slice_count;
+
+	vkCmdClearColorImage(cmd_buffer.GetVkHandle(),
+	                     img.GetVkHandle(),
+	                     img.GetLayout(),
+	                     &clear_color,
+	                     1, &range);
+
+	// set original state back
+	SetTargetState(target, img_state);
+}
+
+// Uses the largest mipmap level of the provided target to recursively
+// generate the lower levels of the mip and stops with the smallest level.
+//    @param target - reference to the render target.
+//    @param new_state - optional target state to be set after all mip levels
+//                       were generated.
+void Context::GenerateMips(Target& target,
+                           const ut::Optional<Target::Info::State>& new_state)
+{
+	// skip if this render target has only 1 mip level
+	const Target::Info& info = target.GetInfo();
+	if (info.mip_count <= 1)
+	{
+		return;
+	}
+
+	// get the number of array layers
+	Image& image = target.GetImage();
+	const ut::uint32 slice_count = info.type == Image::type_cube ? 6 : 1;
+
+	// mips must have different layouts in order to perform vkCmdBlitImage:
+	// 1) source mip must have VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+	// 2) destination mip must have VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+	PlatformImage::State transfer_src_state = PlatformImage::State::CreateForTransferSrc();
+	PlatformImage::State transfer_dst_state = PlatformImage::State::CreateForTransferDst();
+	ut::Array<ImageTransitionRequest> transition_requests;
+	transition_requests.SetCapacityReduction(false);
+
+	// perform vkCmdBlitImage for all mips
+	ut::uint32 mip_width = info.width;
+	ut::uint32 mip_height = info.height;
+	ut::uint32 mip_depth = info.depth;
+	for (ut::uint32 mip = 1; mip < info.mip_count; mip++)
+	{
+		// change destination and source mip layout
+		transition_requests.Empty();
+		ImageTransitionRequest mip_src_request = { image, mip == 1 ? image.state : transfer_dst_state,
+		                                           transfer_src_state, false, 0, slice_count, mip - 1, 1 };
+		ImageTransitionRequest mip_dst_request = { image, image.state, transfer_dst_state,
+		                                           false, 0, slice_count, mip, 1 };
+		transition_requests.Add(mip_src_request);
+		transition_requests.Add(mip_dst_request);
+		ChangeImageState(transition_requests);
+
+		// perform blit
+		VkImageBlit img_blit = {};
+		img_blit.srcSubresource.aspectMask = image.aspect_mask;
+		img_blit.srcSubresource.baseArrayLayer = 0;
+		img_blit.srcSubresource.layerCount = slice_count;
+		img_blit.srcSubresource.mipLevel = mip - 1;
+		img_blit.srcOffsets[0] = { 0, 0, 0 };
+		img_blit.srcOffsets[1].x = static_cast<int32_t>(mip_width);
+		img_blit.srcOffsets[1].y = static_cast<int32_t>(mip_height);
+		img_blit.srcOffsets[1].z = static_cast<int32_t>(mip_depth);
+
+		mip_width = ut::Max<ut::uint32>(mip_width / 2, 1);
+		mip_height = ut::Max<ut::uint32>(mip_height / 2, 1);
+		mip_depth = ut::Max<ut::uint32>(mip_depth / 2, 1);
+
+		img_blit.dstSubresource.aspectMask = image.aspect_mask;
+		img_blit.dstSubresource.baseArrayLayer = 0;
+		img_blit.dstSubresource.layerCount = slice_count;
+		img_blit.dstSubresource.mipLevel = mip;
+		img_blit.dstOffsets[0] = { 0, 0, 0 };
+		img_blit.dstOffsets[1].x = static_cast<int32_t>(mip_width);
+		img_blit.dstOffsets[1].y = static_cast<int32_t>(mip_height);
+		img_blit.dstOffsets[1].z = static_cast<int32_t>(mip_depth);
+
+		vkCmdBlitImage(cmd_buffer.GetVkHandle(),
+		               image.GetVkHandle(),
+		               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		               image.GetVkHandle(),
+		               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		               1,
+		               &img_blit,
+		               VK_FILTER_LINEAR);
+	}
+
+	// set back the original image state
+	PlatformImage::State final_state = new_state ? CreateTargetImageState(info, new_state.Get()) : image.state;
+	ImageTransitionRequest first_mips_request = { image, transfer_src_state, final_state,
+	                                              true, 0, slice_count, 0, info.mip_count - 1 };
+	ImageTransitionRequest last_mip_request = { image, transfer_dst_state, final_state,
+	                                            true, 0, slice_count, info.mip_count - 1, 1 };
+	transition_requests.Empty();
+	transition_requests.Add(first_mips_request);
+	transition_requests.Add(last_mip_request);
+	ChangeImageState(transition_requests);
 }
 
 // Toggles render target's state.
-//    @param targets - reference to the shared target data array.
-//    @param state - new state of the target.
-void Context::SetTargetState(ut::Array<SharedTargetData>& targets, Target::Info::State state)
+//    @param targets - array of pointers to render targets.
+//    @param target_count - the number of elements in @targets array.
+//    @param state - the new state.
+void Context::SetTargetState(SharedTargetData** targets,
+                             ut::uint32 target_count,
+                             Target::Info::State state)
 {
 	ut::Array<ImageTransitionRequest> transition_requests;
-
-	const ut::uint32 target_count = static_cast<ut::uint32>(targets.GetNum());
 	for (ut::uint32 i = 0; i < target_count; i++)
 	{
-		TargetData& target_data = targets[i].GetRef();
+		TargetData& target_data = targets[i]->GetRef();
 		const Target::Info target_info = target_data.info;
 		if (target_info.state == state)
 		{
@@ -294,34 +464,21 @@ void Context::SetTargetState(ut::Array<SharedTargetData>& targets, Target::Info:
 		}
 
 		// choose corresponding image state
-		PlatformImage::State image_state = PlatformImage::State::CreateForShaderResource();
-		if (state == Target::Info::state_target)
-		{
-			if (target_info.usage == Target::Info::usage_depth)
-			{
-				image_state = PlatformImage::State::CreateForDepthStencilTarget();
-			}
-			else
-			{
-				image_state = PlatformImage::State::CreateForColorTarget();
-			}
-		}
-		else if (state == Target::Info::state_transfer_src)
-		{
-			image_state = PlatformImage::State::CreateForTransferSrc();
-		}
-		else if (state == Target::Info::state_transfer_dst)
-		{
-			image_state = PlatformImage::State::CreateForTransferDst();
-		}
+		PlatformImage::State new_img_state = CreateTargetImageState(target_info, state);
 
 		// create transition request and update state information
-		transition_requests.Add({ target_data.image, image_state });
+		ImageTransitionRequest request = { target_data.image,
+		                                   target_data.image.state,
+		                                   new_img_state,
+		                                   true,
+		                                   0, VK_REMAINING_ARRAY_LAYERS,
+		                                   0, VK_REMAINING_MIP_LEVELS };
+		transition_requests.Add(request);
 		target_data.info.state = state;
 	}
 
 	// pipeline barrier
-	ChangeImageState(transition_requests, cmd_buffer.GetVkHandle());
+	ChangeImageState(transition_requests);
 }
 
 // Begin a new render pass.
@@ -345,14 +502,15 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 		UT_ASSERT(clear_color.GetAlt().GetNum() <= skMaxClearValues);
 		UT_ASSERT(clear_color.GetAlt().GetNum() == render_pass.color_slots.GetNum());
 	}
-	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_targets.GetNum());
-	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_target : !framebuffer.depth_stencil_target);
+	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_attachments.GetNum());
+	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_attachment : !framebuffer.depth_stencil_attachment);
 	
 	const ut::uint32 color_slot_count = static_cast<ut::uint32>(render_pass.color_slots.GetNum());
-	ut::uint32 total_clear_val_count = color_slot_count;
+	ut::uint32 total_attachment_count = color_slot_count;
 
-	// color clear values
+	// color attachments
 	VkClearValue vk_clear_values[skMaxClearValues];
+	SharedTargetData* attachments[skMaxClearValues];
 	for (ut::uint32 i = 0; i < color_slot_count; i++)
 	{
 		const ut::Color<4>& color = clear_color ?
@@ -363,16 +521,24 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 		vk_clear_values[i].color.float32[1] = color.G();
 		vk_clear_values[i].color.float32[2] = color.B();
 		vk_clear_values[i].color.float32[3] = color.A();
+
+		attachments[i] = &framebuffer.color_attachments[i].target;
 	}
 
-	// depth and stencil clear value
+	// depth-stencil attachment
 	if (render_pass.depth_stencil_slot)
 	{
 		// note that depth-stencil slot goes right after all color slots
 		vk_clear_values[color_slot_count].depthStencil.depth = depth_clear_value;
 		vk_clear_values[color_slot_count].depthStencil.stencil = stencil_clear_value;
-		total_clear_val_count = color_slot_count + 1;
+		
+		attachments[color_slot_count] = &framebuffer.depth_stencil_attachment->target;
+
+		total_attachment_count = color_slot_count + 1;
 	}
+
+	// all attachments must be in 'target' state before render pass begins
+	SetTargetState(attachments, total_attachment_count, Target::Info::state_target);
 
 	// initialize render pass begin info
 	VkRenderPassBeginInfo rp_begin;
@@ -384,11 +550,8 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	rp_begin.renderArea.offset.y = render_area.offset.Y();
 	rp_begin.renderArea.extent.width = render_area.extent.X();
 	rp_begin.renderArea.extent.height = render_area.extent.Y();
-	rp_begin.clearValueCount = static_cast<uint32_t>(total_clear_val_count);
+	rp_begin.clearValueCount = static_cast<uint32_t>(total_attachment_count);
 	rp_begin.pClearValues = vk_clear_values;
-
-	// all render targets must be in 'target' state before render pass begins
-	SetTargetState(framebuffer, Target::Info::state_target);
 
 	// begin render pass
 	vkCmdBeginRenderPass(cmd_buffer.GetVkHandle(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);

@@ -237,7 +237,16 @@ void Context::UnmapImage(Image& image)
 // Copies data between render targets.
 //    @param dst - the destination target, must be in transfer_dst state.
 //    @param src - the source target, must be in transfer_src state.
-void Context::CopyTarget(Target& dst, Target& src)
+//    @param first_slice - first array slice id.
+//    @param slice_count - the number of slices to copy.
+//    @param first_mip - first mip id.
+//    @param mip_count - the number of mips to copy.
+void Context::CopyTarget(Target& dst,
+                         Target& src,
+                         ut::uint32 first_slice,
+                         ut::uint32 slice_count,
+                         ut::uint32 first_mip,
+                         ut::uint32 mip_count)
 {
 	const Target::Info& src_info = src.GetInfo();
 	const Target::Info& dst_info = dst.GetInfo();
@@ -251,13 +260,70 @@ void Context::CopyTarget(Target& dst, Target& src)
 		                "Unable to copy images with different formats.");
 	}
 
-	const UINT array_slices = src_info.type == Image::type_cube ? 6 : 1;
-	for (ut::uint32 cubeface = 0; cubeface < array_slices; cubeface++)
+	const UINT min_mip_count = ut::Min(src_info.mip_count, dst_info.mip_count);
+	const UINT subrc_mip_count = mip_count == 0 ? (min_mip_count - first_mip) : mip_count;
+	const UINT cube_slices = src_info.type == Image::type_cube ? 6 : 1;
+	const UINT array_slices = slice_count == 0 ? cube_slices : slice_count;
+	for (ut::uint32 slice = 0; slice < array_slices; slice++)
 	{
-		const UINT sub_resource = D3D11CalcSubresource(0, cubeface, 1);
+		const UINT sub_resource = D3D11CalcSubresource(0, slice, subrc_mip_count);
 		d3d11_context->CopySubresourceRegion(dst_image.tex2d.Get(), sub_resource, 0, 0, 0,
 		                                     src_image.tex2d.Get(), sub_resource, NULL);
 	}
+}
+
+// Clears provided render target. This function is slow, don't use it often,
+// call BeginRenderPass() instead to clear targets.
+//    @param target - target to be cleared.
+//    @param color - clear color.
+//    @param first_slice - first array slice id.
+//    @param slice_count - the number of slices to copy,
+//                         0 means all remaining.
+//    @param first_mip - first mip id.
+//    @param mip_count - the number of mips to copy,
+//                       0 means all remaining.
+void Context::ClearTarget(Target& target,
+                          ut::Color<4> color,
+                          ut::uint32 first_slice,
+                          ut::uint32 slice_count,
+                          ut::uint32 first_mip,
+                          ut::uint32 mip_count)
+{
+	const Target::Info& info = target.GetInfo();
+
+	const ut::uint32 target_slice_count = info.type == Image::type_cube ? 6 : 1;
+	const ut::uint32 target_mip_count = info.mip_count;
+	const ut::uint32 last_slice = slice_count == 0 ? target_slice_count : (first_slice + slice_count);
+	const ut::uint32 last_mip = mip_count == 0 ? target_mip_count : (first_mip + mip_count);
+	const bool is_depth_buffer = pixel::IsDepthFormat(info.format);
+
+	for (ut::uint32 slice = first_slice; slice < last_slice; slice++)
+	{
+		for (ut::uint32 mip = first_slice; mip < mip_count; mip++)
+		{
+			FLOAT clear_color[4] = { color.R(), color.G(), color.B(), color.A() };
+			PlatformRenderTarget::CombinedRTV& view = target->slice_target_views[slice].mips[mip];
+			if (is_depth_buffer)
+			{
+				d3d11_context->ClearDepthStencilView(view.dsv.Get(), 0, color.R(), 0);
+			}
+			else
+			{
+				d3d11_context->ClearRenderTargetView(view.rtv.Get(), clear_color);
+			}
+		}
+	}
+}
+
+// Uses the largest mipmap level of the provided target to recursively
+// generate the lower levels of the mip and stops with the smallest level.
+//    @param target - reference to the render target.
+//    @param new_state - optional target state to be set after all mip levels
+//                       were generated.
+void Context::GenerateMips(Target& target,
+                           const ut::Optional<Target::Info::State>& new_state)
+{
+	d3d11_context->GenerateMips(target.GetImage().srv.Get());
 }
 
 // Begin a new render pass.
@@ -280,8 +346,8 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	{
 		UT_ASSERT(clear_color.GetAlt().GetNum() == render_pass.color_slots.GetNum());
 	}
-	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_targets.GetNum());
-	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_target : !framebuffer.depth_stencil_target);
+	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_attachments.GetNum());
+	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_attachment : !framebuffer.depth_stencil_attachment);
 
 	// unbind all possible render targets from shader bindings
 #ifdef DEBUG
@@ -295,11 +361,13 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 #endif
 
 	// form d3d mrt array
-	const size_t color_target_count = framebuffer.color_targets.GetNum();
+	const size_t color_target_count = framebuffer.color_attachments.GetNum();
 	ut::Array<ID3D11RenderTargetView*> rtv(color_target_count);
 	for (size_t i = 0; i < color_target_count; i++)
 	{
-		rtv[i] = framebuffer.color_targets[i]->rtv.Get();
+		Framebuffer::Attachment& attachment = framebuffer.color_attachments[i];
+		TargetData& target = attachment.target.GetRef();
+		rtv[i] = target.slice_target_views[attachment.array_slice].mips[attachment.mip].rtv.Get();
 
 		// clear color target
 		if (render_pass.color_slots[i].load_op == RenderTargetSlot::load_clear)
@@ -312,9 +380,11 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 
 	// form d3d dsv resource
 	ID3D11DepthStencilView* dsv = nullptr;
-	if (framebuffer.depth_stencil_target)
+	if (framebuffer.depth_stencil_attachment)
 	{
-		dsv = framebuffer.depth_stencil_target.Get()->dsv.Get();
+		Framebuffer::Attachment& attachment = framebuffer.depth_stencil_attachment.Get();
+		TargetData& target = attachment.target.GetRef();
+		dsv = target.slice_target_views[attachment.array_slice].mips[attachment.mip].dsv.Get();
 
 		// clear depth and stencil
 		if (render_pass.depth_stencil_slot->load_op == RenderTargetSlot::load_clear)
@@ -557,15 +627,17 @@ void Context::DrawIndexedInstanced(ut::uint32 index_count,
 }
 
 // Toggles render target's state.
-//    @param targets - reference to the shared target data array.
-//    @param state - new state of the target.
-void Context::SetTargetState(ut::Array<SharedTargetData>& targets,
+//    @param targets - array of pointers to render targets.
+//    @param target_count - the number of elements in @targets array.
+//    @param state - the new state.
+void Context::SetTargetState(SharedTargetData** targets,
+                             ut::uint32 target_count,
                              Target::Info::State state)
 {
-	const ut::uint32 target_count = static_cast<ut::uint32>(targets.GetNum());
 	for (ut::uint32 i = 0; i < target_count; i++)
 	{
-		targets[i]->info.state = state;
+		TargetData& target = targets[i]->GetRef();
+		target.info.state = state;
 	}
 }
 

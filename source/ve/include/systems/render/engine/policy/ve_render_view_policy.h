@@ -32,6 +32,36 @@ public:
 	void RenderEnvironment(Context& context);
 
 private:
+	// Creates hdr scene targets.
+	ut::Result<View::SceneBuffer, ut::Error> CreateSceneBuffer(ut::uint32 width,
+	                                                           ut::uint32 height,
+	                                                           bool is_cube,
+	                                                           ut::uint32 light_buffer_mip_count = 1);
+
+	// Renders environment.
+	ut::Optional<Image&> RenderScene(Context& context,
+	                                 View::SceneBuffer& scene,
+	                                 Light::Sources& lights,
+	                                 const ut::Matrix<4>& view_matrix,
+	                                 const ut::Matrix<4>& proj_matrix,
+	                                 const ut::Vector<3>& view_position,
+	                                 View::Mode mode,
+	                                 ut::Optional<Image&> ibl_cubemap = ut::Optional<Image&>(),
+	                                 Image::Cube::Face face = Image::Cube::positive_x);
+
+	// Renders IBL cubemap.
+	void RenderIblCubemap(Context& context,
+	                      View& view,
+	                      Light::Sources& lights);
+
+	// Updates view uniform buffer.
+	void UpdateViewUniforms(Context& context,
+	                        View::SceneBuffer& scene,
+	                        const ut::Matrix<4>& view_matrix,
+	                        const ut::Matrix<4>& proj_matrix,
+	                        const ut::Vector<3>& view_position,
+	                        Image::Cube::Face face);
+
 	// G-Buffer target format.
 	static constexpr pixel::Format skDepthFormat = pixel::d24_unorm_s8_uint;
 	static constexpr pixel::Format skGBufferFormat = pixel::r8g8b8a8_unorm;

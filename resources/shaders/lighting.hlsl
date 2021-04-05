@@ -3,18 +3,23 @@
 //----------------------------------------------------------------------------//
 // This file contains common lighting functions.
 //----------------------------------------------------------------------------//
+#ifndef LIGHTING_HLSL
+#define LIGHTING_HLSL
+//----------------------------------------------------------------------------//
 #include "brdf.hlsl"
 
 //----------------------------------------------------------------------------//
 // Describes a surface properties.
 struct SurfaceData
 {
+	float3 world_position;
 	float3 look;
 	float3 normal;
 	float3 diffuse;
 	float3 specular;
 	float roughness;
 	float min_roughness;
+	float metallic;
 	float cavity;
 };
 
@@ -29,6 +34,14 @@ struct LightingData
 	float source_length;
 	bool is_radial;
 };
+
+//----------------------------------------------------------------------------//
+void CalculateMetallicDiffuseSpecular(inout SurfaceData surface)
+{
+	float3 base_color = surface.diffuse;
+	surface.diffuse = base_color - base_color * surface.metallic;
+	surface.specular = lerp(0.002 * surface.specular, base_color, surface.metallic);
+}
 
 //----------------------------------------------------------------------------//
 float3 AreaLightSpecular(SurfaceData surface,
@@ -123,7 +136,7 @@ float3 StandardShading(SurfaceData surface,
 }
 
 //----------------------------------------------------------------------------//
-float4 ComputeDirectLighting(SurfaceData surface, LightingData light)
+float3 ComputeDirectLighting(SurfaceData surface, LightingData light)
 {
 	float3 N = surface.normal;
 	float3 V = surface.look;
@@ -164,7 +177,7 @@ float4 ComputeDirectLighting(SurfaceData surface, LightingData light)
 
 	out_lighting += (diffuse + specular) * NoL;
 
-	return float4(out_lighting * light.color, 0);
+	return out_lighting * light.color;
 }
 
 //----------------------------------------------------------------------------//
@@ -194,6 +207,33 @@ float ComputeAttenuation(LightingData light)
 	return 1.0f;
 }
 
+//----------------------------------------------------------------------------//
+// Returns samle mip level corresponding the specified roughness.
+float ComputeReflectionCaptureMipFromRoughness(float roughness, float mip_count)
+{
+	const float roughest_mip = 1.0f;
+	const float roughness_mip_scale = 1.2f;
+	float level_from_1x1 = roughest_mip - roughness_mip_scale * log2(roughness);
+	return mip_count - 1 - level_from_1x1;
+}
+
+// Returns indirect specular lighting computed from the ibl cubemap.
+float3 GetImageBasedReflectionLighting(TextureCube ibl_cubemap,
+                                       SamplerState ibl_sampler,
+                                       float roughness,
+                                       float3 reflection_vector,
+                                       float NoV,
+                                       float3 specular_color,
+                                       float ibl_mip_count)
+{
+	float absolute_specular_mip = ComputeReflectionCaptureMipFromRoughness(roughness, ibl_mip_count);
+	float4 specular_ibl = ibl_cubemap.SampleLevel(ibl_sampler, reflection_vector, absolute_specular_mip);
+	specular_color = EnvBRDFApprox(specular_color, roughness, NoV);
+	return specular_ibl.rgb * specular_color;
+}
+
+//----------------------------------------------------------------------------//
+#endif // LIGHTING_HLSL
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

@@ -17,7 +17,16 @@ class PlatformRenderTarget
 	friend class Context;
 	friend class PlatformDisplay;
 public:
-	PlatformRenderTarget();
+	// Image view that is used as a render target must be created separately
+	// from the shader resource view, because it can affect only one array
+	// slice and one mip.
+	struct SliceView
+	{
+		ut::Array< VkRc<vk::image_view> > mips;
+	};
+
+	// Constructor.
+	PlatformRenderTarget(ut::Array<SliceView> in_slice_views);
 
 	// Move constructor.
 	PlatformRenderTarget(PlatformRenderTarget&&) noexcept;
@@ -28,6 +37,10 @@ public:
 	// Copying is prohibited.
 	PlatformRenderTarget(const PlatformRenderTarget&) = delete;
 	PlatformRenderTarget& operator =(const PlatformRenderTarget&) = delete;
+
+private:
+	// separate view for each mip
+	ut::Array<SliceView> slice_views;
 };
 
 //----------------------------------------------------------------------------//

@@ -9,7 +9,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformRenderTarget::PlatformRenderTarget()
+PlatformRenderTarget::PlatformRenderTarget(ut::Array<SliceView> in_slice_views) : slice_views(ut::Move(in_slice_views))
 {}
 
 // Move constructor.

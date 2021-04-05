@@ -36,6 +36,8 @@ public:
 		VkPipelineStageFlags stages;
 	};
 
+	
+
 	// Constructor.
 	PlatformImage(VkDevice device_handle,
 	              VkImage image_handle,
@@ -76,9 +78,15 @@ public:
 
 private:
 	VkImageAspectFlags aspect_mask;
+
+	// shader resource view
 	VkRc<vk::image_view> view;
 	VkRc<vk::image_view> cube_faces[6];
+
+	// gpu memory
 	VkRc<vk::memory> memory;
+
+	// current state (layout)
 	State state;
 };
 

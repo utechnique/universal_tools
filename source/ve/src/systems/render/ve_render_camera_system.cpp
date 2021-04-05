@@ -38,7 +38,15 @@ System::Result CameraSystem::Update()
 
 			View& view = static_cast<View&>(unit.GetRef());
 
+			// update frustum parameters
+			view.camera_position = transform.translation;
+			view.znear = camera.near_plane;
+			view.zfar = camera.far_plane;
+
+			// view
 			UpdateView(transform, camera, view);
+
+			// projection
 			if (camera.projection == CameraComponent::perspective_projection)
 			{
 				UpdatePerspectiveProjection(camera, view);
@@ -69,9 +77,6 @@ void CameraSystem::UpdateView(const TransformComponent& transform,
 	const ut::Vector<3> direction = camera.GetDirection(transform.rotation);
 	const ut::Vector<3> up = camera.GetUp(transform.rotation);
 	const ut::Vector<3> right = camera.GetRight(transform.rotation);
-
-	// update position
-	view.camera_position = position;
 
 	// calculate view matrix
 	view.view_matrix(0, 0) = right.X();

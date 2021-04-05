@@ -101,14 +101,14 @@ public:
 
 	// Creates a framebuffer. All targets must have the same width and height.
 	//    @param render_pass - const reference to the renderpass to be bound to.
-	//    @param color_targets - array of references to the colored render
-	//                           targets to be bound to a render pass.
-	//    @param depth_stencil_target - optional reference to the depth-stencil
-	//                                  target to be bound to a render pass.
+	//    @param color_attachments - array of color attachments to be bound
+	//                               to the render pass.
+	//    @param ds_attachment - optional depth-stencil attachment to be
+	//                           bound to a render pass.
 	//    @return - new framebuffer or error if failed.
 	ut::Result<Framebuffer, ut::Error> CreateFramebuffer(const RenderPass& render_pass,
-	                                                     ut::Array< ut::Ref<Target> > color_targets,
-	                                                     ut::Optional<Target&> depth_stencil_target = ut::Optional<Target&>());
+	                                                     ut::Array<Framebuffer::Attachment> color_attachments,
+	                                                     ut::Optional<Framebuffer::Attachment> ds_attachment = ut::Optional<Framebuffer::Attachment>());
 
 	// Creates a buffer.
 	//    @param info - ve::render::Buffer::Info object to initialize a buffer with.

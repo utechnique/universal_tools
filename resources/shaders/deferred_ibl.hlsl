@@ -9,16 +9,15 @@
 #define UB_ID_VIEW 0
 #define UB_ID_LIGHT 1
 
-
 //----------------------------------------------------------------------------//
-// Define 'IBL' macro to enable or disable image based lighting.
-#ifndef IBL
-#define IBL 0
+// Define 'IBL_MIP_COUNT' macro to set the number of
+// mip levels in the ibl cubemap.
+#ifndef IBL_MIP_COUNT
+#define IBL_MIP_COUNT 8
 #endif
 
 //----------------------------------------------------------------------------//
 #include "view_buffer.hlsl"
-#include "light_buffer.hlsl"
 #include "lighting.hlsl"
 #include "deferred_common.hlsl"
 
@@ -32,9 +31,11 @@ struct PS_INPUT
 //----------------------------------------------------------------------------//
 // Shader resources
 SamplerState g_sampler : register(s2);
-Texture2D g_tex2d_depth : register(t3);
-Texture2D g_tex2d_diffuse : register(t4);
-Texture2D g_tex2d_normal : register(t5);
+SamplerState g_ibl_sampler : register(s3);
+Texture2D g_tex2d_depth : register(t4);
+Texture2D g_tex2d_diffuse : register(t5);
+Texture2D g_tex2d_normal : register(t6);
+TextureCube g_ibl_cubemap : register(t7);
 
 //----------------------------------------------------------------------------//
 // Pixel shader entry point.
@@ -52,28 +53,19 @@ float4 PS(PS_INPUT input) : SV_Target
 	                                            input.texcoord,
 	                                            g_inv_view_proj,
 	                                            g_camera_position.xyz);
-#if IBL
 	CalculateMetallicDiffuseSpecular(surface);
-#endif
 
-	// initialize light source data
-#if DIRECTIONAL_LIGHT
-	float3 light_direction = -g_light_direction.xyz;
-#else
-	float3 light_direction = g_light_position.xyz - surface.world_position;
-#endif
-	LightingData light;
-	light.direction = normalize(light_direction);
-	light.color = g_light_color.rgb;
-	light.tube_direction = g_light_orientation.xyz;
-	light.ray_length = length(light_direction);
-	light.source_radius = g_light_direction.w;
-	light.source_length = g_light_color.w;
-	light.is_radial = light.source_radius > 0.001f;
-
-	// calculate lighting
-	float3 light_amount = ComputeDirectLighting(surface, light);
-	light_amount *= ComputeAttenuation(light);
+	// calculate IBL
+	float3 view_direction = -surface.look;
+	float3 reflection_vector = normalize(reflect(view_direction, surface.normal));
+	float NoV = saturate(dot(view_direction, surface.normal));
+	float3 light_amount = GetImageBasedReflectionLighting(g_ibl_cubemap,
+	                                                      g_ibl_sampler,
+	                                                      surface.roughness,
+	                                                      reflection_vector,
+	                                                      NoV,
+	                                                      surface.specular,
+	                                                      IBL_MIP_COUNT);
 
 	return float4(light_amount.rgb, 0.0f);
 }

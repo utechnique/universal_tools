@@ -26,11 +26,24 @@ public:
 		ut::uint32 height = 0;
 	};
 
+	// Represents a target bound to the pipeline, one can select
+	// an array slice and mip id that will be used as a render target.
+	struct Attachment
+	{
+		Attachment(Target& in_target,
+		           ut::uint32 in_array_slice = 0,
+		           ut::uint32 in_mip_id = 0);
+
+		SharedTargetData target;
+		ut::uint32 array_slice;
+		ut::uint32 mip;
+	};
+
 	// Constructor.
 	Framebuffer(PlatformFramebuffer platform_framebuffer,
 	            const Info& framebuffer_info,
-	            ut::Array<SharedTargetData> in_color_targets,
-	            ut::Optional<SharedTargetData> in_depth_stencil_target);
+	            ut::Array<Attachment> in_color_targets,
+	            ut::Optional<Attachment> in_depth_stencil_target);
 
 	// Move constructor.
 	Framebuffer(Framebuffer&&) noexcept;
@@ -50,8 +63,8 @@ public:
 
 private:
 	Info info;
-	ut::Array<SharedTargetData> color_targets;
-	ut::Optional<SharedTargetData> depth_stencil_target;
+	ut::Array<Attachment> color_attachments;
+	ut::Optional<Attachment> depth_stencil_attachment;
 };
 
 //----------------------------------------------------------------------------//

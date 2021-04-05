@@ -37,7 +37,7 @@ struct TargetData : public PlatformRenderTarget
 		// Enumeration of possible target states.
 		enum State
 		{
-			// image be a render target but can't be bound as a shader resource
+			// image can be a render target but can't be bound as a shader resource
 			state_target,
 
 			// image can be used as a shader resource but can't be rendered to

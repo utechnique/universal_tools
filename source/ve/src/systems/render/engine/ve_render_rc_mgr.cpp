@@ -267,23 +267,30 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateBox(const ut::Vector<3
 ut::Result<RcRef<Map>, ut::Error> ResourceManager::CreateImage(ut::uint32 width,
                                                                ut::uint32 height,
                                                                const ut::Color<4, ut::byte>& color,
-                                                               ut::Optional<ut::String> name)
+                                                               ut::Optional<ut::String> name,
+                                                               bool is_cubemap)
 {
 	Image::Info img_info;
-	img_info.type = Image::type_2D;
+	img_info.type = is_cubemap ? Image::type_cube : Image::type_2D;
 	img_info.format = pixel::r8g8b8a8_unorm;
 	img_info.usage = render::memory::gpu_immutable;
 	img_info.width = width;
 	img_info.height = height;
 	img_info.depth = 1;
 	img_info.mip_count = 1;
-	img_info.data.Resize(img_info.width * img_info.height * pixel::GetSize(img_info.format));
+
+	const ut::uint32 face_count = is_cubemap ? 6 : 1;
+	const size_t face_size = img_info.width * img_info.height;
+	img_info.data.Resize(face_count * face_size * pixel::GetSize(img_info.format));
 	ut::Color<4, ut::byte>* pixels = reinterpret_cast<ut::Color<4, ut::byte>*>(img_info.data.GetAddress());
-	for (size_t i = 0; i < img_info.height; i++)
+	for (ut::uint32 face = 0; face < face_count; face++)
 	{
-		for (size_t j = 0; j < img_info.width; j++)
+		for (size_t i = 0; i < img_info.height; i++)
 		{
-			pixels[i * img_info.width + j] = color;
+			for (size_t j = 0; j < img_info.width; j++)
+			{
+				pixels[face * face_size + i * img_info.width + j] = color;
+			}
 		}
 	}
 

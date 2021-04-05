@@ -56,7 +56,7 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(ut::uint32 width,
 	ut::Array<Framebuffer> swap_framebuffers;
 	for (ut::uint32 i = 0; i < ViewData::skSwapSlotCount; i++)
 	{
-		ut::Array< ut::Ref<Target> > color_targets;
+		ut::Array<Framebuffer::Attachment> color_targets;
 		color_targets.Add(swap_targets[i]);
 		ut::Result<Framebuffer, ut::Error> swap_framebuffer = tools.device.CreateFramebuffer(pass.Get(),
 		                                                                                     ut::Move(color_targets));

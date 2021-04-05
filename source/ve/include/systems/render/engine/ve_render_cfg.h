@@ -26,6 +26,15 @@ public:
 	// the engine in a moment
 	ut::uint32 frames_in_flight;
 
+	// set 'true' to enable image based lighting
+	bool ibl_enabled;
+
+	// width and height of the ibl cubemap in pixels
+	ut::uint32 ibl_size;
+
+	// identifies how many IBL faces are rendered in one frame
+	ut::uint32 ibl_frequency;
+
 private:
 	// Validates data after loading.
 	void Validate();

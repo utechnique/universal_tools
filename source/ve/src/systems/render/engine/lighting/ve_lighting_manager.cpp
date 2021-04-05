@@ -9,24 +9,30 @@ START_NAMESPACE(render)
 START_NAMESPACE(lighting)
 //----------------------------------------------------------------------------//
 // Constructor.
-Manager::Manager(Toolset& toolset) : tools(toolset), deferred_shading(toolset)
+Manager::Manager(Toolset& toolset) : tools(toolset)
+                                   , ibl(toolset)
+                                   , deferred_shading(toolset, ibl.GetMipCount())
+                                   
 {}
 
 // Creates lighting (per-view) data.
 //    @param depth_stencil - reference to the depth buffer.
 //    @param width - width of the view in pixels.
 //    @param height - height of the view in pixels.
+//    @param is_cube - 'true' to create as a cubemap.
 //    @return - a new lighting::ViewData object or error if failed.
 ut::Result<lighting::ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
                                                                   ut::uint32 width,
-                                                                  ut::uint32 height)
+                                                                  ut::uint32 height,
+                                                                  bool is_cube,
+                                                                  ut::uint32 light_buffer_mip_count)
 {
 	// light buffer
 	Target::Info info;
-	info.type = Image::type_2D;
+	info.type = is_cube ? Image::type_cube : Image::type_2D;
 	info.format = skLightBufferFormat;
 	info.usage = Target::Info::usage_color;
-	info.mip_count = 1;
+	info.mip_count = light_buffer_mip_count;
 	info.width = width;
 	info.height = height;
 	info.depth = 1;
@@ -36,15 +42,17 @@ ut::Result<lighting::ViewData, ut::Error> Manager::CreateViewData(Target& depth_
 		return ut::MakeError(light_buffer.MoveAlt());
 	}
 
+	// deferred shading
 	ut::Result<DeferredShading::ViewData, ut::Error> def_sh_data = deferred_shading.CreateViewData(depth_stencil,
 	                                                                                               light_buffer.Get(),
-	                                                                                               width, height);
+	                                                                                               width, height,
+	                                                                                               is_cube);
 	if (!def_sh_data)
 	{
 		return ut::MakeError(def_sh_data.MoveAlt());
 	}
 
-	return lighting::ViewData(light_buffer.Move(), def_sh_data.Move());
+	return lighting::ViewData{ light_buffer.Move(), def_sh_data.Move() };
 }
 
 // Updates uniform buffers for the provided light units.

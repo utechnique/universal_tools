@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "ve_deferred_shading.h"
+#include "ve_image_based_lighting.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -12,13 +13,8 @@ START_NAMESPACE(lighting)
 //----------------------------------------------------------------------------//
 // ve::render::lighting::ViewData encapsulates render targets, uniform
 // buffers, pipelines and other resources needed to apply lighting techniques.
-class ViewData
+struct ViewData
 {
-public:
-	// Constructor.
-	ViewData(Target in_light_buffer,
-	         DeferredShading::ViewData in_deferred_shading);
-
 	// Move constructor and operator.
 	ViewData(ViewData&&) = default;
 	ViewData& operator =(ViewData&&) = default;
