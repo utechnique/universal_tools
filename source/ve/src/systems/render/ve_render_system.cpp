@@ -19,12 +19,21 @@ RenderSystem::RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread,
 	// create viewport manager
 	ViewportManager vp_mgr(in_render_thread);
 
+	// start counter to know how much time does it take to
+	// launch the render engine.
+	ut::time::Counter timer;
+	timer.Start();
+
 	// initialize render engine
 	render_thread->Enqueue([&](Device& device) { engine = ut::MakeUnique<Engine>(device, ut::Move(vp_mgr)); });
 
 	// ask render thread to create display, but the task must be scheduled from the ui thread
 	// to synchronize them both
 	ui_thread->Enqueue([&](ui::Frontend& frontend) { engine->OpenViewports(frontend); });
+
+	ut::log.Lock() << "Render engine is ready in "
+	               << timer.GetTime<ut::time::seconds>()
+	               << "s." << ut::cret;
 }
 
 // Destructor. Engine is destructed in the render thread.

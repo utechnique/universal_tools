@@ -11,7 +11,11 @@ START_NAMESPACE(render)
 ShaderLoader::ShaderLoader(Device& device_ref) noexcept : device(device_ref)
 {
 	// load shader cache
+	ut::time::Counter timer;
+	timer.Start();
 	cache.Load();
+	ut::log.Lock() << "Shader cache loaded in " << timer.GetTime<ut::time::seconds>()
+	               << "s." << ut::cret;
 }
 
 //----------------------------------------------------------------------------->

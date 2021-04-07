@@ -33,7 +33,7 @@ ut::Optional<ut::Error> ShaderCache::Load()
 {
 	// capture meta snapshot
 	ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(*this, skMetaName,
-	                                                          ut::meta::Info::CreateComplete());
+	                                                          ut::meta::Info::CreatePure());
 
 	// open file for reading
 	ut::File file;
@@ -54,7 +54,7 @@ ut::Optional<ut::Error> ShaderCache::Save()
 {
 	// capture meta snapshot
 	ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(*this, skMetaName,
-	                                                          ut::meta::Info::CreateComplete());
+	                                                          ut::meta::Info::CreatePure());
 
 	// create directory if it doesn't exist
 	ut::CreateDirectories(path.GetIsolatedLocation(false));
