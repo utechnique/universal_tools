@@ -9,6 +9,7 @@
 #include "text/ut_document.h"
 #include "meta/ut_meta_node.h"
 #include "meta/ut_meta_info.h"
+#include "meta/parameters/ut_binary_parameter.h"
 #include "templates/ut_function.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
@@ -48,7 +49,7 @@ public:
 	// Registers object that is provided as an argument,
 	// parameter name is auto-generated
 	//    @param ref - reference to the object to be serialized
-	template<typename T>
+	template<typename T, bool unused = false>
 	Snapshot& operator << (T& ref)
 	{
 		// auto-generated name
@@ -66,10 +67,19 @@ public:
 		return *this;
 	}
 
+	// Registers binary parameters,
+	// parameter name is auto-generated
+	//    @param ref - the binary parameter to be serialized.
+	template<typename T>
+	Snapshot& operator << (BinaryParameter<T> parameter)
+	{
+		return operator << <BinaryParameter<T>, true>(parameter);
+	}
+
 	// Registers object that is provided as an argument
 	//    @param ref - reference to the object to be serialized
 	//    @param name - name of the parameter
-	template<typename T>
+	template<typename T, bool unused = false>
 	Optional<Error> Add(T& ref, String name)
 	{
 		// create a new node
@@ -90,6 +100,15 @@ public:
 
 		// success
 		return Optional<Error>();
+	}
+
+	// Registers object that is provided as an argument
+	//    @param ref - the binary parameter to be serialized.
+	//    @param name - name of the parameter.
+	template<typename T>
+	Optional<Error> Add(BinaryParameter<T> parameter, String name)
+	{
+		return Add<BinaryParameter<T>, true>(parameter, ut::Move(name));
 	}
 
 	// Renames the snapshot.

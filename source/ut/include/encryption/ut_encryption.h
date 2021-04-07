@@ -11,6 +11,7 @@
 #include "encryption/ut_pbkdf2.h"
 #include "encryption/ut_encryption_methods.h"
 #include "encryption/ut_xor_stream.h"
+#include "encryption/ut_base64.h"
 #include "encryption/ut_aes_stream.h"
 
 //----------------------------------------------------------------------------//

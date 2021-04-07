@@ -4,6 +4,7 @@
 #include "meta/linkage/ut_meta_linker.h"
 #include "meta/ut_meta_controller.h"
 #include "meta/ut_meta_snapshot.h"
+#include "encryption/ut_base64.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
@@ -568,6 +569,121 @@ Optional<Error> Controller::WriteSharedObject(const SharedPtr<SharedPtrHolderBas
 
 	// register object
 	return linker->CacheOutputSharedObject(ptr, address);
+}
+
+//----------------------------------------------------------------------------->
+// Reads binary data from the current value node.
+//    @param dst - pointer to the destination binary data.
+//    @param size - size of the data in bytes.
+//    @param granularity - size of one element in the provided data.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::ReadBinaryValue(void* dst,
+                                            Controller::SizeType size,
+                                            Controller::SizeType granularity)
+{
+	if (size % granularity != 0)
+	{
+		return Error(error::invalid_arg, "Invalid granularity");
+	}
+
+	const size_t element_count = size / granularity;
+
+	if (mode == binary_input_mode)
+	{
+		Optional<Error> read_error = ReadBinary(dst, granularity, element_count);
+		if (read_error)
+		{
+			return Error(read_error.Move());
+		}
+	}
+	else if (mode == text_input_mode) // read text form
+	{
+		Result<String, Error> extraction_result = ReadValue<String>();
+		if (!extraction_result)
+		{
+			return Error(extraction_result.MoveAlt());
+		}
+
+		Array<ut::byte> decoded_data = DecodeBase64(extraction_result.Get());
+		if (decoded_data.GetSize() != size)
+		{
+			return Error(error::out_of_bounds);
+		}
+
+		const endian::order endianness = info.GetEndianness();
+		if (endianness == endian::GetNative())
+		{
+			memory::Copy(dst, decoded_data.GetAddress(), size);
+		}
+		else
+		{
+			BinaryStream binary_stream;
+			binary_stream.SetBuffer(ut::Move(decoded_data));
+			Optional<Error> read_error = endianness == endian::little ?
+			                             endian::Read<endian::little>(binary_stream, dst, granularity, element_count) :
+			                             endian::Read<endian::big>(binary_stream, dst, granularity, element_count);
+			if (read_error)
+			{
+				return read_error;
+			}
+		}
+	}
+	return Optional<Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Writes provided binary data to the current value node.
+//    @param data - pointer to the binary data to be written.
+//    @param size - size of the data in bytes.
+//    @param granularity - size of one element in the provided data.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::WriteBinaryValue(const void* data,
+                                             Controller::SizeType size,
+                                             Controller::SizeType granularity)
+{
+	if (size % granularity != 0)
+	{
+		return Error(error::invalid_arg, "Invalid granularity");
+	}
+
+	const size_t element_count = size / granularity;
+
+	if (mode == text_output_mode)
+	{
+		// resolve endianness
+		BinaryStream binary_stream;
+		const endian::order endianness = info.GetEndianness();
+		if (endianness != endian::GetNative())
+		{
+			Optional<Error> write_error = endianness == endian::little ?
+			                              endian::Write<endian::little>(binary_stream, data, granularity, element_count) :
+			                              endian::Write<endian::big>(binary_stream, data, granularity, element_count);
+			if (write_error)
+			{
+				return write_error;
+			}
+
+			ut::Result<const void*, ut::Error> stream_data = binary_stream.GetData();
+			if (!stream_data)
+			{
+				return ut::Error(stream_data.MoveAlt());
+			}
+
+			data = stream_data.Get();
+		}
+
+		String base64 = EncodeBase64(data, static_cast<size_t>(size));
+		return WriteValue<String>(base64);
+	}
+	else
+	{
+		Optional<Error> write_error = WriteBinary(data, granularity, element_count);
+		if (write_error)
+		{
+			return write_error;
+		}
+	}
+	return Optional<Error>();
 }
 
 //----------------------------------------------------------------------------->
@@ -1873,6 +1989,106 @@ Info Controller::ModifyInfo(const SerializationOptions& options)
 	}
 
 	return original;
+}
+
+// Reads custom data from the binary stream.
+//    @address - pointer to the data to be read.
+//    @granularity - size of one element.
+//    @count - number of elements to write.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::ReadBinary(void* address,
+                                       size_t granularity,
+                                       size_t count)
+{
+	// check mode
+	if (mode != binary_input_mode)
+	{
+		return Error(error::fail, "Invalid mode.");
+	}
+
+	// read elements using correct endianness order
+	Optional<Error> read_error;
+	if (info.GetEndianness() == endian::little)
+	{
+		read_error = endian::Read<endian::little>(*io.binary_input,
+		                                          address,
+		                                          granularity,
+		                                          count);
+	}
+	else
+	{
+		read_error = endian::Read<endian::big>(*io.binary_input,
+		                                          address,
+		                                          granularity,
+		                                          count);
+	}
+
+	// check read result
+	if (read_error)
+	{
+		return read_error;
+	}
+
+	// update cursor position
+	Result<stream::Cursor, Error> read_cursor = io.binary_input->GetCursor();
+	if (!read_cursor)
+	{
+		return read_cursor.MoveAlt();
+	}
+	cursor = read_cursor.Get();
+
+	// success
+	return Optional<Error>();
+}
+
+// Writes custom data to the binary stream.
+//    @address - pointer to the data to be written.
+//    @granularity - size of one element.
+//    @count - number of elements to write.
+//    @return - ut::Error if failed.
+Optional<Error> Controller::WriteBinary(const void* address,
+                                        size_t granularity,
+                                        size_t count)
+{
+	// check mode
+	if (mode != binary_output_mode)
+	{
+		return Error(error::fail, "Invalid mode.");
+	}
+
+	// write elements using correct endianness order
+	Optional<Error> write_error;
+	if (info.GetEndianness() == endian::little)
+	{
+		write_error = endian::Write<endian::little>(*io.binary_output,
+		                                            address,
+		                                            granularity,
+		                                            count);
+	}
+	else
+	{
+		write_error = endian::Write<endian::big>(*io.binary_output,
+		                                         address,
+		                                         granularity,
+		                                         count);
+	}
+
+	// check write result
+	if (write_error)
+	{
+		return write_error;
+	}
+
+	// update cursor position
+	Result<stream::Cursor, Error> read_cursor = io.binary_output->GetCursor();
+	if (!read_cursor)
+	{
+		return read_cursor.MoveAlt();
+	}
+	cursor = read_cursor.Get();
+
+	// success
+	return Optional<Error>();
 }
 
 //----------------------------------------------------------------------------//

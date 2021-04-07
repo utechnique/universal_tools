@@ -3,48 +3,24 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut.h"
-#include "test_task.h"
-#include "test_unit.h"
+#include "common/ut_common.h"
+#include "text/ut_string.h"
 //----------------------------------------------------------------------------//
-class EncryptionTestUnit : public TestUnit
-{
-public:
-	EncryptionTestUnit();
-};
+START_NAMESPACE(ut)
+//----------------------------------------------------------------------------//
+// Encodes provided data to the base64 string.
+//    @param data - pointer to the data to be encoded.
+//    @param size - size of the data in bytes.
+//    @return - base64 string.
+String EncodeBase64(const void* data, size_t size);
+
+// Decodes provided base64 string to the array of bytes.
+//    @param base64 - reference to the base64 string to be decoded.
+//    @return - decoded byte array.
+Array<ut::byte> DecodeBase64(const String& base64);
 
 //----------------------------------------------------------------------------//
-class HashTask : public TestTask
-{
-public:
-	HashTask();
-	void Execute();
-};
-
-//----------------------------------------------------------------------------//
-class AesTask : public TestTask
-{
-public:
-	AesTask();
-	void Execute();
-};
-
-//----------------------------------------------------------------------------//
-class XorTask : public TestTask
-{
-public:
-	XorTask();
-	void Execute();
-};
-
-//----------------------------------------------------------------------------//
-class Base64Task : public TestTask
-{
-public:
-	Base64Task();
-	void Execute();
-};
-
+END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

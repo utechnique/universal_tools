@@ -521,6 +521,16 @@ SerializationTest::SerializationTest(bool in_alternate,
 		al_int_data[i] = 64 - i;
 	}
 
+	// binary data
+	binary0.Resize(512);
+	binary1.Resize(512);
+	for (int i = 0; i < 512; i++)
+	{
+		binary0[i] = i;
+		binary1[i] = ut::Vector<3, float>(i, i, i);
+	}
+	binary_matrix = ut::Matrix<4, 4>(0);
+
 	// vector array
 	vec_data.Resize(32);
 	for (size_t i = 0; i < 32; i++)
@@ -565,6 +575,9 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	}
 	snapshot << byte_data;
 	snapshot << al_int_data;
+	snapshot << ut::meta::Binary(binary0, 1);
+	snapshot << ut::meta::Binary(binary1, sizeof(float));
+	snapshot << ut::meta::Binary(binary_matrix, sizeof(float));
 	snapshot << vec_data;
 	snapshot << int16_unique;
 	snapshot << int16_unique_void;
@@ -965,7 +978,19 @@ void ChangeSerializedObject(SerializationTest& object)
 	{
 		object.al_int_data[i] = i;
 	}
-	
+
+	// binary data
+	object.binary0.Resize(256);
+	object.binary1.Resize(256);
+	for (int i = 0; i < 256; i++)
+	{
+		object.binary0[i] = 255 - i;
+		object.binary1[i] = ut::Vector<3, float>(255 - i, i, 255 + i);
+	}
+	object.binary_matrix = ut::Matrix<4, 4>(0,  1,  2,  3,
+	                                        4,  5,  6,  7,
+	                                        8,  9,  10, 11,
+	                                        12, 13, 14, 15);
 }
 
 // Checks if serialized object was loaded with the correct values,
@@ -1266,6 +1291,29 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 		{
 			return false;
 		}
+	}
+
+	// binary data
+	if (object.binary0.GetNum() != 256) return false;
+	if (object.binary1.GetNum() != 256) return false;
+	for (int i = 0; i < 256; i++)
+	{
+		if (object.binary0[i] != 255 - i)
+		{
+			return false;
+		}
+
+		if (object.binary1[i] != ut::Vector<3, float>(255 - i, i, 255 + i))
+		{
+			return false;
+		}
+	}
+	if (object.binary_matrix != ut::Matrix<4, 4>(0,  1,  2,  3,
+	                                             4,  5,  6,  7,
+	                                             8,  9,  10, 11,
+	                                             12, 13, 14, 15))
+	{
+		return false;
 	}
 
 	return true;

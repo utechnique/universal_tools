@@ -8,6 +8,7 @@ EncryptionTestUnit::EncryptionTestUnit() : TestUnit("ENCRYPTION")
 	tasks.Add(ut::MakeUnique<HashTask>());
 	tasks.Add(ut::MakeUnique<AesTask>());
 	tasks.Add(ut::MakeUnique<XorTask>());
+	tasks.Add(ut::MakeUnique<Base64Task>());
 }
 
 //----------------------------------------------------------------------------//
@@ -156,6 +157,42 @@ void XorTask::Execute()
 		report += ut::String("ERROR. Invalid xor encryption behaviour.");
 		failed_test_counter.Increment();
 	}
+}
+
+//----------------------------------------------------------------------------//
+Base64Task::Base64Task() : TestTask("Base64")
+{ }
+
+void Base64Task::Execute()
+{
+	ut::Array<ut::byte> data(256);
+	for (size_t i = 0; i < 256; i++)
+	{
+		data[i] = static_cast<ut::byte>(i);
+	}
+
+	ut::String base64 = ut::EncodeBase64(data.GetAddress(), data.GetSize());
+	report += base64 + ut::cret;
+
+	data = ut::DecodeBase64(base64);
+	if (data.GetSize() != 256)
+	{
+		report += ut::String("FAIL. The data has invalid size after decode.");
+		failed_test_counter.Increment();
+		return;
+	}
+
+	for (size_t i = 0; i < 256; i++)
+	{
+		if (data[i] != i)
+		{
+			report += ut::String("FAIL. The data doesn\'t match after encode/decode.");
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+
+	report += ut::String("Ok.") + ut::cret;
 }
 
 //----------------------------------------------------------------------------//

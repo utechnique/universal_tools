@@ -199,6 +199,24 @@ public:
 	Optional<Error> WriteSharedObject(const SharedPtr<class SharedPtrHolderBase>& ptr,
 	                                  const void* address);
 
+	// Reads binary data from the current value node.
+	//    @param dst - pointer to the destination binary data.
+	//    @param size - size of the data in bytes.
+	//    @param granularity - size of one element in the provided data.
+	//    @return - ut::Error if failed.
+	Optional<Error> ReadBinaryValue(void* dst,
+	                                SizeType size,
+	                                SizeType granularity);
+
+	// Writes provided binary data to the current value node.
+	//    @param data - pointer to the binary data to be written.
+	//    @param size - size of the data in bytes.
+	//    @param granularity - size of one element in the provided data.
+	//    @return - ut::Error if failed.
+	Optional<Error> WriteBinaryValue(const void* data,
+	                                 SizeType size,
+	                                 SizeType granularity);	
+
 	// Writes attribute, "attribute" here means something that is not representing
 	// value directly, but helps to create this value
 	//    @param element - reference to the value to be written
@@ -553,6 +571,24 @@ private:
 	//    @return - original (unmodified) copy of the @info object;
 	Info ModifyInfo(const SerializationOptions& options);
 
+	// Reads custom data from the binary stream.
+	//    @address - pointer to the data to be read.
+	//    @granularity - size of one element.
+	//    @count - number of elements to write.
+	//    @return - ut::Error if failed.
+	Optional<Error> ReadBinary(void* address,
+	                           size_t granularity,
+	                           size_t count);
+
+	// Writes custom data to the binary stream.
+	//    @address - pointer to the data to be written.
+	//    @granularity - size of one element.
+	//    @count - number of elements to write.
+	//    @return - ut::Error if failed.
+	Optional<Error> WriteBinary(const void* address,
+	                            size_t granularity,
+	                            size_t count);
+
 	// Helper function to read custom value from the binary stream
 	//    @address - pointer to the element to be read
 	//    @count - number of elements to read
@@ -560,39 +596,7 @@ private:
 	template <typename T>
 	Optional<Error> ReadBinary(T* address, size_t count)
 	{
-		// check mode
-		if (mode != binary_input_mode)
-		{
-			return Error(error::fail, "Invalid mode.");
-		}
-
-		// read elements using correct endianness order
-		Optional<Error> read_error;
-		if (info.GetEndianness() == endian::little)
-		{
-			read_error = endian::Read<T, endian::little>(*io.binary_input, address, count);
-		}
-		else
-		{
-			read_error = endian::Read<T, endian::big>(*io.binary_input, address, count);
-		}
-
-		// check read result
-		if (read_error)
-		{
-			return read_error;
-		}
-
-		// update cursor position
-		Result<stream::Cursor, Error> read_cursor = io.binary_input->GetCursor();
-		if (!read_cursor)
-		{
-			return read_cursor.MoveAlt();
-		}
-		cursor = read_cursor.Get();
-
-		// success
-		return Optional<Error>();
+		return ReadBinary(address, sizeof(T), count);
 	}
 
 	// Helper function to write custom value to the binary stream
@@ -602,39 +606,7 @@ private:
 	template <typename T>
 	Optional<Error> WriteBinary(const T* address, size_t count)
 	{
-		// check mode
-		if (mode != binary_output_mode)
-		{
-			return Error(error::fail, "Invalid mode.");
-		}
-
-		// write elements using correct endianness order
-		Optional<Error> write_error;
-		if (info.GetEndianness() == endian::little)
-		{
-			write_error = endian::Write<T, endian::little>(*io.binary_output, address, count);
-		}
-		else
-		{
-			write_error = endian::Write<T, endian::big>(*io.binary_output, address, count);
-		}
-
-		// check write result
-		if (write_error)
-		{
-			return write_error;
-		}
-
-		// update cursor position
-		Result<stream::Cursor, Error> read_cursor = io.binary_output->GetCursor();
-		if (!read_cursor)
-		{
-			return read_cursor.MoveAlt();
-		}
-		cursor = read_cursor.Get();
-
-		// success
-		return Optional<Error>();
+		return WriteBinary(address, sizeof(T), count);
 	}
 
 	// Overloaded function to read ut::String from the binary stream.

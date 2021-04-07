@@ -297,6 +297,9 @@ public:
 	ut::Array<ut::byte> byte_data;
 	ut::Array<int, TestAllocator<int> > al_int_data;
 	ut::Array< ut::Vector<3, ut::byte> > vec_data;
+	ut::Array<ut::byte> binary0;
+	ut::Array< ut::Vector<3, float> > binary1;
+	ut::Matrix<4, 4> binary_matrix;
 	ut::uint64 uval;
 	bool bool_val;
 	ut::String str;
