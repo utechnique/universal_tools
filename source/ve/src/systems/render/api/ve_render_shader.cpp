@@ -46,7 +46,7 @@ void Shader::Info::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot.Add(stage, "stage");
 	snapshot.Add(name, "name");
 	snapshot.Add(entry_point, "entry");
-	snapshot.Add(bytecode, "bytecode");
+	snapshot.Add(ut::meta::Binary(bytecode), "bytecode");
 	snapshot.Add(parameters, "parameters");
 	snapshot.Add(hash, "hash");
 	snapshot.Add(macros, "macros");
