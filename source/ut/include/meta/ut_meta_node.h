@@ -43,6 +43,7 @@ namespace node_names
 	static const char* skValue = "value";
 	static const char* skType = "type";
 	static const char* skCount = "count";
+	static const char* skSize = "size";
 	static const char* skValueType = "value_type";
 	static const char* skKeyType = "key_type";
 	static const char* skId = "id";

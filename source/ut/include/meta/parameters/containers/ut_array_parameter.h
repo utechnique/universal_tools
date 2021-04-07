@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "meta/ut_meta_parameter.h"
+#include "meta/parameters/ut_binary_parameter.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
@@ -115,6 +116,79 @@ public:
 	{
 		return true;
 	}
+};
+
+//----------------------------------------------------------------------------//
+// Specialization for the binary case.
+template<typename T, typename Allocator, typename Preallocator>
+class BinaryParameter< Array<T, Allocator, Preallocator> > : public BaseParameter
+{
+	using ArrayType = Array<T, Allocator, Preallocator>;
+public:
+	// Constructor
+	//    @param p - pointer to the managed array
+	BinaryParameter(ArrayType* p,
+	                Controller::SizeType in_granularity) : BaseParameter(p)
+	                                                     , granularity(in_granularity)
+	{ }
+
+	// Returns the name of the managed type
+	String GetTypeName() const
+	{
+		return "binary";
+	}
+
+	// Serializes managed object.
+	//    @param controller - meta controller that helps to write data
+	//    @return - ut::Error if encountered an error
+	Optional<Error> Save(Controller& controller)
+	{
+		ArrayType& arr = *static_cast<ArrayType*>(ptr);
+		const Controller::SizeType count = static_cast<Controller::SizeType>(arr.GetNum());
+		const Controller::SizeType size = sizeof(T) * count;
+
+		// write data size
+		Optional<Error> write_size_error = controller.WriteAttribute(size, node_names::skSize);
+		if (write_size_error)
+		{
+			return write_size_error;
+		}
+
+		// write data
+		return controller.WriteBinaryValue(arr.GetAddress(), size, granularity);
+	}
+
+	// Deserializes managed object.
+	//    @param controller - meta controller that helps to read data
+	//    @return - ut::Error if encountered an error
+	Optional<Error> Load(Controller& controller)
+	{
+		// get array reference from pointer
+		ArrayType& arr = *static_cast<ArrayType*>(ptr);
+
+		// read data size
+		Result<Controller::SizeType, Error> size = controller.ReadAttribute<Controller::SizeType>(node_names::skSize);
+		if (!size)
+		{
+			return size.MoveAlt();
+		}
+
+		// check size value
+		if (size.Get() % sizeof(T) != 0)
+		{
+			return Error(error::out_of_bounds, "Binary array parameter has invalid size on loading.");
+		}
+
+		// resize the array
+		const size_t element_count = size.Get() / sizeof(T);
+		arr.Resize(element_count);
+
+		// read data
+		return controller.ReadBinaryValue(arr.GetAddress(), size.Get(), granularity);
+	}
+
+private:
+	Controller::SizeType granularity;
 };
 
 //----------------------------------------------------------------------------//

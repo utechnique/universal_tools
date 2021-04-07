@@ -24,17 +24,18 @@ inline bool IsBase64(unsigned char c)
 //    @param data - pointer to the data to encoded.
 //    @param size - size of the data in bytes.
 //    @return - base64 string.
-String EncodeBase64(const byte* data, size_t size)
+String EncodeBase64(const void* data, size_t size)
 {
 	String ret;
 	size_t i = 0;
 	size_t j = 0;
 	byte char_array_3[3];
 	byte char_array_4[4];
+	const ut::byte* bytes = static_cast<const ut::byte*>(data);
 
 	while (size--)
 	{
-		char_array_3[i++] = *(data++);
+		char_array_3[i++] = *(bytes++);
 		if (i == 3)
 		{
 			char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
