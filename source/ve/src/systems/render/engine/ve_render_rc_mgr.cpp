@@ -39,8 +39,11 @@ void ComputeTangents(VertexType* vertices,
 		tangent.Y() = lt2.Y() * d2.Y() - lt1.Y() * d1.Y();
 		tangent.Z() = lt2.Y() * d2.Z() - lt1.Y() * d1.Z();
 		tangent = tangent.ElementWise() * tmp;
-		tangent = tangent.Normalize();
-
+		if (!ut::Equal(tangent.Length(), 0.0f))
+		{
+			tangent = tangent.Normalize();
+		}
+		
 		v0.tangent += tangent;
 		v1.tangent += tangent;
 		v2.tangent += tangent;
@@ -221,6 +224,130 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateBox(const ut::Vector<3
 
 	// tangents
 	ComputeTangents<CubeVertex::Type>(v, indices, vertex_count, face_count * 3);
+
+	// create vertex buffer
+	ut::Result<Buffer, ut::Error> vertex_buffer = device.CreateBuffer(ut::Move(vertex_buffer_info));
+	if (!vertex_buffer)
+	{
+		return ut::MakeError(vertex_buffer.MoveAlt());
+	}
+
+	// create index buffer
+	ut::Result<Buffer, ut::Error> index_buffer = device.CreateBuffer(ut::Move(index_buffer_info));
+	if (!index_buffer)
+	{
+		return ut::MakeError(index_buffer.MoveAlt());
+	}
+
+	// create material
+	ut::Result<Material, ut::Error> default_material = CreateDefaultMaterial();
+	if (!default_material)
+	{
+		return ut::MakeError(default_material.MoveAlt());
+	}
+
+	// initialize subsets
+	ut::Array<Mesh::Subset> subsets;
+	Mesh::Subset subset;
+	subset.index_offset = 0;
+	subset.index_count = face_count * Mesh::skPolygonVertices;
+	subset.material = default_material.Move();
+	subsets.Add(ut::Move(subset));
+
+	// create mesh
+	Mesh mesh(face_count, vertex_count,
+	          vertex_buffer.Move(),
+	          index_buffer.Move(),
+	          index_type_uint32,
+	          vertex_format,
+	          ut::Move(subsets));
+
+	return AddResource<Mesh>(ut::Move(mesh), ut::Move(name));
+}
+
+// Creates a mesh representing a sphere.
+ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateSphere(const ut::Vector<3>& position,
+                                                                 float radius,
+                                                                 ut::uint32 segment_count,
+                                                                 ut::Optional<ut::String> name)
+{
+	constexpr Mesh::VertexFormat vertex_format = Mesh::vertex_pos3_texcoord2_normal3_tangent3_float;
+	typedef MeshVertex<vertex_format>::Type SphereVertex;
+
+	const ut::uint32 nv = segment_count;
+	const ut::uint32 nh = segment_count;
+	const ut::uint32 vertex_count = (nv + 1) * (nh + 1);
+	const ut::uint32 face_count = nv*nh * 2;
+
+	// vertex buffer info
+	Buffer::Info vertex_buffer_info;
+	vertex_buffer_info.type = Buffer::vertex;
+	vertex_buffer_info.usage = render::memory::gpu_immutable;
+	vertex_buffer_info.size = SphereVertex::size * vertex_count;
+	vertex_buffer_info.stride = SphereVertex::size;
+	vertex_buffer_info.data.Resize(vertex_buffer_info.size);
+	SphereVertex::Type* v = reinterpret_cast<SphereVertex::Type*>(vertex_buffer_info.data.GetAddress());
+
+	// initialize vertices
+	for (ut::uint32 i = 0; i < nv + 1; i++)
+	{
+		const float i_nv = static_cast<float>(i) / static_cast<float>(nv);
+		const float AngleXZ = 2.0f * ut::Precision<float>::pi * i_nv;
+		for (ut::uint32 j = 0; j < nh + 1; j++)
+		{
+			const float j_nh = static_cast<float>(j) / static_cast<float>(nh);
+			const float AngleY = ut::Precision<float>::pi * j_nh;
+
+			SphereVertex::Type& vertex = v[i*(nh + 1) + j];
+
+			vertex.position.X() = ut::Cos(AngleXZ) * ut::Sin(AngleY) * radius;
+			vertex.position.Y() = ut::Cos(AngleY) * radius;
+			vertex.position.Z() = ut::Sin(AngleXZ) * ut::Sin(AngleY) * radius;
+
+			vertex.normal = vertex.position.Normalize();
+
+			vertex.texcoord.X() = i_nv;
+			vertex.texcoord.Y() = 1.0f - j_nh;
+		}
+	}
+
+	// apply vertex offset
+	for (ut::uint32 i = 0; i < vertex_count; i++)
+	{
+		v[i].position += position;
+	}
+
+	// index buffer info
+	Buffer::Info index_buffer_info;
+	index_buffer_info.type = Buffer::index;
+	index_buffer_info.usage = render::memory::gpu_immutable;
+	index_buffer_info.size = sizeof(ut::uint32) * face_count * 3;
+	index_buffer_info.stride = sizeof(ut::uint32);
+	index_buffer_info.data.Resize(index_buffer_info.size);
+	ut::uint32* indices = reinterpret_cast<ut::uint32*>(index_buffer_info.data.GetAddress());
+
+	// initialize indices
+	ut::uint32 ind = 0;
+	for (ut::uint32 i = 0; i < nv; i++)
+	{
+		for (ut::uint32 j = 0; j < nh; j++)
+		{
+			const ut::uint32 vi = (nh + 1)*i + j;
+			const ut::uint32 di = (nh + 1);
+
+			indices[3 * ind + 1] = vi;
+			indices[3 * ind + 2] = vi + di;
+			indices[3 * ind + 0] = vi + di + 1;
+			indices[3 * (ind + 1) + 2] = vi;
+			indices[3 * (ind + 1) + 1] = vi + 1;
+			indices[3 * (ind + 1) + 0] = vi + di + 1;
+
+			ind += 2;
+		}
+	}
+
+	// tangents
+	ComputeTangents<SphereVertex::Type>(v, indices, vertex_count, face_count * 3);
 
 	// create vertex buffer
 	ut::Result<Buffer, ut::Error> vertex_buffer = device.CreateBuffer(ut::Move(vertex_buffer_info));
@@ -464,6 +591,14 @@ ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
 		return mesh.MoveAlt();
 	}
 	cube = mesh.Move();
+
+	// sphere
+	mesh = CreateSphere(ut::Vector<3>(0), 1.0f, 16, engine_rc_dir + engine_rc::skSphere);
+	if (!mesh)
+	{
+		return mesh.MoveAlt();
+	}
+	sphere = mesh.Move();
 
 	// success
 	return ut::Optional<ut::Error>();

@@ -42,6 +42,12 @@ public:
 	                                             const ut::Vector<3>& extent,
 	                                             ut::Optional<ut::String> name);
 
+	// Creates a mesh representing a sphere.
+	ut::Result<RcRef<Mesh>, ut::Error> CreateSphere(const ut::Vector<3>& position,
+	                                                float radius,
+	                                                ut::uint32 segment_count,
+	                                                ut::Optional<ut::String> name);
+
 	// Creates an image filled with solid color.
 	ut::Result<RcRef<Map>, ut::Error> CreateImage(ut::uint32 width,
 	                                              ut::uint32 height,
@@ -122,6 +128,7 @@ public:
 
 	// primitives
 	RcRef<Mesh> cube;
+	RcRef<Mesh> sphere;
 
 	// images
 	RcRef<Map> img_black;

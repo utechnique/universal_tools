@@ -78,7 +78,12 @@ ViewportBox::ViewportBox(const Settings& settings,
                                                                settings.background_color.G(),
                                                                settings.background_color.B()))
 {
-	
+	// background frame
+	background = ut::MakeUnique<Fl_Box>(x, y, w, h);
+	background->box(FL_FLAT_BOX);
+	background->color(bg_color);
+	background->show();
+
 	// viewport
 	const ut::uint32 border = settings.viewport_frame_size;
 	ut::String viewport_name = ut::Print(id);
@@ -90,12 +95,7 @@ ViewportBox::ViewportBox(const Settings& settings,
 	                                           h - border);
 	viewport->size_range(skResizeBorder, skResizeBorder);
 	viewport->end();
-
-	// background frame
-	background = ut::MakeUnique<Fl_Box>(x, y, w, h);
-	background->box(FL_FLAT_BOX);
-	background->color(bg_color);
-	background->show();
+	viewport->show();
 
 	// finish this box
 	this->resizable(viewport.Get());

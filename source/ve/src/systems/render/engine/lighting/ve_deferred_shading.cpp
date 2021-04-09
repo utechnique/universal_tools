@@ -642,8 +642,8 @@ void DeferredShading::BakeModels(Context& context,
 		// draw previous instance group
 		if (state_changed && i != 0)
 		{
-			PerformModelDrawCall(context, index_buffer,
-			                     index_offset, index_count,
+			PerformModelDrawCall(context, prev_index_buffer,
+			                     prev_index_offset, prev_index_count,
 			                     instance_count, i, batch_size);
 			instance_count = 0;
 		}

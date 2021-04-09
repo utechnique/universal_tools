@@ -17,6 +17,7 @@ namespace engine_rc
 {
 	static const char* skDir = "*engine/";
 	static const char* skBox = "box";
+	static const char* skSphere = "sphere";
 	static const char* skBlack = "black";
 	static const char* skWhite = "white";
 	static const char* skRed = "red";
