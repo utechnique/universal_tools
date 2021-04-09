@@ -51,7 +51,7 @@ protected:
 	}
 
 private:
-	bool can_decrease = true;
+	bool can_decrease = false;
 };
 
 //----------------------------------------------------------------------------//
