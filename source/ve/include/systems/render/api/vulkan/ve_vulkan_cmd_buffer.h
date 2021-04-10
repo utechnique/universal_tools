@@ -38,6 +38,9 @@ public:
 	PlatformCmdBuffer& operator =(const PlatformCmdBuffer&) = delete;
 
 private:
+	// Resets this command buffer.
+	void Reset();
+
 	VkRc<vk::cmd_pool> pool;
 	VkRc<vk::fence> fence;
 	DescriptorManager descriptor_mgr;

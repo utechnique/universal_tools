@@ -22,7 +22,7 @@ class Toolset
 {
 public:
 	// Constructor.
-	Toolset(Device& device_ref) noexcept;
+	Toolset(Device& device_ref);
 
 	// render device
 	Device& device;

@@ -489,12 +489,17 @@ void Context::SetTargetState(SharedTargetData** targets,
 //    @param clear_color - color to clear render targets with.
 //    @param depth_clear_value - value to clear depth buffer with.
 //    @param stencil_clear_value - value to clear stencil buffer with.
+//    @param aims_secondary_buffers - indicates that this render pass will
+//                                    be used only by secondary buffers.
+//                                    Otherwise it can be used only by
+//                                    one primary buffer.
 void Context::BeginRenderPass(RenderPass& render_pass,
                               Framebuffer& framebuffer,
                               const ut::Rect<ut::uint32>& render_area,
                               const ClearColor& clear_color,
                               float depth_clear_value,
-                              ut::uint32 stencil_clear_value)
+                              ut::uint32 stencil_clear_value,
+                              bool aims_secondary_buffers)
 {
 	// validate arguments
 	if (!clear_color)
@@ -554,7 +559,10 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	rp_begin.pClearValues = vk_clear_values;
 
 	// begin render pass
-	vkCmdBeginRenderPass(cmd_buffer.GetVkHandle(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+	VkSubpassContents subpass_content = aims_secondary_buffers ?
+	                                    VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS :
+	                                    VK_SUBPASS_CONTENTS_INLINE;
+	vkCmdBeginRenderPass(cmd_buffer.GetVkHandle(), &rp_begin, subpass_content);
 }
 
 // End current render pass.
@@ -700,6 +708,22 @@ void Context::DrawIndexedInstanced(ut::uint32 index_count,
 	                 first_index_id,
 	                 vertex_offset,
 	                 first_instance_id);
+}
+
+// Executes provided secondary command buffers. Note that this function
+// does nothing if this context is writing to the non-primary command buffer.
+//    @param buffers - array of references to the secondary buffer.
+void Context::ExecuteSecondaryBuffers(ut::Array< ut::Ref<CmdBuffer> >& buffers)
+{
+	const ut::uint32 count = static_cast<ut::uint32>(buffers.GetNum());
+
+	ut::Array<VkCommandBuffer> handles(count);
+	for (ut::uint32 i = 0; i < count; i++)
+	{
+		handles[i] = buffers[i]->GetVkHandle();
+	}
+
+	vkCmdExecuteCommands(cmd_buffer.GetVkHandle(), count, handles.GetAddress());
 }
 
 //----------------------------------------------------------------------------//

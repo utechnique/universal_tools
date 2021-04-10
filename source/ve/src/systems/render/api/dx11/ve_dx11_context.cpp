@@ -9,7 +9,9 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformContext::PlatformContext(ID3D11DeviceContext* context_ptr) : d3d11_context(context_ptr)
+PlatformContext::PlatformContext(ID3D11DeviceContext* context_ptr,
+                                 bool is_deferred_context) : d3d11_context(context_ptr)
+                                                           , is_deferred(is_deferred_context)
 {
 	for (ut::uint32 i = 0; i < 6; i++)
 	{
@@ -334,12 +336,17 @@ void Context::GenerateMips(Target& target,
 //    @param clear_color - color to clear render targets with.
 //    @param depth_clear_value - value to clear depth buffer with.
 //    @param stencil_clear_value - value to clear stencil buffer with.
+//    @param aims_secondary_buffers - indicates that this render pass will
+//                                    be used only by secondary buffers.
+//                                    Otherwise it can be used only by
+//                                    one primary buffer.
 void Context::BeginRenderPass(RenderPass& render_pass,
                               Framebuffer& framebuffer,
                               const ut::Rect<ut::uint32>& render_area,
                               const ClearColor& clear_color,
                               float depth_clear_value,
-                              ut::uint32 stencil_clear_value)
+                              ut::uint32 stencil_clear_value,
+                              bool aims_secondary_buffers)
 {
 	// validate arguments
 	if (!clear_color)
@@ -370,7 +377,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 		rtv[i] = target.slice_target_views[attachment.array_slice].mips[attachment.mip].rtv.Get();
 
 		// clear color target
-		if (render_pass.color_slots[i].load_op == RenderTargetSlot::load_clear)
+		if (!is_deferred && render_pass.color_slots[i].load_op == RenderTargetSlot::load_clear)
 		{
 			const float* color_ptr = clear_color ? clear_color->GetData() :
 			                                       clear_color.GetAlt()[i].GetData();
@@ -387,7 +394,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 		dsv = target.slice_target_views[attachment.array_slice].mips[attachment.mip].dsv.Get();
 
 		// clear depth and stencil
-		if (render_pass.depth_stencil_slot->load_op == RenderTargetSlot::load_clear)
+		if (!is_deferred && render_pass.depth_stencil_slot->load_op == RenderTargetSlot::load_clear)
 		{
 			d3d11_context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
 			                                     depth_clear_value, stencil_clear_value);
@@ -395,7 +402,10 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	}
 
 	// set targets
-	d3d11_context->OMSetRenderTargets(static_cast<UINT>(color_target_count), rtv.GetAddress(), dsv);
+	if (!aims_secondary_buffers) // secondary threads will set rtv separately
+	{
+		d3d11_context->OMSetRenderTargets(static_cast<UINT>(color_target_count), rtv.GetAddress(), dsv);
+	}
 }
 
 // End current render pass.
@@ -638,6 +648,19 @@ void Context::SetTargetState(SharedTargetData** targets,
 	{
 		TargetData& target = targets[i]->GetRef();
 		target.info.state = state;
+	}
+}
+
+// Executes provided secondary command buffers. Note that this function
+// does nothing if this context is writing to the non-primary command buffer.
+//    @param buffers - array of references to the secondary buffer.
+void Context::ExecuteSecondaryBuffers(ut::Array< ut::Ref<CmdBuffer> >& buffers)
+{
+	const ut::uint32 count = static_cast<ut::uint32>(buffers.GetNum());
+	for (ut::uint32 i = 0; i < count; i++)
+	{
+		d3d11_context->ExecuteCommandList(buffers[i]->cmd_list.Get(), FALSE);
+		buffers[i]->cmd_list.Delete();
 	}
 }
 

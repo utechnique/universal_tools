@@ -173,7 +173,7 @@ D3D11_TEXTURE_ADDRESS_MODE ConvertTexAddressModeToDX11(Sampler::AddressMode mode
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformDevice::PlatformDevice(ID3D11Device* device_ptr) : d3d11_device(device_ptr)
-                                                         , immediate_context(ut::MakeUnique<Context>(GetMainContext()))
+                                                         , immediate_context(GetMainContext())
 {
 	// create dxgi factory
 	IDXGIFactory1* gi_factory_ptr;
@@ -721,7 +721,18 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 //    @return - new command buffer or error if failed.
 ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBuffer::Info& cmd_buffer_info)
 {
-	return CmdBuffer(PlatformCmdBuffer(), cmd_buffer_info);
+	ID3D11CommandList* cmd_list = nullptr;
+	ID3D11DeviceContext* deferred_context = nullptr;
+	if (cmd_buffer_info.level == CmdBuffer::level_secondary)
+	{
+		HRESULT result = d3d11_device->CreateDeferredContext(0, &deferred_context);
+		if (FAILED(result))
+		{
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create deferred context.");
+		}
+	}
+
+	return CmdBuffer(PlatformCmdBuffer(cmd_list, deferred_context), cmd_buffer_info);
 }
 
 // Creates render pass object.
@@ -1148,8 +1159,8 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	return PipelineState(ut::Move(platform_pipeline), ut::Move(info));
 }
 
-// Resets given command buffer. This command buffer must be created without
-// CmdBufferInfo::usage_once flag (use ResetCmdPool() instead).
+// Resets given command buffer. Don't use it to manually reset a primary buffer
+// that was already submited to the gpu.
 //    @param cmd_buffer - reference to the buffer to be reset.
 void Device::ResetCmdBuffer(CmdBuffer& cmd_buffer)
 {}
@@ -1170,7 +1181,35 @@ void Device::Record(CmdBuffer& cmd_buffer,
 	                ut::Optional<RenderPass&> render_pass,
 	                ut::Optional<Framebuffer&> framebuffer)
 {
-	cmd_buffer.proc = function;
+	const bool is_secondary_buffer = cmd_buffer.info.level == CmdBuffer::level_secondary;
+	ID3D11DeviceContext* dx11_context_ptr = is_secondary_buffer ? cmd_buffer.deferred_context.Get() :
+	                                                              immediate_context.Get();
+	Context context(PlatformContext(dx11_context_ptr, is_secondary_buffer));
+	if (is_secondary_buffer)
+	{
+		UT_ASSERT(render_pass);
+		UT_ASSERT(framebuffer);
+
+		// all render targets must be set separately for the deferred context,
+		// clear values will be ignored
+		ut::Rect<ut::uint32> render_area(0, 0,
+		                                 framebuffer->info.width,
+		                                 framebuffer->info.height);
+		context.BeginRenderPass(render_pass.Get(),
+		                        framebuffer.Get(),
+		                        render_area,
+		                        ut::Color<4>(0),
+		                        1.0f, 0, false);
+	}
+
+	function(ut::Move(context));
+
+	if (is_secondary_buffer)
+	{
+		ID3D11CommandList* cmd_list;
+		cmd_buffer.deferred_context->FinishCommandList(0, &cmd_list);
+		cmd_buffer.cmd_list = ut::ComPtr<ID3D11CommandList>(cmd_list);
+	}
 }
 
 // Waits for all commands from the provided buffer to be executed.
@@ -1190,15 +1229,6 @@ void Device::WaitCmdBuffer(CmdBuffer& cmd_buffer)
 void Device::Submit(CmdBuffer& cmd_buffer,
 	                ut::Array< ut::Ref<Display> > present_queue)
 {
-	if (!cmd_buffer.proc)
-	{
-		throw ut::Error(ut::error::invalid_arg, "DirectX 11: command buffer has no recorded commands.");
-	}
-
-	// execute recorded function
-	ut::Function<void(Context&)>& procedure = cmd_buffer.proc.Get();
-	procedure(immediate_context.GetRef());
-
 	// present
 	const size_t present_count = present_queue.GetNum();
 	for (size_t i = 0; i < present_count; i++)

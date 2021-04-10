@@ -32,6 +32,16 @@ PlatformCmdBuffer::PlatformCmdBuffer(PlatformCmdBuffer&&) noexcept = default;
 // Move operator.
 PlatformCmdBuffer& PlatformCmdBuffer::operator =(PlatformCmdBuffer&&) noexcept = default;
 
+// Resets this command buffer.
+void PlatformCmdBuffer::Reset()
+{
+	// reset bound pipeline handle
+	bound_pipeline = ut::Optional<PlatformPipelineState&>();
+
+	// reset descriptor pools
+	descriptor_mgr.Reset();
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)

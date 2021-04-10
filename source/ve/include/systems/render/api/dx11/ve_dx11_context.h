@@ -19,7 +19,8 @@ class PlatformContext
 	friend class Device;
 public:
 	// Constructor.
-	PlatformContext(ID3D11DeviceContext* context_ptr);
+	PlatformContext(ID3D11DeviceContext* context_ptr,
+	                bool is_deferred_context);
 
 	// Move constructor.
 	PlatformContext(PlatformContext&&) noexcept;
@@ -44,8 +45,14 @@ protected:
 	// Returns d3d11 resource associated with provided image.
 	static ID3D11Resource* GetDX11ImageResource(PlatformImage& image, ut::uint32 type);
 
-	ut::ComPtr<ID3D11DeviceContext> d3d11_context;
+	// Native d3d11 context.
+	ID3D11DeviceContext* d3d11_context;
+
+	// Indicates what shader stages are bound to the context in the moment.
 	bool stage_bound[6];
+
+	// Indicates that this context is a deferred context.
+	bool is_deferred;
 };
 
 //----------------------------------------------------------------------------//

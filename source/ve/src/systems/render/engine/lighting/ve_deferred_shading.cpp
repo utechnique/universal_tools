@@ -23,9 +23,7 @@ DeferredShading::DeferredShading(Toolset& toolset,
                                                                              CreateLightPassShader(Light::source_spot, true) } }
                                                            , ibl_shader(CreateIblShader(ibl_mip_count))
 {
-	gpass_desc_set.Connect(model_gpass_shader);
-	ibl_desc_set.Connect(ibl_shader);
-	lightpass_desc_set.Connect(light_shader[ibl_off][Light::source_directional]);
+	ConnectDescriptors();
 }
 
 // Creates deferred shading (per-view) data.
@@ -159,12 +157,31 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 		}
 	}
 
-	// gpass pipeline state
+	// ibl reflections pipeline state
 	ut::Result<PipelineState, ut::Error> ibl_pipeline = CreateIblPipeline(light_pass.Get(),
 	                                                                      width, height);
 	if (!ibl_pipeline)
 	{
 		return ut::MakeError(ibl_pipeline.MoveAlt());
+	}
+
+	// secondary buffers and descriptor sets for the geometry pass
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
+	const ut::uint32 secondary_buffer_count = thread_count * (is_cube ? 6 : 1);
+	ut::Array<CmdBuffer> gpass_cmd;
+	for (ut::uint32 i = 0; i < secondary_buffer_count; i++)
+	{
+		CmdBuffer::Info cmd_buffer_info;
+		cmd_buffer_info.usage = CmdBuffer::usage_dynamic | CmdBuffer::usage_inside_render_pass;
+		cmd_buffer_info.level = CmdBuffer::level_secondary;
+
+		ut::Result<CmdBuffer, ut::Error> cmd_buffer = tools.device.CreateCmdBuffer(cmd_buffer_info);
+		if (!cmd_buffer)
+		{
+			throw ut::Error(cmd_buffer.MoveAlt());
+		}
+
+		gpass_cmd.Add(cmd_buffer.Move());
 	}
 
 	DeferredShading::ViewData data =
@@ -189,10 +206,385 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 				lightpass_pipeline[ibl_on][Light::source_spot].Move()
 			}
 		},
-		ibl_pipeline.Move()
+		ibl_pipeline.Move(),
+		ut::Move(gpass_cmd),
 	};
 
 	return ut::Move(data);
+}
+
+// Renders scnene to the g-buffer.
+void DeferredShading::BakeGeometry(Context& context,
+                                   Target& depth_stencil,
+                                   DeferredShading::ViewData& data,
+                                   Buffer& view_uniform_buffer,
+                                   ModelBatcher& batcher,
+                                   Image::Cube::Face cubeface)
+{
+	BakeModels(context, data, view_uniform_buffer, batcher, cubeface);
+
+	// copy depth to the intermediate buffer
+	context.SetTargetState(depth_stencil, Target::Info::state_transfer_src);
+	context.SetTargetState(data.depth, Target::Info::state_transfer_dst);
+	context.CopyTarget(data.depth, depth_stencil, cubeface, 1);
+}
+
+// Applies lighting techniques to the provided target.
+void DeferredShading::Shade(Context& context,
+                            DeferredShading::ViewData& data,
+                            Buffer& view_uniform_buffer,
+                            Light::Sources& lights,
+                            ut::Optional<Image&> ibl_cubemap,
+                            Image::Cube::Face cubeface)
+{
+	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
+
+	// check if ibl is enabled
+	const IblPreset ibl_preset = ibl_cubemap ? ibl_on : ibl_off;
+
+	// set the g-buffer as a shader resource
+	ut::Ref<Target> transition_targets[] = { data.diffuse, data.normal, data.depth };
+	context.SetTargetState<3>(transition_targets, Target::Info::state_resource);
+
+	// begin a render pass
+	Framebuffer& light_framebuffer = data.light_framebuffer[cubeface];
+	const Framebuffer::Info& fb_info = light_framebuffer.GetInfo();
+	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
+	context.BeginRenderPass(data.light_pass, light_framebuffer, render_area, ut::Color<4>(0));
+
+	// set shader resources
+	lightpass_desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
+	lightpass_desc_set.sampler.BindSampler(tools.sampler_cache.point_clamp);
+
+	// bind g-buffer
+	if (data.depth.GetInfo().type == Image::type_cube)
+	{
+		lightpass_desc_set.depth.BindCubeFace(data.depth.GetImage(), cubeface);
+		lightpass_desc_set.diffuse.BindCubeFace(data.diffuse.GetImage(), cubeface);
+		lightpass_desc_set.normal.BindCubeFace(data.normal.GetImage(), cubeface);
+	}
+	else
+	{
+		lightpass_desc_set.depth.BindImage(data.depth.GetImage());
+		lightpass_desc_set.diffuse.BindImage(data.diffuse.GetImage());
+		lightpass_desc_set.normal.BindImage(data.normal.GetImage());
+	}
+
+	// set quad vertex buffer
+	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
+
+	// image based lighting
+	if (ibl_cubemap)
+	{
+		if (data.depth.GetInfo().type == Image::type_cube)
+		{
+			ibl_desc_set.depth.BindCubeFace(data.depth.GetImage(), cubeface);
+			ibl_desc_set.diffuse.BindCubeFace(data.diffuse.GetImage(), cubeface);
+			ibl_desc_set.normal.BindCubeFace(data.normal.GetImage(), cubeface);
+		}
+		else
+		{
+			ibl_desc_set.depth.BindImage(data.depth.GetImage());
+			ibl_desc_set.diffuse.BindImage(data.diffuse.GetImage());
+			ibl_desc_set.normal.BindImage(data.normal.GetImage());
+		}
+
+		ibl_desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
+		ibl_desc_set.sampler.BindSampler(tools.sampler_cache.point_clamp);
+		ibl_desc_set.ibl_sampler.BindSampler(tools.sampler_cache.linear_wrap);
+		ibl_desc_set.ibl_cubemap.BindImage(ibl_cubemap.Get());
+		context.BindPipelineState(data.ibl_pipeline);
+		context.BindDescriptorSet(ibl_desc_set);
+		context.Draw(6, 0);
+	}
+
+	// directional lights
+	const size_t directional_light_count = lights.directional.GetNum();
+	if (directional_light_count > 0)
+	{
+		context.BindPipelineState(data.light_pipeline[ibl_preset][Light::source_directional]);
+		for (size_t i = 0; i < directional_light_count; i++)
+		{
+			DirectionalLight& light = lights.directional[i];
+			DirectionalLight::FrameData& light_data = light.data->frames[current_frame_id];
+			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
+			context.BindDescriptorSet(lightpass_desc_set);
+			context.Draw(6, 0);
+		}
+	}
+
+	// point lights
+	const size_t point_light_count = lights.point.GetNum();
+	if (point_light_count > 0)
+	{
+		context.BindPipelineState(data.light_pipeline[ibl_preset][Light::source_point]);
+		for (size_t i = 0; i < point_light_count; i++)
+		{
+			PointLight& light = lights.point[i];
+			PointLight::FrameData& light_data = light.data->frames[current_frame_id];
+			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
+			context.BindDescriptorSet(lightpass_desc_set);
+			context.Draw(6, 0);
+		}
+	}
+
+	// spot lights
+	const size_t spot_light_count = lights.spot.GetNum();
+	if (spot_light_count > 0)
+	{
+		context.BindPipelineState(data.light_pipeline[ibl_preset][Light::source_spot]);
+		for (size_t i = 0; i < spot_light_count; i++)
+		{
+			SpotLight& light = lights.spot[i];
+			SpotLight::FrameData& light_data = light.data->frames[current_frame_id];
+			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
+			context.BindDescriptorSet(lightpass_desc_set);
+			context.Draw(6, 0);
+		}
+	}
+
+	context.EndRenderPass();
+}
+
+// Renders model units to the g-buffer.
+void DeferredShading::BakeModels(Context& context,
+                                 DeferredShading::ViewData& data,
+                                 Buffer& view_uniform_buffer,
+                                 ModelBatcher& batcher,
+                                 Image::Cube::Face cubeface)
+{
+	// get the number of available threads
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
+	UT_ASSERT(thread_count == gpass_desc_set.GetNum());
+
+	// get the number of model drawcalls
+	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;
+	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.GetNum());
+
+	// initialize secondary buffers for a parallel work
+	secondary_buffer_cache.Empty();
+	for (ut::uint32 i = 0; i < thread_count; i++)
+	{
+		secondary_buffer_cache.Add(data.gpass_cmd[cubeface * thread_count + i]);
+		tools.device.ResetCmdBuffer(secondary_buffer_cache.GetLast().Get());
+	}
+
+	// begin a render pass
+	Framebuffer& geometry_framebuffer = data.geometry_framebuffer[cubeface];
+	const Framebuffer::Info& fb_info = geometry_framebuffer.GetInfo();
+	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
+	context.BeginRenderPass(data.geometry_pass, geometry_framebuffer, render_area, ut::Color<4>(0), 1.0f, 0, true);
+
+	// parallelize drawcalls
+	const ut::uint32 dc_per_thread = dc_count / thread_count; // drawcalls per thread
+	ut::uint32 offset = 0; // offset from the first drawcall in the batcher
+	for (ut::uint32 thread_id = 0; thread_id < thread_count; thread_id++)
+	{
+		ut::uint32 count = dc_per_thread + (thread_id == 0 ? (dc_count % thread_count) : 0);
+
+		auto record_commands = [&, thread_id, offset, count](Context& deferred_context)
+		{
+			BakeModelsJob(deferred_context,
+			              data,
+			              view_uniform_buffer,
+			              batcher,
+			              thread_id,
+			              offset,
+			              count);
+		};
+
+		auto job = [&, thread_id, record_commands]()
+		{
+			tools.device.Record(secondary_buffer_cache[thread_id],
+			                    record_commands,
+			                    data.geometry_pass,
+			                    geometry_framebuffer);
+		};
+
+		tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void()> >(job));
+
+		offset += count;
+	}
+	tools.scheduler.WaitForCompletion();
+
+	// finish render pass
+	context.ExecuteSecondaryBuffers(secondary_buffer_cache);
+	context.EndRenderPass();
+}
+
+// Helper function to draw a model's subset.
+inline void PerformModelDrawCall(Context& context,
+                                 Buffer* index_buffer,
+                                 ut::uint32 index_offset,
+                                 ut::uint32 index_count,
+                                 ut::uint32 instance_count,
+                                 ut::uint32 call_id,
+                                 ut::uint32 batch_size)
+{
+	const ut::uint32 first_instance_id = (call_id + 1 - instance_count) % batch_size;
+	if (index_buffer == nullptr)
+	{
+		context.DrawInstanced(index_count,
+		                      instance_count,
+		                      index_offset,
+		                      first_instance_id);
+	}
+	else
+	{
+		context.DrawIndexedInstanced(index_count,
+		                      instance_count,
+		                      index_offset,
+		                      0,
+		                      first_instance_id);
+	}
+}
+
+// Renders specified range of models.
+void DeferredShading::BakeModelsJob(Context& context,
+                                    DeferredShading::ViewData& data,
+                                    Buffer& view_uniform_buffer,
+                                    ModelBatcher& batcher,
+                                    ut::uint32 thread_id,
+                                    ut::uint32 offset,
+                                    ut::uint32 count)
+{
+	// extract model policy data
+	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
+	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;
+	Buffer& instance_buffer = batcher.instance_buffer;
+	ut::Array<Model::Batch>& batches = batcher.frame_data[current_frame_id].batches;
+	const ut::uint32 batch_size = batcher.GetBatchSize();
+
+	// pipeline state
+	context.BindPipelineState(data.model_pipeline);
+
+	// set common uniforms
+	GPassModelDescriptorSet& desc_set = gpass_desc_set[thread_id];
+	desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
+	desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
+
+	// variables tracking if something changes between iterations
+	Map* prev_diffuse_ptr = nullptr;
+	Map* prev_normal_ptr = nullptr;
+	Map* prev_material_ptr = nullptr;
+	Buffer* prev_vertex_buffer = nullptr;
+	Buffer* prev_index_buffer = nullptr;
+	ut::uint32 prev_index_offset = 0;
+	ut::uint32 prev_index_count = 0;
+	ut::uint32 prev_batch_id = static_cast<ut::uint32>(batches.GetNum());
+
+	// number of elements to draw at once
+	ut::uint32 instance_count = 0;
+
+	// iterate primitive groups and try to merge them in the
+	// least possible amount of draw calls
+	const ut::uint32 last_element = offset + count - 1;
+	for (ut::uint32 i = offset; i <= last_element; i++)
+	{
+		// calculate batch id
+		const ut::uint32 batch_id = i / batch_size;
+		Model::Batch& batch = batches[batch_id];
+
+		// extract material
+		Model::DrawCall& dc = draw_list[i];
+		Mesh& mesh = dc.model.mesh.Get();
+		Mesh::Subset& subset = mesh.subsets[dc.subset_id];
+		Material& material = subset.material;
+
+		// material maps
+		Map* diffuse_ptr = &material.diffuse.Get();
+		Map* normal_ptr = &material.normal.Get();
+		Map* material_ptr = &material.material.Get();
+
+		// buffers
+		Buffer* vertex_buffer = &mesh.vertex_buffer;
+		Buffer* index_buffer = mesh.index_buffer ? &mesh.index_buffer.Get() : nullptr;
+
+		// index count
+		const ut::uint32 index_offset = subset.index_offset;
+		const ut::uint32 index_count = subset.index_count;
+
+		// check if at least one shader resource has changed
+		const bool shader_rc_changed = batch_id != prev_batch_id ||
+		                               diffuse_ptr != prev_diffuse_ptr ||
+		                               normal_ptr != prev_normal_ptr ||
+		                               material_ptr != prev_material_ptr;
+
+		// check buffers
+		const bool vertex_buffer_changed = prev_vertex_buffer != vertex_buffer;
+		const bool index_buffer_changed = prev_index_buffer != index_buffer;
+		
+		// check index count
+		const bool indices_changed = prev_index_offset != index_offset ||
+		                             prev_index_count != index_count;
+
+		// check if at least one factor has changed since the previous iteration
+		const bool state_changed = shader_rc_changed ||
+		                           vertex_buffer_changed ||
+		                           index_buffer_changed ||
+		                           indices_changed;
+
+		// draw previous instance group
+		if (state_changed && i != offset)
+		{
+			PerformModelDrawCall(context, prev_index_buffer,
+			                     prev_index_offset, prev_index_count,
+			                     instance_count, i, batch_size);
+			instance_count = 0;
+		}
+		else
+		{
+			instance_count++;
+		}
+
+		// bind descriptors
+		if (shader_rc_changed)
+		{
+			desc_set.transform_ub.BindUniformBuffer(batch.transform);
+			desc_set.material_ub.BindUniformBuffer(batch.material);
+			desc_set.diffuse.BindImage(material.diffuse.Get());
+			desc_set.normal.BindImage(material.normal.Get());
+			desc_set.material.BindImage(material.material.Get());
+			context.BindDescriptorSet(desc_set);
+
+			prev_batch_id = batch_id;
+			prev_diffuse_ptr = diffuse_ptr;
+			prev_normal_ptr = normal_ptr;
+			prev_material_ptr = material_ptr;
+		}
+
+		// bind vertex buffer
+		if (vertex_buffer_changed)
+		{
+			context.BindVertexAndInstanceBuffer(*vertex_buffer, 0, instance_buffer, 0);
+			prev_vertex_buffer = vertex_buffer;
+		}
+		
+		// bind index buffer
+		if (index_buffer_changed)
+		{
+			if (index_buffer != nullptr)
+			{
+				context.BindIndexBuffer(*index_buffer, 0, mesh.index_type);
+			}
+			prev_index_buffer = index_buffer;
+		}
+
+		// update indices count and offset
+		if (indices_changed)
+		{
+			prev_index_offset = index_offset;
+			prev_index_count = index_count;
+		}
+
+		// draw last element
+		if (i == last_element)
+		{
+			PerformModelDrawCall(context, index_buffer,
+			                     index_offset, index_count,
+			                     instance_count, i, batch_size);
+		}
+	}
 }
 
 // Creates shaders for rendering geometry to the g-buffer.
@@ -393,315 +785,18 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateIblPipeline(RenderPa
 	return tools.device.CreatePipelineState(ut::Move(info), light_pass);
 }
 
-// Renders scnene to the g-buffer.
-void DeferredShading::BakeGeometry(Context& context,
-                                   Target& depth_stencil,
-                                   DeferredShading::ViewData& data,
-                                   Buffer& view_uniform_buffer,
-                                   ModelBatcher& batcher,
-                                   Image::Cube::Face cubeface)
+// Connects all descriptor sets to the corresponding shaders.
+void DeferredShading::ConnectDescriptors()
 {
-	BakeModels(context, data, view_uniform_buffer, batcher, cubeface);
-
-	// copy depth to the intermediate buffer
-	context.SetTargetState(depth_stencil, Target::Info::state_transfer_src);
-	context.SetTargetState(data.depth, Target::Info::state_transfer_dst);
-	context.CopyTarget(data.depth, depth_stencil, cubeface, 1);
-}
-
-// Applies lighting techniques to the provided target.
-void DeferredShading::Shade(Context& context,
-                            DeferredShading::ViewData& data,
-                            Buffer& view_uniform_buffer,
-                            Light::Sources& lights,
-                            ut::Optional<Image&> ibl_cubemap,
-                            Image::Cube::Face cubeface)
-{
-	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
-
-	// check if ibl is enabled
-	const IblPreset ibl_preset = ibl_cubemap ? ibl_on : ibl_off;
-
-	// set the g-buffer as a shader resource
-	ut::Ref<Target> transition_targets[] = { data.diffuse, data.normal, data.depth };
-	context.SetTargetState<3>(transition_targets, Target::Info::state_resource);
-
-	// begin a render pass
-	Framebuffer& light_framebuffer = data.light_framebuffer[cubeface];
-	const Framebuffer::Info& fb_info = light_framebuffer.GetInfo();
-	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-	context.BeginRenderPass(data.light_pass, light_framebuffer, render_area, ut::Color<4>(0));
-
-	// set shader resources
-	lightpass_desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
-	lightpass_desc_set.sampler.BindSampler(tools.sampler_cache.point_clamp);
-
-	// bind g-buffer
-	if (data.depth.GetInfo().type == Image::type_cube)
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
+	gpass_desc_set.Resize(thread_count);
+	for (ut::uint32 i = 0; i < thread_count; i++)
 	{
-		lightpass_desc_set.depth.BindCubeFace(data.depth.GetImage(), cubeface);
-		lightpass_desc_set.diffuse.BindCubeFace(data.diffuse.GetImage(), cubeface);
-		lightpass_desc_set.normal.BindCubeFace(data.normal.GetImage(), cubeface);
-	}
-	else
-	{
-		lightpass_desc_set.depth.BindImage(data.depth.GetImage());
-		lightpass_desc_set.diffuse.BindImage(data.diffuse.GetImage());
-		lightpass_desc_set.normal.BindImage(data.normal.GetImage());
+		gpass_desc_set[i].Connect(model_gpass_shader);
 	}
 
-	// set quad vertex buffer
-	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
-
-	// image based lighting
-	if (ibl_cubemap)
-	{
-		if (data.depth.GetInfo().type == Image::type_cube)
-		{
-			ibl_desc_set.depth.BindCubeFace(data.depth.GetImage(), cubeface);
-			ibl_desc_set.diffuse.BindCubeFace(data.diffuse.GetImage(), cubeface);
-			ibl_desc_set.normal.BindCubeFace(data.normal.GetImage(), cubeface);
-		}
-		else
-		{
-			ibl_desc_set.depth.BindImage(data.depth.GetImage());
-			ibl_desc_set.diffuse.BindImage(data.diffuse.GetImage());
-			ibl_desc_set.normal.BindImage(data.normal.GetImage());
-		}
-
-		ibl_desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
-		ibl_desc_set.sampler.BindSampler(tools.sampler_cache.point_clamp);
-		ibl_desc_set.ibl_sampler.BindSampler(tools.sampler_cache.linear_wrap);
-		ibl_desc_set.ibl_cubemap.BindImage(ibl_cubemap.Get());
-		context.BindPipelineState(data.ibl_pipeline);
-		context.BindDescriptorSet(ibl_desc_set);
-		context.Draw(6, 0);
-	}
-
-	// directional lights
-	const size_t directional_light_count = lights.directional.GetNum();
-	if (directional_light_count > 0)
-	{
-		context.BindPipelineState(data.light_pipeline[ibl_preset][Light::source_directional]);
-		for (size_t i = 0; i < directional_light_count; i++)
-		{
-			DirectionalLight& light = lights.directional[i];
-			DirectionalLight::FrameData& light_data = light.data->frames[current_frame_id];
-			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
-			context.BindDescriptorSet(lightpass_desc_set);
-			context.Draw(6, 0);
-		}
-	}
-
-	// point lights
-	const size_t point_light_count = lights.point.GetNum();
-	if (point_light_count > 0)
-	{
-		context.BindPipelineState(data.light_pipeline[ibl_preset][Light::source_point]);
-		for (size_t i = 0; i < point_light_count; i++)
-		{
-			PointLight& light = lights.point[i];
-			PointLight::FrameData& light_data = light.data->frames[current_frame_id];
-			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
-			context.BindDescriptorSet(lightpass_desc_set);
-			context.Draw(6, 0);
-		}
-	}
-
-	// spot lights
-	const size_t spot_light_count = lights.spot.GetNum();
-	if (spot_light_count > 0)
-	{
-		context.BindPipelineState(data.light_pipeline[ibl_preset][Light::source_spot]);
-		for (size_t i = 0; i < spot_light_count; i++)
-		{
-			SpotLight& light = lights.spot[i];
-			SpotLight::FrameData& light_data = light.data->frames[current_frame_id];
-			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
-			context.BindDescriptorSet(lightpass_desc_set);
-			context.Draw(6, 0);
-		}
-	}
-
-	context.EndRenderPass();
-}
-
-// Helper function to draw a model's subset.
-inline void PerformModelDrawCall(Context& context,
-                                 Buffer* index_buffer,
-                                 ut::uint32 index_offset,
-                                 ut::uint32 index_count,
-                                 ut::uint32 instance_count,
-                                 ut::uint32 call_id,
-                                 ut::uint32 batch_size)
-{
-	const ut::uint32 first_instance_id = (call_id + 1 - instance_count) % batch_size;
-	if (index_buffer == nullptr)
-	{
-		context.DrawInstanced(index_count,
-		                      instance_count,
-		                      index_offset,
-		                      first_instance_id);
-	}
-	else
-	{
-		context.DrawIndexedInstanced(index_count,
-		                      instance_count,
-		                      index_offset,
-		                      0,
-		                      first_instance_id);
-	}
-}
-
-// Renders model units to the g-buffer.
-void DeferredShading::BakeModels(Context& context,
-                                 DeferredShading::ViewData& data,
-                                 Buffer& view_uniform_buffer,
-                                 ModelBatcher& batcher,
-                                 Image::Cube::Face cubeface)
-{
-	// extract model policy data
-	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
-	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;
-	Buffer& instance_buffer = batcher.instance_buffer;
-	ut::Array<Model::Batch>& batches = batcher.frame_data[current_frame_id].batches;
-	const ut::uint32 batch_size = batcher.GetBatchSize();
-
-	// begin a render pass
-	Framebuffer& geometry_framebuffer = data.geometry_framebuffer[cubeface];
-	const Framebuffer::Info& fb_info = geometry_framebuffer.GetInfo();
-	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-	context.BeginRenderPass(data.geometry_pass, geometry_framebuffer, render_area, ut::Color<4>(0), 1.0f);
-	context.BindPipelineState(data.model_pipeline);
-
-	// set common uniforms
-	gpass_desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
-	gpass_desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
-
-	// variables tracking if something changes between iterations
-	Map* prev_diffuse_ptr = nullptr;
-	Map* prev_normal_ptr = nullptr;
-	Map* prev_material_ptr = nullptr;
-	Buffer* prev_vertex_buffer = nullptr;
-	Buffer* prev_index_buffer = nullptr;
-	ut::uint32 prev_index_offset = 0;
-	ut::uint32 prev_index_count = 0;
-	ut::uint32 prev_batch_id = static_cast<ut::uint32>(batches.GetNum());
-
-	// number of elements to draw at once
-	ut::uint32 instance_count = 0;
-
-	// iterate primitive groups and try to merge them in the
-	// least possible amount of draw calls
-	const ut::uint32 count = static_cast<ut::uint32>(draw_list.GetNum());
-	for (ut::uint32 i = 0; i < count; i++)
-	{
-		// calculate batch id
-		const ut::uint32 batch_id = i / batch_size;
-		Model::Batch& batch = batches[batch_id];
-
-		// extract material
-		Model::DrawCall& dc = draw_list[i];
-		Mesh& mesh = dc.model.mesh.Get();
-		Mesh::Subset& subset = mesh.subsets[dc.subset_id];
-		Material& material = subset.material;
-
-		// material maps
-		Map* diffuse_ptr = &material.diffuse.Get();
-		Map* normal_ptr = &material.normal.Get();
-		Map* material_ptr = &material.material.Get();
-
-		// buffers
-		Buffer* vertex_buffer = &mesh.vertex_buffer;
-		Buffer* index_buffer = mesh.index_buffer ? &mesh.index_buffer.Get() : nullptr;
-
-		// index count
-		const ut::uint32 index_offset = subset.index_offset;
-		const ut::uint32 index_count = subset.index_count;
-
-		// check if at least one shader resource has changed
-		const bool shader_rc_changed = batch_id != prev_batch_id ||
-		                               diffuse_ptr != prev_diffuse_ptr ||
-		                               normal_ptr != prev_normal_ptr ||
-		                               material_ptr != prev_material_ptr;
-
-		// check buffers
-		const bool vertex_buffer_changed = prev_vertex_buffer != vertex_buffer;
-		const bool index_buffer_changed = prev_index_buffer != index_buffer;
-		
-		// check index count
-		const bool indices_changed = prev_index_offset != index_offset ||
-		                             prev_index_count != index_count;
-
-		// check if at least one factor has changed since the previous iteration
-		const bool state_changed = shader_rc_changed ||
-		                           vertex_buffer_changed ||
-		                           index_buffer_changed ||
-		                           indices_changed;
-
-		// draw previous instance group
-		if (state_changed && i != 0)
-		{
-			PerformModelDrawCall(context, prev_index_buffer,
-			                     prev_index_offset, prev_index_count,
-			                     instance_count, i, batch_size);
-			instance_count = 0;
-		}
-		else
-		{
-			instance_count++;
-		}
-
-		// bind descriptors
-		if (shader_rc_changed)
-		{
-			gpass_desc_set.transform_ub.BindUniformBuffer(batch.transform);
-			gpass_desc_set.material_ub.BindUniformBuffer(batch.material);
-			gpass_desc_set.diffuse.BindImage(material.diffuse.Get());
-			gpass_desc_set.normal.BindImage(material.normal.Get());
-			gpass_desc_set.material.BindImage(material.material.Get());
-			context.BindDescriptorSet(gpass_desc_set);
-
-			prev_batch_id = batch_id;
-			prev_diffuse_ptr = diffuse_ptr;
-			prev_normal_ptr = normal_ptr;
-			prev_material_ptr = material_ptr;
-		}
-
-		// bind vertex buffer
-		if (vertex_buffer_changed)
-		{
-			context.BindVertexAndInstanceBuffer(*vertex_buffer, 0, instance_buffer, 0);
-			prev_vertex_buffer = vertex_buffer;
-		}
-		
-		// bind index buffer
-		if (index_buffer_changed)
-		{
-			if (index_buffer != nullptr)
-			{
-				context.BindIndexBuffer(*index_buffer, 0, mesh.index_type);
-			}
-			prev_index_buffer = index_buffer;
-		}
-
-		// update indices count and offset
-		if (indices_changed)
-		{
-			prev_index_offset = index_offset;
-			prev_index_count = index_count;
-		}
-
-		// draw last element
-		if ( i == count - 1)
-		{
-			PerformModelDrawCall(context, index_buffer,
-			                     index_offset, index_count,
-			                     instance_count, i, batch_size);
-		}
-	}
-
-	context.EndRenderPass();
+	ibl_desc_set.Connect(ibl_shader);
+	lightpass_desc_set.Connect(light_shader[ibl_off][Light::source_directional]);
 }
 
 //----------------------------------------------------------------------------//

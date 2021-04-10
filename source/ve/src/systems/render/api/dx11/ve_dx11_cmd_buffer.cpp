@@ -9,7 +9,9 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformCmdBuffer::PlatformCmdBuffer()
+PlatformCmdBuffer::PlatformCmdBuffer(ID3D11CommandList* in_cmd_list,
+                                     ID3D11DeviceContext* in_deferred_context) : cmd_list(in_cmd_list)
+                                                                               , deferred_context(in_deferred_context)
 {}
 
 // Move constructor.

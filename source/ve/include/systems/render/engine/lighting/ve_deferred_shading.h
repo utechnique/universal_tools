@@ -28,16 +28,27 @@ public:
 	// Per-view gpu data.
 	struct ViewData
 	{
+		// render target (can be a cubemap)
 		Target diffuse;
 		Target normal;
 		Target depth;
+
+		// render passes
 		RenderPass geometry_pass;
 		RenderPass light_pass;
+
+		// cubemaps need a separate framebuffer for each face
 		ut::Array<Framebuffer> geometry_framebuffer;
 		ut::Array<Framebuffer> light_framebuffer;
+
+		// pipeline states
 		PipelineState model_pipeline;
 		PipelineState light_pipeline[ibl_preset_count][Light::source_type_count];
 		PipelineState ibl_pipeline;
+
+		// secondary buffers to parallelize cpu work
+		// note that cubemaps need a separate set of buffers for each face
+		ut::Array<CmdBuffer> gpass_cmd;
 	};
 
 	// Constructor.
@@ -80,6 +91,15 @@ private:
 	                ModelBatcher& batcher,
 	                Image::Cube::Face cubeface);
 
+	// Renders specified range of models.
+	void BakeModelsJob(Context& context,
+	                   DeferredShading::ViewData& data,
+	                   Buffer& view_uniform_buffer,
+	                   ModelBatcher& batcher,
+	                   ut::uint32 thread_id,
+	                   ut::uint32 offset,
+	                   ut::uint32 count);
+
 	// Creates shaders for rendering geometry to the g-buffer.
 	BoundShader CreateModelGPassShader();
 
@@ -113,10 +133,15 @@ private:
 	                                                       ut::uint32 width,
 	                                                       ut::uint32 height);
 
+	// Connects all descriptor sets to the corresponding shaders.
+	void ConnectDescriptors();
+
 	Toolset& tools;
 	BoundShader model_gpass_shader;
 	Shader light_shader[ibl_preset_count][Light::source_type_count];
 	Shader ibl_shader;
+
+	ut::Array< ut::Ref<CmdBuffer> > secondary_buffer_cache;
 
 	struct GPassModelDescriptorSet : public DescriptorSet
 	{
@@ -131,7 +156,8 @@ private:
 		Descriptor diffuse = "g_tex2d_diffuse";
 		Descriptor normal = "g_tex2d_normal";
 		Descriptor material = "g_tex2d_material";
-	} gpass_desc_set;
+	};
+	ut::Array<GPassModelDescriptorSet> gpass_desc_set;
 
 	struct IblDescriptorSet : public DescriptorSet
 	{

@@ -2638,17 +2638,25 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	return PipelineState(ut::Move(platform_pipeline_state), ut::Move(info));
 }
 
-// Resets given command buffer. This command buffer must be created without
-// CmdBufferInfo::usage_dynamic flag (use WaitCmdBuffer() instead).
+// Resets given command buffer. Don't use it to manually reset a primary buffer
+// that was already submited to the gpu.
 //    @param cmd_buffer - reference to the buffer to be reset.
 void Device::ResetCmdBuffer(CmdBuffer& cmd_buffer)
 {
 	if (cmd_buffer.info.usage & CmdBuffer::usage_dynamic)
 	{
-		throw ut::Error(ut::error::invalid_arg, "Render: provided command buffer can't be reset.");
+		UT_ASSERT(!cmd_buffer.pending);
+		VkResult res = vkResetCommandPool(device.GetVkHandle(), cmd_buffer.pool.GetVkHandle(), 0);
+		UT_ASSERT(res == VK_SUCCESS);
 	}
-	VkResult res = vkResetCommandBuffer(cmd_buffer.GetVkHandle(), 0);
-	UT_ASSERT(res == VK_SUCCESS);
+	else
+	{
+		VkResult res = vkResetCommandBuffer(cmd_buffer.GetVkHandle(), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+		UT_ASSERT(res == VK_SUCCESS);
+	}
+
+	// reset bound pipeline and descriptor pool
+	cmd_buffer.Reset();
 }
 
 // Records commands by calling a provided function.
@@ -2686,9 +2694,10 @@ void Device::Record(CmdBuffer& cmd_buffer,
 
 	// inheritance must be set for secondary buffers
 	VkCommandBufferInheritanceInfo cmd_buf_inheritance_info = {};
-	if (cmd_buffer.info.usage & CmdBuffer::level_secondary)
+	if (cmd_buffer.info.level == CmdBuffer::level_secondary)
 	{
-		cmd_buf_inheritance_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO, cmd_buf_inheritance_info.pNext = NULL;
+		cmd_buf_inheritance_info.pNext = nullptr;
+		cmd_buf_inheritance_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 		cmd_buf_inheritance_info.subpass = 0;
 		cmd_buf_inheritance_info.occlusionQueryEnable = VK_FALSE;
 		cmd_buf_inheritance_info.queryFlags = 0;
@@ -2713,6 +2722,7 @@ void Device::Record(CmdBuffer& cmd_buffer,
 			cmd_buf_inheritance_info.renderPass = VK_NULL_HANDLE;
 			cmd_buf_inheritance_info.framebuffer = VK_NULL_HANDLE;
 		}
+		cmd_buffer_info.pInheritanceInfo = &cmd_buf_inheritance_info;
 	}
 	else
 	{
@@ -2754,21 +2764,11 @@ void Device::WaitCmdBuffer(CmdBuffer& cmd_buffer)
 	// reset fences
 	vkResetFences(device.GetVkHandle(), 1, fences);
 
-	// reset pool
-	if (cmd_buffer.info.usage & CmdBuffer::usage_dynamic)
-	{
-		res = vkResetCommandPool(device.GetVkHandle(), cmd_buffer.pool.GetVkHandle(), 0);
-		UT_ASSERT(res == VK_SUCCESS);
-	}
-
-	// reset bound pipeline handle
-	cmd_buffer.bound_pipeline = ut::Optional<PlatformPipelineState&>();
-
-	// reset descriptor pools
-	cmd_buffer.descriptor_mgr.Reset();
-
 	// reset command buffer pending status
 	cmd_buffer.pending = false;
+
+	// reset descriptor and command pools
+	ResetCmdBuffer(cmd_buffer);	
 }
 
 // Submits a command buffer to a queue. Also it's possible to enqueue presentation

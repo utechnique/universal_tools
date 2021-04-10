@@ -128,8 +128,8 @@ public:
 	//    @return - new pipeline sate or error if failed.
 	ut::Result<PipelineState, ut::Error> CreatePipelineState(PipelineState::Info info, RenderPass& render_pass);
 
-	// Resets given command buffer. This command buffer must be created without
-	// CmdBufferInfo::usage_dynamic flag (use ResetCmdPool() instead).
+	// Resets given command buffer. Don't use it to manually reset a primary buffer
+	// that was already submited to the gpu.
 	//    @param cmd_buffer - reference to the buffer to be reset.
 	void ResetCmdBuffer(CmdBuffer& cmd_buffer);
 

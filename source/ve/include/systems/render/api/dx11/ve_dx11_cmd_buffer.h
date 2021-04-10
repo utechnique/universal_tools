@@ -18,7 +18,8 @@ class PlatformCmdBuffer
 	friend class Context;
 public:
 	// Constructor.
-	PlatformCmdBuffer();
+	PlatformCmdBuffer(ID3D11CommandList* in_cmd_list,
+	                  ID3D11DeviceContext* in_deferred_context);
 
 	// Move constructor.
 	PlatformCmdBuffer(PlatformCmdBuffer&&) noexcept;
@@ -31,7 +32,8 @@ public:
 	PlatformCmdBuffer& operator =(const PlatformCmdBuffer&) = delete;
 
 private:
-	ut::Optional< ut::Function<void(Context&)> > proc;
+	ut::ComPtr<ID3D11CommandList> cmd_list;
+	ut::ComPtr<ID3D11DeviceContext> deferred_context;
 };
 
 //----------------------------------------------------------------------------//

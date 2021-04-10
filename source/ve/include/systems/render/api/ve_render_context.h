@@ -143,12 +143,17 @@ public:
 	//    @param clear_color - color to clear render targets with.
 	//    @param depth_clear_value - value to clear depth buffer with.
 	//    @param stencil_clear_value - value to clear stencil buffer with.
+	//    @param aims_secondary_buffers - indicates that this render pass will
+	//                                    be used only by secondary buffers.
+	//                                    Otherwise it can be used only by
+	//                                    one primary buffer.
 	void BeginRenderPass(RenderPass& render_pass,
 	                     Framebuffer& framebuffer,
 	                     const ut::Rect<ut::uint32>& render_area,
 	                     const ClearColor& clear_color,
 	                     float depth_clear_value = 1.0f,
-	                     ut::uint32 stencil_clear_value = 0);
+	                     ut::uint32 stencil_clear_value = 0,
+	                     bool aims_secondary_buffers = false);
 
 	// End current render pass.
 	void EndRenderPass();
@@ -235,6 +240,11 @@ public:
 	{
 		return ut::MakeAlt<ColorArrayRef>(color_array);
 	}
+
+	// Executes provided secondary command buffers. Note that this function
+	// does nothing if this context is writing to the non-primary command buffer.
+	//    @param buffers - array of references to the secondary buffer.
+	void ExecuteSecondaryBuffers(ut::Array< ut::Ref<CmdBuffer> >& buffers);
 
 private:
 	// Toggles render target's state.

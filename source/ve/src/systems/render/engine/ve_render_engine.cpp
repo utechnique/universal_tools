@@ -7,11 +7,12 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-Engine::Engine(Device& render_device, ViewportManager viewport_mgr) : ViewportManager(ut::Move(viewport_mgr))
-                                                                    , device(render_device)
-                                                                    , tools(render_device)
-                                                                    , unit_mgr(tools)
-                                                                    , profiler(tools)
+Engine::Engine(Device& render_device,
+               ViewportManager viewport_mgr) : ViewportManager(ut::Move(viewport_mgr))
+                                             , device(render_device)
+                                             , tools(render_device)
+                                             , unit_mgr(tools)
+                                             , profiler(tools)
 {
 	// set vertical synchronization for viewports
 	SetVerticalSynchronization(tools.config.vsync);

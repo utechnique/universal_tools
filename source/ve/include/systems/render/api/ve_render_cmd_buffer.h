@@ -26,7 +26,7 @@ public:
 	};
 
 	// Enumeration of possible bits specifying usage of the command buffer.
-	enum Usage
+	enum Usage : ut::uint32
 	{
 		// Normal usage.
 		usage_normal = 0x00000000,
