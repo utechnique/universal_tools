@@ -67,21 +67,93 @@ Mesh::Mesh(ut::uint32 in_face_count,
                                          , vertex_format(in_vertex_format)
                                          , subsets(ut::Move(in_subsets))
 {
-	input_assembly.topology = primitive::triangle_list;
-	ut::Optional<ut::Error> init_error = MeshVertexHelper<vertex_format_count - 1>::InitializeIaState(vertex_format,
-	                                                                                                  input_assembly);
-	UT_ASSERT(!init_error);
-
-	VertexElement instance_id(skInstanceIdSemantic, skInstanceIdFormat, 0);
-	input_assembly_instancing = input_assembly;
-	input_assembly_instancing.instance_stride = pixel::GetSize(skInstanceIdFormat);
-	input_assembly_instancing.instance_elements.Add(ut::Move(instance_id));
+	input_assembly = CreateIaState(vertex_format, false);
+	input_assembly_instancing = CreateIaState(vertex_format, true);
 }
 
 // Identify() method must be implemented for the polymorphic types.
 const ut::DynamicType& Mesh::Identify() const
 {
 	return ut::Identify(this);
+}
+
+// Creates the input assembly state from the provided vertex format.
+InputAssemblyState Mesh::CreateIaState(VertexFormat vertex_format,
+                                       bool instancing)
+{
+	InputAssemblyState ia_state;
+	ia_state.topology = primitive::triangle_list;
+	ut::Optional<ut::Error> init_error = MeshVertexHelper<vertex_format_count - 1>::InitializeIaState(vertex_format,
+	                                                                                                  ia_state);
+	UT_ASSERT(!init_error);
+
+	if (instancing)
+	{
+		VertexElement instance_id(skInstanceIdSemantic, skInstanceIdFormat, 0);
+		ia_state.instance_stride = pixel::GetSize(skInstanceIdFormat);
+		ia_state.instance_elements.Add(ut::Move(instance_id));
+	}
+
+	return ia_state;
+}
+
+// Returns an array of shader macros for the specified vertex format.
+ut::Array<Shader::MacroDefinition> Mesh::GenerateVertexMacros(VertexFormat vertex_format,
+                                                              bool instancing)
+{
+	// detect what components (position, texcoord, etc.) are available for
+	// the provided vertex format
+	ut::Optional<const VertexElement&> component_map[vertex_traits::component_count];
+	InputAssemblyState ia = Mesh::CreateIaState(vertex_format, instancing);
+	vertex_traits::ComponentIterator<vertex_traits::component_count - 1>::Map(component_map, ia);
+	
+	const ut::String availability_prefix = "VERTEX_HAS_";
+
+	ut::Array<Shader::MacroDefinition> macros;
+	const size_t element_count = ia.elements.GetNum();
+	for (size_t element_id = 0; element_id < element_count; element_id++)
+	{
+		const VertexElement& element = ia.elements[element_id];
+		for (ut::uint32 component_id = 0; component_id < vertex_traits::component_count; component_id++)
+		{
+			const ut::Optional<const VertexElement&>& component = component_map[component_id];
+			if (!component)
+			{
+				continue;
+			}
+			
+			if (element.semantic_name == component->semantic_name)
+			{
+				// component availability (VERTEX_HAS_POSITION, VERTEX_HAS_TEXCOORD, etc.)
+				Shader::MacroDefinition macro;
+				macro.name = availability_prefix + element.semantic_name;
+				macro.value = "1";
+				macros.Add(macro);
+
+				// position dimension
+				if (component_id == vertex_traits::position)
+				{
+					const bool is_2d = pixel::GetSize(element.format) == sizeof(ut::Vector<2, float>);
+					macro.name = ut::String("VERTEX_") + (is_2d ? "2" : "3") + "D_POSITION";
+					macro.value = "1";
+					macros.Add(macro);
+				}
+
+				break;
+			}
+		}
+	}
+
+	// instancing
+	if (instancing)
+	{
+		Shader::MacroDefinition macro;
+		macro.name = availability_prefix + skInstanceIdSemantic;
+		macro.value = "1";
+		macros.Add(macro);
+	}
+
+	return macros;
 }
 
 //----------------------------------------------------------------------------//

@@ -8,7 +8,7 @@
 #include "systems/render/engine/units/ve_render_directional_light.h"
 #include "systems/render/engine/units/ve_render_point_light.h"
 #include "systems/render/engine/units/ve_render_spot_light.h"
-
+#include "templates/ut_grid.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -18,13 +18,6 @@ START_NAMESPACE(lighting)
 class DeferredShading
 {
 public:
-	enum IblPreset
-	{
-		ibl_off,
-		ibl_on,
-		ibl_preset_count
-	};
-
 	// Per-view gpu data.
 	struct ViewData
 	{
@@ -42,8 +35,8 @@ public:
 		ut::Array<Framebuffer> light_framebuffer;
 
 		// pipeline states
-		PipelineState model_pipeline;
-		PipelineState light_pipeline[ibl_preset_count][Light::source_type_count];
+		ut::Array<PipelineState> model_gpass_pipeline;
+		ut::Array<PipelineState> light_pipeline;
 		PipelineState ibl_pipeline;
 
 		// secondary buffers to parallelize cpu work
@@ -84,6 +77,98 @@ public:
 	           Image::Cube::Face cubeface = Image::Cube::positive_x);
 
 private:
+	// Light pass pipeline permutations.
+	struct LightPass
+	{
+		enum IblPreset
+		{
+			ibl_off,
+			ibl_on,
+			ibl_preset_count
+		};
+
+		static constexpr ut::uint32 ibl_column = 0;
+		static constexpr ut::uint32 light_type_column = 1;
+
+		typedef ut::Grid<ibl_preset_count, Light::source_type_count> Grid;
+	};
+
+	// Geometry pass pipeline and shaders permutations.
+	struct GeometryPass
+	{
+		enum CullMode
+		{
+			cull_none,
+			cull_back,
+			cull_mode_count
+		};
+
+		enum AlphaMode
+		{
+			alpha_opaque,
+			alpha_test,
+			alpha_mode_count
+		};
+
+		static constexpr ut::uint32 vertex_format_column = 0;
+		static constexpr ut::uint32 alpha_mode_column = 1;
+		static constexpr ut::uint32 cull_mode_column = 2;
+
+		typedef ut::Grid<Mesh::vertex_format_count,
+		                 GeometryPass::alpha_mode_count,
+		                 GeometryPass::cull_mode_count> PipelineGrid;
+
+		typedef ut::Grid<Mesh::vertex_format_count,
+		                 GeometryPass::alpha_mode_count> ShaderGrid;
+	};
+
+	// Descriptor set for the model geometry pass shaders.
+	struct GPassModelDescriptorSet : public DescriptorSet
+	{
+		GPassModelDescriptorSet() : DescriptorSet(view_ub, transform_ub, material_ub,
+		                                          sampler, diffuse, normal, material)
+		{}
+
+		Descriptor view_ub = "g_ub_view";
+		Descriptor transform_ub = "g_ub_transform";
+		Descriptor material_ub = "g_ub_material";
+		Descriptor sampler = "g_sampler";
+		Descriptor diffuse = "g_tex2d_diffuse";
+		Descriptor normal = "g_tex2d_normal";
+		Descriptor material = "g_tex2d_material";
+	};
+
+	// Descriptor set for the image based lighting pass.
+	struct IblDescriptorSet : public DescriptorSet
+	{
+		IblDescriptorSet() : DescriptorSet(view_ub, sampler, depth, ibl_sampler,
+		                                   diffuse, normal, ibl_cubemap)
+		{}
+
+		Descriptor view_ub = "g_ub_view";
+		Descriptor sampler = "g_sampler";
+		Descriptor ibl_sampler = "g_ibl_sampler";
+		Descriptor depth = "g_tex2d_depth";
+		Descriptor diffuse = "g_tex2d_diffuse";
+		Descriptor normal = "g_tex2d_normal";
+		Descriptor ibl_cubemap = "g_ibl_cubemap";
+	};
+
+	// Descriptor set for the light pass shaders.
+	struct LightPassDescriptorSet : public DescriptorSet
+	{
+		LightPassDescriptorSet() : DescriptorSet(view_ub, light_ub, sampler,
+		                                         depth, diffuse, normal)
+		{}
+
+		Descriptor view_ub = "g_ub_view";
+		Descriptor light_ub = "g_ub_light";
+		Descriptor sampler = "g_sampler";
+		Descriptor depth = "g_tex2d_depth";
+		Descriptor diffuse = "g_tex2d_diffuse";
+		Descriptor normal = "g_tex2d_normal";
+	};
+
 	// Renders model units to the g-buffer.
 	void BakeModels(Context& context,
 	                DeferredShading::ViewData& data,
@@ -101,10 +186,11 @@ private:
 	                   ut::uint32 count);
 
 	// Creates shaders for rendering geometry to the g-buffer.
-	BoundShader CreateModelGPassShader();
+	ut::Array<BoundShader> CreateModelGPassShader();
 
 	// Creates a shader for the lighting pass.
-	Shader CreateLightPassShader(Light::SourceType source_type, bool ibl_on);
+	Shader CreateLightPassShader(Light::SourceType source_type,
+	                             LightPass::IblPreset ibl_preset);
 
 	// Creates a pixel shader for the image based lighting.
 	Shader CreateIblShader(ut::uint32 ibl_mip_count);
@@ -119,14 +205,17 @@ private:
 	// Creates a pipeline state to render geometry to the g-buffer.
 	ut::Result<PipelineState, ut::Error> CreateModelGPassPipeline(RenderPass& geometry_pass,
 	                                                              ut::uint32 width,
-	                                                              ut::uint32 height);
+	                                                              ut::uint32 height,
+	                                                              Mesh::VertexFormat vertex_format,
+	                                                              GeometryPass::AlphaMode alpha_mode,
+	                                                              GeometryPass::CullMode cull_mode);
 
 	// Creates a pipeline state to apply lighting.
 	ut::Result<PipelineState, ut::Error> CreateLightPassPipeline(RenderPass& light_pass,
 	                                                             ut::uint32 width,
 	                                                             ut::uint32 height,
 	                                                             Light::SourceType source_type,
-	                                                             IblPreset ibl_preset);
+	                                                             LightPass::IblPreset ibl_preset);
 
 	// Creates a pipeline state to apply image based lighting.
 	ut::Result<PipelineState, ut::Error> CreateIblPipeline(RenderPass& light_pass,
@@ -136,57 +225,21 @@ private:
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();
 
+	// Common rendering tools.
 	Toolset& tools;
-	BoundShader model_gpass_shader;
-	Shader light_shader[ibl_preset_count][Light::source_type_count];
+
+	// Shaders.
+	ut::Array<BoundShader> model_gpass_shader;
+	ut::Array<Shader> light_shader;
 	Shader ibl_shader;
 
+	// Secondary command buffers to parallelize cpu work.
 	ut::Array< ut::Ref<CmdBuffer> > secondary_buffer_cache;
 
-	struct GPassModelDescriptorSet : public DescriptorSet
-	{
-		GPassModelDescriptorSet() : DescriptorSet(view_ub, transform_ub, material_ub,
-		                                          sampler, diffuse, normal, material)
-		{}
-
-		Descriptor view_ub = "g_ub_view";
-		Descriptor transform_ub = "g_ub_transform";
-		Descriptor material_ub = "g_ub_material";
-		Descriptor sampler = "g_sampler";
-		Descriptor diffuse = "g_tex2d_diffuse";
-		Descriptor normal = "g_tex2d_normal";
-		Descriptor material = "g_tex2d_material";
-	};
+	// Descriptors.
 	ut::Array<GPassModelDescriptorSet> gpass_desc_set;
-
-	struct IblDescriptorSet : public DescriptorSet
-	{
-		IblDescriptorSet() : DescriptorSet(view_ub, sampler, depth, ibl_sampler,
-		                                   diffuse, normal, ibl_cubemap)
-		{}
-
-		Descriptor view_ub = "g_ub_view";
-		Descriptor sampler = "g_sampler";
-		Descriptor ibl_sampler = "g_ibl_sampler";
-		Descriptor depth = "g_tex2d_depth";
-		Descriptor diffuse = "g_tex2d_diffuse";
-		Descriptor normal = "g_tex2d_normal";
-		Descriptor ibl_cubemap = "g_ibl_cubemap";
-	} ibl_desc_set;
-
-	struct LightPassDescriptorSet : public DescriptorSet
-	{
-		LightPassDescriptorSet() : DescriptorSet(view_ub, light_ub, sampler,
-		                                         depth, diffuse, normal)
-		{}
-
-		Descriptor view_ub = "g_ub_view";
-		Descriptor light_ub = "g_ub_light";
-		Descriptor sampler = "g_sampler";
-		Descriptor depth = "g_tex2d_depth";
-		Descriptor diffuse = "g_tex2d_diffuse";
-		Descriptor normal = "g_tex2d_normal";
-	} lightpass_desc_set;
+	IblDescriptorSet ibl_desc_set;
+	LightPassDescriptorSet lightpass_desc_set;
 
 	// G-Buffer target format.
 	static constexpr pixel::Format skGBufferFormat = pixel::r16g16b16a16_float;

@@ -17,7 +17,7 @@ public:
 	enum Alpha
 	{
 		alpha_opaque,
-		alpha_test,
+		alpha_masked,
 		alpha_transparent,
 	};
 

@@ -56,6 +56,14 @@ public:
 	// Identify() method must be implemented for the polymorphic types.
 	const ut::DynamicType& Identify() const override;
 
+	// Creates the input assembly state from the provided vertex format.
+	static InputAssemblyState CreateIaState(VertexFormat vertex_format,
+	                                        bool instancing);
+
+	// Returns an array of shader macros for the specified vertex format.
+	static ut::Array<Shader::MacroDefinition> GenerateVertexMacros(VertexFormat vertex_format,
+	                                                               bool instancing);
+
 	// Number of vertices in one face.
 	static constexpr ut::uint32 skPolygonVertices = 3;
 
