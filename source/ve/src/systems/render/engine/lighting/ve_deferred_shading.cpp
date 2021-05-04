@@ -87,7 +87,7 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 
 	// light pass
 	ut::Result<RenderPass, ut::Error> light_pass = CreateLightPass(depth_stencil_format,
-		light_buffer.GetInfo().format);
+	                                                               light_buffer.GetInfo().format);
 	if (!light_pass)
 	{
 		return ut::MakeError(light_pass.MoveAlt());
@@ -181,7 +181,7 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 		return ut::MakeError(ibl_pipeline.MoveAlt());
 	}
 
-	// secondary buffers and descriptor sets for the geometry pass
+	// secondary command buffers
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
 	const ut::uint32 secondary_buffer_count = thread_count * (is_cube ? 6 : 1);
 	ut::Array<CmdBuffer> gpass_cmd;
@@ -219,14 +219,14 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 }
 
 // Renders scnene to the g-buffer.
-void DeferredShading::BakeGeometry(Context& context,
-                                   Target& depth_stencil,
-                                   DeferredShading::ViewData& data,
-                                   Buffer& view_uniform_buffer,
-                                   ModelBatcher& batcher,
-                                   Image::Cube::Face cubeface)
+void DeferredShading::BakeOpaqueGeometry(Context& context,
+                                         Target& depth_stencil,
+                                         DeferredShading::ViewData& data,
+                                         Buffer& view_uniform_buffer,
+                                         ModelBatcher& batcher,
+                                         Image::Cube::Face cubeface)
 {
-	BakeModels(context, data, view_uniform_buffer, batcher, cubeface);
+	BakeOpaqueModels(context, data, view_uniform_buffer, batcher, cubeface);
 
 	// copy depth to the intermediate buffer
 	context.SetTargetState(depth_stencil, Target::Info::state_transfer_src);
@@ -298,7 +298,7 @@ void DeferredShading::Shade(Context& context,
 
 		ibl_desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
 		ibl_desc_set.sampler.BindSampler(tools.sampler_cache.point_clamp);
-		ibl_desc_set.ibl_sampler.BindSampler(tools.sampler_cache.linear_wrap);
+		ibl_desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
 		ibl_desc_set.ibl_cubemap.BindImage(ibl_cubemap.Get());
 		context.BindPipelineState(data.ibl_pipeline);
 		context.BindDescriptorSet(ibl_desc_set);
@@ -357,11 +357,11 @@ void DeferredShading::Shade(Context& context,
 }
 
 // Renders model units to the g-buffer.
-void DeferredShading::BakeModels(Context& context,
-                                 DeferredShading::ViewData& data,
-                                 Buffer& view_uniform_buffer,
-                                 ModelBatcher& batcher,
-                                 Image::Cube::Face cubeface)
+void DeferredShading::BakeOpaqueModels(Context& context,
+                                       DeferredShading::ViewData& data,
+                                       Buffer& view_uniform_buffer,
+                                       ModelBatcher& batcher,
+                                       Image::Cube::Face cubeface)
 {
 	// get the number of available threads
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
@@ -394,13 +394,13 @@ void DeferredShading::BakeModels(Context& context,
 
 		auto record_commands = [&, thread_id, offset, count](Context& deferred_context)
 		{
-			BakeModelsJob(deferred_context,
-			              data,
-			              view_uniform_buffer,
-			              batcher,
-			              thread_id,
-			              offset,
-			              count);
+			BakeOpaqueModelsJob(deferred_context,
+			                    data,
+			                    view_uniform_buffer,
+			                    batcher,
+			                    thread_id,
+			                    offset,
+			                    count);
 		};
 
 		auto job = [&, thread_id, record_commands]()
@@ -431,6 +431,11 @@ inline void PerformModelDrawCall(Context& context,
                                  ut::uint32 call_id,
                                  ut::uint32 batch_size)
 {
+	if (instance_count == 0)
+	{
+		return;
+	}
+
 	const ut::uint32 first_instance_id = (call_id + 1 - instance_count) % batch_size;
 	if (index_buffer == nullptr)
 	{
@@ -450,13 +455,13 @@ inline void PerformModelDrawCall(Context& context,
 }
 
 // Renders specified range of models.
-void DeferredShading::BakeModelsJob(Context& context,
-                                    DeferredShading::ViewData& data,
-                                    Buffer& view_uniform_buffer,
-                                    ModelBatcher& batcher,
-                                    ut::uint32 thread_id,
-                                    ut::uint32 offset,
-                                    ut::uint32 count)
+void DeferredShading::BakeOpaqueModelsJob(Context& context,
+                                          DeferredShading::ViewData& data,
+                                          Buffer& view_uniform_buffer,
+                                          ModelBatcher& batcher,
+                                          ut::uint32 thread_id,
+                                          ut::uint32 offset,
+                                          ut::uint32 count)
 {
 	// extract model policy data
 	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
@@ -491,15 +496,22 @@ void DeferredShading::BakeModelsJob(Context& context,
 	const ut::uint32 last_element = offset + count - 1;
 	for (ut::uint32 i = offset; i <= last_element; i++)
 	{
-		// calculate batch id
-		const ut::uint32 batch_id = i / batch_size;
-		Model::Batch& batch = batches[batch_id];
-
 		// extract material
 		Model::DrawCall& dc = draw_list[i];
 		Mesh& mesh = dc.model.mesh.Get();
 		Mesh::Subset& subset = mesh.subsets[dc.subset_id];
 		Material& material = subset.material;
+		const bool is_transparent = material.alpha == Material::alpha_transparent;
+
+		// skip transparent materials
+		if (is_transparent)
+		{
+			continue;
+		}
+
+		// calculate batch id
+		const ut::uint32 batch_id = i / batch_size;
+		Model::Batch& batch = batches[batch_id];
 
 		// material maps
 		Map* diffuse_ptr = &material.diffuse.Get();
@@ -547,7 +559,7 @@ void DeferredShading::BakeModelsJob(Context& context,
 		                           indices_changed;
 
 		// draw previous instance group
-		if (state_changed && i != offset)
+		if ((state_changed && i != offset) || is_transparent)
 		{
 			PerformModelDrawCall(context, prev_index_buffer,
 			                     prev_index_offset, prev_index_count,
@@ -634,6 +646,16 @@ ut::Array<BoundShader> DeferredShading::CreateModelGPassShader()
 		Shader::Macros macros;
 		Shader::MacroDefinition macro;
 
+		// enable instancing
+		macro.name = "INSTANCING";
+		macro.value = "1";
+		macros.Add(macro);
+
+		// deferred pass
+		macro.name = "DEFERRED_PASS";
+		macro.value = "1";
+		macros.Add(macro);
+
 		// batch size
 		macro.name = "BATCH_SIZE";
 		macro.value = ut::Print(ModelBatcher::CalculateBatchSize(tools.device));
@@ -672,6 +694,10 @@ Shader DeferredShading::CreateLightPassShader(Light::SourceType source_type,
 {
 	Shader::Macros macros;
 	Shader::MacroDefinition macro;
+
+	macro.name = "LIGHT_PASS";
+	macro.value = "1";
+	macros.Add(ut::Move(macro));
 
 	// light type
 	const char* light_type_str;
@@ -716,6 +742,15 @@ Shader DeferredShading::CreateIblShader(ut::uint32 ibl_mip_count)
 {
 	Shader::Macros macros;
 	Shader::MacroDefinition macro;
+
+	macro.name = "IBL_PASS";
+	macro.value = "1";
+	macros.Add(ut::Move(macro));
+
+	macro.name = "IBL";
+	macro.value = "1";
+	macros.Add(ut::Move(macro));
+
 	macro.name = "IBL_MIP_COUNT";
 	macro.value = ut::Print(ibl_mip_count);
 	macros.Add(ut::Move(macro));
@@ -723,7 +758,7 @@ Shader DeferredShading::CreateIblShader(ut::uint32 ibl_mip_count)
 	ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::pixel,
 	                                                            "deferred_ibl_ps",
 	                                                            "PS",
-	                                                            "deferred_ibl.hlsl",
+	                                                            "deferred_shading.hlsl",
 	                                                            macros);
 	return ps.MoveOrThrow();
 }

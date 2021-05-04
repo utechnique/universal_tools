@@ -6,6 +6,14 @@
 #include "lighting.hlsl"
 
 //----------------------------------------------------------------------------//
+// Pixel shader output structure writing to the geometry buffer.
+struct GBuffer
+{
+	float4 diffuse : COLOR0;
+	float4 normal : COLOR1;
+};
+
+//----------------------------------------------------------------------------//
 // Calculates world 3d position of the pixel using the depth value from the
 // G-Buffer.
 float3 RecoverPositionFromDepth(float4x4 view_projection,

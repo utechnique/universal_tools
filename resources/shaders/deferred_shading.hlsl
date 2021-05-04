@@ -11,18 +11,37 @@
 
 
 //----------------------------------------------------------------------------//
+// Define 'LIGHT_PASS' macro to compile light pass shader.
+#ifndef LIGHT_PASS
+#define LIGHT_PASS 0
+#endif
+
+// Define 'IBL_PASS' macro to compile ibl reflection pass shader.
+#ifndef IBL_PASS
+#define IBL_PASS 0
+#endif
+
+// Define 'IBL_MIP_COUNT' macro to set the number of
+// mip levels in the ibl cubemap.
+#ifndef IBL_MIP_COUNT
+#define IBL_MIP_COUNT 8
+#endif
+
 // Define 'IBL' macro to enable or disable image based lighting.
 #ifndef IBL
 #define IBL 0
 #endif
 
 //----------------------------------------------------------------------------//
-#include "view_buffer.hlsl"
+#if LIGHT_PASS
 #include "light_buffer.hlsl"
+#endif
+#include "view_buffer.hlsl"
 #include "lighting.hlsl"
 #include "deferred_common.hlsl"
 
 //----------------------------------------------------------------------------//
+// VS -> PS data.
 struct PS_INPUT
 {
 	float4 position  : SV_POSITION;
@@ -35,6 +54,9 @@ SamplerState g_sampler : register(s2);
 Texture2D g_tex2d_depth : register(t3);
 Texture2D g_tex2d_diffuse : register(t4);
 Texture2D g_tex2d_normal : register(t5);
+#if IBL_PASS
+TextureCube g_ibl_cubemap : register(t6);
+#endif
 
 //----------------------------------------------------------------------------//
 // Pixel shader entry point.
@@ -56,12 +78,13 @@ float4 PS(PS_INPUT input) : SV_Target
 	CalculateMetallicDiffuseSpecular(surface);
 #endif
 
+#if LIGHT_PASS
 	// initialize light source data
-#if DIRECTIONAL_LIGHT
-	float3 light_direction = -g_light_direction.xyz;
-#else
-	float3 light_direction = g_light_position.xyz - surface.world_position;
-#endif
+	#if DIRECTIONAL_LIGHT
+		float3 light_direction = -g_light_direction.xyz;
+	#else
+		float3 light_direction = g_light_position.xyz - surface.world_position;
+	#endif
 	LightingData light;
 	light.direction = normalize(light_direction);
 	light.color = g_light_color.rgb;
@@ -74,7 +97,18 @@ float4 PS(PS_INPUT input) : SV_Target
 	// calculate lighting
 	float3 light_amount = ComputeDirectLighting(surface, light);
 	light_amount *= ComputeAttenuation(light);
-
+#elif IBL_PASS
+	float3 view_direction = -surface.look;
+	float3 reflection_vector = normalize(reflect(view_direction, surface.normal));
+	float NoV = saturate(dot(view_direction, surface.normal));
+	float3 light_amount = GetImageBasedReflectionLighting(g_ibl_cubemap,
+	                                                      g_sampler,
+	                                                      surface.roughness,
+	                                                      reflection_vector,
+	                                                      NoV,
+	                                                      surface.specular,
+	                                                      IBL_MIP_COUNT);
+#endif
 	return float4(light_amount.rgb, 0.0f);
 }
 

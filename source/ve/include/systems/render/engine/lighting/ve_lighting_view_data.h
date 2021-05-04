@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "ve_deferred_shading.h"
+#include "ve_forward_shading.h"
 #include "ve_image_based_lighting.h"
 
 //----------------------------------------------------------------------------//
@@ -25,6 +26,7 @@ struct ViewData
 	
 	Target light_buffer;
 	DeferredShading::ViewData deferred_shading;
+	ForwardShading::ViewData forward_shading;
 };
 
 //----------------------------------------------------------------------------//

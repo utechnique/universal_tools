@@ -12,7 +12,7 @@ START_NAMESPACE(lighting)
 Manager::Manager(Toolset& toolset) : tools(toolset)
                                    , ibl(toolset)
                                    , deferred_shading(toolset, ibl.GetMipCount())
-                                   
+                                   , forward_shading(toolset, ibl.GetMipCount())                           
 {}
 
 // Creates lighting (per-view) data.
@@ -52,7 +52,24 @@ ut::Result<lighting::ViewData, ut::Error> Manager::CreateViewData(Target& depth_
 		return ut::MakeError(def_sh_data.MoveAlt());
 	}
 
-	return lighting::ViewData{ light_buffer.Move(), def_sh_data.Move() };
+	// forward shading
+	ut::Result<ForwardShading::ViewData, ut::Error> forward_sh_data = forward_shading.CreateViewData(def_sh_data->depth,
+	                                                                                                 light_buffer.Get(),
+	                                                                                                 width, height,
+	                                                                                                 is_cube);
+	if (!forward_sh_data)
+	{
+		return ut::MakeError(forward_sh_data.MoveAlt());
+	}
+
+	lighting::ViewData data = 
+	{
+	    light_buffer.Move(),
+		def_sh_data.Move(),
+		forward_sh_data.Move()
+	};
+
+	return data;
 }
 
 // Updates uniform buffers for the provided light units.

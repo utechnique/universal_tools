@@ -61,12 +61,12 @@ public:
 	                                                                bool is_cube);
 
 	// Renders scnene to the g-buffer.
-	void BakeGeometry(Context& context,
-	                  Target& depth_stencil,
-	                  DeferredShading::ViewData& data,
-	                  Buffer& view_uniform_buffer,
-	                  ModelBatcher& batcher,
-	                  Image::Cube::Face cubeface = Image::Cube::positive_x);
+	void BakeOpaqueGeometry(Context& context,
+	                        Target& depth_stencil,
+	                        DeferredShading::ViewData& data,
+	                        Buffer& view_uniform_buffer,
+	                        ModelBatcher& batcher,
+	                        Image::Cube::Face cubeface = Image::Cube::positive_x);
 
 	// Applies lighting techniques to the provided target.
 	void Shade(Context& context,
@@ -141,13 +141,12 @@ private:
 	// Descriptor set for the image based lighting pass.
 	struct IblDescriptorSet : public DescriptorSet
 	{
-		IblDescriptorSet() : DescriptorSet(view_ub, sampler, depth, ibl_sampler,
+		IblDescriptorSet() : DescriptorSet(view_ub, sampler, depth,
 		                                   diffuse, normal, ibl_cubemap)
 		{}
 
 		Descriptor view_ub = "g_ub_view";
 		Descriptor sampler = "g_sampler";
-		Descriptor ibl_sampler = "g_ibl_sampler";
 		Descriptor depth = "g_tex2d_depth";
 		Descriptor diffuse = "g_tex2d_diffuse";
 		Descriptor normal = "g_tex2d_normal";
@@ -170,20 +169,20 @@ private:
 	};
 
 	// Renders model units to the g-buffer.
-	void BakeModels(Context& context,
-	                DeferredShading::ViewData& data,
-	                Buffer& view_uniform_buffer,
-	                ModelBatcher& batcher,
-	                Image::Cube::Face cubeface);
+	void BakeOpaqueModels(Context& context,
+	                      DeferredShading::ViewData& data,
+	                      Buffer& view_uniform_buffer,
+	                      ModelBatcher& batcher,
+	                      Image::Cube::Face cubeface);
 
 	// Renders specified range of models.
-	void BakeModelsJob(Context& context,
-	                   DeferredShading::ViewData& data,
-	                   Buffer& view_uniform_buffer,
-	                   ModelBatcher& batcher,
-	                   ut::uint32 thread_id,
-	                   ut::uint32 offset,
-	                   ut::uint32 count);
+	void BakeOpaqueModelsJob(Context& context,
+	                         DeferredShading::ViewData& data,
+	                         Buffer& view_uniform_buffer,
+	                         ModelBatcher& batcher,
+	                         ut::uint32 thread_id,
+	                         ut::uint32 offset,
+	                         ut::uint32 count);
 
 	// Creates shaders for rendering geometry to the g-buffer.
 	ut::Array<BoundShader> CreateModelGPassShader();

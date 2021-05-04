@@ -208,12 +208,12 @@ ut::Optional<Image&> Policy<View>::RenderScene(Context& context,
 	UpdateViewUniforms(context, scene, view_matrix, proj_matrix, view_position, face);
 
 	// bake deferred shading data
-	lighting_mgr.deferred_shading.BakeGeometry(context,
-	                                           scene.depth_stencil,
-	                                           scene.lighting.deferred_shading,
-	                                           scene.view_ub[face],
-	                                           model_policy.batcher,
-	                                           face);
+	lighting_mgr.deferred_shading.BakeOpaqueGeometry(context,
+	                                                 scene.depth_stencil,
+	                                                 scene.lighting.deferred_shading,
+	                                                 scene.view_ub[face],
+	                                                 model_policy.batcher,
+	                                                 face);
 
 	// exit if the view mode is set to show one of the g-buffer targets
 	if (mode == View::mode_diffuse)
@@ -229,13 +229,24 @@ ut::Optional<Image&> Policy<View>::RenderScene(Context& context,
 		return scene.lighting.deferred_shading.normal.GetImage(); // exit
 	}
 
-	// apply lighting
+	// perform deferred shading
 	lighting_mgr.deferred_shading.Shade(context,
 	                                    scene.lighting.deferred_shading,
 	                                    scene.view_ub[face],
 	                                    lights,
 	                                    ibl_cubemap,
 	                                    face);
+
+	// use forward renderer to draw all units that
+	// can't be rendered in deferred pass
+	lighting_mgr.forward_shading.DrawTransparentGeometry(context,
+	                                                     scene.lighting.forward_shading,
+	                                                     scene.view_ub[face],
+	                                                     model_policy.batcher,
+	                                                     lights,
+	                                                     ibl_cubemap,
+	                                                     face);
+
 	context.SetTargetState(scene.lighting.light_buffer, Target::Info::state_resource);
 	return scene.lighting.light_buffer.GetImage();
 }
