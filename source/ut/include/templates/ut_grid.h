@@ -23,7 +23,7 @@ struct PermutationCounter
 	template<size_t axis>
 	static constexpr size_t GetCoordinate(size_t id)
 	{
-		return axis == 0 ? (id / element_size) : PermutationCounter<dimensions...>::GetCoordinate<axis - 1>(id % element_size);
+		return axis == 0 ? (id / element_size) : PermutationCounter<dimensions...>::template GetCoordinate<axis - 1>(id % element_size);
 	}
 };
 
@@ -44,12 +44,12 @@ template<size_t last> struct PermutationCounter<last>
 	}
 };
 
-// ut::Grid enumerates all possible combinations of the provided 
+// ut::Grid enumerates all possible combinations of the provided
 // multidimensional discrete coordinates and assigns an index to all of them.
 // For example it can translate such 2d system:
 //  0 0
 //  1 1   into 1d sequence: (0,0) (0,1) (1,0) (1,1) (2,0) (2,1)
-//  2  
+//  2
 template<size_t... dimensions>
 struct Grid
 {
@@ -67,7 +67,7 @@ struct Grid
 	template<size_t axis>
 	static constexpr size_t GetCoordinate(size_t id)
 	{
-		return PermutationCounter<dimensions...>::GetCoordinate<axis>(id);
+		return PermutationCounter<dimensions...>::template GetCoordinate<axis>(id);
 	}
 };
 
