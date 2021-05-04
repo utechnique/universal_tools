@@ -244,9 +244,9 @@ void ForwardShading::RenderTransparentModelJob(Context& context,
 		constexpr ut::uint32 back_culling = 1;
 		constexpr ut::uint32 cull_mode_count = 2;
 		ut::uint32 cull_mode = material.double_sided ? front_culling : back_culling;
-		bool first_pass = true;
 		for (; cull_mode < cull_mode_count; cull_mode++)
 		{
+			bool first_pass = true;
 			// ibl reflections pass
 			if (ibl_cubemap)
 			{
@@ -285,7 +285,6 @@ void ForwardShading::RenderTransparentModelJob(Context& context,
 			                             lightpass_alpha_mode,
 			                             i,
 			                             thread_id);
-			first_pass = false;
 		}
 	}
 }
