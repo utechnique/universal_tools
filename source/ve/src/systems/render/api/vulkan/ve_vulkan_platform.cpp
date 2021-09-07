@@ -34,7 +34,7 @@ ut::Array<const char*> GetDeviceVkInstanceExtensions()
 // Creates ut::Error from the VkResult value
 ut::Error VulkanError(VkResult res, const ut::String& desc)
 {
-	return ut::Error(ut::error::fail, desc + " " + ut::Print<ut::uint32>(static_cast<ut::uint32>(res)));
+	return ut::Error(ut::error::fail, desc + " " + ut::Print<ut::int32>(static_cast<ut::int32>(res)));
 }
 
 //----------------------------------------------------------------------------//

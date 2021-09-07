@@ -35,11 +35,7 @@ static const bool skEnableVulkanValidationLayer = false;
 #endif
 
 // Validation layer name.
-#if UT_LINUX
-static const char* skVulkanValidationLayerName = "VK_LAYER_LUNARG_standard_validation";
-#else
 static const char* skVulkanValidationLayerName = "VK_LAYER_KHRONOS_validation";
-#endif
 
 
 //----------------------------------------------------------------------------//
