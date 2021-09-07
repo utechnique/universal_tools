@@ -12,7 +12,7 @@ START_NAMESPACE(ui)
 const ut::uint32 ViewportBox::skResizeBorder = 64;
 
 // Height of the elements in pixels.
-const ut::uint32 ViewportTab::skElementHeight = 24;
+const ut::uint32 ViewportTab::skElementHeight = 22;
 
 // Element margin in pixels.
 const ut::uint32 ViewportTab::skElementMargin = 2;
@@ -24,7 +24,7 @@ const ut::uint32 ViewportTab::skHeight = ViewportTab::skElementHeight + Viewport
 const ut::uint32 ViewportArea::skTabMargin = 2;
 
 // Size of the text font for all tab elements.
-const ut::uint32 ViewportTab::skFontSize = 14;
+const ut::uint32 ViewportTab::skFontSize = 13;
 
 // Projection types.
 static const ut::uint32 skProjectionTypeCount = 7;
@@ -68,15 +68,15 @@ ViewportBox::ViewportBox(const Settings& settings,
                          ut::uint32 w,
                          ut::uint32 h) : Fl_Group(x, y, w, h)
                                        , set_input_focus_cb(ut::Move(set_focus_cb))
-                                       , hover_color(fl_rgb_color(settings.viewport_hover_color.R(),
-                                                                  settings.viewport_hover_color.G(),
-                                                                  settings.viewport_hover_color.B()))
-                                       , focus_color(fl_rgb_color(settings.viewport_focus_color.R(),
-                                                                  settings.viewport_focus_color.G(),
-                                                                  settings.viewport_focus_color.B()))
-                                       , bg_color(fl_rgb_color(settings.background_color.R(),
-                                                               settings.background_color.G(),
-                                                               settings.background_color.B()))
+                                       , hover_color(fl_rgb_color(settings.theme.viewport_hover_color.R(),
+                                                                  settings.theme.viewport_hover_color.G(),
+                                                                  settings.theme.viewport_hover_color.B()))
+                                       , focus_color(fl_rgb_color(settings.theme.viewport_focus_color.R(),
+                                                                  settings.theme.viewport_focus_color.G(),
+                                                                  settings.theme.viewport_focus_color.B()))
+                                       , bg_color(fl_rgb_color(settings.theme.background_color.R(),
+                                                               settings.theme.background_color.G(),
+                                                               settings.theme.background_color.B()))
 {
 	// background frame
 	background = ut::MakeUnique<Fl_Box>(x, y, w, h);
@@ -267,7 +267,9 @@ ViewportTab::ViewportTab(ViewportArea& in_viewport_area,
                                        , layouts(ut::Move(in_layouts))
 {
 	background->box(FL_FLAT_BOX);
-	background->color(fl_rgb_color(settings.tab_color.R(), settings.tab_color.G(), settings.tab_color.B()));
+	background->color(fl_rgb_color(settings.theme.tab_color.R(),
+	                               settings.theme.tab_color.G(),
+	                               settings.theme.tab_color.B()));
 
 	controls_group = ut::MakeUnique<Fl_Group>(x, y, skElementHeight * 20, h);
 	
@@ -346,7 +348,7 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateLayoutChoice(LayoutArray& layouts, i
 	// create widget
 	ut::UniquePtr<Fl_Choice> choice = ut::MakeUnique<Fl_Choice>(x + skElementMargin,
 	                                                            y + skElementMargin,
-	                                                            56,
+	                                                            48,
 	                                                            skElementHeight);
 
 	// add layout choices
@@ -373,7 +375,7 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateProjChoice(int x, int y)
 	// create widget
 	ut::UniquePtr<Fl_Choice> choice = ut::MakeUnique<Fl_Choice>(x + skElementMargin,
 	                                                            y + skElementMargin,
-	                                                            110,
+	                                                            96,
 	                                                            skElementHeight);
 
 	// add projection types
@@ -398,7 +400,7 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateResolutionChoice(int x, int y)
 	// create widget
 	ut::UniquePtr<Fl_Choice> choice = ut::MakeUnique<Fl_Choice>(x + skElementMargin,
 	                                                            y + skElementMargin,
-	                                                            70,
+	                                                            64,
 	                                                            skElementHeight);
 
 	// add resolution types
@@ -426,7 +428,7 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateRenderModeChoice(int x, int y)
 	// create widget
 	ut::UniquePtr<Fl_Choice> choice = ut::MakeUnique<Fl_Choice>(x + skElementMargin,
 	                                                            y + skElementMargin,
-	                                                            145,
+	                                                            128,
 	                                                            skElementHeight);
 
 	// add mode types
@@ -507,7 +509,7 @@ ViewportArea::ViewportArea(const Settings& settings,
 	                                  ViewportTab::skHeight);
 
 	// tile
-	const ut::uint32 vertical_offset = ViewportTab::skHeight + skTabMargin * 2;
+	const ut::uint32 vertical_offset = y + ViewportTab::skHeight + skTabMargin * 2;
 	tile = ut::MakeUnique<Fl_Tile>(x,
 	                               vertical_offset,
 	                               w,
@@ -872,7 +874,7 @@ ut::Array< ut::UniquePtr<ViewportLayout> > ViewportArea::GenerateDefaultLayouts(
 		auto layout_func = ut::MemberFunction<ViewportArea, void(size_t)>(this, &ViewportArea::ChangeLayout);
 
 		ut::UniquePtr<ViewportLayout> layout = ut::MakeUnique<ViewportLayout>(ut::Move(layout_arrangements[i]),
-		                                                                      ViewportTab::skElementHeight,
+		                                                                      ViewportTab::skElementHeight - ViewportTab::skElementMargin * 2,
 		                                                                      ut::Task<void(size_t)>(layout_func, i));
 
 		layouts.Add(ut::Move(layout));

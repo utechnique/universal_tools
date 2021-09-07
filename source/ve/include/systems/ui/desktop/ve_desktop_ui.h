@@ -4,6 +4,8 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/ui/ve_ui_frontend.h"
+#include "systems/ui/desktop/ve_entity_selector.h"
+#include "systems/ui/desktop/ve_desktop_menu_bar.h"
 #include "systems/ui/desktop/ve_desktop_viewport.h"
 #include "systems/ui/desktop/ve_viewport_area.h"
 //----------------------------------------------------------------------------//
@@ -16,14 +18,15 @@ START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
 // ve::ui::MainWindow is the top-most window, container for all other
 // windows.
-class MainWindow : public Fl_Window
+class MainWindow : public Window
 {
 public:
     // Constructor.
     MainWindow(int x, int y,
                int w, int h,
                const char* title,
-               ut::Atomic<bool>& ini_ref);
+               ut::Atomic<bool>& ini_ref,
+	           const Theme& theme);
 
     // Overriden handle method. Frontend thread starts only after this
 	// method receives focus event message.
@@ -49,6 +52,9 @@ public:
 
 	// Launches user interface.
 	void Run();
+
+	// Loads ui configuration from the file.
+	ut::Result<Config<Settings>, ut::Error> LoadCfg();
 
 	// Saves current ui configuration to the file.
 	void SaveCfg();
@@ -88,6 +94,13 @@ private:
 
 	// main window
 	ut::UniquePtr<MainWindow> window;
+
+	// ui modules
+	ut::UniquePtr<EntitySelector> entity_selector;
+	ut::UniquePtr<Window> wnd;
+
+	// system menu
+	ut::UniquePtr<MenuBar> menu;
 
 	// container for all viewports
 	ut::UniquePtr<ViewportArea> viewport_area;

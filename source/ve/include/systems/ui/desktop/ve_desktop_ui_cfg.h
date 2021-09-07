@@ -11,6 +11,36 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
+// Converts provided color to the FLTK rgb color.
+Fl_Color ConvertToFlColor(const ut::Color<3, ut::byte>& color);
+
+//----------------------------------------------------------------------------//
+// Color scheme.
+class Theme : public ut::meta::Reflective
+{
+public:
+	// Constructor, default values are set here.
+	Theme();
+
+	// Registers data into reflection tree.
+	//    @param snapshot - reference to the reflection tree
+	void Reflect(ut::meta::Snapshot& snapshot);
+
+	// colors
+	ut::Color<3, ut::byte> background_color;
+	ut::Color<3, ut::byte> foreground_color;
+	ut::Color<3, ut::byte> tab_color;
+	ut::Color<3, ut::byte> frame_color;
+	ut::Color<3, ut::byte> viewport_hover_color;
+	ut::Color<3, ut::byte> viewport_focus_color;
+	ut::Color<3, ut::byte> window_caption_color;
+	ut::Color<3, ut::byte> caption_text_color;
+	ut::Color<3, ut::byte> caption_button_color;
+	ut::Color<3, ut::byte> focus_border_color;
+	ut::Color<3, ut::byte> unfocus_border_color;
+};
+
+//----------------------------------------------------------------------------//
 // ve::ui::Settings is a class containing options and
 // preferences for the desktop ui widgets.
 class Settings : public ut::meta::Reflective
@@ -23,12 +53,8 @@ public:
 	//    @param snapshot - reference to the reflection tree
 	void Reflect(ut::meta::Snapshot& snapshot);
 
-	// colors
-	ut::Color<3, ut::uint32> background_color;
-	ut::Color<3, ut::uint32> foreground_color;
-	ut::Color<3, ut::uint32> tab_color;
-	ut::Color<3, ut::uint32> viewport_hover_color;
-	ut::Color<3, ut::uint32> viewport_focus_color;
+	// color theme
+	Config<Theme> theme;
 
 	// main window
 	ut::Rect<ut::uint32> window;

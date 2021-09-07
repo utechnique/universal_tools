@@ -27,8 +27,9 @@ void HideWindow(void* wnd_ptr)
 MainWindow::MainWindow(int x, int y,
                        int w, int h,
                        const char* title,
-                       ut::Atomic<bool>& ini_ref) : Fl_Window(x, y, w, h, title)
-                                                  , initialized(ini_ref)
+                       ut::Atomic<bool>& ini_ref,
+                       const Theme& theme) : Window(x, y, w, h, title, 2, 24, theme)
+                                           , initialized(ini_ref)
 {}
 
 // Overriden handle method.
@@ -38,7 +39,7 @@ int MainWindow::handle(int event)
     {
         initialized.Store(true);
     }
-    return Fl_Window::handle(event);
+    return Window::handle(event);
 }
 
 //----------------------------------------------------------------------------//
@@ -71,79 +72,95 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 #endif
 
 	// get configuration copy
-	Config<Settings> cfg;
-	ut::Optional<ut::Error> load_error = cfg.Load();
-	if (load_error)
+	ut::Result<Config<Settings>, ut::Error> cfg = LoadCfg();
+	if (!cfg)
 	{
-		const ut::error::Code error_code = load_error->GetCode();
-		if (error_code == ut::error::no_such_file)
-		{
-			ut::log << "UI config file is absent. Using default configuration..." << ut::cret;
-		}
-		else
-		{
-			ut::log << "Fatal error while loading UI config file." << ut::cret;
-			return load_error.Move();
-		}
+		return cfg.MoveAlt();
 	}
+
+	// get theme
+	const Theme& theme = cfg->theme;
 
 	// set scheme
 	Fl::scheme("base");
 
 	// set colors
-	Fl::background(cfg.background_color.R(),
-	               cfg.background_color.G(),
-	               cfg.background_color.B());
+	Fl::background(theme.background_color.R(),
+	               theme.background_color.G(),
+	               theme.background_color.B());
 
-	Fl::background2(cfg.background_color.R(),
-	                cfg.background_color.G(),
-	                cfg.background_color.B());
+	Fl::background2(theme.background_color.R(),
+	                theme.background_color.G(),
+	                theme.background_color.B());
 
-	Fl::foreground(cfg.foreground_color.R(),
-	               cfg.foreground_color.G(),
-	               cfg.foreground_color.B());
+	Fl::foreground(theme.foreground_color.R(),
+	               theme.foreground_color.G(),
+	               theme.foreground_color.B());
 
 	Fl::set_color(FL_LIGHT3,
-	              static_cast<ut::byte>(cfg.foreground_color.R() * 0.7f),
-	              static_cast<ut::byte>(cfg.foreground_color.G() * 0.7f),
-	              static_cast<ut::byte>(cfg.foreground_color.B() * 0.7f));
+	              static_cast<ut::byte>(theme.foreground_color.R() * 0.7f),
+	              static_cast<ut::byte>(theme.foreground_color.G() * 0.7f),
+	              static_cast<ut::byte>(theme.foreground_color.B() * 0.7f));
 
-	Fl::set_color(55, cfg.tab_color.R(), cfg.tab_color.G(), cfg.tab_color.B());
+	// tab
+	Fl::set_color(55, theme.tab_color.R(), theme.tab_color.G(), theme.tab_color.B());
+
+	// frame
+	Fl::set_color(32, theme.background_color.R(), theme.background_color.G(), theme.background_color.B());
+	Fl::set_color(42, theme.frame_color.R(), theme.frame_color.G(), theme.frame_color.B());
+	Fl::set_color(44, theme.frame_color.R(), theme.frame_color.G(), theme.frame_color.B());
+	Fl::set_color(51, theme.background_color.R(), theme.background_color.G(), theme.background_color.B());
+	Fl::set_color(54, theme.frame_color.R(), theme.frame_color.G(), theme.frame_color.B());
+
+	// independent modules
+	entity_selector = ut::MakeUnique<EntitySelector>(cfg->window.offset.X(),
+	                                                 cfg->window.offset.Y(),
+	                                                 320, 240,
+	                                                 theme);
+	entity_selector->hide();
 
 	// create main window
-	window = ut::MakeUnique<MainWindow>(cfg.window.offset.X(),
-	                                    cfg.window.offset.Y(),
-	                                    cfg.window.extent.X(),
-	                                    cfg.window.extent.Y(),
+	window = ut::MakeUnique<MainWindow>(cfg->window.offset.X(),
+	                                    cfg->window.offset.Y(),
+	                                    cfg->window.extent.X(),
+	                                    cfg->window.extent.Y(),
 	                                    skTitle,
-	                                    window_ready);
+	                                    window_ready,
+	                                    cfg->theme);
 	window->size_range(skMinWidth, skMinHeight);
 	window->callback(DesktopFrontend::OnCloseCallback, this);
 
+	Fl_Double_Window& client_area = window->GetClientWindow();
+	client_area.begin();
+
+	// menu
+	menu = ut::MakeUnique<MenuBar>(cfg.Get(), 0, 0, client_area.w(), entity_selector.GetRef());
+
 	// viewport container
-	viewport_area = ut::MakeUnique<ViewportArea>(cfg,
+	viewport_area = ut::MakeUnique<ViewportArea>(cfg.Get(),
 	                                             0,
-	                                             0,
-	                                             window->w(),
-	                                             window->h());
+	                                             menu->h(),
+	                                             client_area.w(),
+	                                             client_area.h());
 	viewports = viewport_area->GetViewports();
 
 	// adjust main window
-	window->resizable(viewport_area.Get());
+	client_area.resizable(viewport_area.Get());
 
 	// finish main window
-	window->end();
+	client_area.end();
 
 	// show main window
 	window->show(0, nullptr);
+	Fl::focus(window.Get());
 
 	// select layout
-	viewport_area->ChangeLayout(cfg.layout_id);
+	viewport_area->ChangeLayout(cfg->layout_id);
 
 	// update viewports according to the cfg data
-	viewport_area->ResizeViewports(cfg.viewports);
-	viewport_area->SetViewportProjections(cfg.projections);
-	viewport_area->SetViewportRenderModes(cfg.render_modes);
+	viewport_area->ResizeViewports(cfg->viewports);
+	viewport_area->SetViewportProjections(cfg->projections);
+	viewport_area->SetViewportRenderModes(cfg->render_modes);
 
 	// success
 	return ut::Optional<ut::Error>();
@@ -173,6 +190,43 @@ void DesktopFrontend::Run()
 
 	// exit signal
 	exit_signal();
+}
+
+//----------------------------------------------------------------------------->
+// Loads ui configuration from the file.
+ut::Result<Config<Settings>, ut::Error> DesktopFrontend::LoadCfg()
+{
+	Config<Settings> cfg;
+	ut::Optional<ut::Error> load_error = cfg.Load();
+	if (load_error)
+	{
+		const ut::error::Code error_code = load_error->GetCode();
+		if (error_code == ut::error::no_such_file)
+		{
+			ut::log << "UI config file is absent. Using default configuration..." << ut::cret;
+		}
+		else
+		{
+			ut::log << "Fatal error while loading UI config file." << ut::cret;
+			return ut::MakeError(load_error.Move());
+		}
+	}
+
+	// load theme
+	load_error = cfg.theme.Load();
+	if (load_error)
+	{
+		const ut::error::Code error_code = load_error->GetCode();
+		if (error_code == ut::error::no_such_file)
+		{
+			ut::log << "Theme file is absent. Using default colors..." << ut::cret;
+			cfg.theme.Save();
+		}
+	}
+
+
+	// success
+	return cfg;
 }
 
 //----------------------------------------------------------------------------->
