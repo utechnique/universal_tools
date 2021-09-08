@@ -463,6 +463,11 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
                                           ut::uint32 offset,
                                           ut::uint32 count)
 {
+	if (count == 0)
+	{
+		return;
+	}
+
 	// extract model policy data
 	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
 	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;

@@ -226,6 +226,11 @@ void ForwardShading::RenderTransparentModelJob(Context& context,
                                                ut::uint32 offset,
                                                ut::uint32 count)
 {
+	if (count == 0)
+	{
+		return;
+	}
+
 	const LightPass::IblPreset ibl_preset = ibl_cubemap ? LightPass::ibl_on :
 	                                                      LightPass::ibl_off;
 	const ut::uint32 last_element = offset + count - 1;

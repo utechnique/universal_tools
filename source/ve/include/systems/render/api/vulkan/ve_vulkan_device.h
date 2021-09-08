@@ -49,6 +49,12 @@ protected:
 	// flag and that must be reset every frame by calling ResetCmdPool() method.
 	VkRc<vk::cmd_pool> dynamic_cmd_pool;
 
+	// synchronization primitives to make sure BeginImmediateCmdBuffer() won't be
+	// used simultaneously
+	ut::ConditionVariable immediate_buffer_cvar;
+	ut::Mutex immediate_buffer_mutex;
+	bool immediate_buffer_busy = false;
+
 	// physical device that is used for rendering
 	VkPhysicalDevice gpu;
 

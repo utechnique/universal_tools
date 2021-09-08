@@ -526,6 +526,13 @@ void PlatformDevice::CopyVulkanBufferToImage(VkCommandBuffer cmd_buffer,
 //    @return - command buffer handle or error if failed.
 ut::Result<VkCommandBuffer, ut::Error> PlatformDevice::BeginImmediateCmdBuffer()
 {
+	ut::ScopeLock lock(immediate_buffer_mutex);
+	while (immediate_buffer_busy)
+	{
+		immediate_buffer_cvar.Wait(lock);
+	}
+	immediate_buffer_busy = true;
+
 	VkCommandBufferAllocateInfo alloc_info;
 	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	alloc_info.pNext = nullptr;
@@ -608,6 +615,9 @@ ut::Optional<ut::Error> PlatformDevice::EndImmediateCmdBuffer(VkCommandBuffer cm
 	                     dynamic_cmd_pool.GetVkHandle(),
 	                     1,
 	                     &cmd_buffer);
+
+	immediate_buffer_cvar.WakeOne();
+	immediate_buffer_busy = false;
 
 	return ut::Optional<ut::Error>();
 }
