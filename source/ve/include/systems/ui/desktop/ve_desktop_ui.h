@@ -16,30 +16,34 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
-// ve::ui::MainWindow is the top-most window, container for all other
-// windows.
-class MainWindow : public Window
-{
-public:
-    // Constructor.
-    MainWindow(int x, int y,
-               int w, int h,
-               const char* title,
-               ut::Atomic<bool>& ini_ref,
-	           const Theme& theme);
-
-    // Overriden handle method. Frontend thread starts only after this
-	// method receives focus event message.
-    int handle(int event) override;
-
-private:
-    ut::Atomic<bool>& initialized;
-};
-
-//----------------------------------------------------------------------------//
 // ve::ui::DesktopFrontend class implements user interface for desktop systems.
 class DesktopFrontend : public Frontend
 {
+	// ve::ui::MainWindow is the top-most window, container for all other
+	// windows.
+	class MainWindow : public Window
+	{
+	public:
+		// Constructor.
+		MainWindow(int x, int y,
+		           int w, int h,
+		           const char* title,
+		           DesktopFrontend& desktop_frontend,
+		           const Theme& theme);
+
+		// Overriden handle method. Frontend thread starts only after this
+		// method receives focus event message.
+		int handle(int event) override;
+
+		// Hides this window and deactivates viewports.
+		void hide() override;
+
+	private:
+		class DesktopFrontend& frontend;
+	};
+
+	friend MainWindow;
+
 public:
 	// Constructor.
 	DesktopFrontend();

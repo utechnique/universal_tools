@@ -24,19 +24,32 @@ void HideWindow(void* wnd_ptr)
 
 //----------------------------------------------------------------------------//
 // Constructor.
-MainWindow::MainWindow(int x, int y,
-                       int w, int h,
-                       const char* title,
-                       ut::Atomic<bool>& ini_ref,
-                       const Theme& theme) : Window(x, y, w, h, title, 2, 24, theme)
-                                           , initialized(ini_ref)
+DesktopFrontend::MainWindow::MainWindow(int x, int y,
+                                        int w, int h,
+                                        const char* title,
+                                        DesktopFrontend& desktop_frontend,
+                                        const Theme& theme) : Window(x, y, w, h, title, 2, 24, theme)
+                                                            , frontend(desktop_frontend)
 {}
 
 // Overriden handle method.
-int MainWindow::handle(int event)
+int DesktopFrontend::MainWindow::handle(int event)
 {
-    initialized.Store(true);
+	frontend.window_ready.Store(true);
     return Window::handle(event);
+}
+
+// Hides this window and deactivates viewports.
+void DesktopFrontend::MainWindow::hide()
+{
+	const size_t viewport_count = frontend.viewports.GetNum();
+	for (size_t i = 0; i < viewport_count; i++)
+	{
+		Viewport::Mode mode = frontend.viewports[i]->GetMode();
+		mode.is_active = false;
+		frontend.viewports[i]->SetMode(mode);
+	}
+	Window::hide();
 }
 
 //----------------------------------------------------------------------------//
@@ -122,7 +135,7 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	                                    cfg->window.extent.X(),
 	                                    cfg->window.extent.Y(),
 	                                    skTitle,
-	                                    window_ready,
+	                                    *this,
 	                                    cfg->theme);
 	window->size_range(skMinWidth, skMinHeight);
 	window->callback(DesktopFrontend::OnCloseCallback, this);
@@ -148,7 +161,7 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	client_area.end();
 
 	// show main window
-	window->show(0, nullptr);
+	window->show();
 	Fl::focus(window.Get());
 
 	// select layout
@@ -177,10 +190,6 @@ void DesktopFrontend::Run()
 
 	// run user interface routine
 	Fl::run();
-
-	// viewports are created in the fltk thread,
-	// so they must be deleted there too
-	viewports.Empty();
 
 	// save config file
 	SaveCfg();
