@@ -35,10 +35,7 @@ MainWindow::MainWindow(int x, int y,
 // Overriden handle method.
 int MainWindow::handle(int event)
 {
-    if(event == FL_FOCUS)
-    {
-        initialized.Store(true);
-    }
+    initialized.Store(true);
     return Window::handle(event);
 }
 

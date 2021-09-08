@@ -101,7 +101,7 @@ public:
 	virtual int handle(int e) override;
 
 	// Sets the allowable range the user can resize this window to.
-	void size_range(int minw, int minh, int maxw = 0, int maxh = 0);	
+	void size_range(int minw, int minh, int maxw = 0, int maxh = 0);
 
 	// Maximizes this window to the extents of the working screen.
 	void Maximize();
@@ -186,8 +186,11 @@ private:
 	// Defines the allowable range the user can resize this window to.
 	ut::Rect<int> size_range_rect = ut::Rect<int>(240, 240, 0, 0);
 
-	// Cursor offset from the place where the dragging began.
-	ut::Vector<2, ut::int32> cursor_offset;
+	// Cursor position before the dragging began.
+	ut::Vector<2, int> prev_cursor;
+
+    // Window position and size before the dragging began.
+	ut::Rect<int> prev_rect;
 
 	// Thickness of the border in pixels.
 	int border_width;

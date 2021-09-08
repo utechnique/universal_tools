@@ -3,9 +3,7 @@
 //----------------------------------------------------------------------------//
 // FL_INTERNALS is needed to acces Fl_X::make() in order to perform Windows
 // fix of the windows not showing in the taskbar.
-#if UT_WINDOWS
 #define FL_INTERNALS
-#endif
 //----------------------------------------------------------------------------//
 #include "systems/ui/desktop/ve_window.h"
 //----------------------------------------------------------------------------//
@@ -20,10 +18,10 @@ const Window::StyleFlags Window::default_flags = Window::has_minimize_button |
 
 //----------------------------------------------------------------------------//
 // This function fixes unwanted behaviour of the Fl_Window after calling
-// Fl_Window::border(0) - such a window is invisible in the Windows OS taskbar.
-#if UT_WINDOWS
+// Fl_Window::border(0) - such a window is invisible in the OS taskbar.
 void ShowInTaskbar(Fl_Window* w)
 {
+#if UT_WINDOWS
 	HWND wnd = fl_xid(w);
 	if (!wnd)
 	{
@@ -41,8 +39,21 @@ void ShowInTaskbar(Fl_Window* w)
 	style |= WS_SYSMENU;
 	style |= WS_MINIMIZEBOX;
 	SetWindowLongPtr(wnd, GWL_STYLE, style);
-}
+#elif UT_LINUX
+    ::Window wnd = fl_xid(w);
+    if (!wnd)
+	{
+		Fl_Group *grp = Fl_Group::current();
+		Fl_X::make_xid(w);
+		Fl_Group::current(grp);
+		wnd = fl_xid(w);
+	}
+
+	// delete _NET_WM_STATE_SKIP_TASKBAR
+    Atom net_wm_state = XInternAtom (fl_display, "_NET_WM_STATE", 0);
+    XDeleteProperty(fl_display, wnd, net_wm_state);
 #endif
+}
 
 //----------------------------------------------------------------------------//
 // Caption button (minimize, maximize, close) constructor.
@@ -132,7 +143,9 @@ Window::Window(ut::uint32 position_x,
                                        , border_width(static_cast<int>(border_size))
                                        , theme(in_theme)
 {
-	this->begin();
+#if UT_LINUX // X11 focus frame flickers
+    theme.focus_border_color = theme.unfocus_border_color;
+#endif
 
 	// create border
 	if (border_width > 0)
@@ -238,9 +251,7 @@ Window::Window(ut::uint32 position_x,
 	}
 
 	// show this window in the OS taskbar
-#if UT_WINDOWS
 	ShowInTaskbar(this);
-#endif
 }
 
 // Handles resizing, dragging, focus events, etc.
@@ -265,9 +276,9 @@ int Window::handle(int e)
 			{
 				mode = mode_none;
 			}
-			
-			cursor_offset = ut::Vector<2, ut::int32>(x() - Fl::event_x_root(),
-													 y() - Fl::event_y_root());
+
+            prev_rect = ut::Rect<int>(x(), y(), w(), h());
+            prev_cursor = ut::Vector<2, int>(Fl::event_x_root(), Fl::event_y_root());
 			return 1;
 		}
 		case FL_RELEASE:
@@ -280,8 +291,8 @@ int Window::handle(int e)
 			}
 			else if(mode == mode_move)
 			{
-				position(cursor_offset.X() + Fl::event_x_root(),
-						 cursor_offset.Y() + Fl::event_y_root());
+				position(prev_rect.offset.X() + Fl::event_x_root() - prev_cursor.X(),
+						 prev_rect.offset.Y() + Fl::event_y_root() - prev_cursor.Y());
 			}
 			return 1;
 		case FL_MOVE:
@@ -388,6 +399,8 @@ void Window::Minimize()
 {
 #if UT_WINDOWS
 	ShowWindow(fl_xid(this), SW_MINIMIZE);
+#elif UT_LINUX
+    XIconifyWindow(fl_display, fl_xid(this), fl_screen);
 #endif
 }
 
@@ -405,45 +418,51 @@ void Window::ProcessResize()
 		return;
 	}
 
-	ut::Rect<ut::int32> rect(x(), y(), w(), h());
-	const ut::Vector<2, ut::int32> cursor(Fl::event_x(), Fl::event_y());
-	const ut::Vector<2, ut::int32> offset(rect.extent.X() - cursor.X() > size_range_rect.offset.X() ? cursor.X() : 0,
-	                                      rect.extent.Y() - cursor.Y() > size_range_rect.offset.Y() ? cursor.Y() : 0);
-	const ut::Vector<2, ut::int32> extension(ut::Max(cursor.X(), size_range_rect.offset.X()),
-	                                         ut::Max(cursor.Y(), size_range_rect.offset.Y()));
+	ut::Rect<int> rect = prev_rect;
+	const int min_width = size_range_rect.offset.X();
+	const int min_height = size_range_rect.offset.Y();
+	const ut::Vector<2, int> cursor(Fl::event_x_root(), Fl::event_y_root());
+	const ut::Vector<2, int> cursor_offset = prev_cursor - cursor;
+	const ut::Vector<2, int> prev_pos = prev_rect.offset;
+	const ut::Vector<2, int> prev_size = prev_rect.extent;
+	const ut::Vector<2, int> position(prev_size.X() + cursor_offset.X() < min_width ? prev_pos.X() + prev_size.X() - min_width : cursor.X(),
+	                                  prev_size.Y() + cursor_offset.Y() < min_height ? prev_pos.Y() + prev_size.Y() - min_height : cursor.Y());
+	const ut::Vector<2, int> start_extension = prev_rect.extent - position + prev_rect.offset;
+    const ut::Vector<2, int> end_extension(ut::Max(prev_size.X() - cursor_offset.X(), min_width),
+                                           ut::Max(prev_size.Y() - cursor_offset.Y(), min_height));
+
 	switch (resize_direction)
 	{
 	case resize_left_up:
-		rect.offset += offset;
-		rect.extent -= offset;
+		rect.offset = position;
+		rect.extent = start_extension;
 		break;
 	case resize_up:
-		rect.offset.Y() += offset.Y();
-		rect.extent.Y() -= offset.Y();
+		rect.offset.Y() = position.Y();
+		rect.extent.Y() = start_extension.Y();
 		break;
 	case resize_right_up:
-		rect.extent.X() = extension.X();
-		rect.offset.Y() += offset.Y();
-		rect.extent.Y() -= offset.Y();
+		rect.extent.X() = end_extension.X();
+		rect.offset.Y() = position.Y();
+		rect.extent.Y() = start_extension.Y();
 		break;
 	case resize_right:
-		rect.extent.X() = extension.X();
+		rect.extent.X() = end_extension.X();
 		break;
 	case resize_right_bottom:
-		rect.extent.X() = extension.X();
-		rect.extent.Y() = extension.Y();
+		rect.extent = end_extension;
 		break;
 	case resize_bottom:
-		rect.extent.Y() = extension.Y();
+		rect.extent.Y() = end_extension.Y();
 		break;
 	case resize_left_bottom:
-		rect.offset.X() += offset.X();
-		rect.extent.X() -= offset.X();
-		rect.extent.Y() = extension.Y();
+		rect.offset.X() = position.X();
+		rect.extent.X() = start_extension.X();
+		rect.extent.Y() = end_extension.Y();
 		break;
 	case resize_left:
-		rect.offset.X() += offset.X();
-		rect.extent.X() -= offset.X();
+		rect.offset.X() = position.X();
+		rect.extent.X() = start_extension.X();
 		break;
 	}
 
@@ -586,7 +605,6 @@ Window::CaptionButton Window::CreateButton(ut::uint32 x,
 				else if (d0 < line_width || d1 < line_width)
 				{
 					pixel.A() = color.A();
-					
 				}
 				else if (d0 < line_width + 1 || d1 < line_width + 1)
 				{
