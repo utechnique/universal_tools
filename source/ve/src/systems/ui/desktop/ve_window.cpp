@@ -328,6 +328,18 @@ int Window::handle(int e)
 	return ret;
 }
 
+// Puts the window on the screen.
+void Window::show()
+{
+	Fl_Window::show();
+}
+
+// Removes the window from the screen.
+void Window::hide()
+{
+	Fl_Window::hide();
+}
+
 // Sets the allowable range the user can resize this window to.
 void Window::size_range(int minw, int minh, int maxw, int maxh)
 {

@@ -100,6 +100,12 @@ public:
 	// Handles resizing, dragging, focus events, etc.
 	virtual int handle(int e) override;
 
+	// Puts the window on the screen.
+	virtual void show() override;
+
+	// Removes the window from the screen.
+	virtual void hide() override;
+
 	// Sets the allowable range the user can resize this window to.
 	void size_range(int minw, int minh, int maxw = 0, int maxh = 0);
 
