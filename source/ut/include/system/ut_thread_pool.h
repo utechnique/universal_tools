@@ -88,10 +88,10 @@ public:
 	//    @param task - unique pointer to the task to be executed.
 	void Enqueue(UniqueTaskPtr task)
 	{
-        { // increment task counter
-            ScopeLock lock(mutex);
-            counter++;
-        }
+		{ // increment task counter
+			ScopeLock lock(mutex);
+			counter++;
+		}
 
 		// create and send a task to the pool
 		auto function = MemberFunction<Scheduler, void(UniqueTaskPtr)>(this, &Scheduler::ExecuteTask);
@@ -109,10 +109,10 @@ public:
 		{
 			while (counter != 0)
 			{
-                if(!pool.DispatchTask(false))
-                {
-                    break;
-                }
+				if(!pool.DispatchTask(false))
+				{
+					break;
+				}
 			}
 		}
 		else // otherwise - just wait until all tasks are processed
@@ -137,9 +137,9 @@ private:
 		{ // decrement counter after the task was processed
 			ScopeLock lock(mutex);
 			counter--;
-
+			
 			// notify scheduler if it waits in WaitForCompletion() function
-            cvar.WakeOne();
+			cvar.WakeOne();
 		}
 	}
 
