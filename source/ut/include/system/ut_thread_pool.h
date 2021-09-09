@@ -88,13 +88,14 @@ public:
 	//    @param task - unique pointer to the task to be executed.
 	void Enqueue(UniqueTaskPtr task)
 	{
+        { // increment task counter
+            ScopeLock lock(mutex);
+            counter++;
+        }
+
 		// create and send a task to the pool
 		auto function = MemberFunction<Scheduler, void(UniqueTaskPtr)>(this, &Scheduler::ExecuteTask);
 		pool.Enqueue(MakeUnique< Task<void(UniqueTaskPtr)> >(function, Move(task)));
-
-		// increment task counter
-		ScopeLock lock(mutex);
-		counter++;
 	}
 
 	// Waits until all tasks finish.
@@ -106,8 +107,13 @@ public:
 		// current worker thread
 		if (pool.InWorkerThread())
 		{
-			while (counter != 0 && pool.DispatchTask(false))
-			{}
+			while (counter != 0)
+			{
+                if(!pool.DispatchTask(false))
+                {
+                    break;
+                }
+			}
 		}
 		else // otherwise - just wait until all tasks are processed
 		{
@@ -128,13 +134,13 @@ private:
 		// combine the result of execution
 		ThreadCombinerHelper<ReturnType, Combiner>::Combine(combiner, task.GetRef(), combiner_lock);
 
-		{ // decrement counter after the task was processed 
+		{ // decrement counter after the task was processed
 			ScopeLock lock(mutex);
 			counter--;
-		}
 
-		// notify scheduler if it waits in WaitForCompletion() function
-		cvar.WakeOne();
+			// notify scheduler if it waits in WaitForCompletion() function
+            cvar.WakeOne();
+		}
 	}
 
 	// Constructor.
