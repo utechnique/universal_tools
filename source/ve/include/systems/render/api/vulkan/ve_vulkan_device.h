@@ -68,6 +68,9 @@ protected:
 	// memory properties
 	VkPhysicalDeviceMemoryProperties memory_properties;
 
+	// VMA allocator
+	VmaAllocator allocator;
+
 	// Combines the requirements of the buffer and application requirements
 	// to find the right type of memory to use.
 	//    @param type_bits - bitmask that contains one bit set for every
@@ -81,9 +84,11 @@ protected:
 	// Creates vulkan buffer.
 	//    @param size - buffer size in bytes.
 	//    @param usage - buffer usage flags.
-	//    @return - buffer handle or error if failed.
-	ut::Result<VkBuffer, ut::Error> CreateVulkanBuffer(VkDeviceSize size,
-	                                                   VkBufferUsageFlags usage);
+	//    @param memory_usage - buffer memory usage flags.
+	//    @return - buffer resource or error if failed.
+	ut::Result<VkRc<vk::buffer>, ut::Error> CreateVulkanBuffer(VkDeviceSize size,
+	                                                           VkBufferUsageFlags usage,
+	                                                           VmaMemoryUsage memory_usage);
 
 	// Allocates gpu memory for the specified image.
 	//    @param buffer - buffer handle.

@@ -41,9 +41,10 @@ public:
 	// Constructor.
 	PlatformImage(VkDevice device_handle,
 	              VkImage image_handle,
+	              VmaAllocator allocator,
+	              VmaAllocation allocation,
 	              VkImageView image_view,
 	              VkImageView* cube_faces_arr, // pass nullptr if not a cubemap
-	              VkRc<vk::memory> memory_rc,
 	              VkImageAspectFlags aspect_flags,
 	              const State& image_state);
 
@@ -82,9 +83,6 @@ private:
 	// shader resource view
 	VkRc<vk::image_view> view;
 	VkRc<vk::image_view> cube_faces[6];
-
-	// gpu memory
-	VkRc<vk::memory> memory;
 
 	// current state (layout)
 	State state;

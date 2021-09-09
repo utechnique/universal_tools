@@ -13,12 +13,9 @@ START_NAMESPACE(render)
 // Vulkan buffer.
 class PlatformBuffer : public VkRc<vk::buffer>
 {
-	friend class Device;
 	friend class Context;
 public:
-	PlatformBuffer(VkDevice device_handle,
-	               VkBuffer buffer_handle,
-	               VkRc<vk::memory> memory_rc);
+	PlatformBuffer(VkRc<vk::buffer> buffer_rc);
 
 	// Move constructor.
 	PlatformBuffer(PlatformBuffer&&) noexcept;
@@ -29,9 +26,6 @@ public:
 	// Copying is prohibited.
 	PlatformBuffer(const PlatformBuffer&) = delete;
 	PlatformBuffer& operator =(const PlatformBuffer&) = delete;
-
-private:
-	VkRc<vk::memory> memory;
 };
 
 //----------------------------------------------------------------------------//

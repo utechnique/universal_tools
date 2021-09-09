@@ -121,6 +121,27 @@ VkFrontFace ConvertFrontFaceToVulkan(RasterizationState::FrontFace face)
 	return VK_FRONT_FACE_CLOCKWISE;
 }
 
+VmaMemoryUsage ConvertMemoryUsageToVma(memory::Usage usage)
+{
+	switch (usage)
+	{
+	// accessible only by the GPU (full access), fast
+	case memory::gpu_read_write: return VMA_MEMORY_USAGE_GPU_ONLY;
+
+	// accessible by both the GPU (full access) and the CPU (full access
+	// using staging buffers), slow
+	case memory::gpu_read_write_cpu_staging: return VMA_MEMORY_USAGE_GPU_TO_CPU;
+
+	// accessible by both the GPU (read only) and the CPU (write only),
+	// slow, but better than staging
+	case memory::gpu_read_cpu_write: return VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+	// can't be modified after creation, cpu has no access, fast
+	case memory::gpu_immutable: return VMA_MEMORY_USAGE_GPU_ONLY;
+	}
+	return VMA_MEMORY_USAGE_GPU_ONLY;
+}
+
 // Converts front face to the one compatible with Vulkan.
 VkBufferUsageFlagBits ConvertBufferTypeToVulkan(Buffer::Type type)
 {
@@ -224,6 +245,7 @@ PlatformDevice::PlatformDevice() : instance(CreateVulkanInstance())
 PlatformDevice::~PlatformDevice()
 {
 	vkDeviceWaitIdle(device.GetVkHandle());
+	vmaDestroyAllocator(allocator);
 }
 
 // Move constructor.
@@ -263,9 +285,11 @@ ut::Optional<uint32_t> PlatformDevice::FindMemoryTypeFromProperties(uint32_t typ
 // Creates vulkan buffer.
 //    @param size - buffer size in bytes.
 //    @param usage - buffer usage flags.
-//    @return - buffer handle or error if failed.
-ut::Result<VkBuffer, ut::Error> PlatformDevice::CreateVulkanBuffer(VkDeviceSize size,
-                                                                   VkBufferUsageFlags usage)
+//    @param memory_usage - buffer memory usage flags.
+//    @return - buffer resource or error if failed.
+ut::Result<VkRc<vk::buffer>, ut::Error> PlatformDevice::CreateVulkanBuffer(VkDeviceSize size,
+	                                                                       VkBufferUsageFlags usage,
+	                                                                       VmaMemoryUsage memory_usage)
 {
 	// initialize VkBufferCreateInfo
 	VkBufferCreateInfo buf_info;
@@ -278,16 +302,22 @@ ut::Result<VkBuffer, ut::Error> PlatformDevice::CreateVulkanBuffer(VkDeviceSize 
 	buf_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	buf_info.flags = 0;
 
+	// initialize VmaAllocationCreateInfo
+	VmaAllocationCreateInfo alloc_info = {};
+	alloc_info.usage = memory_usage;
+
 	// create buffer
 	VkBuffer buffer;
-	VkResult res = vkCreateBuffer(device.GetVkHandle(), &buf_info, nullptr, &buffer);
+	VmaAllocation allocation;
+	VkResult res = vmaCreateBuffer(allocator, &buf_info, &alloc_info, &buffer, &allocation, nullptr);
 	if (res != VK_SUCCESS)
 	{
-		return ut::MakeError(VulkanError(res, "vkCreateBuffer"));
+		return ut::MakeError(VulkanError(res, "vmaCreateBuffer"));
 	}
 
 	// success
-	return buffer;
+	VkDetail<vk::buffer> detail(device.GetVkHandle(), allocator, allocation);
+	return VkRc<vk::buffer>(buffer, ut::Move(detail));
 }
 
 // Allocates gpu memory for the specified image.
@@ -380,45 +410,33 @@ ut::Result<PlatformBuffer, ut::Error> PlatformDevice::CreateStagingBuffer(size_t
                                                                           ut::Optional<const ut::Array<ut::byte>&> ini_data)
 {
 	// create staging buffer
-	ut::Result<VkBuffer, ut::Error> staging_buffer_result = CreateVulkanBuffer(size,
-	                                                                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	ut::Result<VkRc<vk::buffer>, ut::Error> staging_buffer_result = CreateVulkanBuffer(size,
+	                                                                                   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	                                                                                   VMA_MEMORY_USAGE_CPU_ONLY);
 	if (!staging_buffer_result)
 	{
 		return ut::MakeError(staging_buffer_result.MoveAlt());
 	}
-	VkBuffer staging_buffer = staging_buffer_result.Get();
-
-	// allocate staging memory
-	VkMemoryPropertyFlags staging_mem_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-	                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	ut::Result<VkRc<vk::memory>, ut::Error> staging_memory = AllocateBufferMemory(staging_buffer,
-	                                                                              staging_mem_properties);
-	if (!staging_memory)
-	{
-		return ut::MakeError(staging_memory.MoveAlt());
-	}
+	VkRc<vk::buffer> staging_buffer(staging_buffer_result.Move());
 
 	// copy data to the staging buffer
 	if(ini_data)
 	{
+		const VmaAllocation allocation = staging_buffer.GetDetail().GetAllocation();
 		const size_t ini_size = ut::Min<size_t>(ini_data->GetSize(), size);
 		void* staging_buffer_data;
-		VkResult res = vkMapMemory(device.GetVkHandle(),
-								   staging_memory->GetVkHandle(),
-								   0, ini_size,
-								   0, &staging_buffer_data);
+
+		VkResult res = vmaMapMemory(allocator, allocation, &staging_buffer_data);
 		if (res != VK_SUCCESS)
 		{
-			return ut::MakeError(VulkanError(res, "vkMapMemory(staging buffer)"));
+			return ut::MakeError(VulkanError(res, "vmaMapMemory(staging buffer)"));
 		}
 		ut::memory::Copy(staging_buffer_data, ini_data->GetAddress(), ini_size);
-		vkUnmapMemory(device.GetVkHandle(), staging_memory->GetVkHandle());
+		vmaUnmapMemory(allocator, allocation);
 	}
 
 	// success
-	return PlatformBuffer(device.GetVkHandle(),
-	                      staging_buffer,
-	                      staging_memory.Move());
+	return PlatformBuffer(ut::Move(staging_buffer));
 }
 
 // Copies pixel data to the image subresource according to the specified
@@ -636,7 +654,7 @@ VkInstance PlatformDevice::CreateVulkanInstance()
 	app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	app_info.pEngineName = app_name;
 	app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	app_info.apiVersion = VK_API_VERSION_1_1;
+	app_info.apiVersion = VE_VK_API_VERSION;
 
 	// instance information object
 	VkInstanceCreateInfo inst_info = {};
@@ -970,6 +988,18 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 		throw VulkanError(res, "vkCreateDevice");
 	}
 
+	// create allocator
+	VmaAllocatorCreateInfo allocator_info = {};
+	allocator_info.vulkanApiVersion = VE_VK_API_VERSION;
+	allocator_info.physicalDevice = gpu;
+	allocator_info.device = out_device;
+	allocator_info.instance = instance.GetVkHandle();
+	res = vmaCreateAllocator(&allocator_info, &allocator);
+	if (res != VK_SUCCESS)
+	{
+		throw VulkanError(res, "vmaCreateAllocator");
+	}
+
 	// success
 	return out_device;
 }
@@ -1173,29 +1203,23 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	// track image access flags
 	VkAccessFlags current_img_access = 0;
 
+	// memory usage type
+	VmaAllocationCreateInfo alloc_info = {};
+	alloc_info.usage = ConvertMemoryUsageToVma(info.usage);
+
 	// create image
 	VkImage image;
-	VkResult res = vkCreateImage(device.GetVkHandle(), &image_info, nullptr, &image);
+	VmaAllocation allocation;
+	VkResult res = vmaCreateImage(allocator, &image_info, &alloc_info, &image, &allocation, nullptr);
 	if (res != VK_SUCCESS)
 	{
-		return ut::MakeError(VulkanError(res, "vkCreateImage"));
+		return ut::MakeError(VulkanError(res, "vmaCreateImage"));
 	}
 
-	// allocate memory
-	VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-	                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	if (needs_staging)
-	{
-		memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	}
-
-	ut::Result<VkRc<vk::memory>, ut::Error> memory_result = AllocateImageMemory(image, memory_properties);
-	if (!memory_result)
-	{
-		return ut::MakeError(memory_result.MoveAlt());
-	}
-	VkRc<vk::memory> image_memory(memory_result.Move());
-	const size_t image_size = image_memory.GetDetail().GetSize();
+	// calculate image size
+	VkMemoryRequirements mem_reqs;
+	vkGetImageMemoryRequirements(device.GetVkHandle(), image, &mem_reqs);
+	const size_t image_size = mem_reqs.size;
 
 	// start immediate commands
 	ut::Result<VkCommandBuffer, ut::Error> immediate_buffer = BeginImmediateCmdBuffer();
@@ -1248,22 +1272,22 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	{
 		// get address of the buffer to initialize image, it can be
 		// staging buffer or direct image memory
-		VkDeviceMemory mapped_memory;
+		VmaAllocation mapped_memory;
 		if (needs_staging)
 		{
-			mapped_memory = staging_buffer->memory.GetVkHandle();
+			mapped_memory = staging_buffer->GetDetail().GetAllocation();
 		}
 		else
 		{
-			mapped_memory = image_memory.GetVkHandle();
+			mapped_memory = allocation;
 		}
 
 		// map image memory
 		void* image_data;
-		VkResult res = vkMapMemory(device.GetVkHandle(), mapped_memory, 0, image_size, 0, &image_data);
+		VkResult res = vmaMapMemory(allocator, mapped_memory, &image_data);
 		if (res != VK_SUCCESS)
 		{
-			return ut::MakeError(VulkanError(res, "vkMapMemory(initializing image)"));
+			return ut::MakeError(VulkanError(res, "vmaMapMemory(initializing image)"));
 		}
 
 		// initialize all subresources
@@ -1335,7 +1359,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		}
 
 		// unmap image memory
-		vkUnmapMemory(device.GetVkHandle(), mapped_memory);
+		vmaUnmapMemory(allocator, mapped_memory);
 	}
 
 	// set final layout
@@ -1429,9 +1453,10 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	// success
 	PlatformImage platform_img(device.GetVkHandle(),
 	                           image,
+	                           allocator,
+	                           allocation,
 	                           image_view,
 	                           is_cube ? cube_faces : nullptr,
-	                           ut::Move(image_memory),
 	                           aspect_mask,
 	                           image_state);
 	return Image(ut::Move(platform_img), info);
@@ -1853,9 +1878,10 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		// create dummy image
 		PlatformImage empty_img(device.GetVkHandle(),
 		                        VK_NULL_HANDLE, // handle
+		                        VK_NULL_HANDLE, // allocator
+		                        VK_NULL_HANDLE, // allocation
 		                        VK_NULL_HANDLE, // view
 			                    nullptr, // cube faces
-		                        VK_NULL_HANDLE, // memory
 		                        VK_IMAGE_ASPECT_COLOR_BIT, // aspect_mask
 		                        img_state);
 		Image image(ut::Move(empty_img), info);
@@ -2203,28 +2229,16 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 		usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	}
 
+	// memory usage type
+	VmaMemoryUsage memory_usage = ConvertMemoryUsageToVma(info.usage);
+
 	// create buffer
-	ut::Result<VkBuffer, ut::Error> buffer_result = CreateVulkanBuffer(info.size, usage);
+	ut::Result<VkRc<vk::buffer>, ut::Error> buffer_result = CreateVulkanBuffer(info.size, usage, memory_usage);
 	if (!buffer_result)
 	{
 		return ut::MakeError(buffer_result.MoveAlt());
 	}
-	VkBuffer buffer = buffer_result.Get();
-
-	// allocate memory
-	VkMemoryPropertyFlags memory_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-	                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	if (info.usage == render::memory::gpu_immutable)
-	{
-		memory_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	}
-
-	ut::Result<VkRc<vk::memory>, ut::Error> memory_result = AllocateBufferMemory(buffer, memory_properties);
-	if (!memory_result)
-	{
-		return ut::MakeError(memory_result.MoveAlt());
-	}
-	VkRc<vk::memory> buffer_memory(memory_result.Move());
+	VkRc<vk::buffer> buffer(buffer_result.Move());
 
 	// copy memory
 	if (ini_size > 0)
@@ -2246,7 +2260,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 			}
 
 			// record copy command
-			CopyVulkanBuffer(immediate_buffer.Get(), staging_buffer->GetVkHandle(), buffer, ini_size);
+			CopyVulkanBuffer(immediate_buffer.Get(), staging_buffer->GetVkHandle(), buffer.GetVkHandle(), ini_size);
 
 			// submit copying
 			ut::Optional<ut::Error> end_cmd_buffer_error = EndImmediateCmdBuffer(immediate_buffer.Get());
@@ -2258,19 +2272,20 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 		else
 		{
 			// copy memory directly to the buffer
+			const VmaAllocation allocation = buffer.GetDetail().GetAllocation();
 			void* buffer_data;
-			VkResult res = vkMapMemory(device.GetVkHandle(), buffer_memory.GetVkHandle(), 0, ini_size, 0, &buffer_data);
+			VkResult res = vmaMapMemory(allocator, allocation, &buffer_data);
 			if (res != VK_SUCCESS)
 			{
 				return ut::MakeError(VulkanError(res, "vkMapMemory(initializing buffer)"));
 			}
 			ut::memory::Copy(buffer_data, info.data.GetAddress(), info.data.GetSize());
-			vkUnmapMemory(device.GetVkHandle(), buffer_memory.GetVkHandle());
+			vmaUnmapMemory(allocator, allocation);
 		}
 	}
 
 	// success
-	PlatformBuffer platform_buffer(device.GetVkHandle(), buffer, ut::Move(buffer_memory));
+	PlatformBuffer platform_buffer(ut::Move(buffer));
 	return Buffer(ut::Move(platform_buffer), ut::Move(info));
 }
 
@@ -2744,7 +2759,7 @@ void Device::Record(CmdBuffer& cmd_buffer,
 	UT_ASSERT(res == VK_SUCCESS);
 
 	// call function
-	Context context(PlatformContext(device.GetVkHandle(), cmd_buffer));
+	Context context(PlatformContext(device.GetVkHandle(), allocator, cmd_buffer));
 	function(context);
 
 	// stop recording

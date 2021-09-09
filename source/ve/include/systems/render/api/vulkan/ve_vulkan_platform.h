@@ -7,6 +7,7 @@
 //----------------------------------------------------------------------------//
 #include "ut.h"
 #include "vulkan/vulkan.h"
+#include "vk_mem_alloc.h"
 //----------------------------------------------------------------------------//
 #if UT_WINDOWS
 #include "vulkan/vulkan_win32.h"
@@ -14,6 +15,8 @@
 #include "X11/Xlib.h"
 #include "vulkan/vulkan_xlib.h"
 #endif
+//----------------------------------------------------------------------------//
+#define VE_VK_API_VERSION VK_API_VERSION_1_1
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)

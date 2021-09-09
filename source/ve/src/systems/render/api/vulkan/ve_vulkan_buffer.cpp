@@ -9,10 +9,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformBuffer::PlatformBuffer(VkDevice device_handle,
-                               VkBuffer buffer_handle,
-                               VkRc<vk::memory> memory_rc) : VkRc<vk::buffer>(buffer_handle, device_handle)
-                                                           , memory(ut::Move(memory_rc))
+PlatformBuffer::PlatformBuffer(VkRc<vk::buffer> buffer_rc) : VkRc<vk::buffer>(ut::Move(buffer_rc))
 {}
 
 // Move constructor.

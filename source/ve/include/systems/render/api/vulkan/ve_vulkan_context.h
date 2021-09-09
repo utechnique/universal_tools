@@ -19,6 +19,7 @@ class PlatformContext
 public:
 	// Constructor.
 	PlatformContext(VkDevice device_handle,
+	                VmaAllocator allocator_handle,
 	                PlatformCmdBuffer& cmd_buffer_ref);
 
 	// Move constructor.
@@ -62,6 +63,9 @@ protected:
 
 	// vulkan device associated with this context
 	VkDevice device;
+
+	// memory allocator
+	VmaAllocator allocator;
 
 	// reference to the buffer containing all commands recorded
 	// by this context

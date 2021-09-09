@@ -41,7 +41,9 @@ PlatformImage::State CreateTargetImageState(Target::Info target_info,
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformContext::PlatformContext(VkDevice device_handle,
+                                 VmaAllocator allocator_handle,
                                  PlatformCmdBuffer& cmd_buffer_ref) : device(device_handle)
+                                                                    , allocator(allocator_handle)
                                                                     , cmd_buffer(cmd_buffer_ref)
 {}
 
@@ -139,12 +141,9 @@ ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access acces
 	}
 
 	void* address;
-	VkResult res = vkMapMemory(device,                      // VkDevice handle
-	                           buffer.memory.GetVkHandle(), // VkDeviceMemory handle
-	                           0,                           // offset
-	                           buffer.info.size,            // size
-	                           0,                           // flags
-	                           &address);                   // out ptr
+	VkResult res = vmaMapMemory(allocator,
+	                            buffer.GetDetail().GetAllocation(),
+	                            &address);
 	if (res != VK_SUCCESS)
 	{
 		return ut::MakeError(VulkanError(res, "vkMapMemory(buffer)"));
@@ -156,7 +155,7 @@ ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access acces
 // Unmaps a previously mapped memory object associated with provided buffer.
 void Context::UnmapBuffer(Buffer& buffer)
 {
-	vkUnmapMemory(device, buffer.memory.GetVkHandle());
+	vmaUnmapMemory(allocator, buffer.GetDetail().GetAllocation());
 }
 
 // Maps a memory object associated with provided image
@@ -187,12 +186,9 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 		subrc.arrayLayer = array_layer;
 		vkGetImageSubresourceLayout(device, image.GetVkHandle(), &subrc, &layout);
 
-		VkResult res = vkMapMemory(device,
-		                           image.memory.GetVkHandle(),
-		                           0, // offset
-		                           image.memory.GetDetail().GetSize(),
-		                           0, // flags
-		                           &mapped_rc.data);
+		VkResult res = vmaMapMemory(allocator,
+		                            image.GetDetail().GetAllocation(),
+		                            &mapped_rc.data);
 		if (res != VK_SUCCESS)
 		{
 			return ut::MakeError(VulkanError(res, "vkMapMemory(image)"));
@@ -216,7 +212,7 @@ void Context::UnmapImage(Image& image)
 	const Image::Info& info = image.GetInfo();
 	if (info.usage == render::memory::gpu_read_cpu_write)
 	{
-		vkUnmapMemory(device, image.memory.GetVkHandle());
+		vmaUnmapMemory(allocator, image.GetDetail().GetAllocation());
 	}
 }
 

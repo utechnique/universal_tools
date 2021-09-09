@@ -149,13 +149,20 @@ private:
 // Image.
 template<> struct VkDetail<vk::image>
 {
-	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE,
+	         VmaAllocator allocator_handle = VK_NULL_HANDLE,
+	         VmaAllocation allocation_handle = VK_NULL_HANDLE) : device(device_handle)
+	                                                           , allocator(allocator_handle)
+	                                                           , allocation(allocation_handle)
 	{}
 
 	typedef VkImage Handle;
-	void Destroy(VkImage image_handle) { vkDestroyImage(device, image_handle, nullptr); }
+	void Destroy(VkImage image_handle) { vmaDestroyImage(allocator, image_handle, allocation); }
+	VmaAllocation GetAllocation() const { return allocation; };
 
 private:
+	VmaAllocator allocator;
+	VmaAllocation allocation;
 	VkDevice device;
 };
 
@@ -188,14 +195,21 @@ private:
 // Buffer.
 template<> struct VkDetail<vk::buffer>
 {
-	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE,
+	         VmaAllocator allocator_handle = VK_NULL_HANDLE,
+	         VmaAllocation allocation_handle = VK_NULL_HANDLE) : device(device_handle)
+	                                                           , allocator(allocator_handle)
+	                                                           , allocation(allocation_handle)
 	{}
 
 	typedef VkBuffer Handle;
-	void Destroy(VkBuffer buffer_handle) { vkDestroyBuffer(device, buffer_handle, nullptr); }
+	void Destroy(VkBuffer buffer_handle) { vmaDestroyBuffer(allocator, buffer_handle, allocation); }
+	VmaAllocation GetAllocation() const { return allocation; };
 
 private:
 	VkDevice device;
+	VmaAllocator allocator;
+	VmaAllocation allocation;
 };
 
 // Semaphore.

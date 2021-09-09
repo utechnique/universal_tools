@@ -11,15 +11,18 @@ START_NAMESPACE(render)
 // Constructor.
 PlatformImage::PlatformImage(VkDevice device_handle,
                              VkImage image_handle,
+                             VmaAllocator allocator,
+                             VmaAllocation allocation,
                              VkImageView image_view,
                              VkImageView* cube_faces_arr,
-                             VkRc<vk::memory> memory_rc,
                              VkImageAspectFlags aspect_flags,
-                             const State& image_state) : VkRc<vk::image>(image_handle, device_handle)
+                             const State& image_state) : VkRc<vk::image>(image_handle,
+                                                                         VkDetail<vk::image>(device_handle,
+                                                                                             allocator,
+                                                                                             allocation))
                                                        , view(image_view, device_handle)
                                                        , aspect_mask(aspect_flags)
                                                        , state(image_state)
-                                                       , memory(ut::Move(memory_rc))
 {
 	if (cube_faces_arr)
 	{
