@@ -71,23 +71,27 @@ void ModelBatcher::UpdateBatch(Context& context,
                                size_t first_element_id,
                                size_t element_count)
 {
-	// map
+    // Linux works better with intermediate buffer while windows
+	// is faster writing directly to the mapped memory
+#if UT_LINUX
+	const size_t transform_size = element_count * sizeof(Model::TransformBuffer);
+	const size_t material_size = element_count * sizeof(Model::MaterialBuffer);
+	ut::Array<ut::byte> cache(transform_size + material_size);
+
+	Model::TransformBuffer* transform_memory = reinterpret_cast<Model::TransformBuffer*>(cache.GetAddress());
+	Model::MaterialBuffer* material_memory = reinterpret_cast<Model::MaterialBuffer*>(transform_memory + element_count);
+#else
 	ut::Result<void*, ut::Error> transform_map_result = context.MapBuffer(batch.transform, ut::access_write);
-	if (!transform_map_result)
-	{
-		throw ut::Error(transform_map_result.MoveAlt());
-	}
 	ut::Result<void*, ut::Error> material_map_result = context.MapBuffer(batch.material, ut::access_write);
-	if (!material_map_result)
-	{
-		throw ut::Error(material_map_result.MoveAlt());
-	}
 
 	// copy transform and material data
-	Model::TransformBuffer* transform_memory = static_cast<Model::TransformBuffer*>(transform_map_result.Get());
-	Model::MaterialBuffer* material_memory = static_cast<Model::MaterialBuffer*>(material_map_result.Get());
-	Model::DrawCall* dc_start = &draw_calls[first_element_id];
-	for (size_t j = 0; j < element_count; j++)
+	Model::TransformBuffer* transform_memory = static_cast<Model::TransformBuffer*>(transform_map_result.MoveOrThrow());
+	Model::MaterialBuffer* material_memory = static_cast<Model::MaterialBuffer*>(material_map_result.MoveOrThrow());
+#endif
+
+	// copy data
+    Model::DrawCall* dc_start = &draw_calls[first_element_id];
+    for (size_t j = 0; j < element_count; j++)
 	{
 		Model::DrawCall& dc = dc_start[j];
 		Model& model = dc.model;
@@ -100,9 +104,19 @@ void ModelBatcher::UpdateBatch(Context& context,
 		ut::memory::Copy(&material.material_mul, &model.material_mul, sizeof(ut::Color<3>));
 	}
 
-	// unmap
+	// finish mapping
+#if UT_LINUX
+	ut::Result<void*, ut::Error> transform_map_result = context.MapBuffer(batch.transform, ut::access_write);
+	ut::memory::Copy(transform_map_result.MoveOrThrow(), transform_memory, transform_size);
+    context.UnmapBuffer(batch.transform);
+
+	ut::Result<void*, ut::Error> material_map_result = context.MapBuffer(batch.material, ut::access_write);
+	ut::memory::Copy(material_map_result.MoveOrThrow(), material_memory, material_size);
+    context.UnmapBuffer(batch.material);
+#else
 	context.UnmapBuffer(batch.transform);
 	context.UnmapBuffer(batch.material);
+#endif
 }
 
 // Updates desired batch.

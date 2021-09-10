@@ -130,7 +130,7 @@ VmaMemoryUsage ConvertMemoryUsageToVma(memory::Usage usage)
 
 	// accessible by both the GPU (full access) and the CPU (full access
 	// using staging buffers), slow
-	case memory::gpu_read_write_cpu_staging: return VMA_MEMORY_USAGE_GPU_TO_CPU;
+	case memory::gpu_read_write_cpu_staging: return VMA_MEMORY_USAGE_GPU_ONLY;
 
 	// accessible by both the GPU (read only) and the CPU (write only),
 	// slow, but better than staging
