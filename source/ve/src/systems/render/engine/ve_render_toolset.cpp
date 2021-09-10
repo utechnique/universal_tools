@@ -24,7 +24,11 @@ Shader::Macros GenQuadShaderConversionMacros(bool rgb_to_srgb)
 //----------------------------------------------------------------------------//
 // Constructor.
 Toolset::Toolset(Device& dvc_ref) : device(dvc_ref)
+#if UT_LINUX
+                                  , pool(ut::Min(ut::GetNumberOfProcessors(), 4))
+#else
                                   , pool(ut::GetNumberOfProcessors())
+#endif
                                   , scheduler(pool.CreateScheduler())
                                   , config(LoadCfg())
                                   , rc_mgr(dvc_ref, config)
