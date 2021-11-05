@@ -304,6 +304,12 @@ public:
 		// release memory
 		Empty();
 
+		// ensure that memory is deallocated
+		if (arr != nullptr)
+		{
+			allocator.Deallocate(arr, capacity);
+		}
+
 		// assign new allocator
 		allocator = other.allocator;
 
