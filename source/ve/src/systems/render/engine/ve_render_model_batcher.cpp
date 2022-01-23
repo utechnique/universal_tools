@@ -205,7 +205,7 @@ ut::uint32 ModelBatcher::GetBatchSize() const
 // Calculates number of individual elements in one batch.
 ut::uint32 ModelBatcher::CalculateBatchSize(Device& device)
 {
-	const size_t ub_max_size = device.GetInfo().max_uniform_buffer_size;
+	const size_t ub_max_size = ut::Min<size_t>(65536, device.GetInfo().max_uniform_buffer_size);
 	const ut::uint32 buffer_bound_size = ut::Max<ut::uint32>(sizeof(Model::TransformBuffer),
 	                                                         sizeof(Model::MaterialBuffer));
 	return static_cast<ut::uint32>(ub_max_size) / buffer_bound_size;

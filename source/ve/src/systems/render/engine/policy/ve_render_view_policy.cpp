@@ -145,6 +145,25 @@ ut::Result<View::SceneBuffer, ut::Error> Policy<View>::CreateSceneBuffer(ut::uin
                                                                          bool is_cube,
                                                                          ut::uint32 light_buffer_mip_count)
 {
+	// check if gbuffer pixel format is supported by gpu
+	const Device::Info& device_info = tools.device.GetInfo();
+	if (!device_info.supports_2d_render_target_format[skGBufferFormat])
+	{
+		return ut::MakeError(ut::error::not_supported);
+	}
+
+	// figure out what depth stencil format is supported
+	const bool supports_preferred_depth_format = device_info.supports_2d_render_target_format[skPreferredDepthFormat];
+	const bool supports_alternative_depth_format = device_info.supports_2d_render_target_format[skAlternativeDepthFormat];
+	if (!supports_preferred_depth_format && !supports_alternative_depth_format)
+	{
+		return ut::MakeError(ut::error::not_supported);
+	}
+	const pixel::Format depth_format = supports_preferred_depth_format ?
+	                                   skPreferredDepthFormat :
+	                                   skAlternativeDepthFormat;
+
+
 	// create view uniform buffer
 	const ut::uint32 ub_count = is_cube ? 6 : 1;
 	ut::Array<Buffer> view_ub;
@@ -165,7 +184,7 @@ ut::Result<View::SceneBuffer, ut::Error> Policy<View>::CreateSceneBuffer(ut::uin
 	// depth stencil
 	Target::Info info;
 	info.type = is_cube ? Image::type_cube : Image::type_2D;
-	info.format = skDepthFormat;
+	info.format = depth_format;
 	info.usage = Target::Info::usage_depth;
 	info.mip_count = 1;
 	info.width = width;

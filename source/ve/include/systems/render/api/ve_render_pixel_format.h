@@ -50,6 +50,7 @@ namespace pixel
 		d24_unorm_s8_uint,
 		d32_float,
 		d32_float_s8_uint,
+		format_count
 	};
 
 	// Returns size of one pixel of the specified format in bytes.

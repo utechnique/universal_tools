@@ -1087,6 +1087,29 @@ Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : PlatformDevice
 	info.supports_wide_lines = gpu_features.wideLines == 0 ? false : true;
 	info.supports_async_rc_mapping = true;
 	info.supports_sv_instance_offset = true;
+
+	// check supported render target formats
+	for (ut::uint32 i = 0; i < pixel::format_count; i++)
+	{
+		pixel::Format format = static_cast<pixel::Format>(i);
+		VkImageUsageFlags usage = pixel::IsDepthFormat(format) ?
+		                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT :
+		                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
+		VkImageFormatProperties format_properties;
+		VkResult format_result = vkGetPhysicalDeviceImageFormatProperties(gpu,
+		                                                                  ConvertPixelFormatToVulkan(static_cast<pixel::Format>(i)),
+		                                                                  VK_IMAGE_TYPE_2D,
+		                                                                  VK_IMAGE_TILING_OPTIMAL,
+		                                                                  usage,
+		                                                                  VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT,
+		                                                                  &format_properties);
+
+		info.supports_2d_render_target_format[i] = format_result != VK_ERROR_FORMAT_NOT_SUPPORTED;
+	}
 }
 
 // Move constructor.

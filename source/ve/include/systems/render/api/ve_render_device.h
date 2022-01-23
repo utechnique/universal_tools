@@ -50,6 +50,10 @@ public:
 		// true if Context::DrawInstanced() and Context::DrawIndexInstanced()
 		// affect SV_InstanceID starting value
 		bool supports_sv_instance_offset = false;
+
+		// each element of this array represents a support for the pixel format
+		// (format is an index of element) in a render target
+		bool supports_2d_render_target_format[pixel::format_count] = { false };
 	};
 
 	// Constructor.

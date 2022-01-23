@@ -238,6 +238,11 @@ Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : PlatformDevice
 	info.supports_wide_lines = false;
 	info.supports_async_rc_mapping = false;
 	info.supports_sv_instance_offset = false;
+
+	for (ut::uint32 i = 0; i < pixel::format_count; i++)
+	{
+		info.supports_render_target_format[i] = true;
+	}
 }
 
 // Move constructor.
