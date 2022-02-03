@@ -25,6 +25,7 @@ StringTestUnit::StringTestUnit() : TestUnit("STRING")
 	tasks.Add(ut::MakeUnique<StrPrintTask>());
 	tasks.Add(ut::MakeUnique<StrScanTask>());
 	tasks.Add(ut::MakeUnique<StrMoveTask>());
+	tasks.Add(ut::MakeUnique<StrReplaceTask>());
 }
 
 //----------------------------------------------------------------------------//
@@ -461,6 +462,92 @@ void StrMoveTask::Execute()
 	{
 		report += " success";
 	}
+}
+
+//----------------------------------------------------------------------------//
+// Replace string
+StrReplaceTask::StrReplaceTask() : TestTask("Replace")
+{ }
+
+void StrReplaceTask::Execute()
+{
+	const ut::String original = "123 abc 123 bca 123 ddf";
+	const ut::String src = "123";
+	const ut::String replace = "321";
+
+	report += ut::String("original string: ") + original + ut::cret;
+
+	ut::String test = original;
+	test.Replace(src, replace);
+	report += ut::String("     replace all: ") + test + ut::cret;
+	if (test != "321 abc 321 bca 321 ddf")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	test = original;
+	test.Replace(src, replace, 0, 1);
+	report += ut::String("     replace first: ") + test + ut::cret;
+	if (test != "321 abc 123 bca 123 ddf")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	test = original;
+	test.Replace(src, replace, 1, 1);
+	report += ut::String("     replace second: ") + test + ut::cret;
+	if (test != "123 abc 321 bca 123 ddf")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	test = original;
+	test.Replace(src, replace, 0, 2);
+	report += ut::String("     replace first two: ") + test + ut::cret;
+	if (test != "321 abc 321 bca 123 ddf")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	test = original;
+	test.Replace(src, replace, 1, 0);
+	report += ut::String("     replace all except first: ") + test + ut::cret;
+	if (test != "123 abc 321 bca 321 ddf")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	test = "";
+	test.Replace(src, "", 0, 0);
+	report += ut::String("     replace empty: ") + test + ut::cret;
+	if (test != "")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	test = ut::String(" ") + original;
+	test.Replace(src, replace, 0, 1);
+	report += ut::String("     replace first (2): ") + test + ut::cret;
+	if (test != " 321 abc 123 bca 123 ddf")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	report += "     Success.";
 }
 
 //----------------------------------------------------------------------------//
