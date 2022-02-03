@@ -167,13 +167,33 @@ Optional<Error> Snapshot::Load(const Tree<text::Node>& text_node)
 //    @return - reference to the node, or error if not found.
 Optional<Snapshot&> Snapshot::FindChildByName(const String& node_name)
 {
+	// skip first slash (if present)
+	const char* start = node_name.ToCStr();
+	if (start[0] == '/' || start[0] == '\\')
+	{
+		start++;
+	}
+
+	// get top most leaf name
+	const char* pstr = start;
+	while (*pstr != '\0' && *pstr != '/' && *pstr != '\\')
+	{
+		pstr++;
+	}
+	const String leaf_name = String(start, pstr - start);
+
+	// search a leaf node by name
+	const bool is_final_node = *pstr == '\0';
 	for (size_t i = 0; i < Base::GetNumChildren(); i++)
 	{
-		if (node_name == Base::child_nodes[i].data.name)
+		Snapshot& leaf = Base::child_nodes[i];
+		if (leaf_name == leaf.data.name)
 		{
-			return Base::child_nodes[i];
+			return is_final_node ? Base::child_nodes[i] : leaf.FindChildByName(++pstr);
 		}
 	}
+
+	// not found
 	return Optional<Snapshot&>();
 }
 
@@ -207,6 +227,48 @@ void Snapshot::SetPreLoadCallback(const Function<void()>& callback)
 void Snapshot::SetPostLoadCallback(const Function<void()>& callback)
 {
 	postload = callback;
+}
+
+//----------------------------------------------------------------------------->
+// Checks if provided parameter name is valid.
+bool Snapshot::ValidateParameterName(const String& name)
+{
+	const size_t len = name.Length();
+
+	// name must have at least one character
+	if (len == 0)
+	{
+		return false;
+	}
+
+	// name must not have special symbols (/,\,*,:,&,?,<,>,{,},',")
+	for (size_t i = 0; i < len; i++)
+	{
+		const char c = name[i];
+		if (c == '\\' ||
+		    c == '/' ||
+		    c == '*' ||
+		    c == ':' ||
+		    c == '&' ||
+		    c == '?' ||
+		    c == '<' ||
+		    c == '>' ||
+		    c == '{' ||
+		    c == '}' ||
+		    c == '\'' ||
+		    c == '\"')
+		{
+			return false;
+		}
+	}
+
+	// first character must not be a number
+	if (ChIsNumber(name.GetFirst()))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 //----------------------------------------------------------------------------->

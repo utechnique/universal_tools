@@ -78,12 +78,21 @@ public:
 
 	// Registers object that is provided as an argument
 	//    @param ref - reference to the object to be serialized
-	//    @param name - name of the parameter
+	//    @param name - name of the parameter, it must fulfil such rules:
+	//                  1) must have at least one character
+	//                  2) first character cannot be a number
+	//                  3) characters / \ * : & ? < > { } ' " are forbidden.
 	template<typename T, bool unused = false>
 	Optional<Error> Add(T& ref, String name)
 	{
 		// create a new node
 		Snapshot snapshot(info);
+
+		// check name
+		if (!ValidateParameterName(name))
+		{
+			return Error(error::invalid_arg);
+		}
 
 		// init child node
 		Optional<Error> init_error = snapshot.Init<T>(ref, Move(name));
@@ -156,6 +165,9 @@ public:
 	void SetPostLoadCallback(const Function<void()>& callback);
 
 private:
+	// Checks if provided parameter name is valid.
+	static bool ValidateParameterName(const String& name);
+
 	// Private constructor
 	//    @param info_copy - copy of the serialization info, that will be
 	//                       used during serialization and deserialization
