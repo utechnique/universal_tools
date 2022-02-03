@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_system.h"
+#include "ve_component_system.h"
 #include "ve_render_api.h"
 #include "systems/ui/ve_ui.h"
 #include "engine/ve_render_engine.h"

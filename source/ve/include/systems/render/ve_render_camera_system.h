@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_system.h"
+#include "ve_component_system.h"
 #include "components/ve_transform_component.h"
 #include "components/ve_camera_component.h"
 #include "components/ve_render_component.h"

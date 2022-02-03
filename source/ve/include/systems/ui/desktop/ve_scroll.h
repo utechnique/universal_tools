@@ -3,33 +3,33 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_entity_system.h"
-#include "ve_ui_frontend.h"
+#include "systems/ui/ve_ui_platform.h"
+//----------------------------------------------------------------------------//
+#include <FL/Fl_Scroll.H>
+//----------------------------------------------------------------------------//
+#if VE_DESKTOP
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
-// ve::ui::Backend is a system processing ui events.
-class Backend : public EntitySystem
+// Helper widget to perform correct scrolling while instantly updating content.
+// This class exists beacause Fl_Scroll sets scrolling position to zero after
+// all children are removed. And it does this so that it's impossible to update 
+// contents in real time preserving current scrolling position.
+class Scroll : public Fl_Scroll
 {
 public:
-	// Constructor.
-	Backend(ut::SharedPtr<Frontend::Thread> in_frontend_thread);
-
-	// Updates system. This function is called once per tick
-	// by ve::Environment.
-	//    @return - array of commands to be executed by owning environment,
-	//              or ut::Error if system encountered fatal error.
-	System::Result Update();
-
-private:
-	// UI shell with actual widgets.
-	ut::SharedPtr<Frontend::Thread> frontend_thread;
+	Scroll(int x, int y, int w, int h);
+	virtual ~Scroll() override = default;
+	void draw() override;
+	ut::Optional< ut::Vector<2, int> > scroll_position;
 };
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ui)
 END_NAMESPACE(ve)
+//----------------------------------------------------------------------------//
+#endif // VE_DESKTOP
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

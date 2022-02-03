@@ -42,6 +42,22 @@ public:
 	//              add @entity to the environment.
 	ut::Result<Entity::Id, ut::Error> AddEntity(Entity entity);
 
+	// Updates desired component. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdUpdateComponent
+	// command instead.
+	//    @param entity_id - id of the entity owning the desired component.
+	//    @param component_type - type of the component.
+	//    @param serialized_data - reference to the json document representing
+	//                             the serialized data.
+	//    @param parameter_name - name of the parameter to be updated. Whole
+	//                            component will be updated if this parameter
+	//                            is empty.
+	//    @return - optional ut::Error if failed to update the component.
+	ut::Optional<ut::Error> UpdateComponent(Entity::Id entity_id,
+	                                        ut::DynamicType::Handle component_type,
+	                                        ut::JsonDoc& serialized_data,
+	                                        const ut::Optional<ut::String>& parameter_name = ut::Optional<ut::String>());
+
 	// Tells the environment to exit after current tick ends.
 	void Exit();
 

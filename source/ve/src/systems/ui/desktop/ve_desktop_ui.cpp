@@ -3,6 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/ui/desktop/ve_desktop_ui.h"
 #include "systems/ui/desktop/ve_desktop_ui_cfg.h"
+#include "commands/ve_cmd_exit.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -49,12 +50,14 @@ void DesktopFrontend::MainWindow::hide()
 		mode.is_active = false;
 		frontend.viewports[i]->SetMode(mode);
 	}
+
+	frontend.HideChildWindows();
 	Window::hide();
 }
 
 //----------------------------------------------------------------------------//
 // Constructor.
-DesktopFrontend::DesktopFrontend() : window_ready(false)
+DesktopFrontend::DesktopFrontend() : window_ready(false), exit(false)
 {
 	fltk_thread = ut::MakeUnique<ut::Thread>([this] { this->Run(); });
 
@@ -122,13 +125,6 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	Fl::set_color(51, theme.background_color.R(), theme.background_color.G(), theme.background_color.B());
 	Fl::set_color(54, theme.frame_color.R(), theme.frame_color.G(), theme.frame_color.B());
 
-	// independent modules
-	entity_selector = ut::MakeUnique<EntitySelector>(cfg->window.offset.X(),
-	                                                 cfg->window.offset.Y(),
-	                                                 320, 240,
-	                                                 theme);
-	entity_selector->hide();
-
 	// create main window
 	window = ut::MakeUnique<MainWindow>(cfg->window.offset.X(),
 	                                    cfg->window.offset.Y(),
@@ -140,18 +136,27 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	window->size_range(skMinWidth, skMinHeight);
 	window->callback(DesktopFrontend::OnCloseCallback, this);
 
+	// independent modules
+	entity_browser = ut::MakeUnique<EntityBrowser>(cfg->window.offset.X(),
+	                                               cfg->window.offset.Y(),
+	                                               EntityBrowser::skDefaultWidth,
+	                                               EntityBrowser::skDefaultHeight,
+	                                               theme);
+	entity_browser->hide();
+
+	// start main window
 	Fl_Double_Window& client_area = window->GetClientWindow();
 	client_area.begin();
 
 	// menu
-	menu = ut::MakeUnique<MenuBar>(cfg.Get(), 0, 0, client_area.w(), entity_selector.GetRef());
+	menu = ut::MakeUnique<MenuBar>(cfg.Get(), 0, 0, client_area.w(), entity_browser.GetRef());
 
 	// viewport container
 	viewport_area = ut::MakeUnique<ViewportArea>(cfg.Get(),
 	                                             0,
 	                                             menu->h(),
 	                                             client_area.w(),
-	                                             client_area.h());
+	                                             client_area.h() - menu->h());
 	viewports = viewport_area->GetViewports();
 
 	// adjust main window
@@ -162,7 +167,7 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 
 	// show main window
 	window->show();
-	Fl::focus(window.Get());
+	window->take_focus();
 
 	// select layout
 	viewport_area->ChangeLayout(cfg->layout_id);
@@ -188,14 +193,28 @@ void DesktopFrontend::Run()
 		throw ut::Error(init_error.Move());
 	}
 
+	// lock fltk so that one could pass commands to the main thread
+	// using Fl::awake() function
+	Fl::lock();
+
 	// run user interface routine
 	Fl::run();
+
+	// unlock fltk to gracefully exit
+	Fl::unlock();
 
 	// save config file
 	SaveCfg();
 
 	// exit signal
-	exit_signal();
+	exit.Store(true);
+}
+
+//----------------------------------------------------------------------------->
+// Hides all child windows.
+void DesktopFrontend::HideChildWindows()
+{
+	entity_browser->hide();
 }
 
 //----------------------------------------------------------------------------->
@@ -258,6 +277,22 @@ void DesktopFrontend::SaveCfg()
 
 	// save to file
 	cfg.Save();
+}
+
+//----------------------------------------------------------------------------->
+// Processes UI events.
+System::Result DesktopFrontend::Update(EntitySystem::EntityMap& entities)
+{
+	UT_ASSERT(entity_browser);
+	
+	CmdArray commands = entity_browser->UpdateEntities(entities);
+
+	if (exit.Read())
+	{
+		commands.Add(ut::MakeUnique<CmdExit>());
+	}
+
+	return commands;
 }
 
 //----------------------------------------------------------------------------->

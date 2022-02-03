@@ -153,7 +153,7 @@
     \see README.abi-version.txt
  */
 #ifndef FL_ABI_VERSION
-#define FL_ABI_VERSION (FL_MAJOR_VERSION*10000 + FL_MINOR_VERSION*100)
+#define FL_ABI_VERSION FL_API_VERSION
 #endif
 
 /*

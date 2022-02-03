@@ -4,7 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/ui/ve_ui_frontend.h"
-#include "systems/ui/desktop/ve_entity_selector.h"
+#include "systems/ui/desktop/ve_entity_browser.h"
 #include "systems/ui/desktop/ve_desktop_menu_bar.h"
 #include "systems/ui/desktop/ve_desktop_viewport.h"
 #include "systems/ui/desktop/ve_viewport_area.h"
@@ -38,6 +38,8 @@ class DesktopFrontend : public Frontend
 		// Hides this window and deactivates viewports.
 		void hide() override;
 
+		// Virtual destructor for the polymorphic type.
+		virtual ~MainWindow() override = default;
 	private:
 		class DesktopFrontend& frontend;
 	};
@@ -57,27 +59,33 @@ public:
 	// Launches user interface.
 	void Run();
 
+	// Hides all child windows.
+	void HideChildWindows();
+
 	// Loads ui configuration from the file.
 	ut::Result<Config<Settings>, ut::Error> LoadCfg();
 
 	// Saves current ui configuration to the file.
 	void SaveCfg();
 
-	// One can start iterating viewports by calling this function.
-	//    @return - viewport iterator, elements can be modified.
-	ut::Array< ut::Ref<Viewport> >::Iterator BeginViewports();
-
-	// One can end iterating viewports by calling this function.
-	//    @return - viewport iterator, elements can be modified.
-	ut::Array< ut::Ref<Viewport> >::Iterator EndViewports();
+	// Processes UI events.
+	System::Result Update(EntitySystem::EntityMap& entities) override;
 
 	// One can start iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.
-	ut::Array< ut::Ref<Viewport> >::ConstIterator BeginViewports() const;
+	ut::Array< ut::Ref<Viewport> >::Iterator BeginViewports() override;
 
 	// One can end iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.
-	ut::Array< ut::Ref<Viewport> >::ConstIterator EndViewports() const;
+	ut::Array< ut::Ref<Viewport> >::Iterator EndViewports() override;
+
+	// One can start iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::Ref<Viewport> >::ConstIterator BeginViewports() const override;
+
+	// One can end iterating viewports by calling this function.
+	//    @return - viewport iterator, elements can be modified.
+	ut::Array< ut::Ref<Viewport> >::ConstIterator EndViewports() const override;
 
 private:
 	// Exit callback that is called before closing the main window.
@@ -88,9 +96,12 @@ private:
 
 	// Synchronization variable to detect when widgets
 	// are initialized in fltk thread. It's triggered only when
-	// the main window receives focus. It's the only point where
+	// the main window receives a focus. It's the only point where
 	// all possible fltk resources are guaranteed to be initialized.
 	ut::Atomic<bool> window_ready;
+
+	// Indicates that UI is closed completely.
+	ut::Atomic<bool> exit;
 
 	// fltk is single threaded, thus all widgets must be created and
 	// processed in a separate thread
@@ -100,7 +111,7 @@ private:
 	ut::UniquePtr<MainWindow> window;
 
 	// ui modules
-	ut::UniquePtr<EntitySelector> entity_selector;
+	ut::UniquePtr<EntityBrowser> entity_browser;
 	ut::UniquePtr<Window> wnd;
 
 	// system menu

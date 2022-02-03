@@ -9,12 +9,6 @@ START_NAMESPACE(ui)
 // Title of the application.
 const char* Frontend::skTitle = "Virtual Environment";
 
-// When ui exits.
-void Frontend::ConnectExitSignalSlot(ut::Function<void()> slot)
-{
-	exit_signal.Connect(slot);
-}
-
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ui)
 END_NAMESPACE(ve)

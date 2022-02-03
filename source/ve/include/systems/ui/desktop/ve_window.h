@@ -97,6 +97,9 @@ public:
 	Window& operator = (const Window&) = delete;
 	Window& operator = (Window&&) = delete;
 
+	// Virtual destructor for the polymorphic type.
+	virtual ~Window() override = default;
+
 	// Handles resizing, dragging, focus events, etc.
 	virtual int handle(int e) override;
 
@@ -120,6 +123,9 @@ public:
 
 	// Returns a reference to the client area widget.
 	Fl_Double_Window& GetClientWindow();
+
+	// Returns a refernece to the ui theme of this window.
+	const Theme& GetTheme() const;
 
 private:
 	// Processes resizing events (like dragging the border).

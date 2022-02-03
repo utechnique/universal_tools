@@ -3,32 +3,35 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_entity_system.h"
-#include "ve_ui_frontend.h"
+#include "ve_system.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
-START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
-// ve::ui::Backend is a system processing ui events.
-class Backend : public EntitySystem
+// ve::EntitySystem is a system registering all components. Use it only for the
+// global things like UI reflection, etc.
+class EntitySystem : public System
 {
 public:
+	typedef ut::Array< ut::Ref<Component> > ComponentSet;
+	typedef ut::Map<Entity::Id, ComponentSet> EntityMap;
+
 	// Constructor.
-	Backend(ut::SharedPtr<Frontend::Thread> in_frontend_thread);
+	//    @param system_name - name of the system.
+	EntitySystem(ut::String system_name);
 
-	// Updates system. This function is called once per tick
-	// by ve::Environment.
-	//    @return - array of commands to be executed by owning environment,
-	//              or ut::Error if system encountered fatal error.
-	System::Result Update();
+protected:
+	// Registers provided entity. And it will be registered only if
+	// it has all needed components.
+	//    @param id - identifier of the entity.
+	//    @param entity - reference to the entity.
+	//    @return - 'true' if entity was registered successfully.
+	bool RegisterEntity(Entity::Id id, Entity& entity) override;
 
-private:
-	// UI shell with actual widgets.
-	ut::SharedPtr<Frontend::Thread> frontend_thread;
+	// registered entities
+	EntityMap entities;
 };
 
 //----------------------------------------------------------------------------//
-END_NAMESPACE(ui)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

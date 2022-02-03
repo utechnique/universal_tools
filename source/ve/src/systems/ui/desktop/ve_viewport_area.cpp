@@ -509,9 +509,9 @@ ViewportArea::ViewportArea(const Settings& settings,
 	                                  ViewportTab::skHeight);
 
 	// tile
-	const ut::uint32 vertical_offset = y + ViewportTab::skHeight + skTabMargin * 2;
+	const ut::uint32 vertical_offset = ViewportTab::skHeight + skTabMargin * 2;
 	tile = ut::MakeUnique<Fl_Tile>(x,
-	                               vertical_offset,
+	                               y + vertical_offset,
 	                               w,
 	                               h - vertical_offset);
 

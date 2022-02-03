@@ -10,6 +10,37 @@
 #include "systems/render/engine/units/ve_render_point_light.h"
 #include "systems/render/engine/units/ve_render_spot_light.h"
 //----------------------------------------------------------------------------//
+class TestComponent : public ve::Component
+{
+public:
+	// Constructors and move assignment operator.
+	TestComponent() : str("test"), boolean(true) {}
+	TestComponent(TestComponent&&) = default;
+	TestComponent& operator =(TestComponent&&) = default;
+
+	// Copying is prohibited.
+	TestComponent(const TestComponent&) = delete;
+	TestComponent& operator =(const TestComponent&) = delete;
+
+	// Meta routine.
+	const ut::DynamicType& Identify() const
+	{
+		return ut::Identify(this);
+	}
+
+	void Reflect(ut::meta::Snapshot& snapshot)
+	{
+		snapshot.Add(str, "str");
+		snapshot.Add(boolean, "bool");
+	}
+
+	ut::String str;
+	bool boolean;
+};
+UT_REGISTER_TYPE(ve::Component, TestComponent, "test")
+
+//----------------------------------------------------------------------------//
+
 // Creates a box with random color and scale.
 ve::Entity CreateRandomBox(const ut::Vector<3>& position)
 {
@@ -50,6 +81,7 @@ ve::Entity CreateRandomBox(const ut::Vector<3>& position)
 	ve::Entity box;
 	box.AddComponent(ut::MakeUnique<ve::RenderComponent>(ut::Move(render_component)));
 	box.AddComponent(ut::MakeUnique<ve::TransformComponent>(ut::Move(transform_component)));
+	box.AddComponent(ut::MakeUnique<TestComponent>(TestComponent()));
 	return box;
 }
 
@@ -132,7 +164,7 @@ ut::Array<ve::Entity> CreateTestScene()
 	}
 
 	// boxes
-	const int nx = 2, ny = 50, nz = 50;
+	const int nx = 2, ny = 10, nz = 10;
 	for (int x = -nx; x < nx; x++)
 	{
 		for (int y = -ny; y < ny; y++)

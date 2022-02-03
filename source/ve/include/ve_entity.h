@@ -24,6 +24,38 @@ public:
 	// Type of the identifier that can be associated with entity.
 	typedef ut::uint32 Id;
 
+	// Returns the number of components.
+	size_t GetComponentCount() const
+	{
+		return components.GetNum();
+	}
+
+	// Returns a reference to the component with the specified id.
+	const Component& GetComponentByIndex(size_t id) const
+	{
+		return components[id].GetRef();
+	}
+
+	// Returns a reference to the component with the specified id.
+	Component& GetComponentByIndex(size_t id)
+	{
+		return components[id].GetRef();
+	}
+
+	// Returns a reference to the component with the specified id.
+	ut::Optional<const Component&> GetComponentByType(ut::DynamicType::Handle type) const
+	{
+		const ut::Optional<const ut::Ref<Component>&> find_result = cache.Find(type);
+		return find_result ? find_result->Get() : ut::Optional<const Component&>();
+	}
+
+	// Returns a reference to the component with the specified id.
+	ut::Optional<Component&> GetComponentByType(ut::DynamicType::Handle type)
+	{
+		ut::Optional<ut::Ref<Component>&> find_result = cache.Find(type);
+		return find_result ? find_result->Get() : ut::Optional<Component&>();
+	}
+
 	// Removes a component of the specified type from the entity.
 	//    @return - optional ut::Error if failed to remove a component.
 	template<typename ComponentType>

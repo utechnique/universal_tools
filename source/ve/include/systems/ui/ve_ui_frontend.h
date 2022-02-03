@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "ve_dedicated_thread.h"
 #include "ve_ui_viewport.h"
+#include "ve_entity_system.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
@@ -21,8 +22,8 @@ public:
 	// Destructor.
 	virtual ~Frontend() = default;
 
-	// When ui exits.
-	void ConnectExitSignalSlot(ut::Function<void()> slot);
+	// Processes UI events.
+	virtual System::Result Update(EntitySystem::EntityMap& entities) = 0;
 
 	// One can start iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.
@@ -41,9 +42,6 @@ public:
 	virtual ut::Array< ut::Ref<Viewport> >::ConstIterator EndViewports() const = 0;
 
 protected:
-	// signals
-	ut::Signal<void()> exit_signal;
-
 	// title of the application
 	static const char* skTitle;
 };

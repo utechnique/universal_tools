@@ -106,6 +106,60 @@ ut::Result<Entity::Id, ut::Error> Environment::AddEntity(Entity entity)
 	return id;
 }
 
+// Updates desired component. This function is unsafe if
+// this environment is already running, enqueue ve::CmdUpdateComponent
+// command instead.
+//    @param entity_id - id of the entity owning the desired component.
+//    @param component_type - type of the component.
+//    @param serialized_data - reference to the json document representing
+//                             the serialized data.
+//    @param parameter_name - name of the parameter to be updated. Whole
+//                            component will be updated if this parameter
+//                            is empty.
+//    @return - optional ut::Error if failed to update the component.
+ut::Optional<ut::Error> Environment::UpdateComponent(Entity::Id entity_id,
+                                                     ut::DynamicType::Handle component_type,
+                                                     ut::JsonDoc& serialized_data,
+                                                     const ut::Optional<ut::String>& parameter_name)
+{
+	ut::Optional<Entity&> entity = entities.Find(entity_id);
+	if (!entity)
+	{
+		return ut::Error(ut::error::not_found);
+	}
+
+	ut::Optional<Component&> component = entity->GetComponentByType(component_type);
+	if (!component)
+	{
+		return ut::Error(ut::error::not_found);
+	}
+
+	ut::meta::Snapshot component_snapshot = ut::meta::Snapshot::Capture(component.Get());
+
+	try
+	{
+		if (parameter_name)
+		{
+			ut::Optional<ut::meta::Snapshot&> parameter_snapshot = component_snapshot.FindChildByName(parameter_name.Get());
+			if (parameter_snapshot)
+			{			
+				serialized_data >> parameter_snapshot.Get();
+			}
+		}
+		else
+		{
+			serialized_data >> component_snapshot;
+		}
+	}
+	catch (const ut::Error& error)
+	{
+		return error;
+	}
+
+	// success
+	return ut::Optional<ut::Error>();
+}
+
 //----------------------------------------------------------------------------->
 // Tells the environment to exit after current tick ends.
 void Environment::Exit()

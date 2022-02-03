@@ -256,6 +256,11 @@ void ViewportCameraSystem::ProcessPerspectiveCameraInput(TransformComponent& tra
                                                          float time_step,
                                                          bool observation_allowed)
 {
+	if (!observation_allowed)
+	{
+		return;
+	}
+
 	// get input bindings
 	const input::Bindings& bindings = input_mgr->config.bindings;
 
@@ -284,29 +289,25 @@ void ViewportCameraSystem::ProcessPerspectiveCameraInput(TransformComponent& tra
 		transform.translation += right.ElementWise() * offset;
 	}
 
-	// process observation
-	if (observation_allowed)
-	{
-		// get xy signal value
-		const float x = input_mgr->GetAnalogSignal(bindings.observation_source_x);
-		const float y = input_mgr->GetAnalogSignal(bindings.observation_source_y);
+	// get xy signal value
+	const float x = input_mgr->GetAnalogSignal(bindings.observation_source_x);
+	const float y = input_mgr->GetAnalogSignal(bindings.observation_source_y);
 
-		// calculate angular offset
-		const float deltax = x * controller.sensitivity;
-		const float deltay = y * controller.sensitivity;
+	// calculate angular offset
+	const float deltax = x * controller.sensitivity;
+	const float deltay = y * controller.sensitivity;
 
-		// process horizontal rotation
-		ut::Quaternion<float> qx = ut::Quaternion<float>::MakeFromAngleAndAxis(deltax, CameraComponent::skUp);
-		transform.rotation = qx * transform.rotation;
-		right = camera.GetRight(transform.rotation);
+	// process horizontal rotation
+	ut::Quaternion<float> qx = ut::Quaternion<float>::MakeFromAngleAndAxis(deltax, CameraComponent::skUp);
+	transform.rotation = qx * transform.rotation;
+	right = camera.GetRight(transform.rotation);
 
-		// rocess vertical rotation
-		ut::Quaternion<float> qy = ut::Quaternion<float>::MakeFromAngleAndAxis(deltay, right);
-		transform.rotation = qy * transform.rotation;
+	// rocess vertical rotation
+	ut::Quaternion<float> qy = ut::Quaternion<float>::MakeFromAngleAndAxis(deltay, right);
+	transform.rotation = qy * transform.rotation;
 
-		// make sure the rotation quaternion is correct
-		transform.rotation.Normalize();
-	}
+	// make sure the rotation quaternion is correct
+	transform.rotation.Normalize();
 }
 
 //----------------------------------------------------------------------------->

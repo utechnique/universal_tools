@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/ui/desktop/ve_entity_selector.h"
+#include "systems/ui/desktop/ve_entity_browser.h"
 #include "systems/ui/desktop/ve_desktop_ui_cfg.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
@@ -15,7 +15,7 @@ START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
 struct MenuCallbacks
 {
-	static void ShowEntitySelector(Fl_Widget* menu, void* selector);
+	static void ShowEntityBrowser(Fl_Widget* menu, void* browser);
 };
 
 // Menu bar.
@@ -28,14 +28,14 @@ public:
 	        ut::uint32 x,
 	        ut::uint32 y,
 	        ut::uint32 width,
-	        EntitySelector& in_entity_selector);
+	        EntityBrowser& in_entity_browser);
 
 	// Height of the bar in pixels.
 	static const ut::uint32 skHeight;
 
 private:
 	ut::Array<Fl_Menu_Item> items;
-	EntitySelector& entity_selector;
+	EntityBrowser& entity_browser;
 };
 
 //----------------------------------------------------------------------------//

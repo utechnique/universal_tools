@@ -1,7 +1,7 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/ui/desktop/ve_entity_selector.h"
+#include "systems/ui/desktop/ve_entity_browser.h"
 #include "systems/ui/desktop/ve_desktop_menu_bar.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
@@ -15,10 +15,11 @@ const ut::uint32 MenuBar::skHeight = 24;
 //----------------------------------------------------------------------------//
 
 
-void MenuCallbacks::ShowEntitySelector(Fl_Widget* menu, void* selector)
+void MenuCallbacks::ShowEntityBrowser(Fl_Widget* menu, void* ptr)
 {
-	Fl_Widget* selector_widget = static_cast<Fl_Widget*>(selector);
-	selector_widget->show();
+	EntityBrowser* browser = static_cast<EntityBrowser*>(ptr);
+	browser->show();
+	browser->take_focus();
 }
 
 // Constructor.
@@ -26,8 +27,8 @@ MenuBar::MenuBar(const Settings& settings,
                  ut::uint32 x,
                  ut::uint32 y,
                  ut::uint32 width,
-                 EntitySelector& in_entity_selector) : Fl_Menu_Bar(x, y, width, skHeight)
-                                                     , entity_selector(in_entity_selector)
+                 EntityBrowser& in_entity_browser) : Fl_Menu_Bar(x, y, width, skHeight)
+                                                   , entity_browser(in_entity_browser)
 {
 	box(FL_FLAT_BOX);
 
@@ -39,7 +40,7 @@ MenuBar::MenuBar(const Settings& settings,
 			{ "Quit", 0, 0, },
 			{ 0 },
 		{ "Edit", FL_F + 2, 0, 0, FL_SUBMENU },
-			{ "Select entities", 0, MenuCallbacks::ShowEntitySelector, &entity_selector },
+			{ "Select entities", 0, MenuCallbacks::ShowEntityBrowser, &entity_browser },
 			{ 0 },
 		{ 0 }
 	};

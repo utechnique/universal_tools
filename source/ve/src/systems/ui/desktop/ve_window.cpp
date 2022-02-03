@@ -31,11 +31,12 @@ void ShowInTaskbar(Fl_Window* w)
 		wnd = fl_xid(w);
 	}
 
-	LONG_PTR styleEx = GetWindowLongPtr(wnd, GWL_EXSTYLE);
-	styleEx &= ~WS_EX_TOOLWINDOW;
-	SetWindowLongPtr(wnd, GWL_EXSTYLE, styleEx);
-
+	LONG_PTR style_ex = GetWindowLongPtr(wnd, GWL_EXSTYLE);
 	LONG_PTR style = GetWindowLongPtr(wnd, GWL_STYLE);
+
+	style_ex &= ~WS_EX_TOOLWINDOW;
+	SetWindowLongPtr(wnd, GWL_EXSTYLE, style_ex);
+
 	style |= WS_SYSMENU;
 	style |= WS_MINIMIZEBOX;
 	SetWindowLongPtr(wnd, GWL_STYLE, style);
@@ -111,7 +112,7 @@ int Window::CaptionButtonBox::handle(int e)
 		redraw();
 		return 1;
 	}
-	
+
 	return ret;
 }
 
@@ -143,16 +144,12 @@ Window::Window(ut::uint32 position_x,
                                        , border_width(static_cast<int>(border_size))
                                        , theme(in_theme)
 {
-#if UT_LINUX // X11 focus frame flickers
-    theme.focus_border_color = theme.unfocus_border_color;
-#endif
-
 	// create border
 	if (border_width > 0)
 	{
 		border_box = ut::MakeUnique<Fl_Box>(0, 0, width, height);
 		border_box->box(FL_FLAT_BOX);
-		border_box->color(ConvertToFlColor(theme.focus_border_color));
+		border_box->color(ConvertToFlColor(theme.unfocus_border_color));
 	}
 
 	// create a conteiner for all other child widgets
@@ -251,7 +248,10 @@ Window::Window(ut::uint32 position_x,
 	}
 
 	// show this window in the OS taskbar
-	ShowInTaskbar(this);
+	if (parent() == nullptr)
+	{
+		ShowInTaskbar(this);
+	}
 }
 
 // Handles resizing, dragging, focus events, etc.
@@ -262,7 +262,7 @@ int Window::handle(int e)
 	{
 		case FL_PUSH:
 		{
-			Fl::focus(this);
+			//Fl::focus(this);
 
 			if (resize_direction != resize_inactive)
 			{
@@ -310,10 +310,20 @@ int Window::handle(int e)
 				border_box->color(ConvertToFlColor(theme.focus_border_color));
 			}
 			redraw();
+#if UT_WINDOWS
+			SetForegroundWindow(fl_xid(this));
+#elif UT_LINUX
+			//XRaiseWindow(fl_display, fl_xid(this));
+#endif
 			return 1;
 		case FL_UNFOCUS:
 #if UT_WINDOWS
 			if(fl_xid(this) != GetForegroundWindow())
+#elif UT_LINUX
+            ::Window active_wnd;
+            int revert_to;
+            XGetInputFocus(fl_display, &active_wnd, &revert_to);
+            if(fl_xid(this) != active_wnd)
 #endif
 			{
 				if (border_width > 0)
@@ -383,7 +393,7 @@ void Window::Restore()
 	       restore_rect.offset.Y(),
 	       restore_rect.extent.X(),
 	       restore_rect.extent.Y());
-	
+
 	if (border_width > 0)
 	{
 		border_box->resize(0,
@@ -420,6 +430,12 @@ void Window::Minimize()
 Fl_Double_Window& Window::GetClientWindow()
 {
 	return client_area.GetRef();
+}
+
+// Returns a refernece to the ui theme of this window.
+const Theme& Window::GetTheme() const
+{
+	return theme;
 }
 
 // Processes resizing events (like dragging the border).

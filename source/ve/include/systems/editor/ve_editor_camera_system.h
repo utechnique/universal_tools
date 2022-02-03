@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_system.h"
+#include "ve_component_system.h"
 #include "systems/input/ve_input_manager.h"
 #include "systems/ui/ve_ui.h"
 #include "components/ve_transform_component.h"
