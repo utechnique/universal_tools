@@ -498,6 +498,55 @@ public:
 		}
 	}
 
+	// Replaces the string.
+	//    @param src - desired string.
+	//    @param str - another string object, whose value is copied.
+	//    @param first - index of the first occurence of the string @src,
+	//                   where replacing must take place.
+	//    @param count - how many times to replace @src string, 0 means all.
+	void Replace(const TString& src,
+	             const TString& str,
+	             uint32 first = 0,
+	             uint32 count = 0)
+	{
+		const size_t src_len = src.Length();
+		if (src_len == 0)
+		{
+			return;
+		}
+
+		const size_t str_len = str.Length();
+
+		uint32 i = 0;
+		size_t offset = 0;
+		while (true)
+		{
+			const T* start = ToCStr();
+			const T* addr = StrStr<T>(start + offset, src.ToCStr());
+			if (!addr)
+			{
+				break;
+			}
+			
+			const size_t prefix_len = addr - start;
+			offset = prefix_len + str_len;
+
+			if (i++ < first)
+			{
+				continue;
+			}
+			else if (count != 0 && i > first + count)
+			{
+				break;
+			}
+			
+			const TString prefix(start, prefix_len);
+			const TString sufix(addr + src_len);
+
+			*this = prefix + str + sufix;
+		}
+	}
+
 	// Replaces \r\n with \n for Linux and \n with \r\n for Windows
 	void FixCarriageReturn()
 	{

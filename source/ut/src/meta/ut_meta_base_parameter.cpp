@@ -58,6 +58,12 @@ void* BaseParameter::GetAddress()
 	return ptr;
 }
 
+// Returns a constant pointer to the managed object.
+const void* BaseParameter::GetAddress() const
+{
+	return ptr;
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(meta)
 END_NAMESPACE(ut)

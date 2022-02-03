@@ -64,6 +64,9 @@ public:
 	// Returns an address of the managed object.
 	void* GetAddress();
 
+	// Returns a constant pointer to the managed object.
+	const void* GetAddress() const;
+
 protected:
 	// Returns a name of the provided (as a template argument) type.
 	// Complements ut::Type template with "reflective" type name.

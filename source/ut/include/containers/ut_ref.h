@@ -34,6 +34,12 @@ public:
 		return *ptr;
 	}
 
+	// Returns a reference to the managed object
+	const T& Get() const
+	{
+		return *ptr;
+	}
+
 	// Overloaded inheritance operator, provides access to the owned object
 	T* operator -> ()
 	{
