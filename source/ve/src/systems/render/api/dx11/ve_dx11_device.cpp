@@ -241,7 +241,7 @@ Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : PlatformDevice
 
 	for (ut::uint32 i = 0; i < pixel::format_count; i++)
 	{
-		info.supports_render_target_format[i] = true;
+		info.supports_2d_render_target_format[i] = true;
 	}
 }
 
