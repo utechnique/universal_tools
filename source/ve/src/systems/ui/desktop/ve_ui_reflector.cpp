@@ -325,21 +325,25 @@ ut::Optional< ut::UniquePtr<ReflectionValue> > ReflectionTreeItem::CreateValueWi
 	    type_name == ut::Type<long double>::Name() ||
 	    type_name == ut::Type<ut::String>::Name())
 	{
-		return ut::MakeUnique<ReflectionTextField>(snapshot,
-		                                           cb,
-		                                           name,
-		                                           left,
-		                                           width,
-		                                           height,
-		                                           font_size);
+        ut::UniquePtr<ReflectionValue> value;
+		value = ut::MakeUnique<ReflectionTextField>(snapshot,
+		                                            cb,
+		                                            name,
+		                                            left,
+		                                            width,
+		                                            height,
+		                                            font_size);
+		return value;
 	}
 	else if (type_name == ut::Type<bool>::Name())
 	{
-		return ut::MakeUnique<ReflectionBool>(snapshot,
-		                                      cb,
-		                                      name,
-		                                      left,
-		                                      height);
+        ut::UniquePtr<ReflectionValue> value;
+		value = ut::MakeUnique<ReflectionBool>(snapshot,
+		                                       cb,
+		                                       name,
+		                                       left,
+		                                       height);
+		return value;
 	}
 
 	return ut::Optional< ut::UniquePtr<ReflectionValue> >();
