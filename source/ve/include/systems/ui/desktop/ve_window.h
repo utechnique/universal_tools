@@ -215,6 +215,9 @@ private:
 
 	// Window metrics before transition to the fullscreen mode.
 	ut::Rect<int> restore_rect;
+
+	// This variable is trick to make the resizing experience more smooth.
+	bool resize_interruptor;
 };
 
 //----------------------------------------------------------------------------//

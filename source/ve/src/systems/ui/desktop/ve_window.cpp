@@ -287,7 +287,12 @@ int Window::handle(int e)
 		case FL_DRAG:
 			if (mode == mode_resize)
 			{
-				ProcessResize();
+				// skip every second frame (looks more smooth)
+				if (resize_interruptor)
+				{
+					ProcessResize();
+				}
+				resize_interruptor = !resize_interruptor;
 			}
 			else if(mode == mode_move)
 			{
