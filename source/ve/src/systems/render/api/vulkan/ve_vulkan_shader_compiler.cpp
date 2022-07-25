@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_shader_compiler.h"
 
+#undef min
 #undef max
 
 #include <shaderc/shaderc.hpp>
