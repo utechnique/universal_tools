@@ -84,6 +84,13 @@ private:
 		ut::String value;
 	};
 
+	// Creates internal child fltk widget for the caption.
+	void CreateCaption(const Theme& theme,
+	                   const ut::String& name,
+	                   ut::int32 x,
+	                   ut::int32 y,
+	                   ut::uint32 width);
+
 	// Returns the total expected height of this widget in pixels.
 	int CalculateHeight() const;
 
@@ -92,6 +99,12 @@ private:
 
 	// Adds all child widgets to the group.
 	void DetachChildWidgets();
+
+	// Expands the list of parameters of the component.
+	void ExpandTree();
+
+	// Collapses the list of parameters of the component.
+	void CollapseTree();
 
 	// Callback to be called when a tree item is modified.
 	//    @param parameter_name - name of the modified parameter.
@@ -108,8 +121,14 @@ private:
 	// otherwise fltk will be referencing invalid pointer while drawing a caption box.
 	ut::UniquePtr<ut::String> cap_text;
 
+	// The group for all caption widgets.
+	ut::UniquePtr<Fl_Group> caption;
+
 	// Caption box.
-	ut::UniquePtr<Fl_Box> cap;
+	ut::UniquePtr<Fl_Box> caption_box;
+
+	// Collapse button.
+	ut::UniquePtr<ExpandButton> expand_button;
 
 	// Reflection tree.
 	ut::UniquePtr<Reflector> reflector;

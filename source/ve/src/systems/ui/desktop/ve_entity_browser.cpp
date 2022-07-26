@@ -10,7 +10,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
 // Height of the caption box in pixels.
-const int ComponentView::skCapHeight = 15;
+const int ComponentView::skCapHeight = 25;
 
 // Margin distance to the left and right borders in pixels.
 const int ComponentView::skHorizontalOffset = 16;
@@ -57,22 +57,18 @@ ComponentView::ComponentView(ComponentView::Proxy& proxy,
 	x_position += skHorizontalOffset;
 	int y_position = skVerticalOffset;
 
-	// create caption box
-	const ut::Color<3, ut::byte> cap_color = theme.tab_color.ElementWise() / 2 +
-	                                         theme.background_color.ElementWise() / 2;
-	cap_text = ut::MakeUnique<ut::String>(proxy.snapshot.data.name);
-	cap = ut::MakeUnique<Fl_Box>(x_position,
-	                             y_position,
-	                             width - skHorizontalOffset,
-	                             skCapHeight);
-	cap->box(FL_FLAT_BOX);
-	cap->color(ConvertToFlColor(cap_color));
-	cap->label(cap_text->ToCStr());
-	cap->show();
+	// create caption group
+	CreateCaption(theme,
+	              proxy.snapshot.data.name,
+	              x_position,
+	              y_position,
+	              width);
 	
-	// create reflection tree widget
-	y_position += cap->h() + skVerticalOffset;
-	reflector = ut::MakeUnique<Reflector>(x_position, y_position, width, proxy.snapshot);
+	// create reflection tree widget, note that x position exeeds group boundaries,
+	// it's a dirty hack to hide reflection tree from user, reflector->hide() here somehow
+	// takes too much time
+	y_position += caption_box->h() + skVerticalOffset;
+	reflector = ut::MakeUnique<Reflector>(x_position + width * 2, y_position, width, proxy.snapshot);
 
 	// connect reflector resize callback
 	if (callbacks.on_resize.IsValid())
@@ -106,7 +102,16 @@ void ComponentView::Update(ComponentView::Proxy& proxy)
 	DetachChildWidgets();
 
 	// update reflection tree
-	reflector->Update(proxy.snapshot);
+	if (expand_button->IsExpanded())
+	{
+		reflector->position(caption->x(), reflector->y());
+		reflector->show();
+		reflector->Update(proxy.snapshot);
+	}
+	else
+	{
+		reflector->hide();
+	}
 
 	// the reflection tree has changed its height, so the
 	// group must be resized too (to fit reflection tree)
@@ -122,7 +127,10 @@ void ComponentView::Update(ComponentView::Proxy& proxy)
 void ComponentView::UpdateSize()
 {
 	DetachChildWidgets();
-	reflector->UpdateTreeSize();
+	if (reflector->visible())
+	{
+		reflector->UpdateTreeSize();
+	}
 	size(w(), CalculateHeight());
 	AttachChildWidgets();
 }
@@ -134,24 +142,85 @@ CmdArray ComponentView::FlushCommands()
 	return ut::Move(locked_commands.Get());
 }
 
+// Creates internal child fltk widgets.
+void ComponentView::CreateCaption(const Theme& theme,
+                                  const ut::String& name,
+                                  ut::int32 x,
+                                  ut::int32 y,
+                                  ut::uint32 width)
+{
+	// create group
+	caption = ut::MakeUnique<Fl_Group>(x, y,
+	                                   width - skHorizontalOffset,
+	                                   skCapHeight);
+
+	// create the background with the text
+	const ut::Color<3, ut::byte> cap_color = theme.tab_color.ElementWise() / 2 +
+	                                         theme.background_color.ElementWise() / 2;
+	cap_text = ut::MakeUnique<ut::String>(name);
+	caption_box = ut::MakeUnique<Fl_Box>(caption->x(),
+	                                     caption->y(),
+	                                     caption->w(),
+	                                     caption->h());
+	caption_box->box(FL_FLAT_BOX);
+	caption_box->color(ConvertToFlColor(cap_color));
+	caption_box->label(cap_text->ToCStr());
+	caption_box->show();
+
+	// create collapse icon
+	const ut::Color<4, ut::byte> icon_color(theme.foreground_color.R(),
+	                                        theme.foreground_color.G(),
+	                                        theme.foreground_color.B(),
+	                                        255);
+	expand_button = ut::MakeUnique<ExpandButton>(caption->x(),
+	                                             caption->y(),
+	                                             caption->h(),
+	                                             caption->h(),
+		                                         icon_color);
+	expand_button->SetBackgroundColor(Button::state_release,
+	                                  ConvertToFlColor(cap_color));
+	expand_button->SetBackgroundColor(Button::state_hover,
+	                                  ConvertToFlColor(theme.tab_color));
+	expand_button->SetBackgroundColor(Button::state_push,
+	                                  ConvertToFlColor(theme.tab_color));
+	expand_button->SetExpandCallback([&] { this->ExpandTree(); });
+	expand_button->SetCollapseCallback([&] { this->CollapseTree(); });
+
+	// finish group
+	caption->end();
+}
+
 // Returns the total expected height of this widget in pixels.
 int ComponentView::CalculateHeight() const
 {
-	return cap->h() + reflector->h() + skVerticalOffset * 3;
+	int reflector_height = expand_button->IsExpanded() ? (reflector->h() + skVerticalOffset) : 0;
+	return caption->h() + reflector_height + skVerticalOffset * 2;
 }
 
 // Removes all child widgets from the group.
 void ComponentView::AttachChildWidgets()
 {
-	add(cap.GetRef());
+	add(caption.GetRef());
 	add(reflector.GetRef());
 }
 
 // Adds all child widgets to the group.
 void ComponentView::DetachChildWidgets()
 {
-	remove(cap.GetRef());
+	remove(caption.GetRef());
 	remove(reflector.GetRef());
+}
+
+// Expands the list of parameters of the component.
+void ComponentView::ExpandTree()
+{
+	callbacks.on_update();
+}
+
+// Collapses the list of parameters of the component.
+void ComponentView::CollapseTree()
+{
+	callbacks.on_update();
 }
 
 // Callback to be called when a tree item is modified.
