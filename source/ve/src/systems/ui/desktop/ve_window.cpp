@@ -57,66 +57,6 @@ void ShowInTaskbar(Fl_Window* w)
 }
 
 //----------------------------------------------------------------------------//
-// Caption button (minimize, maximize, close) constructor.
-Window::CaptionButtonBox::CaptionButtonBox(ut::uint32 x,
-                                           ut::uint32 y,
-                                           ut::uint32 w,
-                                           ut::uint32 h,
-                                           Fl_Color in_bkg_color,
-                                           Fl_Color in_push_color,
-                                           Fl_Color in_hover_color,
-                                           ut::Function<void()> in_callback) : Fl_Box(x, y, w, h)
-                                                                             , bkg_color(in_bkg_color)
-                                                                             , push_color(in_push_color)
-                                                                             , hover_color(in_hover_color)
-                                                                             , callback(ut::Move(in_callback))
-{
-	color(bkg_color);
-}
-
-// Hover color, push down color and callback is handled here.
-int Window::CaptionButtonBox::handle(int e)
-{
-	int ret = Fl_Box::handle(e);
-	const int ex = Fl::event_x();
-	const int ey = Fl::event_y();
-
-	switch (e)
-	{
-	case FL_PUSH:
-		color(push_color);
-		redraw();
-		return 1;
-	case FL_RELEASE:
-		color(bkg_color);
-		redraw();
-		if (ex > x() && ey > y() && ex < x() + w() && ey < y() + h())
-		{
-			callback();
-		}
-		return 1;
-	case FL_MOVE:
-		color(hover_color);
-		redraw();
-		return 1;
-	case FL_ENTER:
-		color(hover_color);
-		redraw();
-		return 1;
-	case FL_LEAVE:
-		color(bkg_color);
-		redraw();
-		return 1;
-	case FL_SHOW:
-		color(bkg_color);
-		redraw();
-		return 1;
-	}
-
-	return ret;
-}
-
-//----------------------------------------------------------------------------//
 // Constructor.
 //    @param position_x - x position of the upper left corner.
 //    @param position_y - y position of the upper left corner.
@@ -175,17 +115,17 @@ Window::Window(ut::uint32 position_x,
 	                                     caption_height,
 	                                     button_close,
 	                                     [&]() { hide(); });
-	buttons[button_maximize] = CreateButton(buttons[button_close].box->x() - caption_height,
+	buttons[button_maximize] = CreateButton(buttons[button_close]->x() - caption_height,
 	                                        0,
 	                                        caption_height,
 	                                        button_maximize,
 	                                        [&]() { Maximize(); });
-	buttons[button_restore] = CreateButton(buttons[button_close].box->x() - caption_height,
+	buttons[button_restore] = CreateButton(buttons[button_close]->x() - caption_height,
 	                                       0,
 	                                       caption_height,
 	                                       button_restore,
 	                                       [&]() { Restore(); });
-	buttons[button_minimize] = CreateButton(buttons[button_maximize].box->x() - caption_height,
+	buttons[button_minimize] = CreateButton(buttons[button_maximize]->x() - caption_height,
 	                                        0,
 	                                        caption_height,
 	                                        button_minimize,
@@ -193,18 +133,18 @@ Window::Window(ut::uint32 position_x,
 	button_group->end();
 
 	// hide caption buttons according to the window style
-	buttons[button_restore].box->hide();
+	buttons[button_restore]->hide();
 	if (!(flags & has_close_button))
 	{
-		buttons[button_close].box->hide();
+		buttons[button_close]->hide();
 	}
 	if (!(flags & has_minimize_button))
 	{
-		buttons[button_minimize].box->hide();
+		buttons[button_minimize]->hide();
 	}
 	if (!(flags & has_maximize_button))
 	{
-		buttons[button_maximize].box->hide();
+		buttons[button_maximize]->hide();
 	}
 
 	// caption title
@@ -378,8 +318,8 @@ void Window::Maximize()
 
 	container->resize(0, 0, sw, sh);
 
-	buttons[button_maximize].box->hide();
-	buttons[button_restore].box->show();
+	buttons[button_maximize]->hide();
+	buttons[button_restore]->show();
 
 	fullscreen_mode = true;
 
@@ -413,8 +353,8 @@ void Window::Restore()
 	                  restore_rect.extent.X() - border_width * 2,
 	                  restore_rect.extent.Y() - border_width * 2);
 
-	buttons[button_restore].box->hide();
-	buttons[button_maximize].box->show();
+	buttons[button_restore]->hide();
+	buttons[button_maximize]->show();
 
 	fullscreen_mode = false;
 
@@ -580,25 +520,21 @@ void Window::DetectResizeArea()
 }
 
 // Creates desired caption button.
-Window::CaptionButton Window::CreateButton(ut::uint32 x,
+ut::UniquePtr<Button> Window::CreateButton(ut::uint32 x,
                                            ut::uint32 y,
                                            ut::uint32 icon_size,
                                            Window::CaptionButtonType type,
                                            ut::Function<void()> callback)
 {
-	Window::CaptionButton out;
+	ut::UniquePtr<Button> out = ut::MakeUnique<Button>(x, y, icon_size, icon_size);
 
-	out.box = ut::MakeUnique<CaptionButtonBox>(x,
-	                                           y,
-	                                           icon_size,
-	                                           icon_size,
-	                                           ConvertToFlColor(theme.window_caption_color),
-	                                           ConvertToFlColor(theme.focus_border_color),
-	                                           ConvertToFlColor(theme.unfocus_border_color),
-	                                           ut::Move(callback));
-	out.box->box(FL_FLAT_BOX);
+	out->SetCallback(ut::Move(callback));
 
-	out.icon_data.Resize(icon_size * icon_size);
+	out->SetBackgroundColor(Button::state_release, ConvertToFlColor(theme.window_caption_color));
+	out->SetBackgroundColor(Button::state_push, ConvertToFlColor(theme.focus_border_color));
+	out->SetBackgroundColor(Button::state_hover, ConvertToFlColor(theme.unfocus_border_color));
+
+	ut::Array< ut::Color<4, ut::byte> > icon_data(icon_size * icon_size);
 
 	const ut::Color<4, ut::byte> color(theme.caption_button_color.R(),
 	                                   theme.caption_button_color.G(),
@@ -613,7 +549,7 @@ Window::CaptionButton Window::CreateButton(ut::uint32 x,
 	{
 		for (int x = 0; x < size; x++)
 		{
-			ut::Color<4, ut::byte>& pixel = out.icon_data[y*size + x];
+			ut::Color<4, ut::byte>& pixel = icon_data[y*size + x];
 			pixel = color;
 			pixel.A() = 0;
 
@@ -685,9 +621,7 @@ Window::CaptionButton Window::CreateButton(ut::uint32 x,
 		}
 	}
 
-	out.icon = ut::MakeUnique<Fl_RGB_Image>(out.icon_data.GetFirst().GetData(), size, size, 4);
-
-	out.box->image(out.icon.Get());
+	out->SetIcon(ut::Move(icon_data), size, size);
 
 	return out;
 }

@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/ui/ve_ui_platform.h"
 #include "systems/ui/desktop/ve_desktop_ui_cfg.h"
+#include "systems/ui/desktop/ve_button.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -17,28 +18,6 @@ START_NAMESPACE(ui)
 // Fancy window.
 class Window : public Fl_Window
 {
-	// Widget class for caption buttons (minimize, maximize, close).
-	class CaptionButtonBox : public Fl_Box
-	{
-	public:
-		CaptionButtonBox(ut::uint32 x,
-		                 ut::uint32 y,
-		                 ut::uint32 w,
-		                 ut::uint32 h,
-		                 Fl_Color bkg_color,
-		                 Fl_Color push_color,
-		                 Fl_Color hover_color,
-		                 ut::Function<void()> callback);
-
-		int handle(int e) override;
-
-	private:
-		Fl_Color bkg_color;
-		Fl_Color push_color;
-		Fl_Color hover_color;
-		ut::Function<void()> callback;
-	};
-
 public:
 	// All possible button types that can be present in the caption.
 	enum CaptionButtonType
@@ -48,14 +27,6 @@ public:
 		button_restore,
 		button_minimize,
 		button_count
-	};
-
-	// Caption button general widget.
-	struct CaptionButton
-	{
-		ut::Array< ut::Color<4, ut::byte> > icon_data;
-		ut::UniquePtr<Fl_RGB_Image> icon;
-		ut::UniquePtr<CaptionButtonBox> box;
 	};
 
 	// Window can be created with a combination of following flags:
@@ -135,11 +106,11 @@ private:
 	void DetectResizeArea();
 
 	// Creates desired caption button.
-	CaptionButton CreateButton(ut::uint32 x,
-	                           ut::uint32 y,
-	                           ut::uint32 size,
-	                           CaptionButtonType type,
-	                           ut::Function<void()> callback);
+	ut::UniquePtr<Button> CreateButton(ut::uint32 x,
+	                                   ut::uint32 y,
+	                                   ut::uint32 size,
+	                                   CaptionButtonType type,
+	                                   ut::Function<void()> callback);
 
 	// Possible editing modes.
 	enum Mode
@@ -189,7 +160,7 @@ private:
 	ut::UniquePtr<Fl_Group> button_group;
 
 	// Caption buttons (minimize, maximize, close).
-	CaptionButton buttons[button_count];
+	ut::UniquePtr<Button> buttons[button_count];
 
 	// Area available for the user. One can use client_area->begin()/end()
 	// to create child widgets.
