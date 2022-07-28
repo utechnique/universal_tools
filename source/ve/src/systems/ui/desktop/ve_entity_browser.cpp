@@ -68,7 +68,7 @@ ComponentView::ComponentView(ComponentView::Proxy& proxy,
 	// it's a dirty hack to hide reflection tree from user, reflector->hide() here somehow
 	// takes too much time
 	y_position += caption_box->h() + skVerticalOffset;
-	reflector = ut::MakeUnique<Reflector>(x_position + width * 2, y_position, width, proxy.snapshot);
+	reflector = ut::MakeUnique<Reflector>(x_position - width * 2, y_position, width, proxy.snapshot);
 
 	// connect reflector resize callback
 	if (callbacks.on_resize.IsValid())
@@ -105,12 +105,12 @@ void ComponentView::Update(ComponentView::Proxy& proxy)
 	if (expand_button->IsExpanded())
 	{
 		reflector->position(caption->x(), reflector->y());
-		reflector->show();
 		reflector->Update(proxy.snapshot);
 	}
 	else
 	{
-		reflector->hide();
+		// dirty hack to hide reflector
+		reflector->position(-reflector->w(), reflector->y());
 	}
 
 	// the reflection tree has changed its height, so the
@@ -153,19 +153,8 @@ void ComponentView::CreateCaption(const Theme& theme,
 	caption = ut::MakeUnique<Fl_Group>(x, y,
 	                                   width - skHorizontalOffset,
 	                                   skCapHeight);
-
-	// create the background with the text
 	const ut::Color<3, ut::byte> cap_color = theme.tab_color.ElementWise() / 2 +
 	                                         theme.background_color.ElementWise() / 2;
-	cap_text = ut::MakeUnique<ut::String>(name);
-	caption_box = ut::MakeUnique<Fl_Box>(caption->x(),
-	                                     caption->y(),
-	                                     caption->w(),
-	                                     caption->h());
-	caption_box->box(FL_FLAT_BOX);
-	caption_box->color(ConvertToFlColor(cap_color));
-	caption_box->label(cap_text->ToCStr());
-	caption_box->show();
 
 	// create collapse icon
 	const ut::Color<4, ut::byte> icon_color(theme.foreground_color.R(),
@@ -186,7 +175,19 @@ void ComponentView::CreateCaption(const Theme& theme,
 	expand_button->SetExpandCallback([&] { this->ExpandTree(); });
 	expand_button->SetCollapseCallback([&] { this->CollapseTree(); });
 
+	// create the background with the text
+	cap_text = ut::MakeUnique<ut::String>(name);
+	caption_box = ut::MakeUnique<Fl_Box>(caption->x() + expand_button->w(),
+	                                     caption->y(),
+	                                     caption->w() - expand_button->w(),
+	                                     caption->h());
+	caption_box->box(FL_FLAT_BOX);
+	caption_box->color(ConvertToFlColor(cap_color));
+	caption_box->label(cap_text->ToCStr());
+	caption_box->show();
+
 	// finish group
+	caption->resizable(caption_box.Get());
 	caption->end();
 }
 

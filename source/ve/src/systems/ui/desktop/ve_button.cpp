@@ -61,10 +61,17 @@ int Button::handle(int e)
 		SetState(state_push);
 		return 1;
 	case FL_RELEASE:
-		SetState(state_release);
-		if (callback.IsValid() && ex > x() && ey > y() && ex < x() + w() && ey < y() + h())
+		if (ex > x() && ey > y() && ex < x() + w() && ey < y() + h())
 		{
-			callback();
+			if (callback.IsValid())
+			{
+				callback();
+			}
+			SetState(state_hover);
+		}
+		else
+		{
+			SetState(state_release);
 		}
 		return 1;
 	case FL_MOVE:

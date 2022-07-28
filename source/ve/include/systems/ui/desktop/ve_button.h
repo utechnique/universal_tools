@@ -72,7 +72,7 @@ protected:
 //----------------------------------------------------------------------------//
 // ve::ui::ExpandButton is a convenient widget to control expansion and 
 // collapsing of different UI lists / trees.
-class ExpandButton : protected Button
+class ExpandButton : public Button
 {
 public:
 	// Constructor, initializes button position.
