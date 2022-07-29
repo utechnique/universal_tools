@@ -119,6 +119,12 @@ void ComponentView::Update(ComponentView::Proxy& proxy)
 
 	// attach all child widgets back
 	AttachChildWidgets();
+
+	// expand button loses focus after detachment from the parent and receives FL_LEAVE 
+	// event that forces the button to the 'release' state, below you can see a dirty
+	// hack to return the button back to the 'hover' state
+	expand_button->hide();
+	expand_button->show();
 }
 
 // Updates size/position of all internal widgets. This function is supposed
