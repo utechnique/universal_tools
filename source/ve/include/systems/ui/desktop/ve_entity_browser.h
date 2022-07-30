@@ -100,12 +100,6 @@ private:
 	// Adds all child widgets to the group.
 	void DetachChildWidgets();
 
-	// Expands the list of parameters of the component.
-	void ExpandTree();
-
-	// Collapses the list of parameters of the component.
-	void CollapseTree();
-
 	// Callback to be called when a tree item is modified.
 	//    @param parameter_name - name of the modified parameter.
 	//    @param data - string representing a modified value.
@@ -194,6 +188,13 @@ public:
 	bool is_valid;
 
 private:
+	// Creates internal child fltk widget for the caption.
+	void CreateCaption(const Theme& theme,
+	                   const ut::String& name,
+	                   ut::int32 x,
+	                   ut::int32 y,
+	                   ut::uint32 width);
+
 	// Marks all component widgets as 'invalid'
 	// ('invalid' means 'not matching any real component in the managed entity').
 	void InvalidateComponents();
@@ -227,12 +228,18 @@ private:
 	// Color theme of this widget.
 	Theme theme;
 
+	// The group for all caption widgets.
+	ut::UniquePtr<Fl_Group> caption;	
+
 	// Text of the caption must be kept in the dedicated stable container,
 	// otherwise fltk will be referencing invalid pointer while drawing a caption box.
 	ut::UniquePtr<ut::String> cap_text;
 
 	// Caption box widget.
-	ut::UniquePtr<Fl_Box> cap;
+	ut::UniquePtr<Fl_Box> caption_box;
+
+	// Collapse button.
+	ut::UniquePtr<ExpandButton> expand_button;
 
 	// Component views.
 	ut::Array< ut::UniquePtr<ComponentView> > components;
@@ -353,6 +360,9 @@ private:
 	// Indicates if all entity views must be updated on the
 	// next UpdateEntities() call.
 	ut::Synchronized<bool> immediate_update;
+
+	// Height of the caption in pixels.
+	static const ut::uint32 skCapHeight;
 
 	// Periods of time (in seconds) between entity updates.
 	static const float skUpdatePeriod;

@@ -10,7 +10,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
 // Height of the caption box in pixels.
-const int ComponentView::skCapHeight = 25;
+const int ComponentView::skCapHeight = 21;
 
 // Margin distance to the left and right borders in pixels.
 const int ComponentView::skHorizontalOffset = 16;
@@ -19,7 +19,7 @@ const int ComponentView::skHorizontalOffset = 16;
 const int ComponentView::skVerticalOffset = 5;
 
 // Height of the caption box in pixels.
-const int EntityView::skCapHeight = 20;
+const int EntityView::skCapHeight = 25;
 
 // Margin distance to the left, right, top and bottom borders in pixels.
 const int EntityView::skOffset = 5;
@@ -29,6 +29,9 @@ const ut::uint32 EntityBrowser::skDefaultWidth = 480;
 
 // Default height of the entity browser window in pixels.
 const ut::uint32 EntityBrowser::skDefaultHeight = 720;
+
+// Height of the caption in pixels.
+const ut::uint32 EntityBrowser::skCapHeight = 24;
 
 // Periods of time (in seconds) between entity updates.
 const float EntityBrowser::skUpdatePeriod = 1.0f;
@@ -110,7 +113,7 @@ void ComponentView::Update(ComponentView::Proxy& proxy)
 	else
 	{
 		// dirty hack to hide reflector
-		reflector->position(-reflector->w(), reflector->y());
+		reflector->position(x() -reflector->w() * 2, reflector->y());
 	}
 
 	// the reflection tree has changed its height, so the
@@ -119,12 +122,6 @@ void ComponentView::Update(ComponentView::Proxy& proxy)
 
 	// attach all child widgets back
 	AttachChildWidgets();
-
-	// expand button loses focus after detachment from the parent and receives FL_LEAVE 
-	// event that forces the button to the 'release' state, below you can see a dirty
-	// hack to return the button back to the 'hover' state
-	expand_button->hide();
-	expand_button->show();
 }
 
 // Updates size/position of all internal widgets. This function is supposed
@@ -162,7 +159,7 @@ void ComponentView::CreateCaption(const Theme& theme,
 	const ut::Color<3, ut::byte> cap_color = theme.tab_color.ElementWise() / 2 +
 	                                         theme.background_color.ElementWise() / 2;
 
-	// create collapse icon
+	// create expand button
 	const ut::Color<4, ut::byte> icon_color(theme.foreground_color.R(),
 	                                        theme.foreground_color.G(),
 	                                        theme.foreground_color.B(),
@@ -178,8 +175,8 @@ void ComponentView::CreateCaption(const Theme& theme,
 	                                  ConvertToFlColor(theme.tab_color));
 	expand_button->SetBackgroundColor(Button::state_push,
 	                                  ConvertToFlColor(theme.tab_color));
-	expand_button->SetExpandCallback([&] { this->ExpandTree(); });
-	expand_button->SetCollapseCallback([&] { this->CollapseTree(); });
+	expand_button->SetExpandCallback([&] { callbacks.on_update(); });
+	expand_button->SetCollapseCallback([&] { callbacks.on_update(); });
 
 	// create the background with the text
 	cap_text = ut::MakeUnique<ut::String>(name);
@@ -209,6 +206,15 @@ void ComponentView::AttachChildWidgets()
 {
 	add(caption.GetRef());
 	add(reflector.GetRef());
+
+	// expand button loses focus after detachment from the parent and receives FL_LEAVE 
+	// event that forces the button to the 'release' state, below you can see a dirty
+	// hack to return the button back to the 'hover' state
+	if (expand_button->visible())
+	{
+		expand_button->hide();
+		expand_button->show();
+	}
 }
 
 // Adds all child widgets to the group.
@@ -216,18 +222,6 @@ void ComponentView::DetachChildWidgets()
 {
 	remove(caption.GetRef());
 	remove(reflector.GetRef());
-}
-
-// Expands the list of parameters of the component.
-void ComponentView::ExpandTree()
-{
-	callbacks.on_update();
-}
-
-// Collapses the list of parameters of the component.
-void ComponentView::CollapseTree()
-{
-	callbacks.on_update();
 }
 
 // Callback to be called when a tree item is modified.
@@ -292,12 +286,11 @@ EntityView::EntityView(EntityView::Proxy& proxy,
 	end();
 
 	// create caption box
-	cap_text = ut::MakeUnique<ut::String>(ut::Print(id));
-	cap = ut::MakeUnique<Fl_Box>(skOffset, skOffset, width - skOffset * 2, skCapHeight);
-	cap->box(FL_FLAT_BOX);
-	cap->color(ConvertToFlColor(theme.tab_color));
-	cap->label(cap_text->ToCStr());
-	cap->show();
+	CreateCaption(theme,
+	              ut::Print(id),
+	              skOffset,
+	              skOffset,
+	              width);
 	
 	// initialize widgets for all components
 	const size_t component_count = proxy.components.GetNum();
@@ -381,6 +374,56 @@ CmdArray EntityView::FlushCommands()
 	return cmd;
 }
 
+// Creates internal child fltk widget for the caption.
+void EntityView::CreateCaption(const Theme& theme,
+                               const ut::String& name,
+                               ut::int32 x,
+                               ut::int32 y,
+                               ut::uint32 width)
+{
+	// create group
+	caption = ut::MakeUnique<Fl_Group>(skOffset, skOffset,
+	                                   width - skOffset * 2,
+	                                   skCapHeight);
+	const ut::Color<3, ut::byte> cap_color = theme.tab_color;
+
+	// create expand button
+	const ut::Color<4, ut::byte> icon_color(theme.foreground_color.R(),
+	                                        theme.foreground_color.G(),
+	                                        theme.foreground_color.B(),
+	                                        255);
+	const ut::Color<3, ut::byte> hover_color = cap_color.ElementWise() / 2 +
+	                                           theme.background_color.ElementWise() / 2;
+	expand_button = ut::MakeUnique<ExpandButton>(caption->x(),
+	                                             caption->y(),
+	                                             caption->h(),
+	                                             caption->h(),
+		                                         icon_color);
+	expand_button->SetBackgroundColor(Button::state_release,
+	                                  ConvertToFlColor(cap_color));
+	expand_button->SetBackgroundColor(Button::state_hover,
+	                                  ConvertToFlColor(hover_color));
+	expand_button->SetBackgroundColor(Button::state_push,
+	                                  ConvertToFlColor(hover_color));
+	expand_button->SetExpandCallback([&] { component_callbacks.on_update(); });
+	expand_button->SetCollapseCallback([&] { component_callbacks.on_update(); });
+
+	// create the background with the text
+	cap_text = ut::MakeUnique<ut::String>(ut::Print(id));
+	caption_box = ut::MakeUnique<Fl_Box>(expand_button->x() + expand_button->w(),
+	                                     skOffset,
+	                                     caption->w() - expand_button->w(),
+	                                     skCapHeight);
+	caption_box->box(FL_FLAT_BOX);
+	caption_box->color(ConvertToFlColor(cap_color));
+	caption_box->label(cap_text->ToCStr());
+	caption_box->show();
+
+	// finish group
+	caption->resizable(caption_box.Get());
+	caption->end();
+}
+
 // Marks all component widgets as 'invalid'
 // ('invalid' means 'not matching any real component in the managed entity')
 void EntityView::InvalidateComponents()
@@ -454,13 +497,21 @@ void EntityView::RepositionComponents()
 	DetachChildWidgets();
 
 	// update vertical position of all components
-	int height = y() + cap->h() + skOffset * 2;
+	int height = y() + caption_box->h() + skOffset * 2;
 	const size_t component_count = components.GetNum();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		ComponentView& component = components[i].GetRef();
-		component.position(0, height);
-		height += component.h();
+		if (expand_button->IsExpanded())
+		{
+			component.position(0, height);
+			height += component.h();
+		}
+		else
+		{
+			// dirty hack to hide component view
+			component.position(w() * 2, height);
+		}
 	}
 
 	// resize group widget so that it could fit all components
@@ -473,19 +524,28 @@ void EntityView::RepositionComponents()
 // Removes all child widgets from the group.
 void EntityView::AttachChildWidgets()
 {
-	add(cap.GetRef());
+	add(caption.GetRef());
 
 	const size_t component_count = components.GetNum();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		add(components[i].GetRef());
 	}
+
+	// expand button loses focus after detachment from the parent and receives FL_LEAVE 
+	// event that forces the button to the 'release' state, below you can see a dirty
+	// hack to return the button back to the 'hover' state
+	if (expand_button->visible())
+	{
+		expand_button->hide();
+		expand_button->show();
+	}
 }
 
 // Adds all child widgets to the group.
 void EntityView::DetachChildWidgets()
 {
-	remove(cap.GetRef());
+	remove(caption.GetRef());
 
 	const size_t component_count = components.GetNum();
 	for (size_t i = 0; i < component_count; i++)
@@ -507,7 +567,7 @@ EntityBrowser::EntityBrowser(int x,
                              ut::uint32 h,
                              const Theme& theme) : Window(x, y, w, h,
                                                           "Entity Browser",
-                                                          1, 20,
+                                                          1, skCapHeight,
                                                           theme,
                                                           Window::has_close_button)
                                                  , immediate_update(true)
