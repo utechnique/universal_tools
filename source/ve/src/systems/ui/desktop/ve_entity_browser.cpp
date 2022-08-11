@@ -21,14 +21,17 @@ const int ComponentView::skVerticalOffset = 5;
 // Height of the caption box in pixels.
 const int EntityView::skCapHeight = 25;
 
-// Margin distance to the left, right, top and bottom borders in pixels.
-const int EntityView::skOffset = 5;
-
 // Default width of the entity browser window in pixels.
 const ut::uint32 EntityBrowser::skDefaultWidth = 480;
 
 // Default height of the entity browser window in pixels.
 const ut::uint32 EntityBrowser::skDefaultHeight = 720;
+
+// Margin distance to the left, right, top and bottom borders in pixels.
+const int EntityBrowser::skOffset = 5;
+
+// Height of the control group in pixels.
+const ut::uint32 EntityBrowser::skControlGroupHeight = 32;
 
 // Height of the caption in pixels.
 const ut::uint32 EntityBrowser::skCapHeight = 24;
@@ -105,7 +108,7 @@ void ComponentView::Update(ComponentView::Proxy& proxy)
 	DetachChildWidgets();
 
 	// update reflection tree
-	if (expand_button->IsExpanded())
+	if (expand_button->IsOn())
 	{
 		reflector->position(caption->x(), reflector->y());
 		reflector->Update(proxy.snapshot);
@@ -164,19 +167,26 @@ void ComponentView::CreateCaption(const Theme& theme,
 	                                        theme.foreground_color.G(),
 	                                        theme.foreground_color.B(),
 	                                        255);
-	expand_button = ut::MakeUnique<ExpandButton>(caption->x(),
+	expand_button = ut::MakeUnique<BinaryButton>(caption->x(),
 	                                             caption->y(),
 	                                             caption->h(),
-	                                             caption->h(),
-		                                         icon_color);
+	                                             caption->h());
 	expand_button->SetBackgroundColor(Button::state_release,
 	                                  ConvertToFlColor(cap_color));
 	expand_button->SetBackgroundColor(Button::state_hover,
 	                                  ConvertToFlColor(theme.tab_color));
 	expand_button->SetBackgroundColor(Button::state_push,
 	                                  ConvertToFlColor(theme.tab_color));
-	expand_button->SetExpandCallback([&] { callbacks.on_update(); });
-	expand_button->SetCollapseCallback([&] { callbacks.on_update(); });
+	expand_button->SetOnCallback([&] { callbacks.on_update(); });
+	expand_button->SetOffCallback([&] { callbacks.on_update(); });
+	expand_button->SetOnIcon(ut::MakeShared<Icon>(Icon::CreateCollapse(expand_button->w(),
+	                                                                   expand_button->h(),
+	                                                                   icon_color,
+	                                                                   true)));
+	expand_button->SetOffIcon(ut::MakeShared<Icon>(Icon::CreateCollapse(expand_button->w(),
+	                                                                    expand_button->h(),
+	                                                                    icon_color,
+	                                                                    false)));
 
 	// create the background with the text
 	cap_text = ut::MakeUnique<ut::String>(name);
@@ -197,7 +207,7 @@ void ComponentView::CreateCaption(const Theme& theme,
 // Returns the total expected height of this widget in pixels.
 int ComponentView::CalculateHeight() const
 {
-	int reflector_height = expand_button->IsExpanded() ? (reflector->h() + skVerticalOffset) : 0;
+	int reflector_height = expand_button->IsOn() ? (reflector->h() + skVerticalOffset) : 0;
 	return caption->h() + reflector_height + skVerticalOffset * 2;
 }
 
@@ -288,8 +298,8 @@ EntityView::EntityView(EntityView::Proxy& proxy,
 	// create caption box
 	CreateCaption(theme,
 	              ut::Print(id),
-	              skOffset,
-	              skOffset,
+	              EntityBrowser::skOffset,
+	              EntityBrowser::skOffset,
 	              width);
 	
 	// initialize widgets for all components
@@ -382,8 +392,9 @@ void EntityView::CreateCaption(const Theme& theme,
                                ut::uint32 width)
 {
 	// create group
-	caption = ut::MakeUnique<Fl_Group>(skOffset, skOffset,
-	                                   width - skOffset * 2,
+	caption = ut::MakeUnique<Fl_Group>(EntityBrowser::skOffset,
+	                                   EntityBrowser::skOffset,
+	                                   width - EntityBrowser::skOffset * 2,
 	                                   skCapHeight);
 	const ut::Color<3, ut::byte> cap_color = theme.tab_color;
 
@@ -394,24 +405,31 @@ void EntityView::CreateCaption(const Theme& theme,
 	                                        255);
 	const ut::Color<3, ut::byte> hover_color = cap_color.ElementWise() / 2 +
 	                                           theme.background_color.ElementWise() / 2;
-	expand_button = ut::MakeUnique<ExpandButton>(caption->x(),
+	expand_button = ut::MakeUnique<BinaryButton>(caption->x(),
 	                                             caption->y(),
 	                                             caption->h(),
-	                                             caption->h(),
-		                                         icon_color);
+	                                             caption->h());
 	expand_button->SetBackgroundColor(Button::state_release,
 	                                  ConvertToFlColor(cap_color));
 	expand_button->SetBackgroundColor(Button::state_hover,
 	                                  ConvertToFlColor(hover_color));
 	expand_button->SetBackgroundColor(Button::state_push,
 	                                  ConvertToFlColor(hover_color));
-	expand_button->SetExpandCallback([&] { component_callbacks.on_update(); });
-	expand_button->SetCollapseCallback([&] { component_callbacks.on_update(); });
+	expand_button->SetOnCallback([&] { component_callbacks.on_update(); });
+	expand_button->SetOffCallback([&] { component_callbacks.on_update(); });
+	expand_button->SetOnIcon(ut::MakeShared<Icon>(Icon::CreateCollapse(expand_button->w(),
+	                                                                   expand_button->h(),
+	                                                                   icon_color,
+	                                                                   true)));
+	expand_button->SetOffIcon(ut::MakeShared<Icon>(Icon::CreateCollapse(expand_button->w(),
+	                                                                    expand_button->h(),
+	                                                                    icon_color,
+	                                                                    false)));
 
 	// create the background with the text
 	cap_text = ut::MakeUnique<ut::String>(ut::Print(id));
 	caption_box = ut::MakeUnique<Fl_Box>(expand_button->x() + expand_button->w(),
-	                                     skOffset,
+	                                     EntityBrowser::skOffset,
 	                                     caption->w() - expand_button->w(),
 	                                     skCapHeight);
 	caption_box->box(FL_FLAT_BOX);
@@ -457,10 +475,9 @@ ut::Optional<ComponentView&> EntityView::FindComponent(ut::DynamicType::Handle c
 //    @param proxy - intermediate representation of the component to add.
 void EntityView::AddNewComponent(ComponentView::Proxy& proxy)
 {
-	const ut::uint32 component_width = w() - skOffset * 2;
 	ut::UniquePtr<ComponentView> component_view = ut::MakeUnique<ComponentView>(proxy,
-	                                                                            skOffset,
-	                                                                            component_width,
+	                                                                            EntityBrowser::skOffset,
+	                                                                            CalculateComponentViewWidth(),
 	                                                                            theme,
 	                                                                            component_callbacks);
 
@@ -497,14 +514,15 @@ void EntityView::RepositionComponents()
 	DetachChildWidgets();
 
 	// update vertical position of all components
-	int height = y() + caption_box->h() + skOffset * 2;
+	const ut::uint32 component_width = CalculateComponentViewWidth();
+	int height = y() + caption_box->h() + EntityBrowser::skOffset * 2;
 	const size_t component_count = components.GetNum();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		ComponentView& component = components[i].GetRef();
-		if (expand_button->IsExpanded())
+		if (expand_button->IsOn())
 		{
-			component.position(0, height);
+			component.resize(0, height, static_cast<int>(component_width), component.h());
 			height += component.h();
 		}
 		else
@@ -554,6 +572,12 @@ void EntityView::DetachChildWidgets()
 	}
 }
 
+// Calculates the width of the component view in pixels.
+ut::uint32 EntityView::CalculateComponentViewWidth() const
+{
+	return w() - EntityBrowser::skOffset * 2;
+}
+
 //----------------------------------------------------------------------------//
 // Constructor. Initializes base window.
 //    @param x - horisontal position of the window in pixels.
@@ -575,10 +599,19 @@ EntityBrowser::EntityBrowser(int x,
 {
 	Fl_Double_Window& client_area = GetClientWindow();
 	client_area.begin();
-	view_area = ut::MakeUnique<Scroll>(0, 0, client_area.w(), client_area.h());
+
+	// control group
+	InitializeControls(theme);
+
+	// view area
+	view_area = ut::MakeUnique<Scroll>(0,
+	                                   skControlGroupHeight,
+	                                   client_area.w(),
+	                                   client_area.h() - skControlGroupHeight);
 	view_area->type(Fl_Scroll::VERTICAL);
 	view_area->scrollbar_size(Fl::scrollbar_size());
 	view_area->resizable(view_area.Get());
+
 	client_area.resizable(view_area.Get());
 	client_area.end();
 }
@@ -638,6 +671,40 @@ CmdArray EntityBrowser::UpdateEntities(EntitySystem::EntityMap& entities)
 	immediate_update_lock.Set(false);
 
 	return cmd;
+}
+
+// Creates UI widgets to add/filter entities.
+void EntityBrowser::InitializeControls(const Theme& theme)
+{
+	Fl_Double_Window& client_area = GetClientWindow();
+
+	controls.group = ut::MakeUnique<Fl_Group>(EntityBrowser::skOffset,
+	                                          0,
+	                                          client_area.w() - EntityBrowser::skOffset * 2,
+	                                          skControlGroupHeight);
+
+	controls.filter = ut::MakeUnique<Fl_Input>(controls.group->x(),
+	                                           controls.group->y(),
+	                                           controls.group->w() - skControlGroupHeight,
+	                                           skControlGroupHeight);
+
+	controls.add_entity_button = ut::MakeUnique<Button>(controls.group->x() + controls.filter->w(),
+	                                                    controls.group->y(),
+	                                                    skControlGroupHeight,
+	                                                    skControlGroupHeight);
+	controls.add_entity_button->SetIcon(ut::MakeShared<Icon>(Icon::CreatePlus(controls.add_entity_button->w(),
+	                                                                          controls.add_entity_button->h(),
+	                                                                          ut::Color<4, ut::byte>(0, 200, 0, 255),
+	                                                                          4, 4)));
+	controls.add_entity_button->SetBackgroundColor(Button::state_release,
+	                                               ConvertToFlColor(theme.background_color));
+	controls.add_entity_button->SetBackgroundColor(Button::state_hover,
+	                                               ConvertToFlColor(theme.tab_color));
+	controls.add_entity_button->SetBackgroundColor(Button::state_push,
+	                                               ConvertToFlColor(theme.background_color));
+	
+	controls.group->resizable(controls.filter.Get());
+	controls.group->end();
 }
 
 // Creates an array of EntityView::Proxy from the provided entity map that

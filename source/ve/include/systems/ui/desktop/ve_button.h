@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "systems/ui/ve_ui_platform.h"
+#include "systems/ui/desktop/ve_icon.h"
 //----------------------------------------------------------------------------//
 #include <FL/Fl_Box.H>
 //----------------------------------------------------------------------------//
@@ -38,18 +38,9 @@ public:
 	void SetCallback(ut::Function<void()> new_callback);
 
 	// Assigns a new icon for the button.
-	void SetIcon(ut::Array< ut::Color<4, ut::byte> > data,
-	             ut::uint32 width,
-	             ut::uint32 height);
+	void SetIcon(ut::SharedPtr<Icon> icon_ptr);
 
 protected:
-	// Struct containing icon image data.
-	struct Icon
-	{
-		ut::Array< ut::Color<4, ut::byte> > data;
-		ut::UniquePtr<Fl_RGB_Image> image;
-	};
-
 	// Overrides fltk box behaviour.
 	virtual int handle(int e) override;
 
@@ -63,59 +54,56 @@ protected:
 	Fl_Color bkg_color[state_count];
 
 	// Icon data.
-	Icon icon;
+	ut::SharedPtr<Icon> icon;
 
 	// Callback that is triggered on release after push action.
 	ut::Function<void()> callback;
 };
 
 //----------------------------------------------------------------------------//
-// ve::ui::ExpandButton is a convenient widget to control expansion and 
-// collapsing of different UI lists / trees.
-class ExpandButton : public Button
+// ve::ui::BinaryButton is a convenient button widget that can be turned on/off.
+class BinaryButton : public Button
 {
 public:
 	// Constructor, initializes button position.
-	ExpandButton(ut::uint32 x,
+	BinaryButton(ut::uint32 x,
 	             ut::uint32 y,
 	             ut::uint32 w,
-	             ut::uint32 h,
-	             const ut::Color<4, ut::byte>& icon_color);
+	             ut::uint32 h);
 
 	// Assigns background color for the provided state.
 	void SetBackgroundColor(State state, Fl_Color color);
 
 	// Assigns a callback function that will be triggered
-	// on expand action.
-	void SetExpandCallback(ut::Function<void()> new_callback);
+	// when the button is turned on.
+	void SetOnCallback(ut::Function<void()> new_callback);
 
 	// Assigns a callback function that will be triggered
-	// on collapse action.
-	void SetCollapseCallback(ut::Function<void()> new_callback);
+	// when the button is turned off.
+	void SetOffCallback(ut::Function<void()> new_callback);
 
-	// Returns true is the button is in the expanded state.
-	bool IsExpanded() const;
+	// Assigns a new icon for the button.
+	void SetOnIcon(ut::SharedPtr<Icon> icon_ptr);
+
+	// Assigns a new icon for the button.
+	void SetOffIcon(ut::SharedPtr<Icon> icon_ptr);
+
+	// Returns true is the button is turned on.
+	bool IsOn() const;
+
+	// Switches button state.
+	void Set(bool new_status);
 
 private:
-	// Switches from expanded to collapsed state and vice versa.
-	void SwitchExpansionMode();
-
-	// Creates icon data for the collapse icon.
-	static ut::Array< ut::Color<4, ut::byte> > CreateCollapseIcon(bool expanded,
-	                                                              const ut::Color<4, ut::byte>& icon_color,
-	                                                              ut::uint32 width,
-	                                                              ut::uint32 height);
-
-	// Collapse icon data.
-	Icon collapse_icon;
+	// "Off" icon data.
+	ut::SharedPtr<Icon> off_icon;
 
 	// Callback that is triggered on release after push action.
-	ut::Function<void()> expand_callback;
-	ut::Function<void()> collapse_callback;
+	ut::Function<void()> on_callback;
+	ut::Function<void()> off_callback;
 
 	// Flag indicating that the button is in expanded state.
-	bool is_expanded;
-
+	bool status;
 };
 
 //----------------------------------------------------------------------------//

@@ -621,7 +621,7 @@ ut::UniquePtr<Button> Window::CreateButton(ut::uint32 x,
 		}
 	}
 
-	out->SetIcon(ut::Move(icon_data), size, size);
+	out->SetIcon(ut::MakeShared<Icon>(size, size, ut::Move(icon_data)));
 
 	return out;
 }

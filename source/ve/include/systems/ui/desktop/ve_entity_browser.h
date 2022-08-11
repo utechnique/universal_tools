@@ -122,7 +122,7 @@ private:
 	ut::UniquePtr<Fl_Box> caption_box;
 
 	// Collapse button.
-	ut::UniquePtr<ExpandButton> expand_button;
+	ut::UniquePtr<BinaryButton> expand_button;
 
 	// Reflection tree.
 	ut::UniquePtr<Reflector> reflector;
@@ -222,6 +222,9 @@ private:
 	// Adds all child widgets to the group.
 	void DetachChildWidgets();
 
+	// Calculates the width of the component view in pixels.
+	ut::uint32 CalculateComponentViewWidth() const;
+
 	// Id of the managed entity.
 	Entity::Id id;
 
@@ -239,7 +242,7 @@ private:
 	ut::UniquePtr<Fl_Box> caption_box;
 
 	// Collapse button.
-	ut::UniquePtr<ExpandButton> expand_button;
+	ut::UniquePtr<BinaryButton> expand_button;
 
 	// Component views.
 	ut::Array< ut::UniquePtr<ComponentView> > components;
@@ -249,9 +252,6 @@ private:
 
 	// Height of the caption box in pixels.
 	static const int skCapHeight;
-
-	// Margin distance to the left, right, top and bottom borders in pixels.
-	static const int skOffset;
 };
 
 //----------------------------------------------------------------------------//
@@ -292,7 +292,21 @@ public:
 	static const ut::uint32 skDefaultWidth;
 	static const ut::uint32 skDefaultHeight;
 
+	// Margin distance to the left, right, top and bottom borders in pixels.
+	static const int skOffset;
+
 private:
+	// Group of controls to add/filter entities
+	struct Controls
+	{
+		ut::UniquePtr<Fl_Group> group;
+		ut::UniquePtr<Fl_Input> filter;
+		ut::UniquePtr<Button> add_entity_button;
+	};
+
+	// Creates UI widgets to add/filter entities.
+	void InitializeControls(const Theme& theme);
+
 	// Creates an array of EntityView::Proxy from the provided entity map that
 	// will be used to update UI component views on the next UI tick.
 	//    @param entities - reference to the entity map.
@@ -339,6 +353,9 @@ private:
 	// Forces immediate update on the next UpdateEntities() call.
 	void ImmediateUpdate();
 
+	// group containing controls to create/filter entities
+	Controls controls;
+
 	// Contains all entity views located vertically.
 	ut::UniquePtr<Scroll> view_area;
 
@@ -361,7 +378,10 @@ private:
 	// next UpdateEntities() call.
 	ut::Synchronized<bool> immediate_update;
 
-	// Height of the caption in pixels.
+	// Height of the control group in pixels.
+	static const ut::uint32 skControlGroupHeight;
+
+	// Height of the browser caption in pixels.
 	static const ut::uint32 skCapHeight;
 
 	// Periods of time (in seconds) between entity updates.
