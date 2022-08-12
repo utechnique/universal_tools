@@ -687,6 +687,7 @@ void EntityBrowser::InitializeControls(const Theme& theme)
 	                                           controls.group->y(),
 	                                           controls.group->w() - skControlGroupHeight,
 	                                           skControlGroupHeight);
+	controls.filter->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->ImmediateUpdate(); }, this);
 
 	controls.add_entity_button = ut::MakeUnique<Button>(controls.group->x() + controls.filter->w(),
 	                                                    controls.group->y(),
@@ -806,8 +807,23 @@ void EntityBrowser::AddEntityView(EntityView::Proxy& proxy)
 	view_area->add(new_view.GetRef());
 	new_view->show();
 
-	// add to the array
-	entity_views.Add(ut::Move(new_view));
+	// insert the view using the 'bubble' principle to retain sorting
+	bool inserted = false;
+	for (size_t i = 0; i < entity_views.GetNum(); i++)
+	{
+		if (new_view->GetId() < entity_views[i]->GetId())
+		{
+			entity_views.Insert(i, ut::Move(new_view));
+			inserted = true;
+			break;
+		}
+	}
+
+	// push back if no holes were find in the list of entities
+	if (!inserted)
+	{
+		entity_views.Add(ut::Move(new_view));
+	}
 }
 
 // Marks all enitity views as 'invalid'.
@@ -827,6 +843,11 @@ void EntityBrowser::UpdateViews()
 	for (ut::uint32 i = 0; i < pending_entity_count; i++)
 	{
 		EntityView::Proxy& pending_view = pending_views[i];
+		if (!FilterEntity(pending_view))
+		{
+			continue;
+		}
+
 		ut::Optional<EntityView&> existing_view = FindView(pending_view.id);
 		if (existing_view)
 		{
@@ -863,14 +884,35 @@ void EntityBrowser::RemoveInvalidViews()
 // Updates y-position of all entity view.
 void EntityBrowser::RepositionViews()
 {
-	int y = 0;
+	ut::Optional<Entity::Id> entity_to_scroll = new_entity_id.Get();
+
+	int y_position = 0;
 	const size_t view_count = entity_views.GetNum();
 	for (size_t i = 0; i < view_count; i++)
 	{
 		EntityView& view = entity_views[i].GetRef();
-		view.position(0, y);
-		y += view.h();
+		view.position(0, y_position);
+
+		// scroll to entity if it was just added via the browser
+		if (entity_to_scroll && entity_to_scroll.Get() == view.GetId())
+		{
+			ScrollToEntity(view, y_position);
+		}
+
+		y_position += view.h();
 	}
+
+	// fix scroll position if it exeeds the bounds of the view area
+	const int scroll_val = static_cast<int>(view_area->scrollbar.value() + ut::Precision<double>::epsilon);
+	if (scroll_val != 0 && y_position < scroll_val)
+	{
+		ut::log.Lock() << "val: " << scroll_val << "h: " << y_position << ut::cret;
+		const int new_scroll_position = ut::Max<int>(0, y_position - view_area->h());
+		view_area->scroll_position = ut::Vector<2, int>(0, new_scroll_position);
+	}
+
+	// reset new entity id
+	new_entity_id.Set(ut::Optional<Entity::Id>());
 }
 
 // Updates size/position of all internal widgets. This function is supposed
@@ -937,9 +979,9 @@ void EntityBrowser::ImmediateUpdate()
 // Adds a new entity on the next UpdateEntities() call.
 void EntityBrowser::AddEntity()
 {
-	typedef void AddEntityCb(const CmdAddEntity::AddResult&);
-
 	ut::UniquePtr<CmdAddEntity> cmd = ut::MakeUnique<CmdAddEntity>();
+
+	typedef void AddEntityCb(const CmdAddEntity::AddResult&);
 	cmd->Connect(ut::MemberFunction<EntityBrowser, AddEntityCb>(this, &EntityBrowser::AddEntityCallback));
 
 	ut::ScopeSyncLock<CmdArray> cmd_lock(pending_commands);
@@ -949,18 +991,43 @@ void EntityBrowser::AddEntity()
 }
 
 // Updates entity browser content after an entity was added.
-void EntityBrowser::AddEntityCallback(const CmdAddEntity::AddResult&)
+void EntityBrowser::AddEntityCallback(const CmdAddEntity::AddResult& add_result)
 {
 	ImmediateUpdate();
 
+	if (add_result)
+	{
+		new_entity_id.Set(add_result.Get());
+	}
+}
+
+// Returns 'true' if the provided entity passes the filter.
+bool EntityBrowser::FilterEntity(EntityView::Proxy& entity_proxy)
+{
+	const char* filter = controls.filter->value();
+	if (filter == nullptr || ut::StrLen<char>(filter) == 0)
+	{
+		return true;
+	}
+
+	// all numbers must match the entity id
+	const ut::String entity_id = ut::Print(entity_proxy.id);
+	if (ut::StrCmp<char>(entity_id.ToCStr(), filter))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+// Scrolls view area right to the provided entity view.
+void EntityBrowser::ScrollToEntity(const EntityView& entity_view, int y_position)
+{
 	// add exessive height to scroll, because scrolling is performed before the entity
 	// is actuallymapped to the UI
-	const int scroll_size = static_cast<int>(view_area->scrollbar.maximum());
-	if (scroll_size != 0)
-	{
-		const int entity_height = EntityView::skCapHeight + skOffset * 2;
-		view_area->scroll_to(0, scroll_size + entity_height);
-	}
+	const int scroll_y = y_position + entity_view.h() - view_area->h();
+	view_area->scroll_to(0, scroll_y);
+	view_area->scroll_position = ut::Vector<2, int>(0, scroll_y);
 }
 
 //----------------------------------------------------------------------------//

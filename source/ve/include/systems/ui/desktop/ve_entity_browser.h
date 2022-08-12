@@ -360,6 +360,12 @@ private:
 	// Updates entity browser content after an entity was added.
 	void AddEntityCallback(const CmdAddEntity::AddResult&);
 
+	// Returns 'true' if the provided entity passes the filter.
+	bool FilterEntity(EntityView::Proxy& entity_proxy);
+
+	// Scrolls view area right to the provided entity view.
+	void ScrollToEntity(const EntityView& entity_view, int y_position);
+
 	// group containing controls to create/filter entities
 	Controls controls;
 
@@ -387,6 +393,10 @@ private:
 
 	// Commands waiting to be processed on the next UpdateEntities() call.
 	ut::Synchronized<CmdArray> pending_commands;
+
+	// Id of the newly created (via the browser) entity. This value is used
+	// to properly scroll view area right to this entity view.
+	ut::Synchronized< ut::Optional<Entity::Id> > new_entity_id;
 
 	// Height of the control group in pixels.
 	static const ut::uint32 skControlGroupHeight;
