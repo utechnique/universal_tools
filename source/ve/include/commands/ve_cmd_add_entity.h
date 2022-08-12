@@ -16,7 +16,7 @@ public:
 	typedef ut::Result<Entity::Id, ut::Error> AddResult;
 
 	// Constructor.
-	CmdAddEntity(Entity in_entity) noexcept;
+	CmdAddEntity(Entity in_entity = Entity()) noexcept;
 
 	// Calls ve::Environment::AddEntity().
 	//    @param environment - reference to the environment

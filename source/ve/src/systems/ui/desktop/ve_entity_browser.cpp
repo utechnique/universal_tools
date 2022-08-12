@@ -702,6 +702,8 @@ void EntityBrowser::InitializeControls(const Theme& theme)
 	                                               ConvertToFlColor(theme.tab_color));
 	controls.add_entity_button->SetBackgroundColor(Button::state_push,
 	                                               ConvertToFlColor(theme.background_color));
+
+	controls.add_entity_button->SetCallback([&] { AddEntity(); });
 	
 	controls.group->resizable(controls.filter.Get());
 	controls.group->end();
@@ -899,7 +901,8 @@ CmdArray EntityBrowser::FlushCommands()
 {
 	ut::ScopeLock lock(mutex);
 
-	CmdArray cmd;
+	CmdArray cmd = ut::Move(pending_commands.Lock());
+	pending_commands.Unlock();
 
 	const size_t view_count = entity_views.GetNum();
 	for (size_t i = 0; i < view_count; i++)
@@ -929,6 +932,35 @@ int EntityBrowser::CalculateEntityViewWidth() const
 void EntityBrowser::ImmediateUpdate()
 {
 	immediate_update.Set(true);
+}
+
+// Adds a new entity on the next UpdateEntities() call.
+void EntityBrowser::AddEntity()
+{
+	typedef void AddEntityCb(const CmdAddEntity::AddResult&);
+
+	ut::UniquePtr<CmdAddEntity> cmd = ut::MakeUnique<CmdAddEntity>();
+	cmd->Connect(ut::MemberFunction<EntityBrowser, AddEntityCb>(this, &EntityBrowser::AddEntityCallback));
+
+	ut::ScopeSyncLock<CmdArray> cmd_lock(pending_commands);
+	cmd_lock.Get().Add(ut::Move(cmd));
+
+	ImmediateUpdate();
+}
+
+// Updates entity browser content after an entity was added.
+void EntityBrowser::AddEntityCallback(const CmdAddEntity::AddResult&)
+{
+	ImmediateUpdate();
+
+	// add exessive height to scroll, because scrolling is performed before the entity
+	// is actuallymapped to the UI
+	const int scroll_size = static_cast<int>(view_area->scrollbar.maximum());
+	if (scroll_size != 0)
+	{
+		const int entity_height = EntityView::skCapHeight + skOffset * 2;
+		view_area->scroll_to(0, scroll_size + entity_height);
+	}
 }
 
 //----------------------------------------------------------------------------//

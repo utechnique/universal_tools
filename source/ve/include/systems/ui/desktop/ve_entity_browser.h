@@ -6,6 +6,7 @@
 #include "systems/ui/desktop/ve_window.h"
 #include "systems/ui/desktop/ve_scroll.h"
 #include "systems/ui/desktop/ve_ui_reflector.h"
+#include "commands/ve_cmd_add_entity.h"
 #include "ve_entity_system.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
@@ -187,6 +188,9 @@ public:
 	// Boolean variable to externally control the relevance of the widget.
 	bool is_valid;
 
+	// Height of the caption box in pixels.
+	static const int skCapHeight;
+
 private:
 	// Creates internal child fltk widget for the caption.
 	void CreateCaption(const Theme& theme,
@@ -249,9 +253,6 @@ private:
 
 	// Callbacks to be triggered when a component is being modified.
 	ComponentView::Callbacks component_callbacks;
-
-	// Height of the caption box in pixels.
-	static const int skCapHeight;
 };
 
 //----------------------------------------------------------------------------//
@@ -353,6 +354,12 @@ private:
 	// Forces immediate update on the next UpdateEntities() call.
 	void ImmediateUpdate();
 
+	// Adds a new entity on the next UpdateEntities() call.
+	void AddEntity();
+
+	// Updates entity browser content after an entity was added.
+	void AddEntityCallback(const CmdAddEntity::AddResult&);
+
 	// group containing controls to create/filter entities
 	Controls controls;
 
@@ -377,6 +384,9 @@ private:
 	// Indicates if all entity views must be updated on the
 	// next UpdateEntities() call.
 	ut::Synchronized<bool> immediate_update;
+
+	// Commands waiting to be processed on the next UpdateEntities() call.
+	ut::Synchronized<CmdArray> pending_commands;
 
 	// Height of the control group in pixels.
 	static const ut::uint32 skControlGroupHeight;
