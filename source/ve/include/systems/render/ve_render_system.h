@@ -39,6 +39,10 @@ private:
 	// transform matrix for every unit.
 	void InitializeUnits();
 
+	// Unregisters the desired entity by its identifier.
+	//    @param id - identifier of the entity.
+	void UnregisterEntity(Entity::Id id) override;
+
 	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
 	ut::SharedPtr<Device::Thread> render_thread;
 	ut::UniquePtr<Engine> engine;

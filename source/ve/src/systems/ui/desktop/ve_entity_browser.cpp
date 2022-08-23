@@ -3,6 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/ui/desktop/ve_entity_browser.h"
 #include "commands/ve_cmd_update_component.h"
+#include "commands/ve_cmd_delete_entity.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -19,7 +20,7 @@ const int ComponentView::skHorizontalOffset = 16;
 const int ComponentView::skVerticalOffset = 5;
 
 // Height of the caption box in pixels.
-const int EntityView::skCapHeight = 25;
+const int EntityView::skCapHeight = 24;
 
 // Default width of the entity browser window in pixels.
 const ut::uint32 EntityBrowser::skDefaultWidth = 480;
@@ -373,7 +374,8 @@ void EntityView::UpdateSize()
 // Returns an array of accumulated commands pending to be processed.
 CmdArray EntityView::FlushCommands()
 {
-	CmdArray cmd;
+	CmdArray cmd = ut::Move(pending_commands.Lock());
+	pending_commands.Unlock();
 
 	const size_t component_count = components.GetNum();
 	for (ut::uint32 i = 0; i < component_count; i++)
@@ -396,15 +398,14 @@ void EntityView::CreateCaption(const Theme& theme,
 	                                   EntityBrowser::skOffset,
 	                                   width - EntityBrowser::skOffset * 2,
 	                                   skCapHeight);
-	const ut::Color<3, ut::byte> cap_color = theme.tab_color;
+	const ut::Color<3, ut::byte> cap_color = GetCaptionColor(theme);
+	const ut::Color<3, ut::byte> hover_color = GetHoverColor(theme);
 
 	// create expand button
-	const ut::Color<4, ut::byte> icon_color(theme.foreground_color.R(),
-	                                        theme.foreground_color.G(),
-	                                        theme.foreground_color.B(),
-	                                        255);
-	const ut::Color<3, ut::byte> hover_color = cap_color.ElementWise() / 2 +
-	                                           theme.background_color.ElementWise() / 2;
+	const ut::Color<4, ut::byte> exp_icon_color(theme.foreground_color.R(),
+	                                            theme.foreground_color.G(),
+	                                            theme.foreground_color.B(),
+	                                            255);
 	expand_button = ut::MakeUnique<BinaryButton>(caption->x(),
 	                                             caption->y(),
 	                                             caption->h(),
@@ -419,27 +420,79 @@ void EntityView::CreateCaption(const Theme& theme,
 	expand_button->SetOffCallback([&] { component_callbacks.on_update(); });
 	expand_button->SetOnIcon(ut::MakeShared<Icon>(Icon::CreateCollapse(expand_button->w(),
 	                                                                   expand_button->h(),
-	                                                                   icon_color,
+	                                                                   exp_icon_color,
 	                                                                   true)));
 	expand_button->SetOffIcon(ut::MakeShared<Icon>(Icon::CreateCollapse(expand_button->w(),
 	                                                                    expand_button->h(),
-	                                                                    icon_color,
+	                                                                    exp_icon_color,
 	                                                                    false)));
 
 	// create the background with the text
 	cap_text = ut::MakeUnique<ut::String>(ut::Print(id));
 	caption_box = ut::MakeUnique<Fl_Box>(expand_button->x() + expand_button->w(),
 	                                     EntityBrowser::skOffset,
-	                                     caption->w() - expand_button->w(),
+	                                     caption->w() - expand_button->w() - skCapHeight * 2,
 	                                     skCapHeight);
 	caption_box->box(FL_FLAT_BOX);
 	caption_box->color(ConvertToFlColor(cap_color));
 	caption_box->label(cap_text->ToCStr());
 	caption_box->show();
 
+	// initialize controls to be able to operate with this entity
+	InitializeControls(theme);
+
 	// finish group
 	caption->resizable(caption_box.Get());
 	caption->end();
+}
+
+// Creates UI widgets for entity controls (like add component< delete the entity, etc.).
+void EntityView::InitializeControls(const Theme& theme)
+{
+	const ut::Color<3, ut::byte> cap_color = GetCaptionColor(theme);
+	const ut::Color<3, ut::byte> hover_color = GetHoverColor(theme);
+
+	controls.group = ut::MakeUnique<Fl_Group>(caption->x() + caption->w() - skCapHeight * 2,
+	                                          caption->y(),
+	                                          skCapHeight * 2,
+	                                          skCapHeight);
+
+	// 'add component' button
+	controls.add_component_button = ut::MakeUnique<Button>(controls.group->x(),
+	                                                       controls.group->y(),
+	                                                       skCapHeight,
+	                                                       skCapHeight);
+	controls.add_component_button->SetIcon(ut::MakeShared<Icon>(Icon::CreatePlus(controls.add_component_button->w(),
+	                                                                             controls.add_component_button->h(),
+	                                                                             ut::Color<4, ut::byte>(0, 200, 0, 180),
+	                                                                             2, 7)));
+	controls.add_component_button->SetBackgroundColor(Button::state_release,
+	                                                  ConvertToFlColor(cap_color));
+	controls.add_component_button->SetBackgroundColor(Button::state_hover,
+	                                                  ConvertToFlColor(hover_color));
+	controls.add_component_button->SetBackgroundColor(Button::state_push,
+	                                                  ConvertToFlColor(hover_color));
+	controls.add_component_button->SetCallback([&] {});
+
+	// 'delete entity' button
+	controls.delete_entity_button = ut::MakeUnique<Button>(controls.group->x() + skCapHeight,
+	                                                       controls.group->y(),
+	                                                       skCapHeight,
+	                                                       skCapHeight);
+	controls.delete_entity_button->SetIcon(ut::MakeShared<Icon>(Icon::CreateCross(controls.delete_entity_button->w(),
+	                                                                              controls.delete_entity_button->h(),
+	                                                                              ut::Color<4, ut::byte>(230, 0, 0, 200),
+	                                                                              7)));
+	controls.delete_entity_button->SetBackgroundColor(Button::state_release,
+	                                                  ConvertToFlColor(cap_color));
+	controls.delete_entity_button->SetBackgroundColor(Button::state_hover,
+	                                                  ConvertToFlColor(hover_color));
+	controls.delete_entity_button->SetBackgroundColor(Button::state_push,
+	                                                  ConvertToFlColor(hover_color));
+	controls.delete_entity_button->SetCallback([&] { DeleteThisEntity(); });
+	
+	controls.group->resizable(nullptr);
+	controls.group->end();
 }
 
 // Marks all component widgets as 'invalid'
@@ -572,10 +625,34 @@ void EntityView::DetachChildWidgets()
 	}
 }
 
+// Generates a command to delete this entity.
+void EntityView::DeleteThisEntity()
+{
+	ut::UniquePtr<CmdDeleteEntity> cmd = ut::MakeUnique<CmdDeleteEntity>(id);
+	cmd->Connect([&]() { component_callbacks.on_update(); });
+
+	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
+	locked_commands.Get().Add(ut::Move(cmd));
+	component_callbacks.on_update();
+}
+
 // Calculates the width of the component view in pixels.
 ut::uint32 EntityView::CalculateComponentViewWidth() const
 {
 	return w() - EntityBrowser::skOffset * 2;
+}
+
+// Returns the color of the caption box.
+ut::Color<3, ut::byte> EntityView::GetCaptionColor(const Theme& theme)
+{
+	return theme.tab_color;
+}
+
+// Returns the color of the interactive elements while hover.
+ut::Color<3, ut::byte> EntityView::GetHoverColor(const Theme& theme)
+{
+	return GetCaptionColor(theme).ElementWise() / 2 +
+	       theme.background_color.ElementWise() / 2;
 }
 
 //----------------------------------------------------------------------------//
@@ -878,6 +955,8 @@ void EntityBrowser::RemoveInvalidViews()
 		view_area->remove(view);
 
 		entity_views.Remove(i);
+
+		ImmediateUpdate();
 	}
 }
 
@@ -906,7 +985,6 @@ void EntityBrowser::RepositionViews()
 	const int scroll_val = static_cast<int>(view_area->scrollbar.value() + ut::Precision<double>::epsilon);
 	if (scroll_val != 0 && y_position < scroll_val)
 	{
-		ut::log.Lock() << "val: " << scroll_val << "h: " << y_position << ut::cret;
 		const int new_scroll_position = ut::Max<int>(0, y_position - view_area->h());
 		view_area->scroll_position = ut::Vector<2, int>(0, new_scroll_position);
 	}

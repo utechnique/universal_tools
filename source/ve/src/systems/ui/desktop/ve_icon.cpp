@@ -73,7 +73,7 @@ Icon Icon::CreateCollapse(ut::uint32 width,
 			const int d0 = ut::Abs(oy - x);
 			const int d1 = ut::Abs(oy - size + x + 1);
 
-			if (odd && oy == half_size)
+			if (!expanded && odd && oy == half_size)
 			{
 				const int ix = x - half_size;
 				if (ix == 0 || ix == -1)
@@ -112,18 +112,20 @@ Icon Icon::CreatePlus(ut::uint32 width,
 	const int half_thickness = thickness / 2;
 	const int inv_x_margin = width - margin - 1;
 	const int inv_y_margin = height - margin - 1;
+	const int signed_height = static_cast<int>(height);
+	const int signed_width = static_cast<int>(width);
 
-	for (int y = 0; y < height; y++)
+	for (int y = 0; y < signed_height; y++)
 	{
-		for (int x = 0; x < width; x++)
+		for (int x = 0; x < signed_width; x++)
 		{
 			ut::Color<4, ut::byte>& pixel = icon_data[y*width + x];
 			pixel = color;
 			pixel.A() = 0;
 
-			const bool inside = x >= margin &&
+			const bool inside = x >= static_cast<int>(margin) &&
 			                    x <= inv_x_margin &&
-			                    y >= margin &&
+			                    y >= static_cast<int>(margin) &&
 			                    y <= inv_y_margin;
 			if (!inside)
 			{
@@ -142,6 +144,62 @@ Icon Icon::CreatePlus(ut::uint32 width,
 			}
 
 			pixel.A() = color.A();
+		}
+	}
+
+	return Icon(width, height, ut::Move(icon_data));
+}
+
+// Creates cross icon (thickness is one pixel).
+Icon Icon::CreateCross(ut::uint32 width,
+                       ut::uint32 height,
+                       const ut::Color<4, ut::byte>& color,
+                       ut::uint32 margin)
+{
+	ut::Array< ut::Color<4, ut::byte> > icon_data(width * height);
+
+	const int size = ut::Min<ut::uint32>(width, height);
+	const int odd_fixer = size % 2 == 0 ? 1 : 0;
+	const int signed_margin = static_cast<int>(margin);
+	const int inv_margin = size - signed_margin - odd_fixer;
+	const int signed_height = static_cast<int>(height);
+	const int signed_width = static_cast<int>(width);
+
+	for (int y = 0; y < signed_height; y++)
+	{
+		for (int x = 0; x < signed_width; x++)
+		{
+			ut::Color<4, ut::byte>& pixel = icon_data[y*size + x];
+			pixel = color;
+			pixel.A() = 0;
+
+			bool inside = x >= signed_margin &&
+			              x <= inv_margin &&
+			              y >= signed_margin &&
+			              y <= inv_margin;
+			if (!inside)
+			{
+				continue;
+			}
+
+			const int line_width = 1;
+
+			int d0 = ut::Abs(y - x);
+			int d1 = ut::Abs(y - size + x + odd_fixer);
+
+			if ((x == signed_margin || x == inv_margin) &&
+				(y == signed_margin || y == inv_margin))
+			{
+				pixel.A() = color.A() - color.A() / 4;
+			}
+			else if (d0 < line_width || d1 < line_width)
+			{
+				pixel.A() = color.A();
+			}
+			else if (d0 < line_width + 1 || d1 < line_width + 1)
+			{
+				pixel.A() = color.A() / 2;
+			}
 		}
 	}
 

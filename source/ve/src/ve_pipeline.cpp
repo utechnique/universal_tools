@@ -158,6 +158,31 @@ void Pipeline::RegisterEntity(Entity::Id id, Entity& entity)
 	}
 }
 
+// Iterates all systems and unregisters a provided entity.
+//    @param id - id of the provided entity.
+void Pipeline::UnregisterEntity(Entity::Id id)
+{
+	// unregister in own system
+	if (system)
+	{
+		system->UnregisterEntity(id);
+	}
+
+	// unregister parallel
+	const size_t parallel_count = parallel.GetNum();
+	for (size_t i = 0; i < parallel_count; i++)
+	{
+		parallel[i].UnregisterEntity(id);
+	}
+
+	// unregister series
+	const size_t serial_count = series.GetNum();
+	for (size_t i = 0; i < serial_count; i++)
+	{
+		series[i].UnregisterEntity(id);
+	}
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//

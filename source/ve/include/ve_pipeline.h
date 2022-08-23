@@ -73,6 +73,10 @@ public:
 	//    @param entity - reference to the entity to be registered.
 	void RegisterEntity(Entity::Id id, Entity& entity);
 
+	// Iterates all systems and unregisters a provided entity.
+	//    @param id - id of the provided entity.
+	void UnregisterEntity(Entity::Id id);
+
 private:
 	// managed system
 	ut::SharedPtr<System> system;

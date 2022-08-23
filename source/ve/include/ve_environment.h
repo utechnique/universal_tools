@@ -42,6 +42,12 @@ public:
 	//              add @entity to the environment.
 	ut::Result<Entity::Id, ut::Error> AddEntity(Entity entity);
 
+	// Deletes the entity from the environment. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdDeleteEntity command
+	// instead.
+	//    @param entity_id - identifier of the desired entity.
+	void DeleteEntity(Entity::Id entity_id);
+
 	// Updates desired component. This function is unsafe if
 	// this environment is already running, enqueue ve::CmdUpdateComponent
 	// command instead.

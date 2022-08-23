@@ -136,6 +136,14 @@ void RenderSystem::InitializeUnits()
 	scheduler.WaitForCompletion();
 }
 
+// Unregisters the desired entity by its identifier.
+//    @param id - identifier of the entity.
+void RenderSystem::UnregisterEntity(Entity::Id id)
+{
+	engine->UnregisterEntity(id);
+	Base::UnregisterEntity(id);
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)

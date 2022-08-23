@@ -8,17 +8,14 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
-// ve::CmdAddEntity adds a new entity to the environment.
-class CmdAddEntity : public Cmd
+// ve::CmdDeleteEntity command deletes the entity from the environment.
+class CmdDeleteEntity : public Cmd
 {
 public:
-	// Return type of the ve::Environment::AddEntity() function.
-	typedef ut::Result<Entity::Id, ut::Error> AddResult;
-
 	// Constructor.
-	CmdAddEntity(Entity in_entity = Entity()) noexcept;
+	CmdDeleteEntity(Entity::Id id) noexcept;
 
-	// Calls ve::Environment::AddEntity().
+	// Calls ve::Environment::DeleteEntity().
 	//    @param environment - reference to the environment
 	//                         executing the command.
 	//    @return - optional ut::Error if environment failed to execute
@@ -27,14 +24,14 @@ public:
 
 	// Connects provided function with signal that is triggered after a call
 	// to ve::Environment::AddEntity().
-	void Connect(ut::Function<void(const AddResult&)> slot);
+	void Connect(ut::Function<void()> slot);
 
 private:
 	// Managed entity to be added.
-	Entity entity;
+	Entity::Id entity_id;
 
 	// Signal that is triggered after a call to ve::Environment::AddEntity().
-	ut::Signal<void(const AddResult&)> signal;
+	ut::Signal<void()> signal;
 };
 
 //----------------------------------------------------------------------------//

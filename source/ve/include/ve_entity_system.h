@@ -25,7 +25,11 @@ protected:
 	//    @param id - identifier of the entity.
 	//    @param entity - reference to the entity.
 	//    @return - 'true' if entity was registered successfully.
-	bool RegisterEntity(Entity::Id id, Entity& entity) override;
+	virtual bool RegisterEntity(Entity::Id id, Entity& entity) override;
+
+	// Unregisters the desired entity by its identifier.
+	//    @param id - identifier of the entity.
+	virtual void UnregisterEntity(Entity::Id id) override;
 
 	// registered entities
 	EntityMap entities;

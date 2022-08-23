@@ -192,12 +192,23 @@ public:
 	static const int skCapHeight;
 
 private:
+	// Group of controls to add components, delete the entity, etc.
+	struct Controls
+	{
+		ut::UniquePtr<Fl_Group> group;
+		ut::UniquePtr<Button> add_component_button;
+		ut::UniquePtr<Button> delete_entity_button;
+	};
+
 	// Creates internal child fltk widget for the caption.
 	void CreateCaption(const Theme& theme,
 	                   const ut::String& name,
 	                   ut::int32 x,
 	                   ut::int32 y,
 	                   ut::uint32 width);
+
+	// Creates UI widgets for entity controls (like add component< delete the entity, etc.).
+	void InitializeControls(const Theme& theme);
 
 	// Marks all component widgets as 'invalid'
 	// ('invalid' means 'not matching any real component in the managed entity').
@@ -226,8 +237,17 @@ private:
 	// Adds all child widgets to the group.
 	void DetachChildWidgets();
 
+	// Generates a command to delete this entity.
+	void DeleteThisEntity();
+
 	// Calculates the width of the component view in pixels.
 	ut::uint32 CalculateComponentViewWidth() const;
+
+	// Returns the color of the caption box.
+	static ut::Color<3, ut::byte> GetCaptionColor(const Theme& theme);
+
+	// Returns the color of the interactive elements while hover.
+	static ut::Color<3, ut::byte> GetHoverColor(const Theme& theme);
 
 	// Id of the managed entity.
 	Entity::Id id;
@@ -245,6 +265,9 @@ private:
 	// Caption box widget.
 	ut::UniquePtr<Fl_Box> caption_box;
 
+	// The group of widgets to operate with this entity.
+	Controls controls;
+
 	// Collapse button.
 	ut::UniquePtr<BinaryButton> expand_button;
 
@@ -253,6 +276,10 @@ private:
 
 	// Callbacks to be triggered when a component is being modified.
 	ComponentView::Callbacks component_callbacks;
+
+	// Commands waiting to be processed. One can take ownership
+	// by calling FlushCommands() function.
+	ut::Synchronized<CmdArray> pending_commands;
 };
 
 //----------------------------------------------------------------------------//
@@ -366,11 +393,11 @@ private:
 	// Scrolls view area right to the provided entity view.
 	void ScrollToEntity(const EntityView& entity_view, int y_position);
 
-	// group containing controls to create/filter entities
-	Controls controls;
-
 	// Contains all entity views located vertically.
 	ut::UniquePtr<Scroll> view_area;
+
+	// group containing controls to create/filter entities.
+	Controls controls;
 
 	// Synchronizes update process.
 	ut::Mutex mutex;

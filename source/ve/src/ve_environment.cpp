@@ -106,6 +106,16 @@ ut::Result<Entity::Id, ut::Error> Environment::AddEntity(Entity entity)
 	return id;
 }
 
+// Deletes the entity from the environment. This function is unsafe if
+// this environment is already running, enqueue ve::CmdDeleteEntity command
+// instead.
+//    @param entity_id - identifier of the desired entity.
+void Environment::DeleteEntity(Entity::Id entity_id)
+{
+	pipeline.UnregisterEntity(entity_id);
+	id_generator.Release(entity_id);
+}
+
 // Updates desired component. This function is unsafe if
 // this environment is already running, enqueue ve::CmdUpdateComponent
 // command instead.

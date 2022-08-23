@@ -34,6 +34,13 @@ bool EntitySystem::RegisterEntity(Entity::Id id, Entity& entity)
 	return true;
 }
 
+// Unregisters the desired entity by its identifier.
+//    @param id - identifier of the entity.
+void EntitySystem::UnregisterEntity(Entity::Id id)
+{
+	entities.Remove(id);
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//

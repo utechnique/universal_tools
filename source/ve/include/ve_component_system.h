@@ -87,7 +87,7 @@ protected:
 	//    @param id - identifier of the entity.
 	//    @param entity - reference to the entity.
 	//    @return - 'true' if entity was registered successfully.
-	bool RegisterEntity(Entity::Id id, Entity& entity) override
+	virtual bool RegisterEntity(Entity::Id id, Entity& entity) override
 	{
 		// create a new proxy
 		Set set(id);
@@ -106,6 +106,21 @@ protected:
 
 		// success
 		return true;
+	}
+
+	// Unregisters the desired entity by its identifier.
+	//    @param id - identifier of the entity.
+	virtual void UnregisterEntity(Entity::Id id) override
+	{
+		const size_t entity_count = entities.GetNum();
+		for (size_t i = 0; i < entity_count; i++)
+		{
+			Set& set = entities[i];
+			if (set.id == id)
+			{
+				entities.Remove(i);
+			}
+		}
 	}
 
 	// registered entities

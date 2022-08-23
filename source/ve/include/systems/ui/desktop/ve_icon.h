@@ -49,6 +49,12 @@ public:
 	                       ut::uint32 thickness,
 	                       ut::uint32 margin);
 
+	// Creates cross icon (thickness is one pixel).
+	static Icon CreateCross(ut::uint32 width,
+	                        ut::uint32 height,
+	                        const ut::Color<4, ut::byte>& color,
+	                        ut::uint32 margin);
+
 private:
 	ut::uint32 width; // in pixels
 	ut::uint32 height; // in pixels

@@ -33,6 +33,10 @@ public:
 	//    @return - 'true' if entity was registered successfully.
 	virtual bool RegisterEntity(Entity::Id id, Entity& entity);
 
+	// Unregisters the desired entity by its identifier.
+	//    @param id - identifier of the entity.
+	virtual void UnregisterEntity(Entity::Id id);
+
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
 	//    @return - array of commands to be executed by owning environment,

@@ -20,6 +20,11 @@ bool System::RegisterEntity(Entity::Id id, Entity& entity)
 	return false;
 };
 
+// Unregisters the desired entity by its identifier.
+//    @param id - identifier of the entity.
+void System::UnregisterEntity(Entity::Id id)
+{}
+
 //----------------------------------------------------------------------------->
 // Updates system. This function is called once per tick
 // by ve::Environment.
