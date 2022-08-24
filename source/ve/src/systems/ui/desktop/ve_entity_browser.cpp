@@ -722,11 +722,13 @@ void EntityBrowser::resize(int x, int y, int w, int h)
 //    @return - array of accumulated commands pending to be processed.
 CmdArray EntityBrowser::UpdateEntities(EntitySystem::EntityMap& entities)
 {
-	ut::ScopeSyncLock<bool> immediate_update_lock(immediate_update);
+	// reset immediate update flag
+	const bool needs_immediate_update = immediate_update.Get();
+	immediate_update.Set(false);
 
 	// there is no sense to update entities every frame
 	const float time_delta = timer.GetTime<ut::time::seconds, float>();
-	if (!immediate_update_lock.Get() && (!active.Get() || time_delta < skUpdatePeriod))
+	if (!needs_immediate_update && (!active.Get() || time_delta < skUpdatePeriod))
 	{
 		return CmdArray();
 	}
@@ -743,9 +745,6 @@ CmdArray EntityBrowser::UpdateEntities(EntitySystem::EntityMap& entities)
 
 	// reset timer
 	timer.Start();
-
-	// reset immediate update flag
-	immediate_update_lock.Set(false);
 
 	return cmd;
 }
@@ -764,6 +763,7 @@ void EntityBrowser::InitializeControls(const Theme& theme)
 	                                           controls.group->y(),
 	                                           controls.group->w() - skControlGroupHeight,
 	                                           skControlGroupHeight);
+	controls.filter->when(FL_WHEN_CHANGED);
 	controls.filter->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->ImmediateUpdate(); }, this);
 
 	controls.add_entity_button = ut::MakeUnique<Button>(controls.group->x() + controls.filter->w(),
