@@ -15,14 +15,6 @@ public:
 };
 
 //----------------------------------------------------------------------------//
-class SerializationBaseTestTask : public TestTask
-{
-public:
-	SerializationBaseTestTask();
-	void Execute();
-};
-
-//----------------------------------------------------------------------------//
 class SerializationVariantsTask : public TestTask
 {
 public:
@@ -36,14 +28,6 @@ public:
 private:
 	ut::Map<ut::String, ut::meta::Info> info_variants;
 	typedef ut::Pair<ut::String, ut::meta::Info> PairType;
-};
-
-//----------------------------------------------------------------------------//
-class PolymorphicClassificationTask : public TestTask
-{
-public:
-	PolymorphicClassificationTask();
-	void Execute();
 };
 
 //----------------------------------------------------------------------------//
