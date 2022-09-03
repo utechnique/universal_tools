@@ -283,6 +283,21 @@ public:
 		}
 	}
 
+	// Returns the reference to the registered type by it's index assigned
+	// by this factory.
+	//    @param index - index of the desired type.
+	//    @return - reference to the dynamic type
+	static const DynamicType& GetTypeByIndex(size_t index)
+	{
+		return GetArray()[index];
+	}
+
+	// Returns the number of types registered in this factory.
+	static size_t CountTypes()
+	{
+		return GetArray().GetNum();
+	}
+
 private:
 	// There is only one instance per dynamic type, and it's shared between
 	// different factories. Thread safety is disabled for this shared pointer
@@ -305,7 +320,7 @@ private:
 		if (!result)
 		{
 			// add shared pointer to the own map at first
-			bool result = GetMap().Insert(name, ptr);
+			bool result = GetMap().Insert(name, ptr) && GetArray().Add(ptr.GetRef());
 			UT_ASSERT(result);
 
 			// then let parent factories register this type too
@@ -337,6 +352,14 @@ private:
 	{
 		static Map map;
 		return map;
+	}
+
+	// References to the dynamic types are dublicated to the linear array
+	// to perform convenient iteration.
+	static Array< ConstRef<DynamicType> >& GetArray()
+	{
+		static Array< ConstRef<DynamicType> > types;
+		return types;
 	}
 
 	// Registration callbacks of the parent factories.
