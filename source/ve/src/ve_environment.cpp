@@ -116,6 +116,40 @@ void Environment::DeleteEntity(Entity::Id entity_id)
 	id_generator.Release(entity_id);
 }
 
+// Adds a new component to the desired entity. This function is unsafe if
+// this environment is already running, enqueue ve::CmdAddComponent command
+// instead.
+//    @param entity_id - identifier of the entity to add the component.
+//    @param component - the unique pointer to the component to be added.
+//    @return - optional ut::Error if failed.
+ut::Optional<ut::Error> Environment::AddComponent(Entity::Id entity_id,
+                                                  ut::UniquePtr<Component> component)
+{
+	// find desired entity by it's identifier
+	ut::Optional<Entity&> entity = entities.Find(entity_id);
+	if (!entity)
+	{
+		return ut::Error(ut::error::not_found);
+	}
+
+	// check if this component already exists
+	const ut::DynamicType& component_type = component->Identify();
+	if (entity->GetComponentByType(component_type.GetHandle()))
+	{
+		return ut::Error(ut::error::already_exists);
+	}
+
+	// add new component
+	entity->AddComponent(ut::Move(component));
+
+	// re-register the entity
+	pipeline.UnregisterEntity(entity_id);
+	pipeline.RegisterEntity(entity_id, entity.Get());
+
+	// success
+	return ut::Optional<ut::Error>();
+}
+
 // Updates desired component. This function is unsafe if
 // this environment is already running, enqueue ve::CmdUpdateComponent
 // command instead.

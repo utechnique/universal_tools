@@ -267,9 +267,9 @@ ViewportTab::ViewportTab(ViewportArea& in_viewport_area,
                                        , layouts(ut::Move(in_layouts))
 {
 	background->box(FL_FLAT_BOX);
-	background->color(fl_rgb_color(settings.theme.tab_color.R(),
-	                               settings.theme.tab_color.G(),
-	                               settings.theme.tab_color.B()));
+	background->color(fl_rgb_color(settings.theme.primary_tab_color.R(),
+	                               settings.theme.primary_tab_color.G(),
+	                               settings.theme.primary_tab_color.B()));
 
 	controls_group = ut::MakeUnique<Fl_Group>(x, y, skElementHeight * 20, h);
 	

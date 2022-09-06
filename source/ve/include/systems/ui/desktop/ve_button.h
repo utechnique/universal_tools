@@ -28,7 +28,8 @@ public:
 	Button(ut::uint32 x,
 	       ut::uint32 y,
 	       ut::uint32 w,
-	       ut::uint32 h);
+	       ut::uint32 h,
+	       ut::String button_text = ut::String());
 
 	// Assigns background color for the provided state.
 	void SetBackgroundColor(State state, Fl_Color color);
@@ -49,6 +50,9 @@ protected:
 
 	// Current button state.
 	State current_state;
+
+	// Button label.
+	ut::UniquePtr<ut::String> text;
 
 	// Background colors for all states.
 	Fl_Color bkg_color[state_count];

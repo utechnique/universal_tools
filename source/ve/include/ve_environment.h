@@ -42,6 +42,15 @@ public:
 	//              add @entity to the environment.
 	ut::Result<Entity::Id, ut::Error> AddEntity(Entity entity);
 
+	// Adds a new component to the desired entity. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdAddComponent command
+	// instead.
+	//    @param entity_id - identifier of the entity to add the component.
+	//    @param component - the unique pointer to the component to be added.
+	//    @return - optional ut::Error if failed.
+	ut::Optional<ut::Error> AddComponent(Entity::Id entity_id,
+	                                     ut::UniquePtr<Component> component);
+
 	// Deletes the entity from the environment. This function is unsafe if
 	// this environment is already running, enqueue ve::CmdDeleteEntity command
 	// instead.

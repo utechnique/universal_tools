@@ -2,8 +2,11 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/ui/desktop/ve_entity_browser.h"
+#include "systems/ui/desktop/ve_choice_window.h"
+#include "systems/ui/desktop/ve_message_window.h"
 #include "commands/ve_cmd_update_component.h"
 #include "commands/ve_cmd_delete_entity.h"
+#include "commands/ve_cmd_add_component.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -160,8 +163,9 @@ void ComponentView::CreateCaption(const Theme& theme,
 	caption = ut::MakeUnique<Fl_Group>(x, y,
 	                                   width - skHorizontalOffset,
 	                                   skCapHeight);
-	const ut::Color<3, ut::byte> cap_color = theme.tab_color.ElementWise() / 2 +
-	                                         theme.background_color.ElementWise() / 2;
+	const ut::Color<3, ut::byte> cap_color = theme.secondary_tab_color;
+	const ut::Color<3, ut::byte> hover_color = cap_color.ElementWise() / 2 +
+	                                           theme.background_color.ElementWise() / 2;
 
 	// create expand button
 	const ut::Color<4, ut::byte> icon_color(theme.foreground_color.R(),
@@ -175,9 +179,9 @@ void ComponentView::CreateCaption(const Theme& theme,
 	expand_button->SetBackgroundColor(Button::state_release,
 	                                  ConvertToFlColor(cap_color));
 	expand_button->SetBackgroundColor(Button::state_hover,
-	                                  ConvertToFlColor(theme.tab_color));
+	                                  ConvertToFlColor(hover_color));
 	expand_button->SetBackgroundColor(Button::state_push,
-	                                  ConvertToFlColor(theme.tab_color));
+	                                  ConvertToFlColor(hover_color));
 	expand_button->SetOnCallback([&] { callbacks.on_update(); });
 	expand_button->SetOffCallback([&] { callbacks.on_update(); });
 	expand_button->SetOnIcon(ut::MakeShared<Icon>(Icon::CreateCollapse(expand_button->w(),
@@ -331,7 +335,7 @@ void EntityView::Update(EntityView::Proxy& proxy)
 	InvalidateComponents();
 
 	// update existing components or add new ones
-	const size_t component_count = components.GetNum();
+	const size_t component_count = proxy.components.GetNum();
 	for (ut::uint32 i = 0; i < component_count; i++)
 	{
 		ComponentView::Proxy& component_proxy = proxy.components[i];
@@ -457,6 +461,18 @@ void EntityView::InitializeControls(const Theme& theme)
 	                                          skCapHeight * 2,
 	                                          skCapHeight);
 
+	InitializeButtonControls();
+	
+	controls.group->resizable(nullptr);
+	controls.group->end();
+}
+
+// Initializes "add component" and "delete entity" buttons in the caption controls group.
+void EntityView::InitializeButtonControls()
+{
+	const ut::Color<3, ut::byte> cap_color = GetCaptionColor(theme);
+	const ut::Color<3, ut::byte> hover_color = GetHoverColor(theme);
+
 	// 'add component' button
 	controls.add_component_button = ut::MakeUnique<Button>(controls.group->x(),
 	                                                       controls.group->y(),
@@ -472,7 +488,7 @@ void EntityView::InitializeControls(const Theme& theme)
 	                                                  ConvertToFlColor(hover_color));
 	controls.add_component_button->SetBackgroundColor(Button::state_push,
 	                                                  ConvertToFlColor(hover_color));
-	controls.add_component_button->SetCallback([&] {});
+	controls.add_component_button->SetCallback(ut::MemberFunction<EntityView, void()>(this, &EntityView::CreateNewComponent));
 
 	// 'delete entity' button
 	controls.delete_entity_button = ut::MakeUnique<Button>(controls.group->x() + skCapHeight,
@@ -490,9 +506,6 @@ void EntityView::InitializeControls(const Theme& theme)
 	controls.delete_entity_button->SetBackgroundColor(Button::state_push,
 	                                                  ConvertToFlColor(hover_color));
 	controls.delete_entity_button->SetCallback([&] { DeleteThisEntity(); });
-	
-	controls.group->resizable(nullptr);
-	controls.group->end();
 }
 
 // Marks all component widgets as 'invalid'
@@ -603,7 +616,7 @@ void EntityView::AttachChildWidgets()
 		add(components[i].GetRef());
 	}
 
-	// expand button loses focus after detachment from the parent and receives FL_LEAVE 
+	// buttons loses focus after detachment from the parent and receives FL_LEAVE 
 	// event that forces the button to the 'release' state, below you can see a dirty
 	// hack to return the button back to the 'hover' state
 	if (expand_button->visible())
@@ -636,6 +649,94 @@ void EntityView::DeleteThisEntity()
 	component_callbacks.on_update();
 }
 
+// Shows a dialog box to select a component type, then generates a command
+// to add a new component to the managed entity.
+void EntityView::CreateNewComponent()
+{
+	const ut::uint32 dialog_width = 320;
+	const ut::uint32 dialog_height = 480;
+
+	ut::Vector<2, int> caption_position = GetFlAbsPosition(caption.Get());
+	caption_position.X() += caption->w() / 2;
+
+	// Create and show the dialog window.
+	ut::Optional<const ut::DynamicType&> component_type = SelectDerivedTypeInDialogWindow<Component>(caption_position.X() - dialog_width / 2,
+	                                                                                                 caption_position.Y(),
+	                                                                                                 dialog_width,
+	                                                                                                 dialog_height,
+	                                                                                                 "Select Component Type",
+	                                                                                                 theme);
+	if (component_type)
+	{
+		if (FindComponent(component_type->GetHandle()))
+		{
+			const ut::uint32 msg_box_width = 280;
+			const ut::String message = ut::String("Component \"") + component_type->GetName() + "\" already exists!";
+			ShowMessageWindow(caption_position.X() - msg_box_width / 2,
+			                  caption_position.Y(),
+			                  msg_box_width,
+			                  140,
+			                  message,
+			                  "Error!",
+			                  theme);
+		}
+		else
+		{
+			ut::UniquePtr<Component> component(static_cast<Component*>(component_type->CreateInstance()));
+			ut::UniquePtr<CmdAddComponent> cmd = ut::MakeUnique<CmdAddComponent>(id, ut::Move(component));
+			cmd->Connect(ut::MemberFunction<EntityView, void(const ut::Optional<ut::Error>& error)>(this, &EntityView::CreateNewComponentCallback));
+
+			ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
+			locked_commands.Get().Add(ut::Move(cmd));
+			component_callbacks.on_update();
+		}
+	}
+
+	// There is a bug - fltk sends invalid FL_MOVE event to buttons (causing hover effect) 
+	// after the dialog box is closed. Below is the dirty hack to bypass this unwanted behaviour.
+	controls.group->remove(controls.add_component_button.Get());
+	controls.group->remove(controls.delete_entity_button.Get());
+	InitializeButtonControls();
+	controls.group->add(controls.add_component_button.Get());
+	controls.group->add(controls.delete_entity_button.Get());
+}
+
+// Callback triggered when the component is added to the entity.
+void EntityView::CreateNewComponentCallback(const ut::Optional<ut::Error>& error)
+{
+	component_callbacks.on_update();
+	expand_button->Set(true);
+
+	if (!error)
+	{
+		return;
+	}
+
+	const ut::uint32 msg_box_width = 280;
+	ut::Vector<2, int> pos = GetFlAbsPosition(caption.Get());
+	pos.X() += caption->w() / 2 - msg_box_width / 2;
+
+	struct MsgBoxData
+	{
+		ut::Rect<int> rect;
+		const ut::Error& error;
+		Theme& theme;
+	};
+
+	MsgBoxData msg_data = { ut::Rect<int>(pos.X(), pos.Y(), msg_box_width, 140), error.Get(), theme };
+	Fl::awake([](void* ptr)
+	{
+		MsgBoxData* data = static_cast<MsgBoxData*>(ptr);
+		ShowMessageWindow(data->rect.offset.X(),
+		                  data->rect.offset.Y(),
+		                  data->rect.extent.X(),
+		                  data->rect.extent.Y(),
+		                  data->error.GetDesc(),
+		                  "Error!",
+		                  data->theme);
+	 }, &msg_data);
+}
+
 // Calculates the width of the component view in pixels.
 ut::uint32 EntityView::CalculateComponentViewWidth() const
 {
@@ -645,7 +746,7 @@ ut::uint32 EntityView::CalculateComponentViewWidth() const
 // Returns the color of the caption box.
 ut::Color<3, ut::byte> EntityView::GetCaptionColor(const Theme& theme)
 {
-	return theme.tab_color;
+	return theme.primary_tab_color;
 }
 
 // Returns the color of the interactive elements while hover.
@@ -688,6 +789,7 @@ EntityBrowser::EntityBrowser(int x,
 	view_area->type(Fl_Scroll::VERTICAL);
 	view_area->scrollbar_size(Fl::scrollbar_size());
 	view_area->resizable(view_area.Get());
+	view_area->end();
 
 	client_area.resizable(view_area.Get());
 	client_area.end();
@@ -777,9 +879,9 @@ void EntityBrowser::InitializeControls(const Theme& theme)
 	controls.add_entity_button->SetBackgroundColor(Button::state_release,
 	                                               ConvertToFlColor(theme.background_color));
 	controls.add_entity_button->SetBackgroundColor(Button::state_hover,
-	                                               ConvertToFlColor(theme.tab_color));
+	                                               ConvertToFlColor(theme.button_hover_color));
 	controls.add_entity_button->SetBackgroundColor(Button::state_push,
-	                                               ConvertToFlColor(theme.background_color));
+	                                               ConvertToFlColor(theme.button_push_color));
 
 	controls.add_entity_button->SetCallback([&] { AddEntity(); });
 	

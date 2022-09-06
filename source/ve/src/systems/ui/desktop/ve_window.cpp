@@ -14,7 +14,8 @@ START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
 const Window::StyleFlags Window::default_flags = Window::has_minimize_button |
                                                  Window::has_maximize_button |
-                                                 Window::has_close_button;
+                                                 Window::has_close_button | 
+                                                 Window::visible_in_taskbar;
 
 //----------------------------------------------------------------------------//
 // This function fixes unwanted behaviour of the Fl_Window after calling
@@ -71,18 +72,20 @@ Window::Window(ut::uint32 position_x,
                ut::uint32 position_y,
                ut::uint32 width,
                ut::uint32 height,
-               const char* title,
+               ut::String title,
                ut::uint32 border_size,
                ut::uint32 caption_height,
                const Theme& in_theme,
                StyleFlags style_flags) : Fl_Window(position_x,
                                                    position_y,
                                                    width,
-                                                   height,
-                                                   title)
+                                                   height)
                                        , flags(style_flags)
+                                       , title_text(ut::MakeUnique<ut::String>(ut::Move(title)))
                                        , border_width(static_cast<int>(border_size))
                                        , theme(in_theme)
+                                       , horizontal_resize_enabled(true)
+                                       , vertical_resize_enabled(true)
 {
 	// create border
 	if (border_width > 0)
@@ -148,10 +151,10 @@ Window::Window(ut::uint32 position_x,
 	}
 
 	// caption title
-	caption_text = ut::MakeUnique<Fl_Box>(0, 0, button_group->x(), caption_height, title);
+	caption_text = ut::MakeUnique<Fl_Box>(0, 0, button_group->x(), caption_height, title_text->ToCStr());
 	caption_text->box(FL_NO_BOX);
 	caption_text->color(ConvertToFlColor(theme.window_caption_color));
-	caption_text->label(title);
+	caption_text->label(title_text->ToCStr());
 	caption_text->labelsize(caption_height / 3 * 2);
 	caption_text->labelcolor(ConvertToFlColor(theme.caption_text_color));
 	caption_text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
@@ -188,7 +191,7 @@ Window::Window(ut::uint32 position_x,
 	}
 
 	// show this window in the OS taskbar
-	if (parent() == nullptr)
+	if (flags & visible_in_taskbar)
 	{
 		ShowInTaskbar(this);
 	}
@@ -371,6 +374,18 @@ void Window::Minimize()
 #endif
 }
 
+// Enables/disables horiszontal resize.
+void Window::EnableHorizontalResize(bool status)
+{
+	horizontal_resize_enabled = status;
+}
+
+// Enables/disables vertical resize.
+void Window::EnableVerticalResize(bool status)
+{
+	vertical_resize_enabled = status;
+}
+
 // Returns a reference to the client area widget.
 Fl_Double_Window& Window::GetClientWindow()
 {
@@ -472,42 +487,44 @@ void Window::DetectResizeArea()
 	const int asw = ut::Abs(w() - Fl::event_x() - 1);
 	const int ash = ut::Abs(h() - Fl::event_y() - 1);
 
-	if (ax < border_width && ay < border_width)
+	const bool both_directions_enabled = horizontal_resize_enabled && vertical_resize_enabled;
+
+	if (both_directions_enabled && ax < border_width && ay < border_width)
 	{
 		resize_direction = resize_left_up;
 		cursor(FL_CURSOR_NW);
 	}
-	else if (asw < border_width && ash < border_width)
+	else if (both_directions_enabled && asw < border_width && ash < border_width)
 	{
 		resize_direction = resize_right_bottom;
 		cursor(FL_CURSOR_SE);
 	}
-	else if (ax < border_width && ash < border_width)
+	else if (both_directions_enabled && ax < border_width && ash < border_width)
 	{
 		resize_direction = resize_left_bottom;
 		cursor(FL_CURSOR_SW);
 	}
-	else if (asw < border_width && ay < border_width)
+	else if (both_directions_enabled && asw < border_width && ay < border_width)
 	{
 		resize_direction = resize_right_up;
 		cursor(FL_CURSOR_NE);
 	}
-	else if (ax < border_width)
+	else if (horizontal_resize_enabled && ax < border_width)
 	{
 		resize_direction = resize_left;
 		cursor(FL_CURSOR_W);
 	}
-	else if (asw < border_width)
+	else if (horizontal_resize_enabled && asw < border_width)
 	{
 		resize_direction = resize_right;
 		cursor(FL_CURSOR_E);
 	}
-	else if (ay < border_width)
+	else if (vertical_resize_enabled && ay < border_width)
 	{
 		resize_direction = resize_up;
 		cursor(FL_CURSOR_N);
 	}
-	else if (ash < border_width)
+	else if (vertical_resize_enabled && ash < border_width)
 	{
 		resize_direction = resize_bottom;
 		cursor(FL_CURSOR_S);
@@ -531,14 +548,14 @@ ut::UniquePtr<Button> Window::CreateButton(ut::uint32 x,
 	out->SetCallback(ut::Move(callback));
 
 	out->SetBackgroundColor(Button::state_release, ConvertToFlColor(theme.window_caption_color));
-	out->SetBackgroundColor(Button::state_push, ConvertToFlColor(theme.focus_border_color));
-	out->SetBackgroundColor(Button::state_hover, ConvertToFlColor(theme.unfocus_border_color));
+	out->SetBackgroundColor(Button::state_push, ConvertToFlColor(theme.button_push_color));
+	out->SetBackgroundColor(Button::state_hover, ConvertToFlColor(theme.button_hover_color));
 
 	ut::Array< ut::Color<4, ut::byte> > icon_data(icon_size * icon_size);
 
-	const ut::Color<4, ut::byte> color(theme.caption_button_color.R(),
-	                                   theme.caption_button_color.G(),
-	                                   theme.caption_button_color.B(),
+	const ut::Color<4, ut::byte> color(theme.caption_icon_color.R(),
+	                                   theme.caption_icon_color.G(),
+	                                   theme.caption_icon_color.B(),
 	                                   255);
 	const int size = static_cast<int>(icon_size);
 	const int margin = size / 3;

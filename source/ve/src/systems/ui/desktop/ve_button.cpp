@@ -12,13 +12,19 @@ START_NAMESPACE(ui)
 Button::Button(ut::uint32 x,
                ut::uint32 y,
                ut::uint32 w,
-               ut::uint32 h) : Fl_Box(x, y, w, h)
-                             , bkg_color{ FL_BACKGROUND_COLOR,
-                                          FL_BACKGROUND_COLOR,
-                                          FL_BACKGROUND_COLOR }
+               ut::uint32 h,
+               ut::String button_text) : Fl_Box(x, y, w, h)
+                                       , text(ut::MakeUnique<ut::String>(ut::Move(button_text)))
+                                       , bkg_color{ FL_BACKGROUND_COLOR,
+                                                    FL_BACKGROUND_COLOR,
+                                                    FL_BACKGROUND_COLOR }
 {
 	box(FL_FLAT_BOX);
 	SetState(state_release);
+	if (text->Length() != 0)
+	{
+		label(text->ToCStr());
+	}
 }
 
 // Assigns background color for the provided state.

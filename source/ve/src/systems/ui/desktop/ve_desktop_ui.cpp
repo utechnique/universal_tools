@@ -116,7 +116,7 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	              static_cast<ut::byte>(theme.foreground_color.B() * 0.7f));
 
 	// tab
-	Fl::set_color(55, theme.tab_color.R(), theme.tab_color.G(), theme.tab_color.B());
+	Fl::set_color(55, theme.primary_tab_color.R(), theme.primary_tab_color.G(), theme.primary_tab_color.B());
 
 	// frame
 	Fl::set_color(32, theme.background_color.R(), theme.background_color.G(), theme.background_color.B());
@@ -143,6 +143,7 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	                                               EntityBrowser::skDefaultHeight,
 	                                               theme);
 	entity_browser->hide();
+	entity_browser->set_non_modal();
 
 	// start main window
 	Fl_Double_Window& client_area = window->GetClientWindow();

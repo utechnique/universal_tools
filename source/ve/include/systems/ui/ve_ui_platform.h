@@ -7,7 +7,7 @@
 //----------------------------------------------------------------------------//
 #define VE_DESKTOP UT_TRUE
 
-// fltk is the only ui framework supported (for now) for desktops
+// FLTK is the only ui framework supported (for now) for the desktop platform.
 #define VE_FLTK VE_DESKTOP
 #if VE_FLTK
 #include <FL/Fl.H>
@@ -20,6 +20,17 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
+//----------------------------------------------------------------------------//
+#if VE_FLTK
+#include <FL/Fl.H>
+#include <FL/x.H>
+
+// Converts provided color to the FLTK rgb color.
+Fl_Color ConvertToFlColor(const ut::Color<3, ut::byte>& color);
+
+// Returns the absolute (screen) postition of the provided widget.
+ut::Vector<2, int> GetFlAbsPosition(Fl_Widget* widget);
+#endif
 //----------------------------------------------------------------------------//
 // Some platforms may require UI thread to stop, so that another system
 // (like rendering) could draw into the desired widget.

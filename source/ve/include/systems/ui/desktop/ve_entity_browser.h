@@ -210,6 +210,9 @@ private:
 	// Creates UI widgets for entity controls (like add component< delete the entity, etc.).
 	void InitializeControls(const Theme& theme);
 
+	// Initializes "add component" and "delete entity" buttons in the caption controls group.
+	void InitializeButtonControls();
+
 	// Marks all component widgets as 'invalid'
 	// ('invalid' means 'not matching any real component in the managed entity').
 	void InvalidateComponents();
@@ -239,6 +242,13 @@ private:
 
 	// Generates a command to delete this entity.
 	void DeleteThisEntity();
+
+	// Shows a dialog box to select a component type, then generates a command
+	// to add a new component to the managed entity.
+	void CreateNewComponent();
+
+	// Callback triggered when the component is added to the entity.
+	void CreateNewComponentCallback(const ut::Optional<ut::Error>& error);
 
 	// Calculates the width of the component view in pixels.
 	ut::uint32 CalculateComponentViewWidth() const;

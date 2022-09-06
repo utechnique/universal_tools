@@ -36,6 +36,8 @@ public:
 		has_close_button = 0x1,
 		has_minimize_button = 0x2,
 		has_maximize_button = 0x4,
+		visible_in_taskbar = 0x8, // Note that the window with this flag must be created
+		                          // before the Fl::run() call.
 	} StyleFlagBits;
 	typedef StyleFlagsType StyleFlags;
 
@@ -56,7 +58,7 @@ public:
 	       ut::uint32 position_y,
 	       ut::uint32 width,
 	       ut::uint32 height,
-	       const char* title = "",
+	       ut::String title = ut::String(),
 	       ut::uint32 border_size = 1,
 	       ut::uint32 caption_height = 24,
 	       const Theme& theme = Theme(),
@@ -91,6 +93,12 @@ public:
 
 	// Minimizes this window.
 	void Minimize();
+
+	// Enables/disables horiszontal resize.
+	void EnableHorizontalResize(bool status);
+
+	// Enables/disables vertical resize.
+	void EnableVerticalResize(bool status);
 
 	// Returns a reference to the client area widget.
 	Fl_Double_Window& GetClientWindow();
@@ -143,6 +151,9 @@ private:
 	// Current editing mode.
 	Mode mode = mode_none;
 
+	// Text of the title.
+	ut::UniquePtr<ut::String> title_text;
+
 	// Contains everything except the border.
 	ut::UniquePtr<Fl_Group> container;
 
@@ -189,6 +200,12 @@ private:
 
 	// This variable is trick to make the resizing experience more smooth.
 	bool resize_interruptor;
+
+	// This variable indicates if vertical resize is allowed.
+	bool horizontal_resize_enabled;
+
+	// This variable indicates if horizontal resize is allowed.
+	bool vertical_resize_enabled;
 };
 
 //----------------------------------------------------------------------------//

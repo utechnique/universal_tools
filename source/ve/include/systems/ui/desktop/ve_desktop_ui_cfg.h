@@ -11,16 +11,17 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
-// Converts provided color to the FLTK rgb color.
-Fl_Color ConvertToFlColor(const ut::Color<3, ut::byte>& color);
-
-//----------------------------------------------------------------------------//
 // Color scheme.
 class Theme : public ut::meta::Reflective
 {
 public:
-	// Constructor, default values are set here.
-	Theme();
+	enum ColorScheme
+	{
+		scheme_dark
+	};
+
+	// Constructor, creates a theme with the provided color scheme.
+	Theme(ColorScheme scheme = scheme_dark);
 
 	// Registers data into reflection tree.
 	//    @param snapshot - reference to the reflection tree
@@ -29,13 +30,16 @@ public:
 	// colors
 	ut::Color<3, ut::byte> background_color;
 	ut::Color<3, ut::byte> foreground_color;
-	ut::Color<3, ut::byte> tab_color;
+	ut::Color<3, ut::byte> primary_tab_color;
+	ut::Color<3, ut::byte> secondary_tab_color;
+	ut::Color<3, ut::byte> button_hover_color;
+	ut::Color<3, ut::byte> button_push_color;
 	ut::Color<3, ut::byte> frame_color;
 	ut::Color<3, ut::byte> viewport_hover_color;
 	ut::Color<3, ut::byte> viewport_focus_color;
 	ut::Color<3, ut::byte> window_caption_color;
 	ut::Color<3, ut::byte> caption_text_color;
-	ut::Color<3, ut::byte> caption_button_color;
+	ut::Color<3, ut::byte> caption_icon_color;
 	ut::Color<3, ut::byte> focus_border_color;
 	ut::Color<3, ut::byte> unfocus_border_color;
 };
