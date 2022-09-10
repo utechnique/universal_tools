@@ -48,6 +48,20 @@ void Button::SetIcon(ut::SharedPtr<Icon> icon_ptr)
 	Fl_Box::image(icon->GetImage());
 }
 
+// Assigns a new state for the button.
+Button::State Button::GetState() const
+{
+	return current_state;
+}
+
+// Assigns a new state for the button.
+void Button::SetState(State new_state)
+{
+	current_state = new_state;
+	color(bkg_color[new_state]);
+	redraw();
+}
+
 // Overrides fltk box behaviour.
 int Button::handle(int e)
 {
@@ -89,14 +103,6 @@ int Button::handle(int e)
 	}
 
 	return ret;
-}
-
-// Assigns a new state for the button.
-void Button::SetState(State new_state)
-{
-	current_state = new_state;
-	color(bkg_color[new_state]);
-	redraw();
 }
 
 //----------------------------------------------------------------------------//
@@ -158,17 +164,21 @@ bool BinaryButton::IsOn() const
 }
 
 // Switches from expanded to collapsed state and vice versa.
-void BinaryButton::Set(bool new_status)
+void BinaryButton::Set(bool new_status, bool callback_trigger)
 {
 	Fl_RGB_Image* const off_img = off_icon.Get() ? off_icon->GetImage() : nullptr;
 	Fl_RGB_Image* const on_img = Button::icon.Get() ? Button::icon->GetImage() : nullptr;
 	Fl_RGB_Image* const img = new_status ? on_img : off_img;
-	ut::Function<void()>& callback = new_status ? on_callback : off_callback;
 
 	status = new_status;
 	Fl_Box::image(img);
 	redraw();
-	callback();
+
+	if (callback_trigger)
+	{
+		ut::Function<void()>& callback = new_status ? on_callback : off_callback;
+		callback();
+	}
 }
 
 //----------------------------------------------------------------------------//

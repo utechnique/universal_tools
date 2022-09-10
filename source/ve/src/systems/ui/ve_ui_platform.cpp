@@ -14,7 +14,8 @@ Fl_Color ConvertToFlColor(const ut::Color<3, ut::byte>& color)
 }
 
 // Helper function to find absolute position of the widget.
-ut::Vector<2, int> AccumulateFlAbsOffset(Fl_Widget* widget)
+ut::Vector<2, int> AccumulateFlAbsOffset(Fl_Widget* widget,
+                                         Fl_Widget* final_parent)
 {
 	if (widget == nullptr)
 	{
@@ -22,9 +23,10 @@ ut::Vector<2, int> AccumulateFlAbsOffset(Fl_Widget* widget)
 	}
 
 	Fl_Group* parent = widget->parent();
-	if (parent == nullptr)
+	if (parent == nullptr || parent == final_parent)
 	{
-		return ut::Vector<2, int>(widget->x(), widget->y());
+		return final_parent == nullptr ? ut::Vector<2, int>(widget->x(), widget->y()) :
+		                                 ut::Vector<2, int>(0, 0);
 	}
 
 	const bool is_a_window = widget->as_window() != nullptr;
@@ -32,13 +34,15 @@ ut::Vector<2, int> AccumulateFlAbsOffset(Fl_Widget* widget)
 	                                  ut::Vector<2, int>(widget->x(), widget->y()) :
 	                                  ut::Vector<2, int>(0, 0);
 
-	return offset + AccumulateFlAbsOffset(parent);
+	return offset + AccumulateFlAbsOffset(parent, final_parent);
 }
 
 // Returns the absolute (screen) postition of the provided widget.
-ut::Vector<2, int> GetFlAbsPosition(Fl_Widget* widget)
+ut::Vector<2, int> GetFlAbsPosition(Fl_Widget* widget,
+                                    Fl_Widget* final_parent)
 {
-	return ut::Vector<2, int>(widget->x(), widget->y()) + AccumulateFlAbsOffset(widget->parent());
+	return ut::Vector<2, int>(widget->x(), widget->y()) +
+	                          AccumulateFlAbsOffset(widget->parent(), final_parent);
 }
 #endif // VE_FLTK
 //----------------------------------------------------------------------------//

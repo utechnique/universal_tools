@@ -41,12 +41,15 @@ public:
 	// Assigns a new icon for the button.
 	void SetIcon(ut::SharedPtr<Icon> icon_ptr);
 
-protected:
-	// Overrides fltk box behaviour.
-	virtual int handle(int e) override;
+	// Returns the current state of the button.
+	State GetState() const;
 
 	// Assigns a new state for the button.
 	void SetState(State new_state);
+
+protected:
+	// Overrides fltk box behaviour.
+	virtual int handle(int e) override;
 
 	// Current button state.
 	State current_state;
@@ -96,7 +99,7 @@ public:
 	bool IsOn() const;
 
 	// Switches button state.
-	void Set(bool new_status);
+	void Set(bool new_status, bool callback_trigger = true);
 
 private:
 	// "Off" icon data.

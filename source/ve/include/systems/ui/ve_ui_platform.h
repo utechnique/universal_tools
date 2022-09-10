@@ -29,7 +29,8 @@ START_NAMESPACE(ui)
 Fl_Color ConvertToFlColor(const ut::Color<3, ut::byte>& color);
 
 // Returns the absolute (screen) postition of the provided widget.
-ut::Vector<2, int> GetFlAbsPosition(Fl_Widget* widget);
+ut::Vector<2, int> GetFlAbsPosition(Fl_Widget* widget,
+                                    Fl_Widget* final_parent = nullptr);
 #endif
 //----------------------------------------------------------------------------//
 // Some platforms may require UI thread to stop, so that another system

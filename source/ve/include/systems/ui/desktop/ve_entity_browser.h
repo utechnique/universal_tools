@@ -185,6 +185,10 @@ public:
 	// Returns an array of accumulated commands pending to be processed.
 	CmdArray FlushCommands();
 
+	// Applies special effects to this entity indicating that it was newly created.
+	//    @param status - applies effects if 'true' and disables effects otherwise.
+	void MarkNew(bool status);
+
 	// Boolean variable to externally control the relevance of the widget.
 	bool is_valid;
 
@@ -209,9 +213,6 @@ private:
 
 	// Creates UI widgets for entity controls (like add component< delete the entity, etc.).
 	void InitializeControls(const Theme& theme);
-
-	// Initializes "add component" and "delete entity" buttons in the caption controls group.
-	void InitializeButtonControls();
 
 	// Marks all component widgets as 'invalid'
 	// ('invalid' means 'not matching any real component in the managed entity').
@@ -254,10 +255,10 @@ private:
 	ut::uint32 CalculateComponentViewWidth() const;
 
 	// Returns the color of the caption box.
-	static ut::Color<3, ut::byte> GetCaptionColor(const Theme& theme);
+	ut::Color<3, ut::byte> GetCaptionColor() const;
 
 	// Returns the color of the interactive elements while hover.
-	static ut::Color<3, ut::byte> GetHoverColor(const Theme& theme);
+	ut::Color<3, ut::byte> GetHoverColor() const;
 
 	// Id of the managed entity.
 	Entity::Id id;
@@ -290,6 +291,12 @@ private:
 	// Commands waiting to be processed. One can take ownership
 	// by calling FlushCommands() function.
 	ut::Synchronized<CmdArray> pending_commands;
+
+	// Indicates if this entity was just created by user.
+	bool is_new;
+
+	// State of the expand button.
+	Button::State expand_state;
 };
 
 //----------------------------------------------------------------------------//
@@ -400,8 +407,12 @@ private:
 	// Returns 'true' if the provided entity passes the filter.
 	bool FilterEntity(EntityView::Proxy& entity_proxy);
 
-	// Scrolls view area right to the provided entity view.
-	void ScrollToEntity(const EntityView& entity_view, int y_position);
+	// Scrolls view area right to the provided widget.
+	void ScrollToWidget(Fl_Widget& widget);
+
+	// Scrolls to the entity view and applies special effects if the
+	// user added a new entity.
+	void ProcessNewEntity(EntityView& entity_view);
 
 	// Contains all entity views located vertically.
 	ut::UniquePtr<Scroll> view_area;

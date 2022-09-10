@@ -296,6 +296,8 @@ EntityView::EntityView(EntityView::Proxy& proxy,
                                                               , id(proxy.id)
                                                               , theme(ui_theme)
                                                               , component_callbacks(ut::Move(component_cb))
+                                                              , is_new(false)
+                                                              , expand_state(Button::state_release)
 {
 	// stop initializing Fl_Group elements
 	end();
@@ -390,6 +392,37 @@ CmdArray EntityView::FlushCommands()
 	return cmd;
 }
 
+// Applies special effects to this entity indicating that it was newly created.
+//    @param status - applies effects if 'true' and disables effects otherwise.
+void EntityView::MarkNew(bool status)
+{
+	if (is_new == status)
+	{
+		return;
+	}
+
+	is_new = status;
+
+	const Fl_Color bkg_color = ConvertToFlColor(GetCaptionColor());
+	const Fl_Color hover_color = ConvertToFlColor(GetHoverColor());
+
+	caption_box->color(bkg_color);
+
+	expand_button->SetBackgroundColor(Button::state_release, bkg_color);
+	expand_button->SetBackgroundColor(Button::state_hover, hover_color);
+	expand_button->SetBackgroundColor(Button::state_push, hover_color);
+
+	controls.add_component_button->SetBackgroundColor(Button::state_release, bkg_color);
+	controls.add_component_button->SetBackgroundColor(Button::state_hover, hover_color);
+	controls.add_component_button->SetBackgroundColor(Button::state_push, hover_color);
+
+	controls.delete_entity_button->SetBackgroundColor(Button::state_release, bkg_color);
+	controls.delete_entity_button->SetBackgroundColor(Button::state_hover, hover_color);
+	controls.delete_entity_button->SetBackgroundColor(Button::state_push, hover_color);
+
+	redraw();
+}
+
 // Creates internal child fltk widget for the caption.
 void EntityView::CreateCaption(const Theme& theme,
                                const ut::String& name,
@@ -402,10 +435,10 @@ void EntityView::CreateCaption(const Theme& theme,
 	                                   EntityBrowser::skOffset,
 	                                   width - EntityBrowser::skOffset * 2,
 	                                   skCapHeight);
-	const ut::Color<3, ut::byte> cap_color = GetCaptionColor(theme);
-	const ut::Color<3, ut::byte> hover_color = GetHoverColor(theme);
 
 	// create expand button
+	const ut::Color<3, ut::byte> cap_color = GetCaptionColor();
+	const ut::Color<3, ut::byte> hover_color = GetHoverColor();
 	const ut::Color<4, ut::byte> exp_icon_color(theme.foreground_color.R(),
 	                                            theme.foreground_color.G(),
 	                                            theme.foreground_color.B(),
@@ -433,12 +466,12 @@ void EntityView::CreateCaption(const Theme& theme,
 
 	// create the background with the text
 	cap_text = ut::MakeUnique<ut::String>(ut::Print(id));
-	caption_box = ut::MakeUnique<Fl_Box>(expand_button->x() + expand_button->w(),
+	caption_box = ut::MakeUnique<Fl_Box>(caption->x() + caption->h(),
 	                                     EntityBrowser::skOffset,
-	                                     caption->w() - expand_button->w() - skCapHeight * 2,
+	                                     caption->w() - caption->h() - skCapHeight * 2,
 	                                     skCapHeight);
 	caption_box->box(FL_FLAT_BOX);
-	caption_box->color(ConvertToFlColor(cap_color));
+	caption_box->color(ConvertToFlColor(GetCaptionColor()));
 	caption_box->label(cap_text->ToCStr());
 	caption_box->show();
 
@@ -453,25 +486,13 @@ void EntityView::CreateCaption(const Theme& theme,
 // Creates UI widgets for entity controls (like add component< delete the entity, etc.).
 void EntityView::InitializeControls(const Theme& theme)
 {
-	const ut::Color<3, ut::byte> cap_color = GetCaptionColor(theme);
-	const ut::Color<3, ut::byte> hover_color = GetHoverColor(theme);
-
+	// create controls group
 	controls.group = ut::MakeUnique<Fl_Group>(caption->x() + caption->w() - skCapHeight * 2,
 	                                          caption->y(),
 	                                          skCapHeight * 2,
 	                                          skCapHeight);
-
-	InitializeButtonControls();
-	
-	controls.group->resizable(nullptr);
-	controls.group->end();
-}
-
-// Initializes "add component" and "delete entity" buttons in the caption controls group.
-void EntityView::InitializeButtonControls()
-{
-	const ut::Color<3, ut::byte> cap_color = GetCaptionColor(theme);
-	const ut::Color<3, ut::byte> hover_color = GetHoverColor(theme);
+	const ut::Color<3, ut::byte> cap_color = GetCaptionColor();
+	const ut::Color<3, ut::byte> hover_color = GetHoverColor();
 
 	// 'add component' button
 	controls.add_component_button = ut::MakeUnique<Button>(controls.group->x(),
@@ -506,6 +527,10 @@ void EntityView::InitializeButtonControls()
 	controls.delete_entity_button->SetBackgroundColor(Button::state_push,
 	                                                  ConvertToFlColor(hover_color));
 	controls.delete_entity_button->SetCallback([&] { DeleteThisEntity(); });
+
+	// finish controls group
+	controls.group->resizable(nullptr);
+	controls.group->end();
 }
 
 // Marks all component widgets as 'invalid'
@@ -616,14 +641,10 @@ void EntityView::AttachChildWidgets()
 		add(components[i].GetRef());
 	}
 
-	// buttons loses focus after detachment from the parent and receives FL_LEAVE 
+	// buttons lose focus after detachment from the parent and receives FL_LEAVE 
 	// event that forces the button to the 'release' state, below you can see a dirty
 	// hack to return the button back to the 'hover' state
-	if (expand_button->visible())
-	{
-		expand_button->hide();
-		expand_button->show();
-	}
+	expand_button->SetState(expand_state);
 }
 
 // Adds all child widgets to the group.
@@ -636,6 +657,8 @@ void EntityView::DetachChildWidgets()
 	{
 		remove(components[i].GetRef());
 	}
+
+	expand_state = expand_button->GetState();
 }
 
 // Generates a command to delete this entity.
@@ -691,21 +714,17 @@ void EntityView::CreateNewComponent()
 			component_callbacks.on_update();
 		}
 	}
-
-	// There is a bug - fltk sends invalid FL_MOVE event to buttons (causing hover effect) 
-	// after the dialog box is closed. Below is the dirty hack to bypass this unwanted behaviour.
-	controls.group->remove(controls.add_component_button.Get());
-	controls.group->remove(controls.delete_entity_button.Get());
-	InitializeButtonControls();
-	controls.group->add(controls.add_component_button.Get());
-	controls.group->add(controls.delete_entity_button.Get());
 }
 
 // Callback triggered when the component is added to the entity.
 void EntityView::CreateNewComponentCallback(const ut::Optional<ut::Error>& error)
 {
 	component_callbacks.on_update();
-	expand_button->Set(true);
+
+	Fl::awake([](void* ptr) { static_cast<BinaryButton*>(ptr)->Set(true); },
+	          expand_button.Get());
+	Fl::awake([](void* ptr) { static_cast<Button*>(ptr)->SetState(Button::state_release); },
+	          controls.add_component_button.Get());
 
 	if (!error)
 	{
@@ -716,17 +735,19 @@ void EntityView::CreateNewComponentCallback(const ut::Optional<ut::Error>& error
 	ut::Vector<2, int> pos = GetFlAbsPosition(caption.Get());
 	pos.X() += caption->w() / 2 - msg_box_width / 2;
 
-	struct MsgBoxData
+	struct FltkThreadData
 	{
 		ut::Rect<int> rect;
 		const ut::Error& error;
 		Theme& theme;
 	};
 
-	MsgBoxData msg_data = { ut::Rect<int>(pos.X(), pos.Y(), msg_box_width, 140), error.Get(), theme };
+	FltkThreadData ui_thread_data = { ut::Rect<int>(pos.X(), pos.Y(), msg_box_width, 140),
+	                                  error.Get(),
+	                                  theme };
 	Fl::awake([](void* ptr)
 	{
-		MsgBoxData* data = static_cast<MsgBoxData*>(ptr);
+		FltkThreadData* data = static_cast<FltkThreadData*>(ptr);
 		ShowMessageWindow(data->rect.offset.X(),
 		                  data->rect.offset.Y(),
 		                  data->rect.extent.X(),
@@ -734,7 +755,7 @@ void EntityView::CreateNewComponentCallback(const ut::Optional<ut::Error>& error
 		                  data->error.GetDesc(),
 		                  "Error!",
 		                  data->theme);
-	 }, &msg_data);
+	 }, &ui_thread_data);
 }
 
 // Calculates the width of the component view in pixels.
@@ -744,15 +765,19 @@ ut::uint32 EntityView::CalculateComponentViewWidth() const
 }
 
 // Returns the color of the caption box.
-ut::Color<3, ut::byte> EntityView::GetCaptionColor(const Theme& theme)
+ut::Color<3, ut::byte> EntityView::GetCaptionColor() const
 {
-	return theme.primary_tab_color;
+	const ut::Color<3, ut::byte> new_effect_color(160, 0, 160);
+	const ut::Color<3, ut::byte> normal_color = theme.primary_tab_color;
+	const ut::Color<3, ut::byte> new_color = normal_color.ElementWise() / 2 +
+	                                         new_effect_color.ElementWise() / 2;
+	return is_new ? new_color : normal_color;
 }
 
 // Returns the color of the interactive elements while hover.
-ut::Color<3, ut::byte> EntityView::GetHoverColor(const Theme& theme)
+ut::Color<3, ut::byte> EntityView::GetHoverColor() const
 {
-	return GetCaptionColor(theme).ElementWise() / 2 +
+	return GetCaptionColor().ElementWise() / 2 +
 	       theme.background_color.ElementWise() / 2;
 }
 
@@ -1077,7 +1102,7 @@ void EntityBrowser::RepositionViews()
 		// scroll to entity if it was just added via the browser
 		if (entity_to_scroll && entity_to_scroll.Get() == view.GetId())
 		{
-			ScrollToEntity(view, y_position);
+			ProcessNewEntity(view);
 		}
 
 		y_position += view.h();
@@ -1200,14 +1225,47 @@ bool EntityBrowser::FilterEntity(EntityView::Proxy& entity_proxy)
 	return false;
 }
 
-// Scrolls view area right to the provided entity view.
-void EntityBrowser::ScrollToEntity(const EntityView& entity_view, int y_position)
+// Scrolls view area right to the provided widget.
+void EntityBrowser::ScrollToWidget(Fl_Widget& widget)
 {
+	Fl_Double_Window& client_area = GetClientWindow();
+	const ut::Vector<2, int> widget_pos = GetFlAbsPosition(&widget, &client_area);
+	const int widget_start = widget_pos.Y();
+	const int widget_end = widget_start + widget.h();
+	const int cur_scroll = view_area->scrollbar.value();
+
+	// check if provided entity is already visible
+	if (cur_scroll < widget_start && (cur_scroll + view_area->h() > widget_end))
+	{
+		return;
+	}
+
 	// add exessive height to scroll, because scrolling is performed before the entity
 	// is actuallymapped to the UI
-	const int scroll_y = y_position + entity_view.h() - view_area->h();
+	const int scroll_y = ut::Max<int>(0, widget_end - view_area->h());
 	view_area->scroll_to(0, scroll_y);
 	view_area->scroll_position = ut::Vector<2, int>(0, scroll_y);
+}
+
+// Scrolls to the entity view and applies special effects if the
+// user added a new entity.
+void EntityBrowser::ProcessNewEntity(EntityView& entity_view)
+{
+	// all 'new' entities becomes 'old'
+	const size_t view_count = entity_views.GetNum();
+	for (size_t i = 0; i < view_count; i++)
+	{
+		EntityView& view = entity_views[i].GetRef();
+		if (&view == &entity_view)
+		{
+			continue;
+		}
+		view.MarkNew(false);
+	}
+
+	// apply color and perform scrolling
+	entity_view.MarkNew(true);
+	ScrollToWidget(entity_view);
 }
 
 //----------------------------------------------------------------------------//
