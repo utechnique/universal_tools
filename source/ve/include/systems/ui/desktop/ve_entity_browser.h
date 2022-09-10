@@ -135,6 +135,9 @@ private:
 	// Callbacks to be called when the component view is being modified.
 	Callbacks callbacks;
 
+	// State of the expand button.
+	Button::State expand_state;
+
 	// Height of the caption box in pixels.
 	static const int skCapHeight;
 

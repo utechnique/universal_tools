@@ -31,6 +31,27 @@ Fl_Color ConvertToFlColor(const ut::Color<3, ut::byte>& color);
 // Returns the absolute (screen) postition of the provided widget.
 ut::Vector<2, int> GetFlAbsPosition(Fl_Widget* widget,
                                     Fl_Widget* final_parent = nullptr);
+
+// Simple synchronization unit to synchronize fltk thread using Fl::awake() call.
+class FltkSync
+{
+public:
+	// Pass a callback to the constructor to execute it in the fltk thread
+	// and wait for completion.
+	FltkSync(ut::Function<void()> fltk_callback);
+
+private:
+	// Executes a callback in the fltk thread and signals avout completion.
+	void Finish();
+
+	// Waits for a callback to finish.
+	void Wait();
+
+	ut::ConditionVariable cvar;
+	ut::Mutex mutex;
+	bool flag;
+	ut::Function<void()> callback;
+};
 #endif
 //----------------------------------------------------------------------------//
 // Some platforms may require UI thread to stop, so that another system

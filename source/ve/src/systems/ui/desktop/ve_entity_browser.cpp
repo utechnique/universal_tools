@@ -59,6 +59,7 @@ ComponentView::ComponentView(ComponentView::Proxy& proxy,
                                            , entity_id(proxy.entity_id)
                                            , type(proxy.type)
                                            , callbacks(ut::Move(cb))
+                                           , expand_state(Button::state_release)
 {
 	// stop initializing Fl_Group elements
 	end();
@@ -225,11 +226,7 @@ void ComponentView::AttachChildWidgets()
 	// expand button loses focus after detachment from the parent and receives FL_LEAVE 
 	// event that forces the button to the 'release' state, below you can see a dirty
 	// hack to return the button back to the 'hover' state
-	if (expand_button->visible())
-	{
-		expand_button->hide();
-		expand_button->show();
-	}
+	expand_button->SetState(expand_state);
 }
 
 // Adds all child widgets to the group.
@@ -237,6 +234,7 @@ void ComponentView::DetachChildWidgets()
 {
 	remove(caption.GetRef());
 	remove(reflector.GetRef());
+	expand_state = expand_button->GetState();
 }
 
 // Callback to be called when a tree item is modified.
@@ -691,43 +689,29 @@ void EntityView::CreateNewComponent()
 	                                                                                                 theme);
 	if (component_type)
 	{
-		if (FindComponent(component_type->GetHandle()))
-		{
-			const ut::uint32 msg_box_width = 280;
-			const ut::String message = ut::String("Component \"") + component_type->GetName() + "\" already exists!";
-			ShowMessageWindow(caption_position.X() - msg_box_width / 2,
-			                  caption_position.Y(),
-			                  msg_box_width,
-			                  140,
-			                  message,
-			                  "Error!",
-			                  theme);
-		}
-		else
-		{
-			ut::UniquePtr<Component> component(static_cast<Component*>(component_type->CreateInstance()));
-			ut::UniquePtr<CmdAddComponent> cmd = ut::MakeUnique<CmdAddComponent>(id, ut::Move(component));
-			cmd->Connect(ut::MemberFunction<EntityView, void(const ut::Optional<ut::Error>& error)>(this, &EntityView::CreateNewComponentCallback));
+		ut::UniquePtr<Component> component(static_cast<Component*>(component_type->CreateInstance()));
+		ut::UniquePtr<CmdAddComponent> cmd = ut::MakeUnique<CmdAddComponent>(id, ut::Move(component));
+		cmd->Connect([&](const ut::Optional<ut::Error>& error) { FltkSync([&]() {CreateNewComponentCallback(error); }); });
 
-			ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
-			locked_commands.Get().Add(ut::Move(cmd));
-			component_callbacks.on_update();
-		}
+		ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
+		locked_commands.Get().Add(ut::Move(cmd));
+		component_callbacks.on_update();
 	}
+
+	// fix hover bug
+	Fl::awake([](void* ptr) { static_cast<Button*>(ptr)->SetState(Button::state_release); },
+	          controls.add_component_button.Get());
 }
 
 // Callback triggered when the component is added to the entity.
 void EntityView::CreateNewComponentCallback(const ut::Optional<ut::Error>& error)
 {
 	component_callbacks.on_update();
-
-	Fl::awake([](void* ptr) { static_cast<BinaryButton*>(ptr)->Set(true); },
-	          expand_button.Get());
-	Fl::awake([](void* ptr) { static_cast<Button*>(ptr)->SetState(Button::state_release); },
-	          controls.add_component_button.Get());
+	controls.add_component_button->SetState(Button::state_release);
 
 	if (!error)
 	{
+		expand_button->Set(true);
 		return;
 	}
 
@@ -735,27 +719,13 @@ void EntityView::CreateNewComponentCallback(const ut::Optional<ut::Error>& error
 	ut::Vector<2, int> pos = GetFlAbsPosition(caption.Get());
 	pos.X() += caption->w() / 2 - msg_box_width / 2;
 
-	struct FltkThreadData
-	{
-		ut::Rect<int> rect;
-		const ut::Error& error;
-		Theme& theme;
-	};
-
-	FltkThreadData ui_thread_data = { ut::Rect<int>(pos.X(), pos.Y(), msg_box_width, 140),
-	                                  error.Get(),
-	                                  theme };
-	Fl::awake([](void* ptr)
-	{
-		FltkThreadData* data = static_cast<FltkThreadData*>(ptr);
-		ShowMessageWindow(data->rect.offset.X(),
-		                  data->rect.offset.Y(),
-		                  data->rect.extent.X(),
-		                  data->rect.extent.Y(),
-		                  data->error.GetDesc(),
-		                  "Error!",
-		                  data->theme);
-	 }, &ui_thread_data);
+	ShowMessageWindow(pos.X(),
+	                  pos.Y(),
+	                  msg_box_width,
+	                  140,
+	                  error->GetDesc(),
+	                  "Error!",
+	                  theme);
 }
 
 // Calculates the width of the component view in pixels.

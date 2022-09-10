@@ -44,6 +44,35 @@ ut::Vector<2, int> GetFlAbsPosition(Fl_Widget* widget,
 	return ut::Vector<2, int>(widget->x(), widget->y()) +
 	                          AccumulateFlAbsOffset(widget->parent(), final_parent);
 }
+
+// Pass a callback to the constructor to execute it in the fltk thread
+// and wait for completion.
+FltkSync::FltkSync(ut::Function<void()> fltk_callback) : flag(false)
+                                                       , callback(ut::Move(fltk_callback))
+{
+	Fl::awake([](void* ptr) { static_cast<FltkSync*>(ptr)->Finish(); }, this);
+	Wait();
+}
+
+// Executes a callback in the fltk thread and signals avout completion.
+void FltkSync::Finish()
+{
+	callback();
+	ut::ScopeLock lock(mutex);
+	flag = true;
+	cvar.WakeOne();
+}
+
+// Waits for a callback to finish.
+void FltkSync::Wait()
+{
+	ut::ScopeLock lock(mutex);
+	while (!flag)
+	{
+		cvar.Wait(lock);
+	}
+}
+
 #endif // VE_FLTK
 //----------------------------------------------------------------------------//
 // Locks UI display and makes widget surface accessible.
