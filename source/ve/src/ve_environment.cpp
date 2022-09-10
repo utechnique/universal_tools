@@ -99,7 +99,7 @@ ut::Result<Entity::Id, ut::Error> Environment::AddEntity(Entity entity)
 	// add entity to the array
 	if (!entities.Insert(id, ut::Move(entity)))
 	{
-		return ut::MakeError(ut::error::out_of_memory);
+		return ut::MakeError(ut::error::already_exists);
 	}
 
 	// return unique identifier of the new entity
@@ -114,6 +114,7 @@ void Environment::DeleteEntity(Entity::Id entity_id)
 {
 	pipeline.UnregisterEntity(entity_id);
 	id_generator.Release(entity_id);
+	entities.Remove(entity_id);
 }
 
 // Adds a new component to the desired entity. This function is unsafe if
