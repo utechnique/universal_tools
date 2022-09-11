@@ -140,6 +140,18 @@ void RenderSystem::InitializeUnits()
 //    @param id - identifier of the entity.
 void RenderSystem::UnregisterEntity(Entity::Id id)
 {
+	// reset cache
+	for (size_t i = 0; i < entities.GetNum(); i++)
+	{
+		if (entities[i].id == id)
+		{
+			RenderComponent& render_component = entities[i].Get<RenderComponent>();
+			render_component.cache.Empty();
+			break;
+		}
+	}
+
+	// unregister
 	engine->UnregisterEntity(id);
 	Base::UnregisterEntity(id);
 }
