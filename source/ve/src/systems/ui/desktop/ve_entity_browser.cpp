@@ -6,6 +6,7 @@
 #include "systems/ui/desktop/ve_message_window.h"
 #include "commands/ve_cmd_update_component.h"
 #include "commands/ve_cmd_delete_entity.h"
+#include "commands/ve_cmd_delete_component.h"
 #include "commands/ve_cmd_add_component.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
@@ -194,11 +195,28 @@ void ComponentView::CreateCaption(const Theme& theme,
 	                                                                    icon_color,
 	                                                                    false)));
 
+	// 'delete component' button
+	delete_component_button = ut::MakeUnique<Button>(caption->x() + caption->w() - skCapHeight,
+	                                                 caption->y(),
+	                                                 caption->h(),
+	                                                 caption->h());
+	delete_component_button->SetIcon(ut::MakeShared<Icon>(Icon::CreateCross(delete_component_button->w(),
+	                                                                        delete_component_button->h(),
+	                                                                        ut::Color<4, ut::byte>(230, 0, 0, 200),
+	                                                                        7)));
+	delete_component_button->SetBackgroundColor(Button::state_release,
+	                                            ConvertToFlColor(cap_color));
+	delete_component_button->SetBackgroundColor(Button::state_hover,
+	                                            ConvertToFlColor(hover_color));
+	delete_component_button->SetBackgroundColor(Button::state_push,
+	                                            ConvertToFlColor(hover_color));
+	delete_component_button->SetCallback([&] { DeleteThisComponent(); });
+
 	// create the background with the text
 	cap_text = ut::MakeUnique<ut::String>(name);
 	caption_box = ut::MakeUnique<Fl_Box>(caption->x() + expand_button->w(),
 	                                     caption->y(),
-	                                     caption->w() - expand_button->w(),
+	                                     caption->w() - expand_button->w() - delete_component_button->w(),
 	                                     caption->h());
 	caption_box->box(FL_FLAT_BOX);
 	caption_box->color(ConvertToFlColor(cap_color));
@@ -235,6 +253,17 @@ void ComponentView::DetachChildWidgets()
 	remove(caption.GetRef());
 	remove(reflector.GetRef());
 	expand_state = expand_button->GetState();
+}
+
+// Generates a command to delete this component.
+void ComponentView::DeleteThisComponent()
+{
+	ut::UniquePtr<CmdDeleteComponent> cmd = ut::MakeUnique<CmdDeleteComponent>(entity_id, type);
+	cmd->Connect([&](const ut::Optional<ut::Error>&) { callbacks.on_update(); });
+
+	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
+	locked_commands.Get().Add(ut::Move(cmd));
+	callbacks.on_update();
 }
 
 // Callback to be called when a tree item is modified.
@@ -663,7 +692,7 @@ void EntityView::DetachChildWidgets()
 void EntityView::DeleteThisEntity()
 {
 	ut::UniquePtr<CmdDeleteEntity> cmd = ut::MakeUnique<CmdDeleteEntity>(id);
-	cmd->Connect([&]() { component_callbacks.on_update(); });
+	cmd->Connect([&](const ut::Optional<ut::Error>&) { component_callbacks.on_update(); });
 
 	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
 	locked_commands.Get().Add(ut::Move(cmd));

@@ -8,12 +8,13 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
-// ve::CmdDeleteEntity command deletes the entity from the environment.
-class CmdDeleteEntity : public Cmd
+// ve::CmdDeleteComponent command deletes the component.
+class CmdDeleteComponent : public Cmd
 {
 public:
 	// Constructor.
-	CmdDeleteEntity(Entity::Id id) noexcept;
+	CmdDeleteComponent(Entity::Id id,
+	                   ut::DynamicType::Handle type_handle) noexcept;
 
 	// Calls ve::Environment::DeleteEntity().
 	//    @param environment - reference to the environment
@@ -27,8 +28,11 @@ public:
 	void Connect(ut::Function<void(const ut::Optional<ut::Error>&)> slot);
 
 private:
-	// Managed entity to be added.
+	// Managed entity component to be added to.
 	Entity::Id entity_id;
+
+	// Type of the component to be deleted.
+	ut::DynamicType::Handle component_type;
 
 	// Signal that is triggered after a call to ve::Environment::AddEntity().
 	ut::Signal<void(const ut::Optional<ut::Error>&)> signal;

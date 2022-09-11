@@ -110,11 +110,41 @@ ut::Result<Entity::Id, ut::Error> Environment::AddEntity(Entity entity)
 // this environment is already running, enqueue ve::CmdDeleteEntity command
 // instead.
 //    @param entity_id - identifier of the desired entity.
-void Environment::DeleteEntity(Entity::Id entity_id)
+//    @return - optional ut::Error if failed.
+ut::Optional<ut::Error> Environment::DeleteEntity(Entity::Id entity_id)
 {
+	if (!entities.Find(entity_id))
+	{
+		return ut::Error(ut::error::not_found);
+	}
+
 	pipeline.UnregisterEntity(entity_id);
 	id_generator.Release(entity_id);
 	entities.Remove(entity_id);
+
+	return ut::Optional<ut::Error>();
+}
+
+// Deletes a component from the desired entity. This function is unsafe if
+// this environment is already running, enqueue ve::CmdDeleteComponent command
+// instead.
+//    @param entity_id - identifier of the desired entity.
+//    @param component_type - handle of the component type.
+//    @return - optional ut::Error if failed.
+ut::Optional<ut::Error> Environment::DeleteComponent(Entity::Id entity_id,
+                                                     ut::DynamicType::Handle component_type)
+{
+	ut::Optional<Entity&> entity = entities.Find(entity_id);
+	if (!entity)
+	{
+		return ut::Error(ut::error::not_found);
+	}
+
+	entity->RemoveComponent(component_type);
+	pipeline.UnregisterEntity(entity_id);
+	pipeline.RegisterEntity(entity_id, entity.Get());
+
+	return ut::Optional<ut::Error>();
 }
 
 // Adds a new component to the desired entity. This function is unsafe if

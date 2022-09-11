@@ -1,13 +1,15 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "commands/ve_cmd_delete_entity.h"
+#include "commands/ve_cmd_delete_component.h"
 #include "ve_environment.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 // Constructor.
-CmdDeleteEntity::CmdDeleteEntity(Entity::Id id) noexcept : entity_id(id)
+CmdDeleteComponent::CmdDeleteComponent(Entity::Id id,
+                                       ut::DynamicType::Handle type_handle) noexcept : entity_id(id)
+                                                                                     , component_type(type_handle)
 {}
 
 // Calls ve::Environment::DeleteEntity().
@@ -15,15 +17,15 @@ CmdDeleteEntity::CmdDeleteEntity(Entity::Id id) noexcept : entity_id(id)
 //                         executing the command.
 //    @return - optional ut::Error if environment failed to execute
 //              the command.
-ut::Optional<ut::Error> CmdDeleteEntity::Execute(Environment& environment)
+ut::Optional<ut::Error> CmdDeleteComponent::Execute(Environment& environment)
 {
-	signal(environment.DeleteEntity(entity_id));
+	signal(environment.DeleteComponent(entity_id, component_type));
 	return ut::Optional<ut::Error>();
 }
 
 // Connects provided function with signal that is triggered after a call
 // to ve::Environment::AddEntity().
-void CmdDeleteEntity::Connect(ut::Function<void(const ut::Optional<ut::Error>&)> slot)
+void CmdDeleteComponent::Connect(ut::Function<void(const ut::Optional<ut::Error>&)> slot)
 {
 	signal.Connect(ut::Move(slot));
 }

@@ -55,7 +55,16 @@ public:
 	// this environment is already running, enqueue ve::CmdDeleteEntity command
 	// instead.
 	//    @param entity_id - identifier of the desired entity.
-	void DeleteEntity(Entity::Id entity_id);
+	//    @return - optional ut::Error if failed.
+	ut::Optional<ut::Error> DeleteEntity(Entity::Id entity_id);
+
+	// Deletes a component from the desired entity. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdDeleteComponent command
+	// instead.
+	//    @param entity_id - identifier of the desired entity.
+	//    @param component_type - handle of the component type.
+	//    @return - optional ut::Error if failed.
+	ut::Optional<ut::Error> DeleteComponent(Entity::Id entity_id, ut::DynamicType::Handle component_type);
 
 	// Updates desired component. This function is unsafe if
 	// this environment is already running, enqueue ve::CmdUpdateComponent

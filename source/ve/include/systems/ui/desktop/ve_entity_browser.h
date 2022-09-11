@@ -101,6 +101,9 @@ private:
 	// Adds all child widgets to the group.
 	void DetachChildWidgets();
 
+	// Generates a command to delete this component.
+	void DeleteThisComponent();
+
 	// Callback to be called when a tree item is modified.
 	//    @param parameter_name - name of the modified parameter.
 	//    @param data - string representing a modified value.
@@ -124,6 +127,9 @@ private:
 
 	// Collapse button.
 	ut::UniquePtr<BinaryButton> expand_button;
+
+	// Button that deletes this component.
+	ut::UniquePtr<Button> delete_component_button;
 
 	// Reflection tree.
 	ut::UniquePtr<Reflector> reflector;
