@@ -19,7 +19,7 @@ CmdAddComponent::CmdAddComponent(Entity::Id in_entity_id,
 //                         executing the command.
 //    @return - optional ut::Error if environment failed to execute
 //              the command.
-ut::Optional<ut::Error> CmdAddComponent::Execute(Environment& environment)
+ut::Optional<ut::Error> CmdAddComponent::Execute(CmdAccessibleEnvironment& environment)
 {
 	ut::Optional<ut::Error> error = environment.AddComponent(entity_id, ut::Move(component));
 	signal(error);

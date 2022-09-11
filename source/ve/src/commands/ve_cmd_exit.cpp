@@ -11,7 +11,7 @@ START_NAMESPACE(ve)
 //                         executing the command.
 //    @return - optional ut::Error if environment failed to execute
 //              the command.
-ut::Optional<ut::Error> CmdExit::Execute(Environment& environment)
+ut::Optional<ut::Error> CmdExit::Execute(CmdAccessibleEnvironment& environment)
 {
 	// send exit request
 	environment.Exit();

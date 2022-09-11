@@ -28,7 +28,7 @@ CmdUpdateComponent::CmdUpdateComponent(Entity::Id in_entity_id,
 //                         executing the command.
 //    @return - optional ut::Error if environment failed to execute
 //              the command.
-ut::Optional<ut::Error> CmdUpdateComponent::Execute(Environment& environment)
+ut::Optional<ut::Error> CmdUpdateComponent::Execute(CmdAccessibleEnvironment& environment)
 {
 	return environment.UpdateComponent(entity_id,
 	                                   component_type,

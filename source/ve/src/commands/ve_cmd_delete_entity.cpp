@@ -15,7 +15,7 @@ CmdDeleteEntity::CmdDeleteEntity(Entity::Id id) noexcept : entity_id(id)
 //                         executing the command.
 //    @return - optional ut::Error if environment failed to execute
 //              the command.
-ut::Optional<ut::Error> CmdDeleteEntity::Execute(Environment& environment)
+ut::Optional<ut::Error> CmdDeleteEntity::Execute(CmdAccessibleEnvironment& environment)
 {
 	signal(environment.DeleteEntity(entity_id));
 	return ut::Optional<ut::Error>();

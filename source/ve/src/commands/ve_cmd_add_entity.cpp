@@ -22,7 +22,7 @@ void CmdAddEntity::Connect(ut::Function<void(const AddResult&)> slot)
 //                         executing the command.
 //    @return - optional ut::Error if environment failed to execute
 //              the command.
-ut::Optional<ut::Error> CmdAddEntity::Execute(Environment& environment)
+ut::Optional<ut::Error> CmdAddEntity::Execute(CmdAccessibleEnvironment& environment)
 {
 	ut::Result<Entity::Id, ut::Error> result = environment.AddEntity(ut::Move(entity));
 	signal(result);

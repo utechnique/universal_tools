@@ -10,10 +10,70 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
+// ve::CmdAccessibleEnvironment provides the encapsulation mechanism for the
+// functions accessible only by commands. ve::Environment inherits this class
+// using 'private' modifier, so the user can't call any of these functions
+// directly (but only scheduling a command).
+class CmdAccessibleEnvironment
+{
+public:
+	// Adds a new entity to the environment. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdAddEntity command
+	// instead.
+	//    @param entity - new entity object.
+	//    @return - id of the entity or ut::Error if failed to
+	//              add @entity to the environment.
+	virtual ut::Result<Entity::Id, ut::Error> AddEntity(Entity entity) = 0;
+
+	// Adds a new component to the desired entity. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdAddComponent command
+	// instead.
+	//    @param entity_id - identifier of the entity to add the component.
+	//    @param component - the unique pointer to the component to be added.
+	//    @return - optional ut::Error if failed.
+	virtual ut::Optional<ut::Error> AddComponent(Entity::Id entity_id,
+	                                             ut::UniquePtr<Component> component) = 0;
+
+	// Deletes the entity from the environment. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdDeleteEntity command
+	// instead.
+	//    @param entity_id - identifier of the desired entity.
+	//    @return - optional ut::Error if failed.
+	virtual ut::Optional<ut::Error> DeleteEntity(Entity::Id entity_id) = 0;
+
+	// Deletes a component from the desired entity. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdDeleteComponent command
+	// instead.
+	//    @param entity_id - identifier of the desired entity.
+	//    @param component_type - handle of the component type.
+	//    @return - optional ut::Error if failed.
+	virtual ut::Optional<ut::Error> DeleteComponent(Entity::Id entity_id,
+	                                                ut::DynamicType::Handle component_type) = 0;
+
+	// Updates desired component. This function is unsafe if
+	// this environment is already running, enqueue ve::CmdUpdateComponent
+	// command instead.
+	//    @param entity_id - id of the entity owning the desired component.
+	//    @param component_type - type of the component.
+	//    @param serialized_data - reference to the json document representing
+	//                             the serialized data.
+	//    @param parameter_name - name of the parameter to be updated. Whole
+	//                            component will be updated if this parameter
+	//                            is empty.
+	//    @return - optional ut::Error if failed to update the component.
+	virtual ut::Optional<ut::Error> UpdateComponent(Entity::Id entity_id,
+	                                                ut::DynamicType::Handle component_type,
+	                                                ut::JsonDoc& serialized_data,
+	                                                const ut::Optional<ut::String>& parameter_name) = 0;
+
+	// Tells the environment to exit after current tick ends.
+	virtual void Exit() = 0;
+};
+
 // ve::Environment is a class that contains all information about the virtual
 // environment (like entities and systems), and processes events and
 // interactions between entities.
-class Environment : public ut::NonCopyable
+class Environment : private CmdAccessibleEnvironment, public ut::NonCopyable
 {
 public:
 	// Constructor.
@@ -34,13 +94,14 @@ public:
 	//    @return - optional ut::Error if failed to add provided command.
 	ut::Optional<ut::Error> EnqueueCommand(ut::UniquePtr<Cmd> command);
 
+private:
 	// Adds a new entity to the environment. This function is unsafe if
 	// this environment is already running, enqueue ve::CmdAddEntity command
 	// instead.
 	//    @param entity - new entity object.
 	//    @return - id of the entity or ut::Error if failed to
 	//              add @entity to the environment.
-	ut::Result<Entity::Id, ut::Error> AddEntity(Entity entity);
+	ut::Result<Entity::Id, ut::Error> AddEntity(Entity entity) override;
 
 	// Adds a new component to the desired entity. This function is unsafe if
 	// this environment is already running, enqueue ve::CmdAddComponent command
@@ -49,14 +110,14 @@ public:
 	//    @param component - the unique pointer to the component to be added.
 	//    @return - optional ut::Error if failed.
 	ut::Optional<ut::Error> AddComponent(Entity::Id entity_id,
-	                                     ut::UniquePtr<Component> component);
+	                                     ut::UniquePtr<Component> component) override;
 
 	// Deletes the entity from the environment. This function is unsafe if
 	// this environment is already running, enqueue ve::CmdDeleteEntity command
 	// instead.
 	//    @param entity_id - identifier of the desired entity.
 	//    @return - optional ut::Error if failed.
-	ut::Optional<ut::Error> DeleteEntity(Entity::Id entity_id);
+	ut::Optional<ut::Error> DeleteEntity(Entity::Id entity_id) override;
 
 	// Deletes a component from the desired entity. This function is unsafe if
 	// this environment is already running, enqueue ve::CmdDeleteComponent command
@@ -64,7 +125,8 @@ public:
 	//    @param entity_id - identifier of the desired entity.
 	//    @param component_type - handle of the component type.
 	//    @return - optional ut::Error if failed.
-	ut::Optional<ut::Error> DeleteComponent(Entity::Id entity_id, ut::DynamicType::Handle component_type);
+	ut::Optional<ut::Error> DeleteComponent(Entity::Id entity_id,
+	                                        ut::DynamicType::Handle component_type) override;
 
 	// Updates desired component. This function is unsafe if
 	// this environment is already running, enqueue ve::CmdUpdateComponent
@@ -80,12 +142,11 @@ public:
 	ut::Optional<ut::Error> UpdateComponent(Entity::Id entity_id,
 	                                        ut::DynamicType::Handle component_type,
 	                                        ut::JsonDoc& serialized_data,
-	                                        const ut::Optional<ut::String>& parameter_name = ut::Optional<ut::String>());
+	                                        const ut::Optional<ut::String>& parameter_name = ut::Optional<ut::String>()) override;
 
 	// Tells the environment to exit after current tick ends.
-	void Exit();
+	void Exit() override;
 
-private:
 	// Processes provided array of commands.
 	//    @param commands - array of commands to be processed by
 	//                      environment.

@@ -23,7 +23,7 @@ public:
 	//                         executing the command.
 	//    @return - optional ut::Error if environment failed to execute
 	//              the command.
-	ut::Optional<ut::Error> Execute(Environment& environment);
+	ut::Optional<ut::Error> Execute(CmdAccessibleEnvironment& environment);
 
 	// Connects provided function with signal that is triggered after a call
 	// to ve::Environment::AddEntity().

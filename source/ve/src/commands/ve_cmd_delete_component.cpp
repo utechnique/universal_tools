@@ -17,7 +17,7 @@ CmdDeleteComponent::CmdDeleteComponent(Entity::Id id,
 //                         executing the command.
 //    @return - optional ut::Error if environment failed to execute
 //              the command.
-ut::Optional<ut::Error> CmdDeleteComponent::Execute(Environment& environment)
+ut::Optional<ut::Error> CmdDeleteComponent::Execute(CmdAccessibleEnvironment& environment)
 {
 	signal(environment.DeleteComponent(entity_id, component_type));
 	return ut::Optional<ut::Error>();

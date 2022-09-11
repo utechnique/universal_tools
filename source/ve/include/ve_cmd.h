@@ -8,7 +8,7 @@
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 // Forward declaration.
-class Environment;
+class CmdAccessibleEnvironment;
 
 //----------------------------------------------------------------------------//
 // ve::Cmd is a base class for environment commands. Environment commands are
@@ -21,7 +21,7 @@ public:
 	//                         executing the command.
 	//    @return - optional ut::Error if environment failed to execute
 	//              the command.
-	virtual ut::Optional<ut::Error> Execute(Environment& environment) = 0;
+	virtual ut::Optional<ut::Error> Execute(CmdAccessibleEnvironment& environment) = 0;
 
 	// ve::Component is abstract class, therefore must have virtual destructor.
 	virtual ~Cmd();

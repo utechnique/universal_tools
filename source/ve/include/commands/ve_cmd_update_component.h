@@ -31,7 +31,7 @@ public:
 	//                         executing the command.
 	//    @return - optional ut::Error if environment failed to execute
 	//              the command.
-	ut::Optional<ut::Error> Execute(Environment& environment) override;
+	ut::Optional<ut::Error> Execute(CmdAccessibleEnvironment& environment) override;
 
 private:
 	// Entity owning the desired component.
