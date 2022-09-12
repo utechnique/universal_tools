@@ -16,8 +16,8 @@ Button::Button(ut::uint32 x,
                ut::String button_text) : Fl_Box(x, y, w, h)
                                        , text(ut::MakeUnique<ut::String>(ut::Move(button_text)))
                                        , bkg_color{ FL_BACKGROUND_COLOR,
-                                                    FL_BACKGROUND_COLOR,
-                                                    FL_BACKGROUND_COLOR }
+                                                    fl_color_average(FL_BACKGROUND_COLOR, FL_FOREGROUND_COLOR, 0.75f),
+                                                    fl_color_average(FL_BACKGROUND_COLOR, FL_FOREGROUND_COLOR, 0.75f) }
 {
 	box(FL_FLAT_BOX);
 	SetState(state_release);

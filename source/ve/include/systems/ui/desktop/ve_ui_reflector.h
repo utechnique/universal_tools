@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/ui/desktop/ve_desktop_ui_cfg.h"
+#include "systems/ui/desktop/ve_button.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -134,6 +135,33 @@ private:
 
 	// Checkbox widget.
 	ut::UniquePtr<Fl_Check_Button> checkbox;
+};
+
+//----------------------------------------------------------------------------//
+// ve::ui::ReflectionUniquePtr is an UI representation of the ut::UniquePtr.
+class ReflectionUniquePtr : public ReflectionValue
+{
+public:
+	// Constructor.
+	//    @param snapshot - reference to the meta snapshot describing the
+	//                      current state of the managed parameter.
+	//    @param cb - reference to the set of value callbacks.
+	//    @param left - x position of the widget in pixels.
+	//    @param height - height of the widget in pixels.
+	ReflectionUniquePtr(ut::meta::Snapshot& snapshot,
+	                    const ReflectionValue::Callbacks& cb,
+	                    const int left,
+	                    const int height);
+
+	// Updates the managed value from the meta snapshot.
+	void Update(ut::meta::Snapshot& snapshot) override;
+
+private:
+	// Callback to be called every time the managed value is modified in UI.
+	void OnModify();
+
+	// Checkbox widget.
+	ut::UniquePtr<Button> button;
 };
 
 //----------------------------------------------------------------------------//

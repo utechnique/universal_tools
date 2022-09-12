@@ -14,6 +14,14 @@ Fl_Color ConvertToFlColor(const ut::Color<3, ut::byte>& color)
 	return fl_rgb_color(color.R(), color.G(), color.B());
 }
 
+// Converts FLTK rgb color to the UT color.
+ut::Color<3, ut::byte> ConvertFlColor(Fl_Color color)
+{
+	ut::Color<3, ut::byte> out;
+	Fl::get_color(color, out.R(), out.G(), out.B());
+	return out;
+}
+
 // Helper function to find absolute position of the widget.
 ut::Vector<2, int> AccumulateFlAbsOffset(Fl_Widget* widget,
                                          Fl_Widget* final_parent)

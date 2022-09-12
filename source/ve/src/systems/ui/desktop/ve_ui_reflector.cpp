@@ -174,6 +174,38 @@ void ReflectionBool::OnModify()
 
 //----------------------------------------------------------------------------//
 // Constructor.
+//    @param snapshot - reference to the meta snapshot describing the
+//                      current state of the managed parameter.
+//    @param cb - reference to the set of value callbacks.
+//    @param left - x position of the widget in pixels.
+//    @param height - height of the widget in pixels.
+ReflectionUniquePtr::ReflectionUniquePtr(ut::meta::Snapshot& snapshot,
+                                         const ReflectionValue::Callbacks& cb,
+                                         const int left,
+                                         const int height) : ReflectionValue(cb, name)
+{
+	
+	
+	button = ut::MakeUnique<Button>(left, 0, height, height);
+
+	const ut::uint32 icon_size = ut::Max<ut::uint32>(button->h(), 4) - 4;
+	const ut::Color<3, ut::byte> icon_color = ConvertFlColor(FL_FOREGROUND_COLOR);
+	button->SetIcon(ut::MakeShared<Icon>(Icon::CreateChange(icon_size,
+	                                                        icon_size,
+	                                                        ut::Color<4, ut::byte>(icon_color.R(),
+	                                                                               icon_color.G(),
+	                                                                               icon_color.B(),
+	                                                                               255))));
+}
+
+// Updates the managed value from the meta snapshot.
+void ReflectionUniquePtr::Update(ut::meta::Snapshot& snapshot)
+{
+
+}
+
+//----------------------------------------------------------------------------//
+// Constructor.
 //    @param tree - fltk reference to the tree widget.
 //    @param tree_item - fltk tree item widget to contain reflection
 //                       item.
@@ -343,6 +375,15 @@ ut::Optional< ut::UniquePtr<ReflectionValue> > ReflectionTreeItem::CreateValueWi
 		                                       name,
 		                                       left,
 		                                       height);
+		return value;
+	}
+	else if (type_name == ut::Type< ut::UniquePtr<void> >::Name())
+	{
+		ut::UniquePtr<ReflectionValue> value;
+		value = ut::MakeUnique<ReflectionUniquePtr>(snapshot,
+		                                            cb,
+		                                            left,
+		                                            height);
 		return value;
 	}
 

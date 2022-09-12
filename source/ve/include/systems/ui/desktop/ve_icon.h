@@ -55,6 +55,11 @@ public:
 	                        const ut::Color<4, ut::byte>& color,
 	                        ut::uint32 margin);
 
+	// Creates an icon with two arrows in different directions (thickness is one pixel).
+	static Icon CreateChange(ut::uint32 width,
+	                         ut::uint32 height,
+	                         const ut::Color<4, ut::byte>& color);
+
 private:
 	ut::uint32 width; // in pixels
 	ut::uint32 height; // in pixels

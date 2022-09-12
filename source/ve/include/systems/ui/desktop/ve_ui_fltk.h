@@ -20,6 +20,9 @@ START_NAMESPACE(ui)
 // Converts provided color to the FLTK rgb color.
 Fl_Color ConvertToFlColor(const ut::Color<3, ut::byte>& color);
 
+// Converts FLTK rgb color to the UT color.
+ut::Color<3, ut::byte> ConvertFlColor(Fl_Color color);
+
 // Returns the absolute (screen) postition of the provided widget.
 ut::Vector<2, int> GetFlAbsPosition(Fl_Widget* widget,
                                     Fl_Widget* final_parent = nullptr);

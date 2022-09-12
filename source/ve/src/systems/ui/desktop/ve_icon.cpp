@@ -206,6 +206,60 @@ Icon Icon::CreateCross(ut::uint32 width,
 	return Icon(width, height, ut::Move(icon_data));
 }
 
+// Creates an icon with two arrows in different directions (thickness is one pixel).
+Icon Icon::CreateChange(ut::uint32 width,
+                        ut::uint32 height,
+                        const ut::Color<4, ut::byte>& color)
+{
+	ut::Array< ut::Color<4, ut::byte> > icon_data(width * height);
+
+	const int size = ut::Min<ut::uint32>(width, height);
+	const int half_size = size / 2;
+	const int quad_size = size / 4;
+	const int margin = size / 4 + size / 10;
+	const int inv_margin = size - margin - 1;
+	const int odd = size % 2 == 0 ? 1 : 0;
+
+	for (int y = 0; y < size; y++)
+	{
+		for (int x = 0; x < size; x++)
+		{
+			ut::Color<4, ut::byte>& pixel = icon_data[y*size + x];
+			pixel = color;
+			pixel.A() = 0;
+
+			if (odd == 0 && y == 0)
+			{
+				continue;
+			}
+
+			const bool up = y < half_size;
+			const int ox = x + (up ? half_size : -half_size);
+			const int oy = y + (up ? quad_size : -quad_size);
+
+			const int line_width = 1;
+			const int d0 = ut::Abs(ox - oy);
+			const int d1 = ut::Abs(ox - size + oy + 1);
+
+			if (y == quad_size || y == quad_size * 3 ||
+			    y == quad_size - odd || y == quad_size * 3 - odd)
+			{
+				pixel.A() = color.A();
+			}
+			else if (d0 < line_width || d1 < line_width)
+			{
+				pixel.A() = color.A();
+			}
+			else if (d0 < line_width + 1 || d1 < line_width + 1)
+			{
+				pixel.A() = color.A() / 2;
+			}
+		}
+	}
+
+	return Icon(width, height, ut::Move(icon_data));
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ui)
 END_NAMESPACE(ve)
