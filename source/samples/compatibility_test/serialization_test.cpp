@@ -26,7 +26,359 @@ UT_REGISTER_TYPE(ReflectiveBaseAlt, ReflectiveAltB, "reflective_B")
 //----------------------------------------------------------------------------//
 SerializationTestUnit::SerializationTestUnit() : TestUnit("SERIALIZATION")
 {
+	tasks.Add(ut::MakeUnique<ParameterTraitsTask>());
 	tasks.Add(ut::MakeUnique<SerializationVariantsTask>());
+}
+
+//----------------------------------------------------------------------------//
+ParameterTraitsTask::ParameterTraitsTask() : TestTask("Parameter traits")
+{ }
+
+template<typename SimpleSmartPtrType, typename PolymorphicSmartPtrType>
+ut::Optional<ut::String> TestSmartPtr()
+{
+	class PtrTest : public ut::meta::Reflective
+	{
+	public:
+		PtrTest() : polymorphic(new PolymorphicB)
+		{}
+
+		void Reflect(ut::meta::Snapshot& snapshot)
+		{
+			snapshot.Add(simple, "simple");
+			snapshot.Add(polymorphic, "polymorphic");
+		}
+
+		SimpleSmartPtrType simple;
+		PolymorphicSmartPtrType polymorphic;
+	};
+
+	PtrTest test_obj;
+	ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(test_obj, "test_object");
+
+	// simple
+	ut::Optional<ut::meta::Snapshot&> parameter = snapshot.FindChildByName("simple");
+	if (!parameter)
+	{
+		return ut::String("Failed to found parameter: \"simple\"!");
+	}
+
+	ut::meta::BaseParameter::Traits traits = parameter->data.parameter->GetTraits();
+
+	if (!traits.container)
+	{
+		return ut::String("Error! Smart ptr has no container trait.");
+	}
+
+	if (traits.container->managed_type_is_polymorphic)
+	{
+		return ut::String("Error! Smart ptr contains a simple object, while its trait describes object as a polymorphic one.");
+	}
+
+	if (!traits.container->callbacks.create.IsValid())
+	{
+		return ut::String("Error! Smart ptr parameter has no create() callback for a simple object type.");
+	}
+
+	ut::uptr ptr_value = reinterpret_cast<ut::uptr>(test_obj.simple.Get());
+	traits.container->callbacks.create(ut::Optional<const ut::DynamicType&>());
+
+	if (reinterpret_cast<ut::uptr>(test_obj.simple.Get()) == ptr_value)
+	{
+		return ut::String("Error! Smart ptr did not change after the create() call.");
+	}
+
+	if (traits.container->callbacks.reset.IsValid())
+	{
+		traits.container->callbacks.reset();
+	}
+
+	if (test_obj.simple.Get() != nullptr)
+	{
+		return ut::String("Error! Failed to reset smart ptr.");
+	}
+
+	// unique ptr, polymorphic
+	parameter = snapshot.FindChildByName("polymorphic");
+	if (!parameter)
+	{
+		return ut::String("Error! Failed to find desired parameter.");
+	}
+
+	traits = parameter->data.parameter->GetTraits();
+	if (!traits.container)
+	{
+		return ut::String("Error! Smart ptr parameter has no container traits.");
+	}
+
+	if (!traits.container->managed_type_is_polymorphic)
+	{
+		return ut::String("Error! Smart ptr contains a polymorphic object, while its trait describes object as a simple one.");
+	}
+		
+	if (!traits.container->callbacks.create.IsValid())
+	{
+		return ut::String("Error! Smart ptr parameter has no create() callback for a simple object type.");
+	}
+
+	ptr_value = reinterpret_cast<ut::uptr>(test_obj.polymorphic.Get());
+
+	traits.container->callbacks.create(ut::Identify<PolymorphicC>());
+	if (reinterpret_cast<ut::uptr>(test_obj.polymorphic.Get()) == ptr_value)
+	{
+		return ut::String("Error! Smart ptr did not change after the create() call.");
+	}
+
+	if (test_obj.polymorphic->Identify().GetHandle() != ut::Identify<PolymorphicC>().GetHandle())
+	{
+		return ut::String("Error! Invalid polymorphic type after the create() call.");
+	}
+
+	if (traits.container->callbacks.reset.IsValid())
+	{
+		traits.container->callbacks.reset();
+	}
+
+	if (test_obj.simple.Get() != nullptr)
+	{
+		return ut::String("Error! Failed to reset smart ptr.");
+	}
+
+	return ut::Optional<ut::String>();
+}
+
+template<typename ContainerType>
+ut::Optional<ut::String> PushBackTest(ContainerType& container,
+                                      ut::meta::BaseParameter::Traits& traits)
+{
+	container.Insert(0, "0");
+	container.Insert(1, "1");
+	container.Insert(2, "2");
+
+	return ut::Optional<ut::String>();
+}
+
+template<>
+ut::Optional<ut::String> PushBackTest< ut::Array<int> >(ut::Array<int>& container,
+                                                        ut::meta::BaseParameter::Traits& traits)
+{
+	if (!traits.container->callbacks.push_back.IsValid())
+	{
+		return ut::String("Error! Push back callback is not available for the container parameter.");
+	}
+
+	traits.container->callbacks.push_back();
+	traits.container->callbacks.push_back();
+	traits.container->callbacks.push_back();
+
+	if (container.GetNum() != 3)
+	{
+		return ut::String("Error! Pushback callback is not working properly for the container parameter.");
+	}
+
+	if (container[0] != 0 || container[1] != 0 || container[2] != 0)
+	{
+		return ut::String("Error! Numeric element of the container was not zero-initialized.");
+	}
+
+	container[0] = 0;
+	container[1] = 1;
+	container[2] = 2;
+
+	return ut::Optional<ut::String>();
+}
+
+template<typename ContainerType>
+ut::Optional<ut::String> RemoveElementTest(ContainerType& container,
+                                           ut::meta::BaseParameter::Traits& traits)
+{
+	if (!container.Find(1))
+	{
+		return ut::String("Error! RemoveElement failed.");
+	}
+
+	traits.container->callbacks.remove_element(&container.Find(1).Get());
+
+	if (container.Find(1))
+	{
+		return ut::String("Error! RemoveElement callback is not working properly for the container parameter.");
+	}
+
+	return ut::Optional<ut::String>();
+}
+
+template<>
+ut::Optional<ut::String> RemoveElementTest< ut::Array<int> >(ut::Array<int>& container,
+                                                             ut::meta::BaseParameter::Traits& traits)
+{
+	traits.container->callbacks.remove_element(&container[1]);
+
+	if (container.GetNum() != 2 || container[1] != 2)
+	{
+		return ut::String("Error! RemoveElement callback is not working properly for the container parameter.");
+	}
+
+	return ut::Optional<ut::String>();
+}
+
+template<typename ContainerType>
+ut::Optional<ut::String> ResetTest(ContainerType& container,
+                                   ut::meta::BaseParameter::Traits& traits)
+{
+	traits.container->callbacks.reset();
+	if (container.GetNum() != 0)
+	{
+		return ut::String("Error! Reset callback is not working properly for the container parameter.");
+	}
+
+	return ut::Optional<ut::String>();
+}
+
+template<>
+ut::Optional<ut::String> ResetTest< ut::AVLTree<int, ut::String> >(ut::AVLTree<int, ut::String>& container,
+                                                                   ut::meta::BaseParameter::Traits& traits)
+{
+	traits.container->callbacks.reset();
+	if (container.Find(0) || container.Find(1) || container.Find(2))
+	{
+		return ut::String("Error! Reset callback is not working properly for the container parameter.");
+	}
+
+	return ut::Optional<ut::String>();
+}
+
+template<typename ContainerType>
+ut::Optional<ut::String> TestContainer()
+{
+	class ContainerTraitsTest : public ut::meta::Reflective
+	{
+	public:
+		ContainerTraitsTest()
+		{}
+
+		void Reflect(ut::meta::Snapshot& snapshot)
+		{
+			snapshot.Add(container, "container");
+		}
+
+		ContainerType container;
+	};
+
+	ContainerTraitsTest test_obj;
+
+	ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(test_obj, "test_object");
+	ut::Optional<ut::meta::Snapshot&> parameter = snapshot.FindChildByName("container");
+	if (!parameter)
+	{
+		return ut::String("Error! Desired parameter was not found.");
+	}
+	
+	ut::meta::BaseParameter::Traits traits = parameter->data.parameter->GetTraits();
+	if (!traits.container)
+	{
+		return ut::String("Error! Container object has no container traits.");
+	}
+
+	if (!traits.container->contains_multiple_elements)
+	{
+		return ut::String("Error! Container object cannot contain multiple objects.");
+	}
+
+	if (!traits.container->callbacks.remove_element.IsValid() ||
+	    !traits.container->callbacks.reset.IsValid())
+	{
+		return ut::String("Error! Callbacks are not available for the container parameter.");
+	}
+
+	ut::Optional<ut::String> test_error = PushBackTest<ContainerType>(test_obj.container, traits);
+	if (test_error)
+	{
+		return test_error;
+	}
+
+	test_error = RemoveElementTest<ContainerType>(test_obj.container, traits);
+	if (test_error)
+	{
+		return test_error;
+	}
+
+	test_error = ResetTest<ContainerType>(test_obj.container, traits);
+	if (test_error)
+	{
+		return test_error;
+	}
+	
+	return ut::Optional<ut::String>();
+}
+
+void ParameterTraitsTask::Execute()
+{
+	report += ut::cret;
+
+	// unique ptr
+	report += "UniquePtr: ";
+	ut::Optional<ut::String> test_error = TestSmartPtr<ut::UniquePtr<int>, ut::UniquePtr<TestBase> >();
+	if (test_error)
+	{
+		report += test_error.Get() + ut::cret;
+		failed_test_counter.Increment();
+	}
+	else
+	{
+		report += "Success.\n";
+	}
+
+	// shared ptr
+	report += "SharedPtr: ";
+	test_error = TestSmartPtr<ut::SharedPtr<int>, ut::SharedPtr<TestBase> >();
+	if (test_error)
+	{
+		report += test_error.Get() + ut::cret;
+		failed_test_counter.Increment();
+	}
+	else
+	{
+		report += "Success.\n";
+	}
+
+	// array
+	report += "Array: ";
+	test_error = TestContainer< ut::Array<int> >();
+	if (test_error)
+	{
+		report += test_error.Get() + ut::cret;
+		failed_test_counter.Increment();
+	}
+	else
+	{
+		report += "Success.\n";
+	}
+
+	// Map
+	report += "Map: ";
+	test_error = TestContainer< ut::Map<int, ut::String> >();
+	if (test_error)
+	{
+		report += test_error.Get() + ut::cret;
+		failed_test_counter.Increment();
+	}
+	else
+	{
+		report += "Success.\n";
+	}
+
+	// AVL
+	report += "AVL tree: ";
+	test_error = TestContainer< ut::AVLTree<int, ut::String> >();
+	if (test_error)
+	{
+		report += test_error.Get() + ut::cret;
+		failed_test_counter.Increment();
+	}
+	else
+	{
+		report += "Success.\n";
+	}
 }
 
 //----------------------------------------------------------------------------//
@@ -417,6 +769,14 @@ SerializationTest::SerializationTest(bool in_alternate,
 	{
 		vec_data[i] = ut::Vector<3, ut::byte>(0xf1, 0xf2, 0xf3);
 	}
+
+	// map
+	map.Insert(1, "1");
+	map_binary.Insert(1, 1);
+	map.Insert(2, "2");
+	map_binary.Insert(2, 2);
+	map.Insert(3, "3");
+	map_binary.Insert(3, 3);
 }
 
 void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
@@ -459,6 +819,8 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << ut::meta::Binary(binary1, sizeof(float));
 	snapshot << ut::meta::Binary(binary_matrix, sizeof(float));
 	snapshot << vec_data;
+	snapshot << map;
+	snapshot << ut::meta::Binary(map_binary, sizeof(int));
 	snapshot << int16_unique;
 	snapshot << int16_unique_void;
 	snapshot << uval;
@@ -871,6 +1233,16 @@ void ChangeSerializedObject(SerializationTest& object)
 	                                        4,  5,  6,  7,
 	                                        8,  9,  10, 11,
 	                                        12, 13, 14, 15);
+
+	// map
+	object.map.Empty();
+	object.map_binary.Empty();
+	object.map.Insert(9, "9");
+	object.map_binary.Insert(9, -9);
+	object.map.Insert(8, "8");
+	object.map_binary.Insert(8, -8);
+	object.map.Insert(7, "7");
+	object.map_binary.Insert(7, -7);
 }
 
 // Checks if serialized object was loaded with the correct values,
@@ -1195,6 +1567,16 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	{
 		return false;
 	}
+
+	// map
+	if (object.map.GetNum() != 3) return false;
+	if (object.map_binary.GetNum() != 3) return false;
+	if (!object.map.Find(9) || object.map.Find(9).Get() != "9") return false;
+	if (!object.map_binary.Find(9) || object.map_binary.Find(9).Get() != -9) return false;
+	if (!object.map.Find(8) || object.map.Find(8).Get() != "8") return false;
+	if (!object.map_binary.Find(8) || object.map_binary.Find(8).Get() != -8) return false;
+	if (!object.map.Find(7) || object.map.Find(7).Get() != "7") return false;
+	if (!object.map_binary.Find(7) || object.map_binary.Find(7).Get() != -7) return false;
 
 	return true;
 }

@@ -6,26 +6,27 @@
 #include "common/ut_common.h"
 #include "meta/ut_meta_parameter.h"
 #include "meta/parameters/ut_binary_parameter.h"
+#include "meta/parameters/containers/ut_pair_parameter.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
-// ut::Parameter<Array> is a template specialization for array types.
-template<typename T, typename Allocator, typename Preallocator>
-class Parameter< Array<T, Allocator, Preallocator> > : public BaseParameter
+// ut::Parameter<Map> is a template specialization for map types.
+template<typename Key, typename Value, typename Allocator, typename Preallocator>
+class Parameter< Map<Key, Value, Allocator, Preallocator> > : public BaseParameter
 {
-	using ArrayType = Array<T, Allocator, Preallocator>;
-	using ThisParameter = Parameter<ArrayType>;
+	using MapType = Map<Key, Value, Allocator, Preallocator>;
+	using ThisParameter = Parameter<MapType>;
 public:
 	// Constructor
-	//    @param p - pointer to the managed array
-	Parameter(ArrayType* p) : BaseParameter(p)
+	//    @param p - pointer to the managed map object
+	Parameter(MapType* p) : BaseParameter(p)
 	{ }
 
 	// Returns the name of the managed type
 	String GetTypeName() const
 	{
-		return BaseParameter::DeduceTypeName< ArrayType >();
+		return BaseParameter::DeduceTypeName<MapType>();
 	}
 
 	// Registers children into reflection tree.
@@ -33,12 +34,12 @@ public:
 	void Reflect(Snapshot& snapshot)
 	{
 		// get array reference from pointer
-		ArrayType& arr = *static_cast<ArrayType*>(ptr);
+		MapType& map = *static_cast<MapType*>(ptr);
 
 		// register all elements
-		for (size_t i = 0; i < arr.GetNum(); i++)
+		for (size_t i = 0; i < map.GetNum(); i++)
 		{
-			snapshot << arr[i];
+			snapshot << map[i];
 		}
 	}
 
@@ -48,21 +49,28 @@ public:
 	Optional<Error> Save(Controller& controller)
 	{
 		// get array reference from pointer
-		ArrayType& arr = *static_cast<ArrayType*>(ptr);
+		MapType& map = *static_cast<MapType*>(ptr);
 
-		// write value type name
+		// write value and key type names
 		if (controller.GetInfo().HasTypeInformation())
 		{
-			String value_type_name = BaseParameter::DeduceTypeName<T>();
+			String value_type_name = BaseParameter::DeduceTypeName<Value>();
 			Optional<Error> write_value_type_error = controller.WriteAttribute(value_type_name, node_names::skValueType);
 			if (write_value_type_error)
 			{
 				return write_value_type_error;
 			}
+
+			String key_type_name = BaseParameter::DeduceTypeName<Key>();
+			Optional<Error> write_key_type_error = controller.WriteAttribute(key_type_name, node_names::skKeyType);
+			if (write_key_type_error)
+			{
+				return write_key_type_error;
+			}
 		}
 
 		// write array size
-		Controller::SizeType num = static_cast<Controller::SizeType>(arr.GetNum());
+		Controller::SizeType num = static_cast<Controller::SizeType>(map.GetNum());
 		Optional<Error> write_num_error = controller.WriteAttribute(num, node_names::skCount);
 		if (write_num_error)
 		{
@@ -79,19 +87,34 @@ public:
 	Optional<Error> Load(Controller& controller)
 	{
 		// get array reference from pointer
-		ArrayType& arr = *static_cast<ArrayType*>(ptr);
+		MapType& map = *static_cast<MapType*>(ptr);
 
 		// read value typename and compare with current one
 		if (controller.GetInfo().HasTypeInformation())
 		{
+			// read value type
 			Result<String, Error> read_type_result = controller.ReadAttribute<String>(node_names::skValueType);
 			if (!read_type_result)
 			{
 				return read_type_result.MoveAlt();
 			}
 
-			// check types
-			String current_type_name = BaseParameter::DeduceTypeName<T>();
+			// check value types
+			String current_type_name = BaseParameter::DeduceTypeName<Value>();
+			if (current_type_name != read_type_result.Get())
+			{
+				return Error(error::types_not_match);
+			}
+
+			// read key type
+			read_type_result = controller.ReadAttribute<String>(node_names::skKeyType);
+			if (!read_type_result)
+			{
+				return read_type_result.MoveAlt();
+			}
+
+			// check value types
+			current_type_name = BaseParameter::DeduceTypeName<Key>();
 			if (current_type_name != read_type_result.Get())
 			{
 				return Error(error::types_not_match);
@@ -106,7 +129,7 @@ public:
 		}
 
 		// resize the array
-		arr.Resize(static_cast<size_t>(read_num_result.Get()));
+		map.Resize(static_cast<size_t>(read_num_result.Get()));
 
 		// success
 		return Optional<Error>();
@@ -117,9 +140,8 @@ public:
 	{
 		Traits::ContainerTraits container_traits;
 		container_traits.contains_multiple_elements = true;
-		container_traits.managed_type_is_polymorphic = IsBaseOf<Polymorphic, T>::value;
+		container_traits.managed_type_is_polymorphic = IsBaseOf<Polymorphic, Value>::value;
 		container_traits.callbacks.reset = MemberFunction<ThisParameter, void()>(this, &ThisParameter::Reset);
-		container_traits.callbacks.push_back = MemberFunction<ThisParameter, void()>(this, &ThisParameter::PushBack);
 		container_traits.callbacks.remove_element = MemberFunction<ThisParameter, void(void*)>(this, &ThisParameter::RemoveElement);
 
 		Traits traits;
@@ -131,28 +153,21 @@ public:
 	// Deletes all elements.
 	void Reset()
 	{
-		ArrayType& arr = *static_cast<ArrayType*>(ptr);
-		arr.Empty();
-	}
-
-	// Adds an element to the end of the array.
-	void PushBack()
-	{
-		ArrayType& arr = *static_cast<ArrayType*>(ptr);
-		T new_element = {};
-		arr.Add(ut::Move(new_element));
+		MapType& map = *static_cast<MapType*>(ptr);
+		map.Empty();
 	}
 
 	// Removes the desired element.
 	void RemoveElement(void* element_address)
 	{
-		ArrayType& arr = *static_cast<ArrayType*>(ptr);
-		const size_t element_count = arr.GetNum();
+		MapType& map = *static_cast<MapType*>(ptr);
+		const size_t element_count = map.GetNum();
 		for (size_t i = 0; i < element_count; i++)
 		{
-			if (reinterpret_cast<ut::uptr>(&arr[i]) == reinterpret_cast<ut::uptr>(element_address))
+			if (reinterpret_cast<ut::uptr>(&map[i]) == reinterpret_cast<ut::uptr>(element_address) ||
+			    reinterpret_cast<ut::uptr>(&map[i].second) == reinterpret_cast<ut::uptr>(element_address))
 			{
-				arr.Remove(i);
+				map.BaseArray::Remove(i);
 				break;
 			}
 		}
@@ -161,14 +176,14 @@ public:
 
 //----------------------------------------------------------------------------//
 // Specialization for the binary case.
-template<typename T, typename Allocator, typename Preallocator>
-class BinaryParameter< Array<T, Allocator, Preallocator> > : public BaseParameter
+template<typename Key, typename Value, typename Allocator, typename Preallocator>
+class BinaryParameter< Map<Key, Value, Allocator, Preallocator> > : public BaseParameter
 {
-	using ArrayType = Array<T, Allocator, Preallocator>;
+	using MapType = Map<Key, Value, Allocator, Preallocator>;
 public:
 	// Constructor
 	//    @param p - pointer to the managed array
-	BinaryParameter(ArrayType* p,
+	BinaryParameter(MapType* p,
 	                Controller::SizeType in_granularity) : BaseParameter(p)
 	                                                     , granularity(in_granularity)
 	{ }
@@ -184,9 +199,9 @@ public:
 	//    @return - ut::Error if encountered an error
 	Optional<Error> Save(Controller& controller)
 	{
-		ArrayType& arr = *static_cast<ArrayType*>(ptr);
-		const Controller::SizeType count = static_cast<Controller::SizeType>(arr.GetNum());
-		const Controller::SizeType size = sizeof(T) * count;
+		MapType& map = *static_cast<MapType*>(ptr);
+		const Controller::SizeType count = static_cast<Controller::SizeType>(map.GetNum());
+		const Controller::SizeType size = sizeof(Pair<Key, Value>) * count;
 
 		// write data size
 		Optional<Error> write_size_error = controller.WriteAttribute(size, node_names::skSize);
@@ -196,7 +211,7 @@ public:
 		}
 
 		// write data
-		return controller.WriteBinaryValue(arr.GetAddress(), size, granularity);
+		return controller.WriteBinaryValue(map.GetAddress(), size, granularity);
 	}
 
 	// Deserializes managed object.
@@ -205,7 +220,7 @@ public:
 	Optional<Error> Load(Controller& controller)
 	{
 		// get array reference from pointer
-		ArrayType& arr = *static_cast<ArrayType*>(ptr);
+		MapType& map = *static_cast<MapType*>(ptr);
 
 		// read data size
 		Result<Controller::SizeType, Error> size = controller.ReadAttribute<Controller::SizeType>(node_names::skSize);
@@ -215,17 +230,17 @@ public:
 		}
 
 		// check size value
-		if (size.Get() % sizeof(T) != 0)
+		if (size.Get() % sizeof(Pair<Key, Value>) != 0)
 		{
 			return Error(error::out_of_bounds, "Binary array parameter has invalid size on loading.");
 		}
 
 		// resize the array
-		const size_t element_count = size.Get() / sizeof(T);
-		arr.Resize(element_count);
+		const size_t element_count = size.Get() / sizeof(Pair<Key, Value>);
+		map.Resize(element_count);
 
 		// read data
-		return controller.ReadBinaryValue(arr.GetAddress(), size.Get(), granularity);
+		return controller.ReadBinaryValue(map.GetAddress(), size.Get(), granularity);
 	}
 
 private:

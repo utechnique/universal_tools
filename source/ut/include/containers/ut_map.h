@@ -106,6 +106,21 @@ public:
 		return Optional<Value&>();
 	}
 
+	// Finds an element with key equivalent to @key
+	//    @param key - const reference to the key value
+	//    @return - const reference to the value, if it was found
+	Optional<const Value&> Find(const Key& key) const
+	{
+		for (size_t i = 0; i < Base::num; i++)
+		{
+			if (Base::arr[i].first == key)
+			{
+				return Base::arr[i].second;
+			}
+		}
+		return Optional<const Value&>();
+	}
+
 	// Removes an element with key equivalent to @key from the map
 	//    @param key - const reference to the key value
 	//    @return - 'true' if element was found and deleted,
@@ -122,6 +137,13 @@ public:
 		}
 		return false;
 	}
+};
+
+//----------------------------------------------------------------------------//
+// Specialize type name function for the map type.
+template <typename Key, typename Value> struct Type< Map<Key, Value> >
+{
+	static inline const char* Name() { return "map"; }
 };
 
 //----------------------------------------------------------------------------//

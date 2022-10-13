@@ -15,6 +15,14 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class ParameterTraitsTask : public TestTask
+{
+public:
+	ParameterTraitsTask();
+	void Execute();
+};
+
+//----------------------------------------------------------------------------//
 class SerializationVariantsTask : public TestTask
 {
 public:
@@ -283,6 +291,8 @@ public:
 	ut::Array< ut::Vector<3, ut::byte> > vec_data;
 	ut::Array<ut::byte> binary0;
 	ut::Array< ut::Vector<3, float> > binary1;
+	ut::Map<int, ut::String> map;
+	ut::Map<ut::uint32, int> map_binary;
 	ut::Matrix<4, 4> binary_matrix;
 	ut::uint64 uval;
 	bool bool_val;

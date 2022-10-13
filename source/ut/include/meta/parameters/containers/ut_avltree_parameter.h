@@ -195,6 +195,46 @@ public:
 		// success
 		return Optional<Error>();
 	}
+
+	// Returns a set of traits specific for this parameter.
+	Traits GetTraits() override
+	{
+		Traits::ContainerTraits container_traits;
+		container_traits.contains_multiple_elements = true;
+		container_traits.managed_type_is_polymorphic = IsBaseOf<Polymorphic, Value>::value;
+		container_traits.callbacks.reset = MemberFunction<AVLParameter, void()>(this, &AVLParameter::Reset);
+		container_traits.callbacks.remove_element = MemberFunction<AVLParameter, void(void*)>(this, &AVLParameter::RemoveElement);
+
+		Traits traits;
+		traits.container = container_traits;
+
+		return traits;
+	}
+
+	// Deletes all elements.
+	void Reset()
+	{
+		TreeType& tree = *static_cast<TreeType*>(ptr);
+		tree.Empty();
+	}
+
+	// Removes the desired element.
+	void RemoveElement(void* element_address)
+	{
+		TreeType& tree = *static_cast<TreeType*>(ptr);
+		typename TreeType::Iterator riterator;
+		int previous_key = 0;
+		for (riterator = tree.Begin(ut::iterator::first); riterator != tree.End(ut::iterator::last); ++riterator)
+		{
+			typename TreeType::Node& node = *riterator;
+			if (reinterpret_cast<ut::uptr>(&node) == reinterpret_cast<ut::uptr>(element_address) ||
+			    reinterpret_cast<ut::uptr>(&node.value) == reinterpret_cast<ut::uptr>(element_address))
+			{
+				tree.Remove(node.key);
+				break;
+			}
+		}
+	}
 	
 private:
 	// Recursively exports data from the provided proxy node to the original destination node.

@@ -17,6 +17,9 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
+// Forward declarations.
+struct FactoryView;
+
 // ut::Polymorphic is an abstract parent class for the polymorphic types.
 // Every serializable polymorphic class must be inherited from this base
 // class and needs to implement ut::Polymorphic::Identify() virtual function.
@@ -43,6 +46,9 @@ public:
 	// use ut::Factory<>::Register() to get @Id.
 	DynamicType(const Id& type_id) : id(type_id)
 	{ }
+
+	// Returns the reference to the corresponding factory view.
+	virtual Optional<const FactoryView&> GetFactory() const = 0;
 
 	// Creates an object of the derived type.
 	virtual Polymorphic* CreateInstance() const = 0;
@@ -73,6 +79,25 @@ private:
 	const Id& id;
 };
 
+// Intermediate interface to access factory functions avoiding explicit template
+// instantiation.
+struct FactoryView
+{
+	// Searches for the specified type by name.
+	//    @param name - name of the type to be found.
+	//    @return - dynamic type if it was found, or error otherwise
+	virtual Result<const DynamicType&, Error> GetType(const String& name) const = 0;
+
+	// Returns the reference to the registered type by it's index assigned
+	// by this factory.
+	//    @param index - index of the desired type.
+	//    @return - reference to the dynamic type
+	virtual const DynamicType& GetTypeByIndex(size_t index) const = 0;
+
+	// Returns the number of types registered in this factory.
+	virtual size_t CountTypes() const = 0;
+};
+
 // ut::PolymorphicType is a template class to create dynamic objects of
 // the managed type. ut::PolymorphicType is inherited from ut::DynamicType,
 // and handles static member ut::PolymorphicType::id, while it's parent -
@@ -91,6 +116,9 @@ public:
 	// Constructor, just passes identifier to the base class.
 	PolymorphicType() : DynamicType(id)
 	{ }
+
+	// Returns the reference to the corresponding factory view.
+	Optional<const FactoryView&> GetFactory() const override;
 
 	// Creates a new object of the managed typed.
 	Polymorphic* CreateInstance() const
@@ -163,7 +191,7 @@ private:
 // Note that you must declare ut::PolymorphicType<YourDynamicType>::id
 // previously (just after declaring 'YourDynamicType' class).
 template<typename T>
-inline static const DynamicType& Identify(const T* t)
+inline static const DynamicType& Identify(const T* t = nullptr)
 {
 	return PolymorphicType<T>::id.second;
 }
@@ -202,6 +230,33 @@ class Factory
 {
 	// All factories have mutual access to each other.
 	template<typename> friend class Factory;
+
+	// Polymorphic view of this factory.
+	struct View : public FactoryView
+	{
+		// Searches for the specified type by name.
+		//    @param name - name of the type to be found.
+		//    @return - dynamic type if it was found, or error otherwise
+		Result<const DynamicType&, Error> GetType(const String& name) const override
+		{
+			return Factory::GetType(name);
+		}
+
+		// Returns the reference to the registered type by it's index assigned
+		// by this factory.
+		//    @param index - index of the desired type.
+		//    @return - reference to the dynamic type
+		const DynamicType& GetTypeByIndex(size_t index) const override
+		{
+			return Factory::GetTypeByIndex(index);
+		}
+
+		// Returns the number of types registered in this factory.
+		size_t CountTypes() const override
+		{
+			return Factory::CountTypes();
+		}
+	};
 
 public:
 	// Registers dynamic type @Derived, see ut::PolymorphicType for examples.
@@ -298,6 +353,14 @@ public:
 		return GetArray().GetNum();
 	}
 
+	// Returns the polymorphic view of this factory.
+	static const View& GetView()
+	{
+		
+		static const View view;
+		return view;
+	}
+
 private:
 	// There is only one instance per dynamic type, and it's shared between
 	// different factories. Thread safety is disabled for this shared pointer
@@ -369,6 +432,12 @@ private:
 		return callbacks;
 	}
 };
+
+template<typename Base>
+Optional<const FactoryView&> PolymorphicType<Base>::GetFactory() const
+{
+	return Factory<Base>::GetView();
+}
 
 // Convenient macro for registering polymorphic types.
 #define UT_REGISTER_TYPE(__factory, __type, __name) \

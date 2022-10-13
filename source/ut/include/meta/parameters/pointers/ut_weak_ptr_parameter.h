@@ -95,6 +95,14 @@ public:
 		return Optional<Error>();
 	}
 
+	// Returns a set of traits specific for this parameter.
+	Traits GetTraits() override
+	{
+		Traits traits;
+		traits.container = Traits::ContainerTraits();
+		return traits;
+	}
+
 private:
 	// SFINAE_IS_POLYMORPHIC and SFINAE_IS_NOT_POLYMORPHIC are temporarily defined
 	// here to make short SFINAE argument. MS Visual Studio 2008 and 2010 doesn't
