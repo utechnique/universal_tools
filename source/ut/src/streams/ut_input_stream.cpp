@@ -95,12 +95,19 @@ Result<String, Error> InputStream::GetLine()
 			// check if our line ends with 'carriage return' character 
 			bool ends_with_cret = true;
 			size_t line_len = line.GetNum();
-			for (uint32 i = 0; i < cret_len; i++)
+			if (line_len >= cret_len)
 			{
-				if (line[line_len - cret_len + i] != carriage_ret[i])
+				for (uint32 i = 0; i < cret_len; i++)
 				{
-					ends_with_cret = false;
+					if (line[line_len - cret_len + i] != carriage_ret[i])
+					{
+						ends_with_cret = false;
+					}
 				}
+			}
+			else
+			{
+				ends_with_cret = false;
 			}
 
 			// if it really end with 'carriage return' character - then

@@ -1126,7 +1126,7 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node, stream::Cursor start)
 		// read child node
 		SerializationOptions options;
 		options.initialize = false;
-		Result<Controller::Uniform, Error> read_result = ReadNode(node[i], options);
+		Result<Controller::Uniform, Error> read_result = ReadNode(node[node_id], options);
 		if (!read_result)
 		{
 			return read_result.MoveAlt();

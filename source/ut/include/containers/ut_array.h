@@ -329,13 +329,15 @@ public:
 	// Returns desired element
 	ElementType& operator [] (const size_t id)
 	{
-		return id < num ? arr[id] : arr[num - 1];
+		UT_ASSERT(id < num);
+		return arr[id];
 	}
 
 	// Returns desired element
 	const ElementType& operator [] (const size_t id) const
 	{
-		return id < num ? arr[id] : arr[num - 1];
+		UT_ASSERT(id < num);
+		return arr[id];
 	}
 
 	// Returns a pointer to desired element
