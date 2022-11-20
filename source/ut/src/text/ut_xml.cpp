@@ -844,7 +844,7 @@ Optional<Error> XmlDoc::WriteGeneralNode(OutputStream& stream,
 {
 	// node attributes
 	bool is_attribute = node.data.is_attribute;
-	bool has_value = node.data.value;
+	bool has_value = static_cast<bool>(node.data.value);
 	bool has_children = node.GetNumChildren() != 0;
 
 	// can't be attribute here

@@ -574,7 +574,7 @@ Optional<Error> JsonDoc::WriteNode(OutputStream& stream,
 	                               uint32 depth)
 {
 	// node attributes
-	bool has_value = node.data.value;
+	bool has_value = static_cast<bool>(node.data.value);
 	bool has_children = node.GetNumChildren() != 0;
 
 	// tabulation of the node

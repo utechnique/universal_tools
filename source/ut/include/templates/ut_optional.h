@@ -184,7 +184,7 @@ public:
 	}
 
 	// Bool conversion operator
-	operator bool() const
+	explicit operator bool() const
 	{
 		return has_value;
 	}
