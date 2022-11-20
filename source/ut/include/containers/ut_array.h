@@ -272,7 +272,7 @@ public:
 	// Constructor, moves content of another array
 	//    @param copy - array to copy
 
-	BaseArray(BaseArray&& other) noexcept : allocator(other.allocator)
+	BaseArray(BaseArray&& other) noexcept : allocator(Move(other.allocator))
 	                                      , arr(other.arr)
 	                                      , num(other.num)
 	                                      , capacity(other.capacity)
@@ -311,7 +311,7 @@ public:
 		}
 
 		// assign new allocator
-		allocator = other.allocator;
+		allocator = Move(other.allocator);
 
 		// move
 		arr = other.arr;
