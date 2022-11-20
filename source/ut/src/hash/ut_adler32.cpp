@@ -1,33 +1,24 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "integrity/ut_fletcher16.h"
+#include "hash/ut_adler32.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// Calculates Fletcher checksum
+// Calculates Adler32 checksum
 //    @param data - pointer to the data
 //    @param size - size of the @data
 //    @return - checksum
-uint16 Fletcher16Sum(uint8* data, size_t size)
+uint32 Adler32Sum(uint8* data, size_t size)
 {
-	uint16 sum1 = 0xff, sum2 = 0xff;
-	size_t tlen;
-	while (size)
+	uint32 a = 1, b = 0;
+	size_t index;
+	for (index = 0; index < size; ++index)
 	{
-		tlen = ((size >= 20) ? 20 : size);
-		size -= tlen;
-		do
-		{
-			sum2 += sum1 += *data++;
-			tlen--;
-		} while (tlen);
-		sum1 = (sum1& 0xff) + (sum1 >> 8);
-		sum2 = (sum2& 0xff) + (sum2 >> 8);
+		a = (a + data[index]) % UT_ADLER_32_MOD;
+		b = (b + a) % UT_ADLER_32_MOD;
 	}
-	sum1 = (sum1& 0xff) + (sum1 >> 8);
-	sum2 = (sum2& 0xff) + (sum2 >> 8);
-	return (sum2 << 8) | sum1;
+	return (b << 16) | a;
 }
 
 //----------------------------------------------------------------------------//

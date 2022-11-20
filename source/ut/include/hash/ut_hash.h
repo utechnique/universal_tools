@@ -5,15 +5,13 @@
 //----------------------------------------------------------------------------//
 //  This file is a set of all header files related to data structures
 //----------------------------------------------------------------------------//
-#include "containers/ut_iterator.h"
-#include "containers/ut_singleton.h"
-#include "containers/ut_array.h"
-#include "containers/ut_tree.h"
-#include "containers/ut_avltree.h"
-#include "containers/ut_pair.h"
-#include "containers/ut_map.h"
-#include "containers/ut_hashmap.h"
-#include "containers/ut_ref.h"
+#include "hash/ut_fletcher16.h"
+#include "hash/ut_adler32.h"
+#include "hash/ut_sha2.h"
+#include "hash/ut_murmur2.h"
+#include "hash/ut_murmur3.h"
+#include "hash/ut_default_hash.h"
+
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

@@ -13,6 +13,7 @@ public:
 	virtual void Execute() = 0;
 	ut::String GetName();
 	ut::String GetReport();
+	static constexpr size_t perf_arr_count = 4096;
 
 protected:
 	ut::String name;

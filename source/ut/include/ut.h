@@ -14,7 +14,7 @@
 #include "dbg/ut_dbg.h"
 #include "system/ut_system.h"
 #include "math/ut_math.h"
-#include "integrity/ut_integrity.h"
+#include "hash/ut_hash.h"
 #include "encryption/ut_encryption.h"
 #include "meta/ut_meta.h"
 #include "events/ut_events.h"

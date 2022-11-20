@@ -2,7 +2,7 @@
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "streams/ut_file.h"
-#include "integrity/ut_adler32.h"
+#include "hash/ut_adler32.h"
 //----------------------------------------------------------------------------//
 #define UT_FILE_CURSOR_END SEEK_END
 #define UT_FILE_CURSOR_SET SEEK_SET

@@ -9,12 +9,40 @@ ContainersTestUnit::ContainersTestUnit() : TestUnit("CONTAINERS")
 	tasks.Add(ut::MakeUnique<MapTask>());
 	tasks.Add(ut::MakeUnique<TreeTask>());
 	tasks.Add(ut::MakeUnique<AVLTreeTask>());
+	tasks.Add(ut::MakeUnique<HashmapTask>());
 	tasks.Add(ut::MakeUnique<SharedPtrTask>());
 	tasks.Add(ut::MakeUnique<ContainerTask>());
 	tasks.Add(ut::MakeUnique<OptionalTask>());
 	tasks.Add(ut::MakeUnique<ResultTask>());
 	tasks.Add(ut::MakeUnique<PairTask>());
 	tasks.Add(ut::MakeUnique<SmartPtrTask>());
+}
+
+//----------------------------------------------------------------------------//
+
+ut::Array<int> GenerateMapArray(size_t size)
+{
+	unsigned int seed = 5323;
+	ut::Array<int> out;
+
+	for (size_t i = 0; i < size; i++)
+	{
+		seed = (8253729 * seed + 2396403);
+		out.Add(seed % 32767);
+	}
+
+	for (size_t i = size; i-- > 0; )
+	{
+		for (size_t j = i; j-- > 0;)
+		{
+			if (out[i] == out[j])
+			{
+				out.Remove(j);
+			}
+		}
+	}
+
+	return out;
 }
 
 //----------------------------------------------------------------------------//
@@ -487,7 +515,7 @@ void AVLTreeTask::Execute()
 		ut::String& str = copy0_find_result.Get();
 		if (str == "__128")
 		{
-			report += ". Success";
+			report += " Success";
 		}
 		else
 		{
@@ -512,7 +540,7 @@ void AVLTreeTask::Execute()
 		ut::String& str = copy1_find_result.Get();
 		if (str == "__128")
 		{
-			report += ". Success";
+			report += " Success";
 		}
 		else
 		{
@@ -542,7 +570,7 @@ void AVLTreeTask::Execute()
 			}
 			else
 			{
-				report += ". Success";
+				report += " Success";
 			}
 		}
 		else
@@ -573,7 +601,7 @@ void AVLTreeTask::Execute()
 			}
 			else
 			{
-				report += ". Success";
+				report += " Success";
 			}
 		}
 		else
@@ -610,7 +638,7 @@ void AVLTreeTask::Execute()
 		ut::String& str = find_result.Get();
 		if (str == "__29")
 		{
-			report += ". Success";
+			report += " Success";
 		}
 		else
 		{
@@ -624,6 +652,365 @@ void AVLTreeTask::Execute()
 		failed_test_counter.Increment();
 		return;
 	}
+
+	ut::AVLTree<int, MapValue> perf_tree;
+	ut::time::Counter counter;
+	ut::Array<int> source = GenerateMapArray(perf_arr_count);
+	const size_t source_count = source.GetNum();
+	report += ut::cret + ut::String("Insert: ");
+	counter.Start();
+	for (size_t i = 0; i < source_count; i++)
+	{
+		MapValue val;
+		val.ival = source[i];
+
+		perf_tree.Insert(source[i], ut::Move(val));
+	}
+	double time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	report += ut::String("Iteration: ");
+	counter.Start();
+	ut::AVLTree<int, MapValue>::Iterator perf_it;
+	for (perf_it = perf_tree.Begin(ut::iterator::first); perf_it != perf_tree.End(ut::iterator::last); perf_it++)
+	{
+		ut::AVLTree<int, MapValue>::Node& node = *perf_it;
+		node.value.ival++;
+		node.value.ival--;
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	report += ut::String("Search: ");
+	counter.Start();
+	for (size_t i = 0; i < source_count; i++)
+	{
+		const int key = source[i];
+		ut::Optional<MapValue&> element = perf_tree.Find(key);
+		if (!element || element->ival != key)
+		{
+			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found.";
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+}
+
+//----------------------------------------------------------------------------//
+
+HashmapTask::HashmapTask() : TestTask("Hashmap")
+{ }
+
+void HashmapTask::Execute()
+{
+	ut::time::Counter counter;
+	ut::HashMap<int, MapValue> map;
+	ut::HashMap<ut::String, MapValue> str_map;
+
+	ut::Array<int> source = GenerateMapArray(perf_arr_count);
+	const size_t test_element_id = source.GetNum() / 2;
+
+	report += ut::String("Insert (int): ");
+	counter.Start();
+	for (size_t i = 0; i < source.GetNum(); i++)
+	{
+		MapValue val;
+		val.ival = source[i];
+
+		map.Insert(source[i], ut::Move(val));
+	}
+	double time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	report += ut::String("Insert (str): ");
+	counter.Start();
+	for (size_t i = 0; i < source.GetNum(); i++)
+	{
+		MapValue val;
+		val.ival = source[i];
+
+		str_map.Insert(ut::String("_____") + ut::Print(source[i]), ut::Move(val));
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	const size_t element_count = map.Count();
+	if (element_count != source.GetNum())
+	{
+		report += ut::String("FAILED! Invalid element count (") + ut::Print(element_count) + ")\n";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	report += ut::String("Collision(int): ") + ut::Print(map.GetCollisionCount() ) + ". ";
+	report += ut::String("Collision(str): ") + ut::Print(str_map.GetCollisionCount()) + ". ";
+
+	report += ut::String("Iteration (index): ");
+	counter.Start();
+	for (size_t i = 0; i < element_count; i++)
+	{
+		ut::Pair<const int, MapValue>& element = map[i];
+		element.second.ival++;
+		element.second.ival--;
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	report += ut::String("Iteration (iterator): ");
+	counter.Start();
+	ut::HashMap<int, MapValue>::Iterator iterator;
+	for (iterator = map.Begin(ut::iterator::first); iterator < map.End(ut::iterator::last); ++iterator)
+	{
+		ut::Pair<const int, MapValue>& element = *iterator;
+		element.second.ival++;
+		iterator->second.ival--;
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	report += ut::String("Iteration (const iterator backwards): ");
+	counter.Start();
+	ut::HashMap<int, MapValue>::ConstIterator riterator;
+	int itertesta = 0;
+	for (riterator = map.Begin(ut::iterator::last); riterator > map.End(ut::iterator::first); --riterator)
+	{
+		const ut::Pair<const int, MapValue>& element = *riterator;
+		itertesta = element.second.ival + riterator->second.ival;
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + (itertesta == 0 ? "ms. " : "ms. ");
+
+	report += ut::String("Search (int): ");
+	counter.Start();
+	for (size_t i = 0; i < element_count; i++)
+	{
+		const int key = source[i];
+		ut::Optional<MapValue&> element = map.Find(key);
+		if (!element || element->ival != key)
+		{
+			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found.";
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	report += ut::String("Search (str): ");
+	counter.Start();
+	for (size_t i = 0; i < element_count; i++)
+	{
+		const ut::String key = ut::String("_____") + ut::Print(source[i]);
+		ut::Optional<MapValue&> element = str_map.Find(key);
+		if (!element || element->ival != source[i])
+		{
+			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found (str).";
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	// check constness
+	const ut::HashMap<int, MapValue>& map_cref = map;
+	ut::Optional<const MapValue&> fcref = map_cref.Find(4);
+
+	// check copy constructor
+	ut::HashMap<int, MapValue> map_copy(map);
+	if (map_copy.Count() == map.Count())
+	{
+		ut::Optional<MapValue&> fcres = map_copy.Find(source[test_element_id]);
+		if (fcres)
+		{
+			if (fcres->ival != source[test_element_id])
+			{
+				report += ut::String("FAILED! Copy constructor - invalid element(") +
+				          ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
+				failed_test_counter.Increment();
+				return;
+			}
+		}
+		else
+		{
+			report += "FAILED! Copy constructor - failed to find element.";
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+	else
+	{
+		report += "FAILED! Copy constructor - invalid element count.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// check Reset
+	map.Reset();
+	if (map.Find(source[test_element_id]) || map.Count() != 0)
+	{
+		report += "FAILED! Reset() failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// check copy operator
+	map = map_copy;
+	if (map.Count() == map_copy.Count())
+	{
+		ut::Optional<MapValue&> fcres = map.Find(source[test_element_id]);
+		if (fcres)
+		{
+			if (fcres->ival != source[test_element_id])
+			{
+				report += ut::String("FAILED! Copy operator - invalid element(") +
+				          ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
+				failed_test_counter.Increment();
+				return;
+			}
+		}
+		else
+		{
+			report += "FAILED! Copy operator - failed to find element.";
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+	else
+	{
+		report += "FAILED! Copy operator - invalid element count.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// check move operator
+	map.Reset();
+	map = ut::Move(map_copy);
+	if (map_copy.Find(source[test_element_id]) || map_copy.Count() != 0)
+	{
+		report += "FAILED! Original map was not destroyed after the move operation.";
+		failed_test_counter.Increment();
+		return;
+	}
+	if (map.Count() == source.GetNum())
+	{
+		ut::Optional<MapValue&> fcres = map.Find(source[test_element_id]);
+		if (fcres)
+		{
+			if (fcres->ival != source[test_element_id])
+			{
+				report += ut::String("FAILED! Move operator - invalid element(") +
+					ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
+				failed_test_counter.Increment();
+				return;
+			}
+		}
+		else
+		{
+			report += "FAILED! Move operator - failed to find element.";
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+	else
+	{
+		report += "FAILED! Move operator - invalid element count.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// check move constructor
+	ut::HashMap<int, MapValue> map_move = ut::Move(map);
+	if (map.Find(source[test_element_id]) || map.Count() != 0)
+	{
+		report += "FAILED! Original map was not destroyed after the move construction.";
+		failed_test_counter.Increment();
+		return;
+	}
+	if (map_move.Count() == source.GetNum())
+	{
+		ut::Optional<MapValue&> fcres = map_move.Find(source[test_element_id]);
+		if (fcres)
+		{
+			if (fcres->ival != source[test_element_id])
+			{
+				report += ut::String("FAILED! Move constructor - invalid element(") +
+					ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
+				failed_test_counter.Increment();
+				return;
+			}
+		}
+		else
+		{
+			report += "FAILED! Move constructor - failed to find element.";
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+	else
+	{
+		report += "FAILED! Move constructor - invalid element count.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	// check remove
+	if (!map_move.Remove(source[test_element_id]))
+	{
+		report += "FAILED! Element to be removed was not found.";
+		failed_test_counter.Increment();
+		return;
+	}
+	if (map_move.Count() != source.GetNum() - 1)
+	{
+		report += "FAILED! Invalid element count after Remove() call.";
+		failed_test_counter.Increment();
+		return;
+	}
+	for (size_t i = 0; i < source.GetNum(); i++)
+	{
+		const int key = source[i];
+		ut::Optional<MapValue&> element = map_move.Find(key);
+
+		if (i == test_element_id)
+		{
+			if (element)
+			{
+				ut::Optional<MapValue&> element = map_move.Find(key);
+				report += ut::String("FAILED! Found element that must be deleted after Remove(") +
+				          ut::Print(source[test_element_id]) + ") call.";
+				failed_test_counter.Increment();
+				return;
+			}
+		}
+		else
+		{
+			if (!element)
+			{
+				report += ut::String("FAILED! Element ") + ut::Print(key) +
+				          " was not found after Remove(" +
+				          ut::Print(source[test_element_id]) + ") call.";
+
+				report += ut::Print(i) + " " + ut::Print(test_element_id);
+				failed_test_counter.Increment();
+				return;
+			}
+
+			if (element->ival != key)
+			{
+				report += ut::String("FAILED! Element ") + ut::Print(key) +
+				          " is invalid after Remove(" +
+				          ut::Print(source[test_element_id]) + ") call (" +
+				          ut::Print(element->ival) + ").";
+				failed_test_counter.Increment();
+				return;
+			}
+		}
+	}
+
+	report += "Success.";
 }
 
 //----------------------------------------------------------------------------//

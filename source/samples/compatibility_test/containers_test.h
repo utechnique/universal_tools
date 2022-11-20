@@ -46,6 +46,14 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class HashmapTask : public TestTask
+{
+public:
+	HashmapTask();
+	void Execute();
+};
+
+//----------------------------------------------------------------------------//
 class SharedPtrTask : public TestTask
 {
 public:
@@ -153,6 +161,12 @@ public:
 
 private:
 	ut::SharedPtr<PoolType> pool;
+};
+
+struct MapValue
+{
+	int ival;
+	ut::byte data[128];
 };
 
 //----------------------------------------------------------------------------//
