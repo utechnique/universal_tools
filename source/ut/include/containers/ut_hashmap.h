@@ -63,7 +63,7 @@ public:
 	class ConstIterator : public BaseIterator<RandomAccessIteratorTag,
 	                                          Node, Node*, Node&>
 	{
-		friend class ThisMap;
+		friend class HashMap<KeyType, ValueType, HashFunction, KeyEqual, Allocator>;
 	public:
 		// Default constructor
 		ConstIterator() : ptr(nullptr)

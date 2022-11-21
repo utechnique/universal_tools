@@ -167,7 +167,7 @@ public:
 			if (reinterpret_cast<ut::uptr>(&map[i]) == reinterpret_cast<ut::uptr>(element_address) ||
 			    reinterpret_cast<ut::uptr>(&map[i].second) == reinterpret_cast<ut::uptr>(element_address))
 			{
-				map.BaseArray::Remove(i);
+				map.BaseArray< Pair<Key, Value>, Allocator, Preallocator>::Remove(i);
 				break;
 			}
 		}
