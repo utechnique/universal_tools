@@ -183,7 +183,7 @@ public:
 	//    @return - '0' if strings are equal, or difference value
     inline int Compare(const TString& source) const
     {
-		const size_t src_n = source.GetNum();
+		const size_t src_n = source.Count();
 		const size_t n = src_n < Base::num ? src_n : Base::num;
 
 		for (size_t i = 0; i < n; i++)
@@ -290,7 +290,7 @@ public:
         }
 		else
 		{
-			Base::Empty();
+			Base::Reset();
 		}
 
 		return true;
@@ -300,7 +300,7 @@ public:
 	// also puts null terminator if none was found
 	void Validate()
 	{
-		for (size_t i = 0; i < Base::GetNum(); i++)
+		for (size_t i = 0; i < Base::Count(); i++)
 		{
 			if (Base::arr[i] == 0)
 			{
@@ -550,7 +550,7 @@ public:
 	// Replaces \r\n with \n for Linux and \n with \r\n for Windows
 	void FixCarriageReturn()
 	{
-		size_t size = Base::GetNum();
+		size_t size = Base::Count();
 		for (size_t i = size; i-- > 0;)
 		{
 #if UT_WINDOWS

@@ -96,7 +96,7 @@ template<typename ElementType>
 Optional<Error> WriteFile(const String& filename,
                           const Array<ElementType>& data)
 {
-	return WriteFile(filename, data.GetAddress(), data.GetNum() * sizeof(ElementType));
+	return WriteFile(filename, data.GetAddress(), data.Count() * sizeof(ElementType));
 }
 
 

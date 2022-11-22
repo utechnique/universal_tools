@@ -93,7 +93,7 @@ void ArrayOpsTask::Execute()
 	iarr0.Add(4);
 	ut::Array<int> iarr2 = iarr0 + iarr1;
 	iarr0 += iarr1;
-	if (iarr2.GetNum() != 5 || iarr0.GetNum() != 5)
+	if (iarr2.Count() != 5 || iarr0.Count() != 5)
 	{
 		report += " FAIL. ";
 		failed_test_counter.Increment();
@@ -155,7 +155,7 @@ void ArrayOpsTask::Execute()
 
 	al_int_arr_1 = al_int_arr_0;
 	al_int_arr_2 = ut::Move(al_int_arr_1);
-	if (al_int_arr_2.GetNum() == 4)
+	if (al_int_arr_2.Count() == 4)
 	{
 		if (al_int_arr_2[0] == 0 &&
 			al_int_arr_2[1] == 1 &&
@@ -193,7 +193,7 @@ void TreeTask::Execute()
 	tree.Add("0_2");
 
 	// test how many children
-	if (tree.GetNumChildren() == 3)
+	if (tree.CountChildren() == 3)
 	{
 		bool success = true;
 		for (size_t i = 0; i < 3; i++)
@@ -206,7 +206,7 @@ void TreeTask::Execute()
 			}
 
 			// validate inner nodes
-			if (tree[i].GetNumChildren() != 3)
+			if (tree[i].CountChildren() != 3)
 			{
 				success = false;
 				report += "Failed to add inner nodes. ";
@@ -232,16 +232,16 @@ void TreeTask::Execute()
 
 	// check the number of nodes after all manipulations
 	report += "Calculating tree nodes: ";
-	if (tree.GetNum() == 9)
+	if (tree.Count() == 9)
 	{
 		report += "Success, ";
-		report += ut::Print<ut::uint32>((ut::uint32)tree.GetNum());
+		report += ut::Print<ut::uint32>((ut::uint32)tree.Count());
 		report += " nodes.";
 	}
 	else
 	{
 		report += "Fail, ";
-		report += ut::Print<ut::uint32>((ut::uint32)tree.GetNum());
+		report += ut::Print<ut::uint32>((ut::uint32)tree.Count());
 		report += " nodes.";
 		failed_test_counter.Increment();
 	}
@@ -570,7 +570,7 @@ void AVLTreeTask::Execute()
 	ut::AVLTree<int, MapValue> perf_tree;
 	ut::time::Counter counter;
 	ut::Array<int> source = GenerateMapArray(perf_arr_count);
-	const size_t source_count = source.GetNum();
+	const size_t source_count = source.Count();
 	report += ut::cret + ut::String("Insert: ");
 	counter.Start();
 	for (size_t i = 0; i < source_count; i++)
@@ -624,11 +624,11 @@ void HashmapTask::Execute()
 	ut::HashMap<ut::String, MapValue> str_map;
 
 	ut::Array<int> source = GenerateMapArray(perf_arr_count);
-	const size_t test_element_id = source.GetNum() / 2;
+	const size_t test_element_id = source.Count() / 2;
 
 	report += ut::String("Insert (int): ");
 	counter.Start();
-	for (size_t i = 0; i < source.GetNum(); i++)
+	for (size_t i = 0; i < source.Count(); i++)
 	{
 		MapValue val;
 		val.ival = source[i];
@@ -640,7 +640,7 @@ void HashmapTask::Execute()
 
 	report += ut::String("Insert (str): ");
 	counter.Start();
-	for (size_t i = 0; i < source.GetNum(); i++)
+	for (size_t i = 0; i < source.Count(); i++)
 	{
 		MapValue val;
 		val.ival = source[i];
@@ -651,7 +651,7 @@ void HashmapTask::Execute()
 	report += ut::Print(time) + "ms. ";
 
 	const size_t element_count = map.Count();
-	if (element_count != source.GetNum())
+	if (element_count != source.Count())
 	{
 		report += ut::String("FAILED! Invalid element count (") + ut::Print(element_count) + ")\n";
 		failed_test_counter.Increment();
@@ -808,7 +808,7 @@ void HashmapTask::Execute()
 		failed_test_counter.Increment();
 		return;
 	}
-	if (map.Count() == source.GetNum())
+	if (map.Count() == source.Count())
 	{
 		ut::Optional<MapValue&> fcres = map.Find(source[test_element_id]);
 		if (fcres)
@@ -843,7 +843,7 @@ void HashmapTask::Execute()
 		failed_test_counter.Increment();
 		return;
 	}
-	if (map_move.Count() == source.GetNum())
+	if (map_move.Count() == source.Count())
 	{
 		ut::Optional<MapValue&> fcres = map_move.Find(source[test_element_id]);
 		if (fcres)
@@ -877,13 +877,13 @@ void HashmapTask::Execute()
 		failed_test_counter.Increment();
 		return;
 	}
-	if (map_move.Count() != source.GetNum() - 1)
+	if (map_move.Count() != source.Count() - 1)
 	{
 		report += "FAILED! Invalid element count after Remove() call.";
 		failed_test_counter.Increment();
 		return;
 	}
-	for (size_t i = 0; i < source.GetNum(); i++)
+	for (size_t i = 0; i < source.Count(); i++)
 	{
 		const int key = source[i];
 		ut::Optional<MapValue&> element = map_move.Find(key);
@@ -1036,7 +1036,7 @@ void ContainerTask::Execute()
 		return;
 	}
 
-	if (c.Get<4>().GetNum() != 3 || c.Get<4>()[0] != 0 || c.Get<4>()[1] != 1 || c.Get<4>()[2] != 2)
+	if (c.Get<4>().Count() != 3 || c.Get<4>()[0] != 0 || c.Get<4>()[1] != 1 || c.Get<4>()[2] != 2)
 	{
 		report += "Fail(4)";
 		failed_test_counter.Increment();
@@ -1084,7 +1084,7 @@ void OptionalTask::Execute()
 	}
 	else
 	{
-		if (test_str.GetNum() > 0)
+		if (test_str.Count() > 0)
 		{
 			report += "fail! string was copied instead of being moved.";
 			failed_test_counter.Increment();
@@ -1141,7 +1141,7 @@ void ResultTask::Execute()
 
 	ut::String test_move_str;
 	test_move_str = test_result.Move();
-	if (test_str.GetNum() != 0)
+	if (test_str.Count() != 0)
 	{
 		report += "fail! string was copied instead of being moved.";
 		failed_test_counter.Increment();
@@ -1183,7 +1183,7 @@ void PairTask::Execute()
 	ut::Pair<ut::String&, ut::String> pair_0(test_str_0, "pair");
 	ut::Pair<ut::String&, ut::String> pair_1(Move(pair_0));
 
-	if (pair_0.second.GetNum() != 0)
+	if (pair_0.second.Count() != 0)
 	{
 		report += "fail! string was copied instead of being moved.";
 		failed_test_counter.Increment();

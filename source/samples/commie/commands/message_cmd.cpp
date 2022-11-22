@@ -87,7 +87,7 @@ ut::Optional<ut::Error> MessageCmd::ExecuteOnClient(ut::net::Connection& connect
 
 	// validate decrypted buffer
 	ut::String decrypted_message("[invalid message]");
-	for (size_t i = 0; i < buffer.GetNum(); i++)
+	for (size_t i = 0; i < buffer.Count(); i++)
 	{
 		// check that buffer has null-terminator
 		char symbol = *reinterpret_cast<const char*>(decrypted_buffer.GetAddress() + i);

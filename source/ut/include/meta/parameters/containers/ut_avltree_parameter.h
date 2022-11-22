@@ -215,7 +215,7 @@ public:
 	void Reset()
 	{
 		TreeType& tree = *static_cast<TreeType*>(ptr);
-		tree.Empty();
+		tree.Reset();
 	}
 
 	// Removes the desired element.
@@ -281,7 +281,7 @@ private:
 		TreeType& tree = *static_cast<TreeType*>(ptr);
 
 		// clear current tree
-		tree.Empty();
+		tree.Reset();
 
 		// export data
 		if (proxy)

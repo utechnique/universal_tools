@@ -148,7 +148,7 @@ public:
 	template<typename T>
 	Result<int, Error> SendArray(const Array<T>& arr) const
 	{
-		uint32 arr_size = (uint32)arr.GetNum();
+		uint32 arr_size = (uint32)arr.Count();
 		Result<int, Error> send_size_result = SendElement<uint32>(arr_size);
 		if (send_size_result)
 		{

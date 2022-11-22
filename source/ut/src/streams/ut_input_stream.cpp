@@ -94,7 +94,7 @@ Result<String, Error> InputStream::GetLine()
 
 			// check if our line ends with 'carriage return' character 
 			bool ends_with_cret = true;
-			size_t line_len = line.GetNum();
+			size_t line_len = line.Count();
 			if (line_len >= cret_len)
 			{
 				for (uint32 i = 0; i < cret_len; i++)
@@ -116,7 +116,7 @@ Result<String, Error> InputStream::GetLine()
 			{
 				for (uint32 i = 0; i < cret_len; i++)
 				{
-					line.Remove(line.GetNum() - 1);
+					line.Remove(line.Count() - 1);
 				}
 				break;
 			}

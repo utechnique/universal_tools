@@ -240,11 +240,11 @@ ut::Optional<ut::Error> MetaEditor::Rebuild(const ut::text::Document& document)
 
 	// clean resources
 	tree->clear();
-	name_buffer.Empty();
-	items.Empty();
+	name_buffer.Reset();
+	items.Reset();
 
 	// create nodes from the document
-	for (size_t i = 0; i < document.nodes.GetNum(); i++)
+	for (size_t i = 0; i < document.nodes.Count(); i++)
 	{
 		// root has empty name
 		const ut::String root("");
@@ -299,7 +299,7 @@ void MetaEditor::ResizeItems()
 ut::Result<ut::XmlDoc, ut::Error> MetaEditor::Save() const
 {
 	ut::XmlDoc doc;
-	for (size_t i = 0; i < items.GetNumChildren(); i++)
+	for (size_t i = 0; i < items.CountChildren(); i++)
 	{
 		ut::Result<ut::Tree<ut::text::Node>, ut::Error> save_item_result = SaveItem(items[i]);
 		if (!save_item_result)
@@ -340,7 +340,7 @@ ut::Result<ut::Tree<ut::text::Node>, ut::Error> MetaEditor::SaveItem(const ut::T
 	}
 
 	// add children
-	for (size_t i = 0; i < item.GetNumChildren(); i++)
+	for (size_t i = 0; i < item.CountChildren(); i++)
 	{
 		ut::Result<ut::Tree<ut::text::Node>, ut::Error> save_child_result = SaveItem(item[i]);
 		if (!save_child_result)
@@ -389,7 +389,7 @@ ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> MetaEditor::AddTr
 	}
 
 	// add child nodes
-	for (size_t child = 0; child < node.GetNumChildren(); child++)
+	for (size_t child = 0; child < node.CountChildren(); child++)
 	{
 		// create child item
 		ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> add_node_error = AddTreeNode(node[child],

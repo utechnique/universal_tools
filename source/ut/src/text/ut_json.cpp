@@ -14,7 +14,7 @@ Optional<Error> JsonDoc::Parse(const String& doc)
 	text::Reader cursor(doc.ToCStr());
 	
 	// remove current contents
-	nodes.Empty();
+	nodes.Reset();
 
 	// check if document is empty
 	Skip(cursor, Lookup::skWhitespace);
@@ -35,7 +35,7 @@ Optional<Error> JsonDoc::Parse(const String& doc)
 	}
 
 	// add child nodes, JSON node is not included!
-	for (size_t i = 0; i < JSON.GetNumChildren(); i++)
+	for (size_t i = 0; i < JSON.CountChildren(); i++)
 	{
 		if (!nodes.Add(Move(JSON[i])))
 		{
@@ -57,7 +57,7 @@ Optional<Error> JsonDoc::Write(OutputStream& stream) const
 	stream << "{" << CarriageReturn<char>();
 
 	// write all nodes
-	const size_t node_num = nodes.GetNum();
+	const size_t node_num = nodes.Count();
 	for (size_t i = 0; i < node_num; i++)
 	{
 		// write the node
@@ -183,7 +183,7 @@ Optional<Error> JsonDoc::ParseObject(text::Reader& cursor, Tree<text::Node>& nod
 		}
 
 		// Special case - empty object
-		if (!node.data.value && node.GetNumChildren() == 0 && cursor == '}')
+		if (!node.data.value && node.CountChildren() == 0 && cursor == '}')
 		{
 			cursor++;
 			return Optional<Error>();
@@ -305,7 +305,7 @@ Optional<Error> JsonDoc::ParseArray(text::Reader& cursor, Tree<text::Node>& node
 		}
 
 		// Special case - empty array
-		if (node.GetNumChildren() == 0 && cursor == ']')
+		if (node.CountChildren() == 0 && cursor == ']')
 		{
 			cursor++;
 			return Optional<Error>();
@@ -575,7 +575,7 @@ Optional<Error> JsonDoc::WriteNode(OutputStream& stream,
 {
 	// node attributes
 	bool has_value = static_cast<bool>(node.data.value);
-	bool has_children = node.GetNumChildren() != 0;
+	bool has_children = node.CountChildren() != 0;
 
 	// tabulation of the node
 	const String tabulation = GenerateTabs(depth);
@@ -592,7 +592,7 @@ Optional<Error> JsonDoc::WriteNode(OutputStream& stream,
 		stream << (node.data.is_array ? "[" : "{");
 		stream << CarriageReturn<char>();
 
-		const size_t num_children = node.GetNumChildren();
+		const size_t num_children = node.CountChildren();
 		for (size_t i = 0; i < num_children; i++)
 		{
 			// write child node

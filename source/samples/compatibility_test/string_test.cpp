@@ -210,8 +210,8 @@ void StrValidationTask::Execute()
 	str_0.Add(0);
 	str_0.Add(0);
 	str_0.Validate();
-	report.Print("validation.. container size must be 6: %u", (ut::uint32)str_0.GetNum());
-	if (str_0.GetNum() != 6)
+	report.Print("validation.. container size must be 6: %u", (ut::uint32)str_0.Count());
+	if (str_0.Count() != 6)
 	{
 		report += " failed";
 		failed_test_counter.Increment();
@@ -309,12 +309,12 @@ void StrParsingTask::Execute()
 	ut::Array<ut::String> strarr;
 	strl.Parse(strarr);
 	report += "parsing test: ";
-	for (size_t i = 0; i < strarr.GetNum(); i++)
+	for (size_t i = 0; i < strarr.Count(); i++)
 	{
-		report += strarr[i] + (i != strarr.GetNum() - 1 ? " | " : "");
+		report += strarr[i] + (i != strarr.Count() - 1 ? " | " : "");
 	}
 
-	if (strarr.GetNum() != 5)
+	if (strarr.Count() != 5)
 	{
 		report += " failed";
 		failed_test_counter.Increment();

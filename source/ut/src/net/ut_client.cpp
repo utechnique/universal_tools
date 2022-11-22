@@ -37,7 +37,7 @@ Optional<Error> Client::Run()
 		ScopeSyncRWLock< Array< UniquePtr<Connection> > > connection_lock(connections, access_write);
 
 		// connect only if there is no established connection
-		if (connection_lock.Get().GetNum() == 0)
+		if (connection_lock.Get().Count() == 0)
 		{
 			// create new socket
 			UniquePtr<Socket> socket(MakeUnique<Socket>(address.ip, address.port));

@@ -171,7 +171,7 @@ ut::Optional<ut::String> PushBackTest< ut::Array<int> >(ut::Array<int>& containe
 	traits.container->callbacks.push_back();
 	traits.container->callbacks.push_back();
 
-	if (container.GetNum() != 3)
+	if (container.Count() != 3)
 	{
 		return ut::String("Error! Pushback callback is not working properly for the container parameter.");
 	}
@@ -213,7 +213,7 @@ ut::Optional<ut::String> RemoveElementTest< ut::Array<int> >(ut::Array<int>& con
 {
 	traits.container->callbacks.remove_element(&container[1]);
 
-	if (container.GetNum() != 2 || container[1] != 2)
+	if (container.Count() != 2 || container[1] != 2)
 	{
 		return ut::String("Error! RemoveElement callback is not working properly for the container parameter.");
 	}
@@ -226,7 +226,7 @@ ut::Optional<ut::String> ResetTest(ContainerType& container,
                                    ut::meta::BaseParameter::Traits& traits)
 {
 	traits.container->callbacks.reset();
-	if (container.GetNum() != 0)
+	if (container.Count() != 0)
 	{
 		return ut::String("Error! Reset callback is not working properly for the container parameter.");
 	}
@@ -1170,7 +1170,7 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.al_avltree.Insert(5, "__5");
 
 	// array of string arrays
-	object.strarrarr.Empty();
+	object.strarrarr.Reset();
 	ut::Array<ut::String> arr0;
 	arr0.Add("00");
 	arr0.Add("01");
@@ -1196,7 +1196,7 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.reflective_param = ut::MakeUnique<ReflectiveB>("reflective_b_str", 42, 10);
 	object.reflective_param->base_str = "changed";
 	ReflectiveB* b_ptr = static_cast<ReflectiveB*>(object.reflective_param.Get());
-	b_ptr->b_ptr_arr.Empty();
+	b_ptr->b_ptr_arr.Reset();
 	b_ptr->b_ptr_arr.Add(ut::MakeUnique<ut::byte>(128));
 	b_ptr->b_ptr_arr.Add(ut::MakeUnique<ut::byte>(64));
 	b_ptr->b_ptr_arr.Add(ut::MakeUnique<ut::byte>(255));
@@ -1312,22 +1312,22 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	if (object.a.u16val != 234) return false;
 	if (object.a.str != "sub_class") return false;
 
-	if (object.a.iarr.GetNum() != 3) return false;
+	if (object.a.iarr.Count() != 3) return false;
 	if (object.a.iarr[0] != 1) return false;
 	if (object.a.iarr[1] != 2) return false;
 	if (object.a.iarr[2] != 3) return false;
 
-	if (object.strarr.GetNum() != 3) return false;
+	if (object.strarr.Count() != 3) return false;
 	if (object.strarr[0] != "strarr") return false;
 	if (object.strarr[1] != "strarr") return false;
 	if (object.strarr[2] != "strarr") return false;
 	
-	if (object.u16ptrarr.GetNum() != 3) return false;
+	if (object.u16ptrarr.Count() != 3) return false;
 	if (object.u16ptrarr[0].GetRef() != 0) return false;
 	if (object.u16ptrarr[1].GetRef() != 2) return false;
 	if (object.u16ptrarr[2].GetRef() != 4) return false;
 	
-	if (object.arr.GetNum() != 3) return false;
+	if (object.arr.Count() != 3) return false;
 	if (object.arr[0].u16val != 42) return false;
 	if (object.arr[1].u16val != 42) return false;
 	if (object.arr[2].u16val != 42) return false;
@@ -1335,9 +1335,9 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	if (object.arr[1].str != "subcarr") return false;
 	if (object.arr[2].str != "subcarr") return false;
 	
-	if (object.strarrarr.GetNum() != 2) return false;
-	if (object.strarrarr[0].GetNum() != 2) return false;
-	if (object.strarrarr[1].GetNum() != 2) return false;
+	if (object.strarrarr.Count() != 2) return false;
+	if (object.strarrarr[0].Count() != 2) return false;
+	if (object.strarrarr[1].Count() != 2) return false;
 	if (object.strarrarr[0][0] != "00") return false;
 	if (object.strarrarr[0][1] != "01") return false;
 	if (object.strarrarr[1][0] != "10") return false;
@@ -1441,7 +1441,7 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 		if (refl_ptr->uval != 42) return false;
 		if (refl_ptr->bstr != "reflective_b_str") return false;
 		if (*(refl_ptr->i_ptr.Get()) != 10) return false;
-		if (refl_ptr->b_ptr_arr.GetNum() != 3) return false;
+		if (refl_ptr->b_ptr_arr.Count() != 3) return false;
 		if (*(refl_ptr->b_ptr_arr[0].Get()) != 128) return false;
 		if (*(refl_ptr->b_ptr_arr[1].Get()) != 64) return false;
 		if (*(refl_ptr->b_ptr_arr[2].Get()) != 255) return false;
@@ -1553,7 +1553,7 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	}
 
 	// int array, non-default allocator
-	if (object.al_int_data.GetNum() != 64) return false;
+	if (object.al_int_data.Count() != 64) return false;
 	for (int i = 0; i < 64; i++)
 	{
 		if (object.al_int_data[i] != i)
@@ -1563,8 +1563,8 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	}
 
 	// binary data
-	if (object.binary0.GetNum() != 256) return false;
-	if (object.binary1.GetNum() != 256) return false;
+	if (object.binary0.Count() != 256) return false;
+	if (object.binary1.Count() != 256) return false;
 	for (int i = 0; i < 256; i++)
 	{
 		if (object.binary0[i] != 255 - i)

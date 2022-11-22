@@ -47,7 +47,7 @@ public:
 		{
 			new (&value)ValueType(ut::Move(other.value));
 		}
-		other.Empty();
+		other.Reset();
 	}
 
 	// Assignment operator
@@ -89,7 +89,7 @@ public:
 
 		has_value = other.has_value;
 
-		other.Empty();
+		other.Reset();
 
 		return *this;
 	}
@@ -175,7 +175,7 @@ public:
 	}
 
 	// Destroyes current value if it's present.
-	void Empty()
+	void Reset()
 	{
 		if (has_value)
 		{
@@ -192,7 +192,7 @@ public:
 	// Destructor
 	~Optional()
 	{
-		Empty();
+		Reset();
 	}
 
 private:

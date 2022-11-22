@@ -14,7 +14,7 @@ Optional<Error> XmlDoc::Parse(const String& doc)
 	text::Reader cursor(doc.ToCStr());
 
 	// remove current contents
-	nodes.Empty();
+	nodes.Reset();
 	
 	// parse BOM, if any
 	ParseBOM(cursor);
@@ -59,7 +59,7 @@ Optional<Error> XmlDoc::Parse(const String& doc)
 Optional<Error> XmlDoc::Write(OutputStream& stream) const
 {
 	// write every node
-	for (size_t i = 0; i < nodes.GetNum(); i++)
+	for (size_t i = 0; i < nodes.Count(); i++)
 	{
 		Optional<Error> save_node_error = WriteNode(stream, nodes[i]);
 		if (save_node_error)
@@ -845,7 +845,7 @@ Optional<Error> XmlDoc::WriteGeneralNode(OutputStream& stream,
 	// node attributes
 	bool is_attribute = node.data.is_attribute;
 	bool has_value = static_cast<bool>(node.data.value);
-	bool has_children = node.GetNumChildren() != 0;
+	bool has_children = node.CountChildren() != 0;
 
 	// can't be attribute here
 	UT_ASSERT(!is_attribute);
@@ -861,7 +861,7 @@ Optional<Error> XmlDoc::WriteGeneralNode(OutputStream& stream,
 	bool has_non_attribute_children = false;
 	if (has_children)
 	{
-		for (size_t i = 0; i < node.GetNumChildren(); i++)
+		for (size_t i = 0; i < node.CountChildren(); i++)
 		{
 			// skip non-attribute elements
 			if (!node[i].data.is_attribute)
@@ -903,7 +903,7 @@ Optional<Error> XmlDoc::WriteGeneralNode(OutputStream& stream,
 		bool found_element_node = false;
 
 		// write children
-		for (size_t i = 0; i < node.GetNumChildren(); i++)
+		for (size_t i = 0; i < node.CountChildren(); i++)
 		{
 			// skip attributes
 			if (node[i].data.is_attribute)
@@ -998,7 +998,7 @@ Optional<Error> XmlDoc::WriteDeclaration(OutputStream& stream,
 	stream << tabulation << "<?xml";
 
 	// write attributes
-	for (size_t i = 0; i < node.GetNumChildren(); i++)
+	for (size_t i = 0; i < node.CountChildren(); i++)
 	{
 		// must be attribute
 		UT_ASSERT(node[i].data.is_attribute);

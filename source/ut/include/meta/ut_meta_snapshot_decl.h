@@ -54,7 +54,7 @@ public:
 	{
 		// auto-generated name
 		String name;
-		name.Print("p%u", static_cast<uint32>(Base::child_nodes.GetNum()));
+		name.Print("p%u", static_cast<uint32>(Base::child_nodes.Count()));
 
 		// add new parameter
 		Optional<Error> add_param_error = Add(ref, Move(name));

@@ -85,7 +85,7 @@ public:
 			commands = ut::Move(ui.DispatchCommands());
 
 			// do something only if there is at least one command
-			if (commands.GetNum())
+			if (commands.Count())
 			{
 				// marking commands as uncomplete to make possible
 				// waiting for completion
@@ -155,7 +155,7 @@ void DispatcherCallback(void* ptr)
 
 	// execute commands
 	ut::Array< ut::UniquePtr<UiCmd> > commands = ut::Move(job->GrabCommands());
-	for (size_t i = 0; i < commands.GetNum(); i++)
+	for (size_t i = 0; i < commands.Count(); i++)
 	{
 		commands[i]->Execute();
 	}
@@ -458,7 +458,7 @@ ut::Array< ut::UniquePtr<UiCmd> > DesktopUI::DispatchCommands()
 	// move commands
 	ut::Array< ut::UniquePtr<UiCmd> > out;
 	out = Move(locked_commands);
-	locked_commands.Empty();
+	locked_commands.Reset();
 	return out;
 }
 

@@ -327,7 +327,7 @@ public:
 	static void Select(SrcArray& src, DstArray& dst)
 	{
 		const DynamicType::Handle dst_handle = PolymorphicType<Derived>::GetHandle();
-		const size_t src_count = src.GetNum();
+		const size_t src_count = src.Count();
 		for (size_t i = 0; i < src_count; i++)
 		{
 			const DynamicType& src_type = src[i]->Identify();
@@ -350,7 +350,7 @@ public:
 	// Returns the number of types registered in this factory.
 	static size_t CountTypes()
 	{
-		return GetArray().GetNum();
+		return GetArray().Count();
 	}
 
 	// Returns the polymorphic view of this factory.
@@ -388,7 +388,7 @@ private:
 
 			// then let parent factories register this type too
 			Array<RegisterCallback>& callbacks = GetCallbacks();
-			for (size_t i = 0; i < callbacks.GetNum(); i++)
+			for (size_t i = 0; i < callbacks.Count(); i++)
 			{
 				callbacks[i](name, ptr);
 			}

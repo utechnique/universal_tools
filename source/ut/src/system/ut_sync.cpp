@@ -111,7 +111,7 @@ void SyncPoint::Synchronize()
 	requests.Unlock();
 
 	// kick off pending requests
-	const size_t request_count = temp_buffer.GetNum();
+	const size_t request_count = temp_buffer.Count();
 	for (size_t i = 0; i < request_count; i++)
 	{
 		temp_buffer[i]->StartAndWaitCompletion(occupant_mutex);

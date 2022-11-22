@@ -151,7 +151,7 @@ ut::Optional<ut::Error> ClientUI::UpdateClientList(const ClientList& list)
 	// update widget
 	clients->add("everybody");
 	clients->select(1);
-	for (size_t i = 0; i < list.GetNum(); i++)
+	for (size_t i = 0; i < list.Count(); i++)
 	{
 		// add new line
 		clients->add(list[i].name);
@@ -192,7 +192,7 @@ ut::Result<ut::net::HostAddress, ut::Error> ClientUI::GetSelectedClientAddress()
 	}
 
 	// check if selected item is in client-list range
-	if (selected_item >= client_list.GetNum())
+	if (selected_item >= client_list.Count())
 	{
 		return ut::MakeError(ut::error::out_of_bounds);
 	}

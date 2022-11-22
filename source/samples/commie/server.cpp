@@ -57,7 +57,7 @@ ClientList Server::GetClientList()
 	ut::Array< ut::UniquePtr<ut::net::Connection> >& locked_connections = connections_scope_lock.Get();
 
 	// iterate connections
-	for (size_t i = 0; i < locked_connections.GetNum(); i++)
+	for (size_t i = 0; i < locked_connections.Count(); i++)
 	{
 		commie::Connection& commie_connection = static_cast<commie::Connection&>(locked_connections[i].GetRef());
 

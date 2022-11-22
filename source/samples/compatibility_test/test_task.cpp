@@ -33,7 +33,7 @@ void FailedTestCounter::Increment()
 	num++;
 }
 
-ut::uint32 FailedTestCounter::GetNum()
+ut::uint32 FailedTestCounter::Count()
 {
 	ut::ScopeLock sl(mutex);
 	return num;

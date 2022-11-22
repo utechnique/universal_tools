@@ -162,7 +162,7 @@ void PolymorphicClassificationTask::Execute()
 	ut::Array< ut::Ref<PolymorphicTestA> > derived_a;
 	ut::Factory<PolymorphicTestBase>::Select<PolymorphicTestA>(base, derived_a);
 
-	if (derived_a.GetNum() != 3)
+	if (derived_a.Count() != 3)
 	{
 		report += ut::String("FAILED: Invalid number of derived objects.") + ut::CRet();
 		failed_test_counter.Increment();
@@ -182,7 +182,7 @@ void PolymorphicClassificationTask::Execute()
 	ut::Array< ut::Ref<PolymorphicTestB> >& b = selector.Get<PolymorphicTestB>();
 	ut::Array< ut::Ref<PolymorphicTestC> >& c = selector.Get<PolymorphicTestC>();
 
-	if (a.GetNum() != 3 || b.GetNum() != 1 || c.GetNum() != 2)
+	if (a.Count() != 3 || b.Count() != 1 || c.Count() != 2)
 	{
 		report += ut::String("FAILED: Invalid number of derived objects.") + ut::CRet();
 		failed_test_counter.Increment();
@@ -191,7 +191,7 @@ void PolymorphicClassificationTask::Execute()
 
 	selector.Reset();
 
-	if (a.GetNum() != 0 || b.GetNum() != 0 || c.GetNum() != 0)
+	if (a.Count() != 0 || b.Count() != 0 || c.Count() != 0)
 	{
 		report += ut::String("FAILED: non-empty array after a Reset() call.") + ut::CRet();
 		failed_test_counter.Increment();
@@ -207,7 +207,7 @@ void PolymorphicClassificationTask::Execute()
 
 	selector.Select(base);
 
-	if (a.GetNum() != 3 || b.GetNum() != 1 || c.GetNum() != 2)
+	if (a.Count() != 3 || b.Count() != 1 || c.Count() != 2)
 	{
 		report += ut::String("FAILED: Invalid number of derived objects.") + ut::CRet();
 		failed_test_counter.Increment();

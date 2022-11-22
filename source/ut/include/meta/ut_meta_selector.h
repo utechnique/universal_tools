@@ -26,7 +26,7 @@ struct SelectorHelper
 
 	static void Reset(SelectorType& selector)
 	{
-		selector.template Get<Head>().Empty();
+		selector.template Get<Head>().Reset();
 		SelectorHelper<SelectorType, Tail...>::Reset(selector);
 	}
 
@@ -49,7 +49,7 @@ struct SelectorHelper<SelectorType, Last>
 
 	static void Reset(SelectorType& selector)
 	{
-		selector.template Get<Last>().Empty();
+		selector.template Get<Last>().Reset();
 	}
 
 	static void DisableReduction(SelectorType& selector)

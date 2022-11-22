@@ -70,7 +70,7 @@ public:
 		Import();
 
 		// register proxy nodes
-		const size_t element_count = proxy_nodes.GetNum();
+		const size_t element_count = proxy_nodes.Count();
 		for (size_t i = 0; i < element_count; i++)
 		{
 			snapshot << proxy_nodes[i];
@@ -168,7 +168,7 @@ public:
 		// resize the proxy array
 		const size_t element_count = read_num_result.Get();
 		proxy_values.Resize(element_count);
-		proxy_nodes.Empty();
+		proxy_nodes.Reset();
 		for (size_t i = 0; i < element_count; i++)
 		{
 			if (!proxy_nodes.Add(ProxyNode(Key(), &proxy_values[i])))
@@ -247,7 +247,7 @@ private:
 		HashMapType& map = *static_cast<HashMapType*>(ptr);
 
 		// export data
-		const size_t element_count = proxy_nodes.GetNum();
+		const size_t element_count = proxy_nodes.Count();
 		for (size_t i = 0; i < element_count; i++)
 		{
 			const ProxyNode& proxy_node = proxy_nodes[i];
@@ -255,8 +255,8 @@ private:
 		}
 
 		// clear memory
-		proxy_nodes.Empty();
-		proxy_values.Empty();
+		proxy_nodes.Reset();
+		proxy_values.Reset();
 	}
 
 	// Proxy objects to perform save/load.

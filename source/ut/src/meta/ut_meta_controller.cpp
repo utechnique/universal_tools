@@ -950,7 +950,7 @@ Optional<Error> Controller::ReadParameter(Snapshot& node, stream::Cursor start)
 	}
 
 	// reflect once again loaded parameter to create those new 'empty leaves'
-	node.Empty();
+	node.Reset();
 	node.data.parameter->Reflect(node);
 
 	// after the tree structure was restored we can load every leaf separately
@@ -984,7 +984,7 @@ Optional<Error> Controller::WriteChildNodes(Snapshot& node, stream::Cursor start
 	}
 
 	// write a number of children in the provided node
-	const SizeType child_num = static_cast<SizeType>(node.GetNumChildren());
+	const SizeType child_num = static_cast<SizeType>(node.CountChildren());
 	Optional<Error> child_num_error = WriteNumberOfChildNodes(child_num);
 	if (child_num_error)
 	{
@@ -1014,7 +1014,7 @@ Optional<Error> Controller::WriteChildNodes(Snapshot& node, stream::Cursor start
 	}
 
 	// allocate space for child nodes (only text mode is involved)
-	Result<size_t, Error> alloc_result = AllocateChildNodes(node.GetNumChildren());
+	Result<size_t, Error> alloc_result = AllocateChildNodes(node.CountChildren());
 	if (!alloc_result)
 	{
 		return alloc_result.MoveAlt();
@@ -1025,7 +1025,7 @@ Optional<Error> Controller::WriteChildNodes(Snapshot& node, stream::Cursor start
 
 	// iterate child nodes
 	const size_t offset = alloc_result.Get();
-	for (size_t i = 0; i < node.GetNumChildren(); i++)
+	for (size_t i = 0; i < node.CountChildren(); i++)
 	{
 		// create a new node for serialiation
 		Optional<Error> dive_new_node_error = DiveIntoChildNode(i + offset);
@@ -1078,7 +1078,7 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node, stream::Cursor start)
 	}
 
 	// exit if current node has no children (after initialization)
-	if (node.GetNumChildren() == 0)
+	if (node.CountChildren() == 0)
 	{
 		return Optional<Error>();
 	}
@@ -1121,7 +1121,7 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node, stream::Cursor start)
 		// number of children may be not the same in serialized version of the node
 		// and in the current one, thus if we want to deserialize a node with an id greater
 		// than it's possible for the current version - pick the last id
-		size_t node_id = i >= node.GetNumChildren() ? node.GetNumChildren() - 1 : i;
+		size_t node_id = i >= node.CountChildren() ? node.CountChildren() - 1 : i;
 
 		// read child node
 		SerializationOptions options;
@@ -1230,7 +1230,7 @@ Result<size_t, Error> Controller::ReadNumberOfChildNodes(const Snapshot& node)
 		// that the number of serialized children matches current number of children
 		if (!info.HasBinaryNames())
 		{
-			return node.GetNumChildren();
+			return node.CountChildren();
 		}
 
 		// read a number of children from the stream
@@ -1246,7 +1246,7 @@ Result<size_t, Error> Controller::ReadNumberOfChildNodes(const Snapshot& node)
 	{
 		// text document retrieves a number of child nodes during a
 		// parsing process, so this information is already known
-		return io.text_input->GetNumChildren();
+		return io.text_input->CountChildren();
 	}
 
 	return MakeError(error::fail, "Invalid mode.");
@@ -1263,7 +1263,7 @@ Result<size_t, Error> Controller::AllocateChildNodes(size_t count)
 	if (mode == text_output_mode)
 	{
 		// get id of the first leaf
-		id = io.text_output->GetNumChildren();
+		id = io.text_output->CountChildren();
 
 		// preallocate child nodes
 		for (size_t i = 0; i < count; i++)
@@ -1700,13 +1700,13 @@ Optional<Error> Controller::WriteSharedObjects()
 	{
 		// grab shared objects ready for serialization from linker
 		Array<OutputSharedCacheElement> shared_objects = linker->MoveOutputSharedCache();
-		if (shared_objects.GetNum() == 0)
+		if (shared_objects.Count() == 0)
 		{
 			break;
 		}
 
 		// write parameters
-		for (size_t i = 0; i < shared_objects.GetNum(); i++)
+		for (size_t i = 0; i < shared_objects.Count(); i++)
 		{
 			// generate correct node name
 			const String node_name = GenerateSharedObjectName(count);
@@ -1847,7 +1847,7 @@ Optional<Error> Controller::LoadSharedObject(Array<InputSharedCacheElement>& reg
 	}
 
 	// iterate all registry entries to find id match
-	for (size_t i = registry.GetNum(); i-- > 0;)
+	for (size_t i = registry.Count(); i-- > 0;)
 	{
 		// check if id matches
 		if (registry[i].id != static_cast<size_t>(uniform.Get().id.Get()))
@@ -1881,7 +1881,7 @@ Optional<Error> Controller::LoadSharedObject(Array<InputSharedCacheElement>& reg
 		// to add these new entries to the current registry so that further shared objects
 		// (that are deeper than 1 level in linking hierarchy) could be deserialized
 		Array<InputSharedCacheElement> new_registry_entries = linker->MovePreliminarySharedCache();
-		for (size_t j = 0; j < new_registry_entries.GetNum(); j++)
+		for (size_t j = 0; j < new_registry_entries.Count(); j++)
 		{
 			registry.Add(Move(new_registry_entries[j]));
 		}
@@ -1932,7 +1932,7 @@ Optional<Error> Controller::DiveIntoChildNode(size_t id)
 		Tree<text::Node>& parent = *io.text_output;
 
 		// check range
-		if (id >= parent.GetNumChildren())
+		if (id >= parent.CountChildren())
 		{
 			return Error(error::out_of_bounds);
 		}
@@ -1946,7 +1946,7 @@ Optional<Error> Controller::DiveIntoChildNode(size_t id)
 		const Tree<text::Node>& parent = *io.text_input;
 
 		// check range
-		if (id >= parent.GetNumChildren())
+		if (id >= parent.CountChildren())
 		{
 			return Error(error::out_of_bounds);
 		}

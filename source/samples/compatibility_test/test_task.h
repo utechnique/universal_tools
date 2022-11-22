@@ -30,7 +30,7 @@ class FailedTestCounter
 public:
 	FailedTestCounter();
 	void Increment();
-	ut::uint32 GetNum();
+	ut::uint32 Count();
 
 private:
 	ut::uint32 num;

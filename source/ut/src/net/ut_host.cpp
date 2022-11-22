@@ -29,7 +29,7 @@ Optional<Error> Host::ShutDown()
 
 	// close all connections
 	ScopeSyncRWLock< Array< UniquePtr<Connection> > > locked_connections(connections, access_write);
-	locked_connections.Get().Empty();
+	locked_connections.Get().Reset();
 
 	// success
 	return Optional<Error>();
@@ -52,7 +52,7 @@ Optional<Error> Host::SendCommand(UniquePtr<Command> command,
 	if (address.IsValid())
 	{
 		// if address is valid - just find the connection and move provided command
-		for (size_t i = 0; i < locked_connections.GetNum(); i++)
+		for (size_t i = 0; i < locked_connections.Count(); i++)
 		{
 			if (address == locked_connections[i]->GetAddress())
 			{
@@ -68,7 +68,7 @@ Optional<Error> Host::SendCommand(UniquePtr<Command> command,
 	else
 	{
 		// if address is invalid - add a copy of the command to all connections
-		for (size_t i = 0; i < locked_connections.GetNum(); i++)
+		for (size_t i = 0; i < locked_connections.Count(); i++)
 		{
 			const Command& cref = command.GetRef();
 			Optional<Error> add_error = locked_connections[i]->AddCommand(cref);
@@ -93,7 +93,7 @@ void Host::CloseConnection(const HostAddress& address)
 	Array< UniquePtr<Connection> >& locked_connections = connections_scope_lock.Get();
 
 	// find and delete connection with matching address
-	for (size_t i = 0; i < locked_connections.GetNum(); i++)
+	for (size_t i = 0; i < locked_connections.Count(); i++)
 	{
 		if (locked_connections[i]->GetAddress() == address)
 		{

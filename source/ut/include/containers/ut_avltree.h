@@ -530,7 +530,7 @@ public:
 	}
 
 	// Destructs all nodes
-	void Empty()
+	void Reset()
 	{
 		DeleteNode(root);
 		root = nullptr;

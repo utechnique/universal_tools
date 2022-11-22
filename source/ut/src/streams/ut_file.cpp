@@ -129,7 +129,7 @@ Optional<Error> RemoveFolder(const String& folder, bool delete_subdirectories)
 		{
 			if (file_info.cFileName[0] != '.')
 			{
-				file_path.Empty();
+				file_path.Reset();
 				file_path = wfolder;
 				file_path += L"\\";
 				file_path += file_info.cFileName;
@@ -609,7 +609,7 @@ Optional<Error> File::Close()
 #elif !UT_WINDOWS
 		#error ut::File::Close() is not implemented
 #endif
-		path.Empty();
+		path.Reset();
 	}
 	return Optional<Error>();
 }

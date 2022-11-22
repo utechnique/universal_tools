@@ -125,7 +125,7 @@ Result<size_t, Error> BinaryStream::GetSize()
 // Returns the pointer to the stream buffer or error if failed
 Result<const void*, Error> BinaryStream::GetData(stream::Cursor offset) const
 {
-	if (data.GetNum() != 0)
+	if (data.Count() != 0)
 	{
 		return data.GetAddress() + offset;
 	}

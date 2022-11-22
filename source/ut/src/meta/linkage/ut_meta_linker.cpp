@@ -61,7 +61,7 @@ Optional<Error> Linker::AddTask(UniquePtr<LinkTask> task)
 Optional<Error> Linker::Execute()
 {
 	// execute all write tasks
-	for (size_t i = 0; i < tasks.GetNum(); i++)
+	for (size_t i = 0; i < tasks.Count(); i++)
 	{
 		Optional<Error> execute_error = tasks[i]->Execute(*this);
 		if (execute_error)
@@ -71,7 +71,7 @@ Optional<Error> Linker::Execute()
 	}
 
 	// clean task pool
-	tasks.Empty();
+	tasks.Reset();
 
 	// success
 	return Optional<Error>();
@@ -87,7 +87,7 @@ Optional<Error> Linker::CacheOutputSharedObject(const SharedPtr<SharedPtrHolderB
                                                 const void* address)
 {
 	// check if this object already exists
-	for (size_t i = 0; i < output_shared_cache.GetNum(); i++)
+	for (size_t i = 0; i < output_shared_cache.Count(); i++)
 	{
 		if (output_shared_cache[i].address == address)
 		{
@@ -116,7 +116,7 @@ Optional<Error> Linker::CacheInputSharedObject(const SharedPtr<SharedPtrHolderBa
                                                size_t id)
 {
 	// check if this object already exists
-	for (size_t i = 0; i < input_shared_cache.GetNum(); i++)
+	for (size_t i = 0; i < input_shared_cache.Count(); i++)
 	{
 		if (input_shared_cache[i].id == id)
 		{
@@ -145,7 +145,7 @@ Optional<Error> Linker::RegisterInputSharedObject(const SharedPtr<SharedPtrHolde
                                                   size_t id)
 {
 	// check if this object already exists
-	for (size_t i = 0; i < preliminary_shared_cache.GetNum(); i++)
+	for (size_t i = 0; i < preliminary_shared_cache.Count(); i++)
 	{
 		if (preliminary_shared_cache[i].id == id)
 		{
@@ -154,7 +154,7 @@ Optional<Error> Linker::RegisterInputSharedObject(const SharedPtr<SharedPtrHolde
 	}
 
 	// check final cache too
-	for (size_t i = 0; i < input_shared_cache.GetNum(); i++)
+	for (size_t i = 0; i < input_shared_cache.Count(); i++)
 	{
 		if (input_shared_cache[i].id == id)
 		{
@@ -178,7 +178,7 @@ Optional<Error> Linker::RegisterInputSharedObject(const SharedPtr<SharedPtrHolde
 Array<OutputSharedCacheElement> Linker::MoveOutputSharedCache()
 {
 	Array<OutputSharedCacheElement> cache(Move(output_shared_cache));
-	output_shared_cache.Empty();
+	output_shared_cache.Reset();
 	return cache;
 }
 
@@ -189,7 +189,7 @@ Array<OutputSharedCacheElement> Linker::MoveOutputSharedCache()
 Array<InputSharedCacheElement> Linker::MovePreliminarySharedCache()
 {
 	Array<InputSharedCacheElement> cache(Move(preliminary_shared_cache));
-	preliminary_shared_cache.Empty();
+	preliminary_shared_cache.Reset();
 	return cache;
 }
 
@@ -239,7 +239,7 @@ Optional<Error> Linker::WriteLinkId(Controller state, size_t id) const
 //    @return - reference to the cached link.
 Optional<Link&> Linker::FindLinkByParameter(const BaseParameter* parameter)
 {
-	for (size_t i = 0; i < links.GetNum(); i++)
+	for (size_t i = 0; i < links.Count(); i++)
 	{
 		if (links[i]->parameter.Get() == parameter)
 		{
@@ -257,7 +257,7 @@ Optional<Link&> Linker::FindLinkByParameter(const BaseParameter* parameter)
 //    @return - reference to the cached link.
 Optional<Link&> Linker::FindLinkByAddress(const void* address)
 {
-	for (size_t i = 0; i < links.GetNum(); i++)
+	for (size_t i = 0; i < links.Count(); i++)
 	{
 		if (links[i]->parameter->GetAddress() == address)
 		{
@@ -275,7 +275,7 @@ Optional<Link&> Linker::FindLinkByAddress(const void* address)
 //    @return - reference to the cached link.
 Optional<Link&> Linker::FindLinkById(size_t id)
 {
-	for (size_t i = 0; i < links.GetNum(); i++)
+	for (size_t i = 0; i < links.Count(); i++)
 	{
 		if (links[i]->id == id)
 		{
@@ -294,7 +294,7 @@ Optional<Link&> Linker::FindLinkById(size_t id)
 Optional<InputSharedCacheElement&> Linker::FindSharedLinkById(size_t id)
 {
 	// find linked parameter by id
-	for (size_t i = 0; i < input_shared_cache.GetNum(); i++)
+	for (size_t i = 0; i < input_shared_cache.Count(); i++)
 	{
 		// check if identifiers match
 		if (input_shared_cache[i].id == id)

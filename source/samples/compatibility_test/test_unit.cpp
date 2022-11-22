@@ -19,7 +19,7 @@ ut::String TestUnit::GetReport()
 
 void TestUnit::Execute()
 {
-	for (size_t i = 0; i < tasks.GetNum(); i++)
+	for (size_t i = 0; i < tasks.Count(); i++)
 	{
 		tasks[i]->Execute();
 		

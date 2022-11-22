@@ -286,7 +286,7 @@ public:
 	//    @param copy - array to copy
 	BaseArray& operator = (const BaseArray& copy)
 	{
-		Empty();
+		Reset();
 
 		allocator = copy.allocator;
 
@@ -302,7 +302,7 @@ public:
 	BaseArray& operator = (BaseArray&& other) noexcept
 	{
 		// release memory
-		Empty();
+		Reset();
 
 		// ensure that memory is deallocated
 		if (arr != nullptr)
@@ -385,7 +385,7 @@ public:
 	// Destructor, releases allocated memory
 	~BaseArray()
 	{
-		Empty();
+		Reset();
 
 		// ensure that memory is deallocated
 		if (arr != nullptr)
@@ -401,7 +401,7 @@ public:
 	}
 
 	// Returns the number of elements in the array
-	inline size_t GetNum() const
+	inline size_t Count() const
 	{
 		return num;
 	}
@@ -470,7 +470,7 @@ public:
 	//    @param num_elements - new size of the array, in elements
 	bool AllocEmpty(size_t num_elements)
 	{
-		Empty();
+		Reset();
 
 		if (!Realloc(num_elements))
 		{
@@ -629,7 +629,7 @@ public:
 	}
 
 	// Releases previously allocated memory
-	void Empty()
+	void Reset()
 	{
 		Realloc(0);
 	}
@@ -740,7 +740,7 @@ protected:
 	inline bool Concatenate(ArgRefType other)
 	{
 		const size_t previous_num = num;
-		const size_t other_num = other.GetNum();
+		const size_t other_num = other.Count();
 
 		// allocate memory for new elements
 		if (!Realloc(num + other_num))
@@ -769,7 +769,7 @@ protected:
 	//    @param copy - array to copy content from
 	bool CopyToEmpty(const BaseArray& copy)
 	{
-		if (!Realloc(copy.GetNum()))
+		if (!Realloc(copy.Count()))
 		{
 			return false;
 		}

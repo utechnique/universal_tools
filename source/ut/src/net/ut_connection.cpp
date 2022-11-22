@@ -17,7 +17,7 @@ public:
 
 	void Execute()
 	{
-		for (size_t i = 0; i < actions.GetNum(); i++)
+		for (size_t i = 0; i < actions.Count(); i++)
 		{
 			// exit if connection is in closing state
 			if (!connection.IsActive() || exit_request.Read())
@@ -212,7 +212,7 @@ Result<UniquePtr<Command>, Error> Connection::PickCommand()
 {
 	ScopeSyncLock< Array< UniquePtr<Command> > > locked_commands(commands);
 	Array< UniquePtr<Command> >& cmd_array = locked_commands.Get();
-	if (cmd_array.GetNum() == 0)
+	if (cmd_array.Count() == 0)
 	{
 		return MakeError(error::empty);
 	}

@@ -184,7 +184,7 @@ Optional<Snapshot&> Snapshot::FindChildByName(const String& node_name)
 
 	// search a leaf node by name
 	const bool is_final_node = *pstr == '\0';
-	for (size_t i = 0; i < Base::GetNumChildren(); i++)
+	for (size_t i = 0; i < Base::CountChildren(); i++)
 	{
 		Snapshot& leaf = Base::child_nodes[i];
 		if (leaf_name == leaf.data.name)
@@ -286,7 +286,7 @@ Snapshot::Snapshot(const InfoSharedPtr& info_ptr) : Base(), info(info_ptr)
 void Snapshot::InvokeCallback(Function<void()> Snapshot::* callback_ptr)
 {
 	// recursively iterate all child nodes
-	const size_t child_count = child_nodes.GetNum();
+	const size_t child_count = child_nodes.Count();
 	for (size_t i = 0; i < child_count; i++)
 	{
 		Function<void()>& child_callback = child_nodes[i].*callback_ptr;

@@ -37,7 +37,7 @@ public:
 		ArrayType& arr = *static_cast<ArrayType*>(ptr);
 
 		// register all elements
-		for (size_t i = 0; i < arr.GetNum(); i++)
+		for (size_t i = 0; i < arr.Count(); i++)
 		{
 			snapshot << arr[i];
 		}
@@ -63,7 +63,7 @@ public:
 		}
 
 		// write array size
-		Controller::SizeType num = static_cast<Controller::SizeType>(arr.GetNum());
+		Controller::SizeType num = static_cast<Controller::SizeType>(arr.Count());
 		Optional<Error> write_num_error = controller.WriteAttribute(num, node_names::skCount);
 		if (write_num_error)
 		{
@@ -133,7 +133,7 @@ public:
 	void Reset()
 	{
 		ArrayType& arr = *static_cast<ArrayType*>(ptr);
-		arr.Empty();
+		arr.Reset();
 	}
 
 	// Adds an element to the end of the array.
@@ -148,7 +148,7 @@ public:
 	void RemoveElement(void* element_address)
 	{
 		ArrayType& arr = *static_cast<ArrayType*>(ptr);
-		const size_t element_count = arr.GetNum();
+		const size_t element_count = arr.Count();
 		for (size_t i = 0; i < element_count; i++)
 		{
 			if (reinterpret_cast<ut::uptr>(&arr[i]) == reinterpret_cast<ut::uptr>(element_address))
@@ -186,7 +186,7 @@ public:
 	Optional<Error> Save(Controller& controller)
 	{
 		ArrayType& arr = *static_cast<ArrayType*>(ptr);
-		const Controller::SizeType count = static_cast<Controller::SizeType>(arr.GetNum());
+		const Controller::SizeType count = static_cast<Controller::SizeType>(arr.Count());
 		const Controller::SizeType size = sizeof(T) * count;
 
 		// write data size

@@ -45,7 +45,7 @@ public:
 	// Deletes all slots.
 	void Reset()
 	{
-		slots.Empty();
+		slots.Reset();
 	}
 
 protected:
@@ -68,7 +68,7 @@ public:
 		Combiner combiner;
 
 		// Iterate all slots.
-		const size_t slot_count = Base::slots.GetNum();
+		const size_t slot_count = Base::slots.Count();
 		for (size_t i = 0; i < slot_count; i++)
 		{
 			if (i == slot_count - 1)
@@ -97,7 +97,7 @@ class SignalTemplate<Combiner, void(*)(Arguments...)>
 public:
 	Result<void, Error> operator()(Arguments... arguments)
 	{
-		const size_t slot_count = Base::slots.GetNum();
+		const size_t slot_count = Base::slots.Count();
 		for (size_t i = 0; i < slot_count; i++)
 		{
 			Base::slots[i](arguments...); // no need to use combiner
