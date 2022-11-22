@@ -10,66 +10,6 @@
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
-// ut::meta::HashMapProxy is a helper proxy template class to simplify
-// serialization of the ut::HashMap container.
-template<typename Key,
-         typename Value,
-         class HashFunction,
-         class KeyEqual,
-         class Allocator>
-class HashMapProxy
-{
-	using HashMapType = HashMap<Key,
-	                            Value,
-	                            HashFunction,
-	                            KeyEqual,
-	                            Allocator>;
-public:
-	struct Node : public Reflective
-	{
-		Key key_copy;
-		Value* value_ptr;
-
-		void Reflect(Snapshot& snapshot)
-		{
-			snapshot.Add(key_copy, "key");
-			snapshot.Add(*value_ptr, "value");
-		}
-	};
-
-	// Default constructor.
-	HashMapProxy()
-	{}
-
-	// Imports data from the provided hashmap.
-	//    @param copy - reference to the original hashmap
-	//                  representing a source of data.
-	void Import(HashMapType& copy)
-	{
-		const size_t element_count = copy.Count();
-		for (size_t i = 0; i < element_count; i++)
-		{
-			Pair<const Key, Value>& element = copy[i];
-			if (!nodes.Add(Node{ element.GetFirst(), &element.second }))
-			{
-				throw Error(error::out_of_memory);
-			}
-		}
-	}
-
-	ut::Array<Node> nodes;
-	ut::Array<Value> values;
-};
-
-
-
-
-//----------------------------------------------------------------------------//
-
-
-
-
-
 // ut::Parameter<Hashmap> is a template specialization for the hashmap.
 template<typename Key,
          typename Value,
@@ -319,6 +259,7 @@ private:
 		proxy_values.Empty();
 	}
 
+	// Proxy objects to perform save/load.
 	ut::Array<ProxyNode> proxy_nodes;
 	ut::Array<Value> proxy_values;
 };
