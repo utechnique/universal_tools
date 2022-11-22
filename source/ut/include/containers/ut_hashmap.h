@@ -694,6 +694,14 @@ private:
 };
 
 //----------------------------------------------------------------------------//
+// Specialize type name function for the hashmap container.
+template<typename Key, typename Value, class HashFunction, class KeyEqual, class Allocator>
+struct Type< HashMap<Key, Value, HashFunction, KeyEqual, Allocator> >
+{
+	static inline const char* Name() { return "hashmap"; }
+};
+
+//----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

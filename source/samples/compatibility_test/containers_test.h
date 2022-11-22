@@ -22,14 +22,6 @@ public:
 };
 
 //----------------------------------------------------------------------------//
-class MapTask : public TestTask
-{
-public:
-	MapTask();
-	void Execute();
-};
-
-//----------------------------------------------------------------------------//
 class TreeTask : public TestTask
 {
 public:

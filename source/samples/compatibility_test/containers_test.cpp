@@ -6,7 +6,6 @@
 ContainersTestUnit::ContainersTestUnit() : TestUnit("CONTAINERS")
 {
 	tasks.Add(ut::MakeUnique<ArrayOpsTask>());
-	tasks.Add(ut::MakeUnique<MapTask>());
 	tasks.Add(ut::MakeUnique<TreeTask>());
 	tasks.Add(ut::MakeUnique<AVLTreeTask>());
 	tasks.Add(ut::MakeUnique<HashmapTask>());
@@ -174,91 +173,6 @@ void ArrayOpsTask::Execute()
 	else
 	{
 		report += " FAIL. ";
-		failed_test_counter.Increment();
-	}
-}
-
-//----------------------------------------------------------------------------//
-MapTask::MapTask() : TestTask("Map")
-{ }
-
-void MapTask::Execute()
-{
-	// map test, following calls can cause
-	// throwing an error if something went wrong:
-	ut::Map<int, ut::String> map;
-	ut::String str1("__2");
-	ut::String str2("__32");
-	int ival = 32;
-	map.Insert(24, "__24");
-	map.Insert(2, str1);
-	map.Insert(ival, str2);
-	map.Add(ut::Pair<int, ut::String>(1, "__1"));
-	map.Insert(55, "__55");
-	map.Insert(4, "__4");
-	map.Insert(3, "__3");
-	map.Remove(4);
-	map.Insert(5, "__5");
-	map.Insert(43, "__43");
-	map.Insert(60, "__60");
-
-	// try to find one specific value by key
-	report += "searching element by key \'55\'(should be \'__55\'): ";
-	ut::Optional<ut::String&> find_result = map.Find(55);
-	if (find_result)
-	{
-		// get the value
-		ut::String& str = find_result.Get();
-		report += str;
-		if (str == "__55")
-		{
-			report += ". Success";
-		}
-		else
-		{
-			report += ". Fail";
-			failed_test_counter.Increment();
-		}
-	}
-	else
-	{
-		report += ut::String("failed to find element\n");
-		failed_test_counter.Increment();
-	}
-
-	// UniquePtr, compile-time check
-	ut::Map<int, ut::UniquePtr<ut::String> > uniqmap0;
-	ut::Map<int, ut::UniquePtr<ut::String> > uniqmap1(ut::Move(uniqmap0));
-	ut::UniquePtr<ut::String> nstr0(ut::MakeUnique<ut::String>("str"));
-	uniqmap1.Insert(0, ut::Move(nstr0));
-	uniqmap1.Remove(0);
-
-	// another way to find specific value by key
-	report += ". Searching element by key \'4\'(should not be found): ";
-	ut::Optional<ut::String&> find_result2 = map.Find(4);
-	if (find_result2)
-	{
-		report += "somehow it was found. Fail.";
-		failed_test_counter.Increment();
-	}
-	else
-	{
-		report += "not found. Success";
-	}
-
-	// test map iterators
-	report += ". Testing iterator (should be __2): ";
-	ut::Map<int, ut::String>::Iterator iterator = map.Begin();
-	iterator += 1;
-	ut::Pair<int, ut::String>& pair = *iterator;
-	report += pair.second;
-	if (pair.second == "__2")
-	{
-		report += ". Success.";
-	}
-	else
-	{
-		report += ". Fail.";
 		failed_test_counter.Increment();
 	}
 }

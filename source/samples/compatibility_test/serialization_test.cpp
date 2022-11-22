@@ -247,6 +247,19 @@ ut::Optional<ut::String> ResetTest< ut::AVLTree<int, ut::String> >(ut::AVLTree<i
 	return ut::Optional<ut::String>();
 }
 
+template<>
+ut::Optional<ut::String> ResetTest< ut::HashMap<int, ut::String> >(ut::HashMap<int, ut::String>& container,
+	ut::meta::BaseParameter::Traits& traits)
+{
+	traits.container->callbacks.reset();
+	if (container.Count() != 0)
+	{
+		return ut::String("Error! Reset callback is not working properly for the container parameter.");
+	}
+
+	return ut::Optional<ut::String>();
+}
+
 template<typename ContainerType>
 ut::Optional<ut::String> TestContainer()
 {
@@ -355,8 +368,8 @@ void ParameterTraitsTask::Execute()
 	}
 
 	// Map
-	report += "Map: ";
-	test_error = TestContainer< ut::Map<int, ut::String> >();
+	report += "Hash map: ";
+	test_error = TestContainer< ut::HashMap<int, ut::String> >();
 	if (test_error)
 	{
 		report += test_error.Get() + ut::cret;
@@ -387,43 +400,43 @@ SerializationVariantsTask::SerializationVariantsTask() : TestTask("Serialization
 	ut::meta::Info serialization_info = ut::meta::Info::CreateComplete();
 
 	// normal/full
-	info_variants.Add(PairType("full", serialization_info));
+	info_variants.Insert("full", serialization_info);
 
 	// big endian
 	serialization_info.SetEndianness(ut::endian::big);
-	info_variants.Add(PairType("big endian", serialization_info));
+	info_variants.Insert("big endian", serialization_info);
 
 	// no type information
 	serialization_info.EnableTypeInformation(false);
-	info_variants.Add(PairType("no type information", serialization_info));
+	info_variants.Insert("no type information", serialization_info);
 
 	// no name information
 	serialization_info.EnableBinaryNames(false);
-	info_variants.Add(PairType("no name information", serialization_info));
+	info_variants.Insert("no name information", serialization_info);
 
 	// no linkage information
 	serialization_info.EnableLinkageInformation(false);
-	info_variants.Add(PairType("no linkage information", serialization_info));
+	info_variants.Insert("no linkage information", serialization_info);
 
 	// no value encapsulation
 	serialization_info.EnableValueEncapsulation(false);
-	info_variants.Add(PairType("no encapsulation", serialization_info));
+	info_variants.Insert("no encapsulation", serialization_info);
 
 	// minimal
 	serialization_info = ut::meta::Info::CreateMinimal();
-	info_variants.Add(PairType("minimal", serialization_info));
+	info_variants.Insert("minimal", serialization_info);
 }
 
 void SerializationVariantsTask::Execute()
 {
 	report += ut::String("Testing serialization with different header information.") + ut::CRet();
-	for (size_t i = 0; i < info_variants.GetNum(); i++)
+	for (size_t i = 0; i < info_variants.Count(); i++)
 	{
-		report += ut::String("Variant: \"") + info_variants[i].first + "\":" + ut::CRet();
-		bool result = TestVariant(info_variants[i].second, info_variants[i].first);
+		report += ut::String("Variant: \"") + info_variants[i].GetFirst() + "\":" + ut::CRet();
+		bool result = TestVariant(info_variants[i].second, info_variants[i].GetFirst());
 		report += result ? "Success" : "Failed";
 
-		if (i != info_variants.GetNum() - 1)
+		if (i != info_variants.Count() - 1)
 		{
 			report += ut::CRet() + ut::CRet();
 		}
@@ -771,12 +784,9 @@ SerializationTest::SerializationTest(bool in_alternate,
 	}
 
 	// map
-	map.Insert(1, "1");
-	map_binary.Insert(1, 1);
-	map.Insert(2, "2");
-	map_binary.Insert(2, 2);
-	map.Insert(3, "3");
-	map_binary.Insert(3, 3);
+	hashmap.Insert(1, "1");
+	hashmap.Insert(2, "2");
+	hashmap.Insert(3, "3");
 }
 
 void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
@@ -819,8 +829,7 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << ut::meta::Binary(binary1, sizeof(float));
 	snapshot << ut::meta::Binary(binary_matrix, sizeof(float));
 	snapshot << vec_data;
-	snapshot << map;
-	snapshot << ut::meta::Binary(map_binary, sizeof(int));
+	snapshot << hashmap;
 	snapshot << int16_unique;
 	snapshot << int16_unique_void;
 	snapshot << uval;
@@ -1235,14 +1244,11 @@ void ChangeSerializedObject(SerializationTest& object)
 	                                        12, 13, 14, 15);
 
 	// map
-	object.map.Empty();
-	object.map_binary.Empty();
-	object.map.Insert(9, "9");
-	object.map_binary.Insert(9, -9);
-	object.map.Insert(8, "8");
-	object.map_binary.Insert(8, -8);
-	object.map.Insert(7, "7");
-	object.map_binary.Insert(7, -7);
+	object.hashmap.Reset();
+	object.hashmap.Insert(9, "9");
+	object.hashmap.Insert(8, "8");
+	object.hashmap.Insert(7, "7");
+	object.hashmap.Insert(6, "6");
 }
 
 // Checks if serialized object was loaded with the correct values,
@@ -1569,14 +1575,11 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	}
 
 	// map
-	if (object.map.GetNum() != 3) return false;
-	if (object.map_binary.GetNum() != 3) return false;
-	if (!object.map.Find(9) || object.map.Find(9).Get() != "9") return false;
-	if (!object.map_binary.Find(9) || object.map_binary.Find(9).Get() != -9) return false;
-	if (!object.map.Find(8) || object.map.Find(8).Get() != "8") return false;
-	if (!object.map_binary.Find(8) || object.map_binary.Find(8).Get() != -8) return false;
-	if (!object.map.Find(7) || object.map.Find(7).Get() != "7") return false;
-	if (!object.map_binary.Find(7) || object.map_binary.Find(7).Get() != -7) return false;
+	if (object.hashmap.Count() != 4) return false;
+	if (!object.hashmap.Find(9) || object.hashmap.Find(9).Get() != "9") return false;
+	if (!object.hashmap.Find(8) || object.hashmap.Find(8).Get() != "8") return false;
+	if (!object.hashmap.Find(7) || object.hashmap.Find(7).Get() != "7") return false;
+	if (!object.hashmap.Find(6) || object.hashmap.Find(6).Get() != "6") return false;
 
 	return true;
 }
