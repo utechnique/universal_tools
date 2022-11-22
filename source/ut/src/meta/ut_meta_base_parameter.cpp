@@ -45,11 +45,10 @@ Optional<Error> BaseParameter::Link(void* address)
 	return Error(error::not_supported);
 }
 
-// Returns 'true' if current parameter is a container
-// for multiple uniform objects.
-bool BaseParameter::IsArray() const
+// Returns a set of traits specific for this parameter.
+BaseParameter::Traits BaseParameter::GetTraits()
 {
-	return false;
+	return BaseParameter::Traits();
 }
 
 // Returns an address of the managed object.

@@ -11,7 +11,7 @@
 #include "containers/ut_tree.h"
 #include "containers/ut_avltree.h"
 #include "containers/ut_pair.h"
-#include "containers/ut_map.h"
+#include "containers/ut_hashmap.h"
 #include "containers/ut_ref.h"
 
 //----------------------------------------------------------------------------//

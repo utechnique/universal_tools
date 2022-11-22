@@ -170,6 +170,7 @@ class Parameter< SharedPtr<T, mode, Deleter> > : public BaseParameter
 {
 	typedef SharedPtr<T, mode, Deleter> SharedPtrType;
 	typedef SharedPtrHolder<T, mode, Deleter> HolderType;
+	typedef Parameter<SharedPtrType> ThisParameter;
 public:
 	// Constructor
 	//    @param p - pointer to the managed string
@@ -254,6 +255,28 @@ public:
 		return Optional<Error>();
 	}
 
+	// Returns a set of traits specific for this parameter.
+	Traits GetTraits() override
+	{
+		Traits::ContainerTraits container_traits;
+		container_traits.contains_multiple_elements = false;
+		container_traits.managed_type_is_polymorphic = IsBaseOf<Polymorphic, T>::value;
+		container_traits.callbacks.create = MemberFunction<ThisParameter, void(ut::Optional<const DynamicType&>)>(this, &ThisParameter::CreateNewObject);
+		container_traits.callbacks.reset = MemberFunction<ThisParameter, void()>(this, &ThisParameter::Reset);
+
+		Traits traits;
+		traits.container = container_traits;
+
+		return traits;
+	}
+
+	// Deletes the managed entity.
+	void Reset()
+	{
+		SharedPtrType* p = static_cast<SharedPtrType*>(ptr);
+		p->Reset();
+	}
+
 private:
 	// If managed object has polymorphic type (derived from ut::Polymorphic)
 	// then we must extract it's derived type name
@@ -278,6 +301,56 @@ private:
 	inline String GetTypeNameVariant(SFINAE_IS_NOT_POLYMORPHIC) const
 	{
 		return BaseParameter::DeduceTypeName<T>();
+	}
+
+	// Creates a new object using default constructor.
+	void CreateNewObject(ut::Optional<const DynamicType&> dynamic_type)
+	{
+		SharedPtrType& ptr_ref = *static_cast<SharedPtrType*>(ptr);
+		ut::String type_name = dynamic_type ? dynamic_type->GetName() : GetTypeNameVariant<T>();
+		Result<SharedPtrType, Error> create_result = CreateNewInstanceVariant<T>(type_name);
+		if (create_result)
+		{
+			ptr_ref = Move(create_result.Move());
+		}
+	}
+
+	// If managed object is a custom (not derived from ut::Polymorphic)
+	// element - just check static type and create a new inctance
+	template<typename ElementType>
+	inline Result<SharedPtrType, Error> CreateNewInstanceVariant(const String& type_name,
+	                                                             SFINAE_IS_NOT_POLYMORPHIC)
+	{
+		// check static type
+		String current_type_name = GetTypeNameVariant<T>();
+		if (current_type_name != type_name)
+		{
+			return MakeError(error::types_not_match);
+		}
+
+		// create instance
+		SharedPtrType instance(new T);
+		return Move(instance);
+	}
+
+	// If managed object is a polymorphic object - then
+	// we must load polymorphic name string, and create an
+	// object of the corresponding type.
+	template<typename ElementType>
+	inline Result<SharedPtrType, Error> CreateNewInstanceVariant(const String& type_name,
+	                                                             SFINAE_IS_POLYMORPHIC)
+	{
+		// get dynamic type by name
+		Result<const DynamicType&, Error> type_result = Factory<T>::GetType(type_name);
+		if (!type_result)
+		{
+			return MakeError(type_result.MoveAlt());
+		}
+
+		// create a new object
+		const DynamicType& dyn_type = type_result.Get();
+		SharedPtrType instance(static_cast<T*>(dyn_type.CreateInstance()));
+		return Move(instance);
 	}
 };
 

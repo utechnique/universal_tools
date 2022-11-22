@@ -62,7 +62,7 @@ template<> inline const char* Type<double>::Name()      { return "double";  }
 template<> inline const char* Type<long double>::Name() { return "ldouble"; }
 template<> inline const char* Type<void>::Name()        { return "void"; }
 
-// Returns true if provided type name is a name of the numeric type
+// Returns true if the provided type name is a name of the numeric type
 template<typename T> inline bool IsNumericType(const T* type_name)
 {
 	if (StrCmp<T>(type_name, Type<int32>::Name())  ||
@@ -81,6 +81,20 @@ template<typename T> inline bool IsNumericType(const T* type_name)
 	}
 	return false;
 }
+
+// Returns true if provided type is a numeric type
+template<typename T> inline bool IsNumericType() { return false; }
+template<> inline bool IsNumericType<int32>() { return true; }
+template<> inline bool IsNumericType<uint32>() { return true; }
+template<> inline bool IsNumericType<float>() { return true; }
+template<> inline bool IsNumericType<int16>() { return true; }
+template<> inline bool IsNumericType<uint16>() { return true; }
+template<> inline bool IsNumericType<int8>() { return true; }
+template<> inline bool IsNumericType<uint8>() { return true; }
+template<> inline bool IsNumericType<int64>() { return true; }
+template<> inline bool IsNumericType<uint64>() { return true; }
+template<> inline bool IsNumericType<double>() { return true; }
+template<> inline bool IsNumericType<long double>() { return true; }
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

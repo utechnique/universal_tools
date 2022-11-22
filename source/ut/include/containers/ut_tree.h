@@ -79,7 +79,7 @@ protected:
 			}
 
 			// step down if node has at least one child
-			if (node->GetNumChildren() > 0)
+			if (node->CountChildren() > 0)
 			{
 				node = &node->child_nodes[0];
 			}
@@ -396,7 +396,7 @@ public:
 	//    @param node_id - index of the child node
 	void Remove(size_t node_id)
 	{
-		if (node_id < child_nodes.GetNum())
+		if (node_id < child_nodes.Count())
 		{
 			// remove child node
 			child_nodes.Remove(node_id);
@@ -418,9 +418,9 @@ public:
 	}
 
 	// Removes child nodes of the tree
-	void Empty()
+	void Reset()
 	{
-		child_nodes.Empty();
+		child_nodes.Reset();
 	}
 
 	// Returns the parent node
@@ -450,18 +450,18 @@ public:
 	}
 
 	// Returns the number of child nodes
-	inline size_t GetNumChildren() const
+	inline size_t CountChildren() const
 	{
-		return child_nodes.GetNum();
+		return child_nodes.Count();
 	}
 
 	// Returns the number of all nodes
-	inline size_t GetNum() const
+	inline size_t Count() const
 	{
 		size_t total_num = 1;
-		for (size_t i = 0; i < child_nodes.GetNum(); i++)
+		for (size_t i = 0; i < child_nodes.Count(); i++)
 		{
-			total_num += child_nodes[i].GetNum();
+			total_num += child_nodes[i].Count();
 		}
 		return total_num;
 	}
@@ -555,7 +555,7 @@ protected:
 		}
 
 		// set parent and id of the new node
-		size_t child_id = child_nodes.GetNum() - 1;
+		size_t child_id = child_nodes.Count() - 1;
 		child_nodes[child_id].parent = static_cast<NodeType*>(this);
 		child_nodes[child_id].id = child_id;
 
@@ -572,7 +572,7 @@ protected:
 		size_t child_id = 0;
 		while (position)
 		{
-			if (child_id >= child_nodes.GetNum())
+			if (child_id >= child_nodes.Count())
 			{
 				return MakeAlt<size_t>(position);
 			}
@@ -604,7 +604,7 @@ protected:
 		}
 
 		size_t sibling_id = id + 1;
-		if (sibling_id < parent->child_nodes.GetNum())
+		if (sibling_id < parent->child_nodes.Count())
 		{
 			return &parent->child_nodes[sibling_id];
 		}
@@ -629,20 +629,20 @@ protected:
 	//    @return - constant pointer to the last node
 	const NodeType* GetLastNode() const
 	{
-		return child_nodes.GetNum() == 0 ? static_cast<NodeType*>(this) : child_nodes.GetLast().GetLastNode();
+		return child_nodes.Count() == 0 ? static_cast<NodeType*>(this) : child_nodes.GetLast().GetLastNode();
 	}
 
 	// Returns the very last node of the tree
 	//    @return - non-const pointer to the last node
 	NodeType* GetLastNode()
 	{
-		return child_nodes.GetNum() == 0 ? static_cast<NodeType*>(this) : child_nodes.GetLast().GetLastNode();
+		return child_nodes.Count() == 0 ? static_cast<NodeType*>(this) : child_nodes.GetLast().GetLastNode();
 	}
 
 	// Re-assigns id and a parent of the every child node
 	inline void ResetChildsId()
 	{
-		const size_t size = child_nodes.GetNum();
+		const size_t size = child_nodes.Count();
 		for (size_t i = 0; i < size; i++)
 		{
 			child_nodes[i].id = i;
@@ -657,7 +657,7 @@ protected:
 	inline Optional<size_t> ConvertChildIdFromIterator(typename Array<NodeType>::ConstIterator iterator)
 	{
 		const NodeType* ptr = &(*iterator);
-		if (ptr >= child_nodes.GetAddress() && ptr < child_nodes.GetAddress() + child_nodes.GetNum())
+		if (ptr >= child_nodes.GetAddress() && ptr < child_nodes.GetAddress() + child_nodes.Count())
 		{
 			size_t child_id = ptr - child_nodes.GetAddress();
 			return child_id;

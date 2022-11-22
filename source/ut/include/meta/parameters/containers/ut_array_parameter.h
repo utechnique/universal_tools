@@ -6,6 +6,7 @@
 #include "common/ut_common.h"
 #include "meta/ut_meta_parameter.h"
 #include "meta/parameters/ut_binary_parameter.h"
+#include "containers/ut_hashmap.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
@@ -15,6 +16,7 @@ template<typename T, typename Allocator, typename Preallocator>
 class Parameter< Array<T, Allocator, Preallocator> > : public BaseParameter
 {
 	using ArrayType = Array<T, Allocator, Preallocator>;
+	using ThisParameter = Parameter<ArrayType>;
 public:
 	// Constructor
 	//    @param p - pointer to the managed array
@@ -35,7 +37,7 @@ public:
 		ArrayType& arr = *static_cast<ArrayType*>(ptr);
 
 		// register all elements
-		for (size_t i = 0; i < arr.GetNum(); i++)
+		for (size_t i = 0; i < arr.Count(); i++)
 		{
 			snapshot << arr[i];
 		}
@@ -61,7 +63,7 @@ public:
 		}
 
 		// write array size
-		Controller::SizeType num = static_cast<Controller::SizeType>(arr.GetNum());
+		Controller::SizeType num = static_cast<Controller::SizeType>(arr.Count());
 		Optional<Error> write_num_error = controller.WriteAttribute(num, node_names::skCount);
 		if (write_num_error)
 		{
@@ -111,10 +113,50 @@ public:
 		return Optional<Error>();
 	}
 
-	// Returns 'true' - managed object is an array.
-	bool IsArray() const
+	// Returns a set of traits specific for this parameter.
+	Traits GetTraits() override
 	{
-		return true;
+		Traits::ContainerTraits container_traits;
+		container_traits.contains_multiple_elements = true;
+		container_traits.managed_type_is_polymorphic = IsBaseOf<Polymorphic, T>::value;
+		container_traits.callbacks.reset = MemberFunction<ThisParameter, void()>(this, &ThisParameter::Reset);
+		container_traits.callbacks.push_back = MemberFunction<ThisParameter, void()>(this, &ThisParameter::PushBack);
+		container_traits.callbacks.remove_element = MemberFunction<ThisParameter, void(void*)>(this, &ThisParameter::RemoveElement);
+
+		Traits traits;
+		traits.container = container_traits;
+
+		return traits;
+	}
+
+	// Deletes all elements.
+	void Reset()
+	{
+		ArrayType& arr = *static_cast<ArrayType*>(ptr);
+		arr.Reset();
+	}
+
+	// Adds an element to the end of the array.
+	void PushBack()
+	{
+		ArrayType& arr = *static_cast<ArrayType*>(ptr);
+		T new_element = {};
+		arr.Add(ut::Move(new_element));
+	}
+
+	// Removes the desired element.
+	void RemoveElement(void* element_address)
+	{
+		ArrayType& arr = *static_cast<ArrayType*>(ptr);
+		const size_t element_count = arr.Count();
+		for (size_t i = 0; i < element_count; i++)
+		{
+			if (reinterpret_cast<ut::uptr>(&arr[i]) == reinterpret_cast<ut::uptr>(element_address))
+			{
+				arr.Remove(i);
+				break;
+			}
+		}
 	}
 };
 
@@ -144,7 +186,7 @@ public:
 	Optional<Error> Save(Controller& controller)
 	{
 		ArrayType& arr = *static_cast<ArrayType*>(ptr);
-		const Controller::SizeType count = static_cast<Controller::SizeType>(arr.GetNum());
+		const Controller::SizeType count = static_cast<Controller::SizeType>(arr.Count());
 		const Controller::SizeType size = sizeof(T) * count;
 
 		// write data size

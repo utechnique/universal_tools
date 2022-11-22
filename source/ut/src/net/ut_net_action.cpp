@@ -177,7 +177,7 @@ Optional<Error> Loop::Execute(Connection& connection)
 {
 	while (connection.IsActive())
 	{
-		for (size_t i = 0; i < actions.GetNum(); i++)
+		for (size_t i = 0; i < actions.Count(); i++)
 		{
 			Optional<Error> execution_error = actions[i]->Execute(connection);
 			if (execution_error)

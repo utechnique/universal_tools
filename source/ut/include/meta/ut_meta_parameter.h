@@ -234,12 +234,6 @@ public:
 		// success
 		return Optional<Error>();
 	}
-
-	// Returns 'true' - managed object is an array.
-	bool IsArray() const
-	{
-		return true;
-	}
 };
 
 //----------------------------------------------------------------------------//

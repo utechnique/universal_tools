@@ -137,12 +137,12 @@ void ClientTestJob::Execute()
 				if (recv_result_0)
 				{
 					ut::String str("    client socket received the array of unsigned integers: ");
-					for (size_t i = 0; i < arr.GetNum(); i++)
+					for (size_t i = 0; i < arr.Count(); i++)
 					{
 						ut::String int_str;
 						int_str.Print("%u", arr[i]);
 						str += int_str;
-						if (i != arr.GetNum() - 1)
+						if (i != arr.Count() - 1)
 						{
 							str += ", ";
 						}

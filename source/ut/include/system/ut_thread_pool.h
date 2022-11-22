@@ -255,7 +255,7 @@ public:
 			if (current_task)
 			{
 				task = current_task.Move();
-				current_task.Empty();
+				current_task.Reset();
 			}
 			else if (stop)
 			{

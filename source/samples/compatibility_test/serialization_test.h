@@ -15,6 +15,14 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class ParameterTraitsTask : public TestTask
+{
+public:
+	ParameterTraitsTask();
+	void Execute();
+};
+
+//----------------------------------------------------------------------------//
 class SerializationVariantsTask : public TestTask
 {
 public:
@@ -26,7 +34,7 @@ public:
 	bool TestVariant(const ut::meta::Info& info, const ut::String& name);
 
 private:
-	ut::Map<ut::String, ut::meta::Info> info_variants;
+	ut::HashMap<ut::String, ut::meta::Info> info_variants;
 	typedef ut::Pair<ut::String, ut::meta::Info> PairType;
 };
 
@@ -283,6 +291,7 @@ public:
 	ut::Array< ut::Vector<3, ut::byte> > vec_data;
 	ut::Array<ut::byte> binary0;
 	ut::Array< ut::Vector<3, float> > binary1;
+	ut::HashMap<int, ut::String> hashmap;
 	ut::Matrix<4, 4> binary_matrix;
 	ut::uint64 uval;
 	bool bool_val;

@@ -371,7 +371,7 @@ public:
 	                                                              const String& node_name) const
 	{
 		// search for a desired node
-		for (size_t i = 0; i < parent_node->GetNumChildren(); i++)
+		for (size_t i = 0; i < parent_node->CountChildren(); i++)
 		{
 			// skip if name doesn't match
 			if (node_name != parent_node.Get()[i].data.name)
@@ -622,7 +622,7 @@ private:
 			String& str = str_ptr[str_id];
 
 			// clear the string
-			str.Empty();
+			str.Reset();
 
 			// read symbol by symbol and exit after
 			// meeting a null-terminator

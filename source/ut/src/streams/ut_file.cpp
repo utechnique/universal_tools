@@ -2,7 +2,7 @@
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "streams/ut_file.h"
-#include "integrity/ut_adler32.h"
+#include "hash/ut_adler32.h"
 //----------------------------------------------------------------------------//
 #define UT_FILE_CURSOR_END SEEK_END
 #define UT_FILE_CURSOR_SET SEEK_SET
@@ -129,7 +129,7 @@ Optional<Error> RemoveFolder(const String& folder, bool delete_subdirectories)
 		{
 			if (file_info.cFileName[0] != '.')
 			{
-				file_path.Empty();
+				file_path.Reset();
 				file_path = wfolder;
 				file_path += L"\\";
 				file_path += file_info.cFileName;
@@ -609,7 +609,7 @@ Optional<Error> File::Close()
 #elif !UT_WINDOWS
 		#error ut::File::Close() is not implemented
 #endif
-		path.Empty();
+		path.Reset();
 	}
 	return Optional<Error>();
 }

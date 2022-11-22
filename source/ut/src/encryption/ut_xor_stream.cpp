@@ -29,7 +29,7 @@ Optional<Error> EncryptionStream<encryption::XOR>::Encrypt(const String& passwor
 		                    16);
 
 	// encrypt data
-	EncryptXor(data.GetAddress(), data.GetNum(), key, 16);
+	EncryptXor(data.GetAddress(), data.Count(), key, 16);
 
 	// success
 	return Optional<Error>();
@@ -57,7 +57,7 @@ Optional<Error> EncryptionStream<encryption::XOR>::Decrypt(const String& passwor
 		                    16);
 
 	// decrypt data
-	EncryptXor(data.GetAddress(), data.GetNum(), key, 16);
+	EncryptXor(data.GetAddress(), data.Count(), key, 16);
 
 	// success
 	return Optional<Error>();

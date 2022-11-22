@@ -28,7 +28,7 @@ Optional<Error> EncryptionStream<encryption::AES128>::Encrypt(const String& pass
 	                                                          uint32 pbkdf2_iterations)
 {
 	// calculate aligned (16 byte) size of the encrypted data
-	uint32 encrypted_size = static_cast<uint32>(data.GetNum());
+	uint32 encrypted_size = static_cast<uint32>(data.Count());
 	uint32 alligned_size = encrypted_size + (16 - encrypted_size % 16);
 
 	// allocate temp buffer for encrypted data + 4 bytes to hold
@@ -76,7 +76,7 @@ Optional<Error> EncryptionStream<encryption::AES128>::Decrypt(const String& pass
 {
 	// check current (encrypted) data size - it must contain
 	// at least 4 bytes for data size
-	if (data.GetNum() < sizeof(uint32))
+	if (data.Count() < sizeof(uint32))
 	{
 		String error_message = "AES encrypted buffer size is too small. ";
 		error_message += "Buffer must have at least 4 bytes.";
@@ -84,7 +84,7 @@ Optional<Error> EncryptionStream<encryption::AES128>::Decrypt(const String& pass
 	}
 
 	// check current (encrypted) data size - it must be aligned
-	if ((data.GetNum() - sizeof(uint32)) % 16 > 0)
+	if ((data.Count() - sizeof(uint32)) % 16 > 0)
 	{
 		String error_message = "AES encrypted buffer size is invalid. ";
 		error_message += "Buffer must have 16-byte alignment.";
@@ -97,14 +97,14 @@ Optional<Error> EncryptionStream<encryption::AES128>::Decrypt(const String& pass
 
 	// check current (encrypted) data size - it must be sufficient
 	// for the size provided in first 4 bytes
-	if (data.GetNum() - sizeof(uint32) < decrypted_size)
+	if (data.Count() - sizeof(uint32) < decrypted_size)
 	{
 		String error_message = "AES encrypted buffer size is too small. ";
 		return Error(error::fail, error_message);
 	}
 
 	// allocate temp buffer for decrypted data
-	Array<byte> decrypted_data(data.GetNum());
+	Array<byte> decrypted_data(data.Count());
 
 	// generate 16-bit key from the password
 	byte key[16];
@@ -120,14 +120,14 @@ Optional<Error> EncryptionStream<encryption::AES128>::Decrypt(const String& pass
 	// decrypt blocks using one more temporary buffer with pure size (-4 bytes),
 	// this is done because cbc implementation of the AES128 encryption uses
 	// input buffer for intermediate calculations
-	Array<byte> input_buffer(data.GetNum() - sizeof(uint32));
+	Array<byte> input_buffer(data.Count() - sizeof(uint32));
 	memory::Copy(input_buffer.GetAddress(),
 	             data.GetAddress() + sizeof(uint32),
-	             input_buffer.GetNum());
+	             input_buffer.Count());
 
 	// decrypt data
 	AES128Encryptor encryptor;
-	size_t blocks = input_buffer.GetNum() / 16;
+	size_t blocks = input_buffer.Count() / 16;
 	for (size_t i = 0; i < blocks; i++)
 	{
 		const byte* bkey = i == 0 ? key : nullptr;

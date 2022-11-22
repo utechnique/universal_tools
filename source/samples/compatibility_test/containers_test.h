@@ -22,14 +22,6 @@ public:
 };
 
 //----------------------------------------------------------------------------//
-class MapTask : public TestTask
-{
-public:
-	MapTask();
-	void Execute();
-};
-
-//----------------------------------------------------------------------------//
 class TreeTask : public TestTask
 {
 public:
@@ -42,6 +34,14 @@ class AVLTreeTask : public TestTask
 {
 public:
 	AVLTreeTask();
+	void Execute();
+};
+
+//----------------------------------------------------------------------------//
+class HashmapTask : public TestTask
+{
+public:
+	HashmapTask();
 	void Execute();
 };
 
@@ -153,6 +153,12 @@ public:
 
 private:
 	ut::SharedPtr<PoolType> pool;
+};
+
+struct MapValue
+{
+	int ival;
+	ut::byte data[128];
 };
 
 //----------------------------------------------------------------------------//

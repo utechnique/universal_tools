@@ -258,15 +258,15 @@ Optional<Error> Console::Write(const void* ptr, size_t size, size_t count)
 	data->uncommitted_input_lock.Lock(access_read);
 
 	// erase string, typed by user
-	for (size_t i = 0; i < data->uncommitted_input.GetNum(); i++) std::cout << '\b';
-	for (size_t i = 0; i < data->uncommitted_input.GetNum(); i++) std::cout << ' ';
-	for (size_t i = 0; i < data->uncommitted_input.GetNum(); i++) std::cout << '\b';
+	for (size_t i = 0; i < data->uncommitted_input.Count(); i++) std::cout << '\b';
+	for (size_t i = 0; i < data->uncommitted_input.Count(); i++) std::cout << ' ';
+	for (size_t i = 0; i < data->uncommitted_input.Count(); i++) std::cout << '\b';
 
 	// write data
 	std::cout.write((const char*)ptr, size * count);
 
 	// print user input again
-	for (size_t i = 0; i < data->uncommitted_input.GetNum(); i++)
+	for (size_t i = 0; i < data->uncommitted_input.Count(); i++)
 	{
 		const char c = data->uncommitted_input[i];
 		std::cout << c;
@@ -324,7 +324,7 @@ String Console::FlushOutput()
 
 	Lock();
 	String out = data->pending_output;
-	data->pending_output.Empty();
+	data->pending_output.Reset();
 	Unlock();
 	return out;
 }
@@ -344,7 +344,7 @@ void Console::SetInput(const String& str)
 		const String copy = str + CarriageReturn<char>();
 		const size_t len = copy.Length();
 		data->input_lock.Lock(access_write);
-		data->input_buffer.Empty();
+		data->input_buffer.Reset();
 		data->input_buffer.Resize(len);
 		memory::Copy(data->input_buffer.GetAddress(), copy.GetAddress(), len);
 		data->input_lock.Unlock(access_write);
@@ -364,7 +364,7 @@ void Console::PopBackInput(void)
 
 	// erase string typed by user from output
 	// and remove the last symbol of the @ibuf
-	if (data->uncommitted_input.GetNum() != 0)
+	if (data->uncommitted_input.Count() != 0)
 	{
 		std::cout << '\b';
 		std::cout << ' ';
@@ -393,16 +393,16 @@ Optional<Error> Console::Sync()
 		// copy uncommited input
 		data->uncommitted_input_lock.Lock(access_write);
 		Array<char> temp_input = data->uncommitted_input;
-		data->uncommitted_input.Empty();
+		data->uncommitted_input.Reset();
 		data->uncommitted_input_lock.Unlock(access_write);
 
 		// erase input string from output
-		for (size_t i = 0; i < temp_input.GetNum(); i++) std::cout << '\b';
-		for (size_t i = 0; i < temp_input.GetNum(); i++) std::cout << ' ';
-		for (size_t i = 0; i < temp_input.GetNum(); i++) std::cout << '\b';
+		for (size_t i = 0; i < temp_input.Count(); i++) std::cout << '\b';
+		for (size_t i = 0; i < temp_input.Count(); i++) std::cout << ' ';
+		for (size_t i = 0; i < temp_input.Count(); i++) std::cout << '\b';
 
 		// copy previous uncommitted input text to the output buffer
-		std::cout.write(temp_input.GetAddress(), temp_input.GetNum());
+		std::cout.write(temp_input.GetAddress(), temp_input.Count());
 		std::cout << std::endl;
 
 		// unlock output

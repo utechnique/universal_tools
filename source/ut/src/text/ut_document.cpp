@@ -78,7 +78,7 @@ Document& Document::operator << (Tree<Node>&& node)
 Document& Document::operator >> (Tree<Node>& node)
 {
 	// check if cursor is inside the bounds
-	if (cursor >= nodes.GetNum())
+	if (cursor >= nodes.Count())
 	{
 		throw Error(error::out_of_bounds);
 	}

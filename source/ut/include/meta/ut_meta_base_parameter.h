@@ -4,9 +4,12 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
+#include "templates/ut_function.h"
+#include "templates/ut_is_same.h"
 #include "system/ut_endianness.h"
 #include "text/ut_text_node.h"
 #include "meta/ut_reflective.h"
+#include "meta/ut_polymorphic.h"
 #include "templates/ut_enable_if.h"
 #include "templates/ut_is_base_of.h"
 //----------------------------------------------------------------------------//
@@ -23,6 +26,37 @@ class Controller;
 class BaseParameter : public Reflective
 {
 public:
+	// Set of traits specific for this parameter type.
+	struct Traits
+	{
+		struct ContainerTraits
+		{
+			// Dont forget to check if callback is available by calling
+			// ut::Function<>::IsValid() function.
+			struct Callbacks
+			{
+				Function<void()> reset;
+				Function<void(ut::Optional<const DynamicType&>)> create;
+				Function<const FactoryView&()> get_factory;
+				Function<void()> push_back;
+				Function<void(void* element_addr)> remove_element;
+			};
+
+			// Indicates if the managed object is a polymorphic object.
+			bool managed_type_is_polymorphic = false;
+
+			// Indicates if this container can handle multiple elements.
+			bool contains_multiple_elements = false;
+
+			// Set of callbacks available for the container.
+			Callbacks callbacks;
+		};
+
+		// A set of container traits. This member is empty if parameter
+		// is not a container.
+		Optional<ContainerTraits> container;
+	};
+
 	// Constructor.
 	//    @param p - pointer to the serializable data
 	BaseParameter(void* p);
@@ -57,9 +91,8 @@ public:
 	//    @return - ut::Error if encountered an error
 	virtual Optional<Error> Link(void* address);
 
-	// Returns 'true' if current parameter is a container
-	// for multiple uniform objects.
-	virtual bool IsArray() const;
+	// Returns a set of traits specific for this parameter.
+	virtual Traits GetTraits();
 
 	// Returns an address of the managed object.
 	void* GetAddress();

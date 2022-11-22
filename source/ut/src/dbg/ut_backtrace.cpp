@@ -53,7 +53,7 @@ Array<String> SymbolsBacktrace()
 		line->SizeOfStruct = sizeof(IMAGEHLP_LINE64);
 
 		// collect all stack frames
-		for (size_t i = 1; i < addresses.GetNum(); i++)
+		for (size_t i = 1; i < addresses.Count(); i++)
 		{
 			DWORD64 address = (DWORD64)(addresses[i]);
 			DWORD line_displacement;
@@ -90,9 +90,9 @@ Array<String> SymbolsBacktrace()
 		free(line);
 		SymCleanup(process);
 	#elif UT_UNIX
-		char** symbols = backtrace_symbols(addresses.GetAddress(), addresses.GetNum());
+		char** symbols = backtrace_symbols(addresses.GetAddress(), addresses.Count());
 
-		for (size_t i = 0; i < addresses.GetNum(); i++)
+		for (size_t i = 0; i < addresses.Count(); i++)
 		{
 			String addr_str;
 			addr_str.Print("0x%0X", addresses[i]);
@@ -124,7 +124,7 @@ Array<String> SymbolsBacktrace()
 #else // DEBUG
 	Array<void*> addresses = Backtrace();
 	Array<String> out;
-	for (size_t i = 1; i < addresses.GetNum(); i++)
+	for (size_t i = 1; i < addresses.Count(); i++)
 	{
 		String addr_str;
 		addr_str.Print("unknown_function(0x%0X)", addresses[i]);

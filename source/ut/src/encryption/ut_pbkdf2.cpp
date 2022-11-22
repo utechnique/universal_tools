@@ -65,7 +65,7 @@ void Pbkdf2Sha256Function::Calculate(const byte* password,
 				hmac_sha256.Calculate(password,
 				                      password_len,
 				                      salt_plus_n.GetAddress(),
-				                      static_cast<uint32>(salt_plus_n.GetNum()),
+				                      static_cast<uint32>(salt_plus_n.Count()),
 				                      T);
 				memory::Copy(prev_U, T, skHashLength); // save U block for the next iteration
 			}

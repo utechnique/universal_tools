@@ -80,7 +80,7 @@ void Error::GetCallstack()
 	const Array<String> symbols = SymbolsBacktrace();
 	g_backtrace_mutex.Unlock();
 
-	for (size_t i = 0; i < symbols.GetNum(); i++)
+	for (size_t i = 0; i < symbols.Count(); i++)
 	{
 		if (i == 0)
 		{

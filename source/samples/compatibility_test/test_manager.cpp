@@ -33,7 +33,7 @@ TestManager::TestManager()
 
 void TestManager::Execute()
 {
-	for (size_t i = 0; i < units.GetNum(); i++)
+	for (size_t i = 0; i < units.Count(); i++)
 	{
 		units[i]->Execute();
 
@@ -50,7 +50,7 @@ void TestManager::Execute()
 		ut::log << unit_str;
 	}
 
-	ut::log << "Tasks failed: " << failed_test_counter.GetNum() << "\n";
+	ut::log << "Tasks failed: " << failed_test_counter.Count() << "\n";
 }
 
 //----------------------------------------------------------------------------//

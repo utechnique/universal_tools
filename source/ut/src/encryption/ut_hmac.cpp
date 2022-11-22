@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "encryption/ut_hmac.h"
 #include "encryption/ut_xor.h"
-#include "integrity/ut_sha2.h"
+#include "hash/ut_sha2.h"
 #include "containers/ut_array.h"
 #include "system/ut_memory.h"
 //----------------------------------------------------------------------------//
@@ -104,7 +104,7 @@ void HmacSha256Function::Calculate(const byte* key,
 	memory::Copy(inner_data.GetAddress(), si, skBlockSize);
 	memory::Copy(inner_data.GetAddress() + skBlockSize, msg, msg_len);
 	sha256.Calculate(inner_data.GetAddress(),
-	                 static_cast<uint32>(inner_data.GetNum()),
+	                 static_cast<uint32>(inner_data.Count()),
 	                 inner_hash);
 
 	// calculate outer hash
