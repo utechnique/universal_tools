@@ -13,7 +13,7 @@ if not X64 and not X86 then
 end
 
 -- compilers
-MSVC = _OPTIONS["msvc"] or _ACTION == "vs2015" or _ACTION == "vs2013" or _ACTION == "vs2010" or _ACTION == "vs2008"
+MSVC = _OPTIONS["msvc"] or _ACTION == "vs2019" or _ACTION == "vs2017" or _ACTION == "vs2015" or _ACTION == "vs2013" or _ACTION == "vs2010" or _ACTION == "vs2008"
 GCC = _OPTIONS["gcc"] or _ACTION == "gmake"
 
 -- target platform
