@@ -5,9 +5,6 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "error/ut_throw_error.h"
-#include "containers/ut_array.h"
-#include "containers/ut_pair.h"
-#include "containers/ut_map.h"
 #include "templates/ut_enable_if.h"
 #include "templates/ut_is_base_of.h"
 //----------------------------------------------------------------------------//
