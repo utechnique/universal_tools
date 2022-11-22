@@ -787,6 +787,10 @@ SerializationTest::SerializationTest(bool in_alternate,
 	hashmap.Insert(1, "1");
 	hashmap.Insert(2, "2");
 	hashmap.Insert(3, "3");
+
+	// avl
+	avltree.Insert(66, "__66");
+	avltree.Insert(77, "__77");
 }
 
 void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
@@ -1156,6 +1160,7 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.avltree.Insert(4, "__4");
 	object.avltree.Insert(3, "__3");
 	object.avltree.Insert(5, "__5");
+	object.avltree.Insert(6, "__5");
 
 	// avltree (non-default allocator)
 	object.al_avltree.Insert(1, "__1");
@@ -1349,6 +1354,12 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 		}
 	}
 	else
+	{
+		return false;
+	}
+	if (!object.avltree.Find(1) || !object.avltree.Find(55) || 
+	    !object.avltree.Find(4) || !object.avltree.Find(5) ||
+	    !object.avltree.Find(6))
 	{
 		return false;
 	}
