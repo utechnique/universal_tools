@@ -354,7 +354,9 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 		UT_ASSERT(clear_color.GetAlt().Count() == render_pass.color_slots.Count());
 	}
 	UT_ASSERT(render_pass.color_slots.Count() == framebuffer.color_attachments.Count());
-	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_attachment : !framebuffer.depth_stencil_attachment);
+	UT_ASSERT(render_pass.depth_stencil_slot ?
+	          static_cast<bool>(framebuffer.depth_stencil_attachment) :
+	          !static_cast<bool>(framebuffer.depth_stencil_attachment));
 
 	// unbind all possible render targets from shader bindings
 #ifdef DEBUG
@@ -461,7 +463,7 @@ void Context::BindPipelineState(PipelineState& state)
 	// check what shader stages are bound to the pipeline
 	for (ut::uint32 i = 0; i < Shader::skStageCount; i++)
 	{
-		stage_bound[i] = state.info.stages[i];
+		stage_bound[i] = static_cast<bool>(state.info.stages[i]);
 	}
 
 	// set shaders
