@@ -661,7 +661,7 @@ private:
 		num = 0;
 		for (size_t i = 0; i < old_num; i++)
 		{
-			EmplacePair(old_arr[i]->GetFirst(), old_arr[i]->second);
+			EmplacePair(old_arr[i]->GetFirst(), Move(old_arr[i]->second));
 		}
 
 		// release old memory
