@@ -213,7 +213,7 @@ ut::Array< ut::Array<Buffer> > IBL::CreateFilterUniformBuffers()
 {
 	const ut::Matrix<4> proj_matrix = CreateFaceProjectionMatrix(0.2f, 2.0f);
 	ut::Array< ut::Array<Buffer> > out(6);
-	for (ut::uint32 face_id = 0; face_id < mip_count; face_id++)
+	for (ut::uint32 face_id = 0; face_id < 6; face_id++)
 	{
 		const ut::Matrix<4> view_matrix = CreateFaceViewMatrix(static_cast<Image::Cube::Face>(face_id),
 		                                                       ut::Vector<3>(0));

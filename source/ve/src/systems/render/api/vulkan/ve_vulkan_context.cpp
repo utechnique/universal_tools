@@ -504,7 +504,9 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 		UT_ASSERT(clear_color.GetAlt().Count() == render_pass.color_slots.Count());
 	}
 	UT_ASSERT(render_pass.color_slots.Count() == framebuffer.color_attachments.Count());
-	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_attachment : !framebuffer.depth_stencil_attachment);
+	UT_ASSERT(render_pass.depth_stencil_slot ?
+	          static_cast<bool>(framebuffer.depth_stencil_attachment) :
+	          !static_cast<bool>(framebuffer.depth_stencil_attachment));
 	
 	const ut::uint32 color_slot_count = static_cast<ut::uint32>(render_pass.color_slots.Count());
 	ut::uint32 total_attachment_count = color_slot_count;
