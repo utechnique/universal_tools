@@ -23,13 +23,13 @@ ViewportManager::~ViewportManager()
 {
 	// reset viewport signals, otherwise viewports will signal
 	// to the non-existent viewport manager, causing access violation
-	for (ut::uint32 i = 0; i < viewports.GetNum(); i++)
+	for (ut::uint32 i = 0; i < viewports.Count(); i++)
 	{
 		viewports[i].ui_widget.ResetSignals();
 	}
 
 	// close viewports manually
-	for (ut::uint32 i = 0; i < viewports.GetNum(); i++)
+	for (ut::uint32 i = 0; i < viewports.Count(); i++)
 	{
 		CloseViewport(i);
 	}
@@ -81,12 +81,12 @@ void ViewportManager::SyncViewportEvents()
 // Executes pending viewport tasks (resize, close, etc.)
 void ViewportManager::ExecuteViewportTasks()
 {
-	const size_t task_count = viewport_tasks.GetNum();
+	const size_t task_count = viewport_tasks.Count();
 	for (size_t i = 0; i < task_count; i++)
 	{
 		viewport_tasks[i]->Execute();
 	}
-	viewport_tasks.Empty();
+	viewport_tasks.Reset();
 }
 
 // Returns 'true' if at least one viewport task is waiting to be executed.
@@ -340,7 +340,7 @@ void ViewportManager::EnqueueClose(ui::Viewport::Id id)
 //    @return - id of the container in the @viewports array.
 ut::Optional<size_t> ViewportManager::FindViewport(ui::Viewport::Id id)
 {
-	const size_t count = viewports.GetNum();
+	const size_t count = viewports.Count();
 	for (size_t i = count; i--;)
 	{
 		if (viewports[i].ui_widget.GetId() == id)

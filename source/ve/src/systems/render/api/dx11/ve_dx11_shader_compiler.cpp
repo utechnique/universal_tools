@@ -39,8 +39,8 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 	DWORD flags = D3DCOMPILE_ENABLE_STRICTNESS;
 
 	// convert dx11 macro structs
-	ut::Array<D3D10_SHADER_MACRO> d3d_macros(macros.GetNum() + 1);
-	for (UINT i = 0; i < macros.GetNum(); i++)
+	ut::Array<D3D10_SHADER_MACRO> d3d_macros(macros.Count() + 1);
+	for (UINT i = 0; i < macros.Count(); i++)
 	{
 		d3d_macros[i].Name = macros[i].name.ToCStr();
 		d3d_macros[i].Definition = macros[i].value.ToCStr();

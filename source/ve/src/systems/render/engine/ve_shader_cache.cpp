@@ -194,8 +194,8 @@ ut::Optional<Shader::Info&> ShaderCache::Find(Shader::Stage stage,
 	}
 
 	// check if macros number match
-	const size_t macros_count = info->macros.GetNum();
-	if (macros_count != macros.GetNum())
+	const size_t macros_count = info->macros.Count();
+	if (macros_count != macros.Count())
 	{
 		ut::log.Lock() << "Shader cache: cached version of \"" << shader_name << "\" has macros count mismatch." << ut::cret;
 		return ut::Optional<Shader::Info&>();

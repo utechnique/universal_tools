@@ -101,7 +101,7 @@ struct SelectorHelper<0, ContainerType>
 		typedef typename EngineUnits::template Item<type_id>::Type UnitType;
 		ut::Array<Entity::Id>& unit_map = map[type_id];
 		ut::Array< ut::Ref<UnitType> >& units = container.template Get<type_id>();
-		const size_t unit_count = units.GetNum();
+		const size_t unit_count = units.Count();
 		for (size_t i = unit_count; i-- > 0; )
 		{
 			if (unit_map[i] == entity_id)
@@ -149,7 +149,7 @@ public:
 	inline void Select(Entity::Id entity_id, ut::Array<UnitPtr>& units)
 	{
 		ut::ScopeLock lock(mutex);
-		const size_t unit_count = units.GetNum();
+		const size_t unit_count = units.Count();
 		for (size_t i = 0; i < unit_count; i++)
 		{
 			SelectorHelper<last_unit_type_id, BaseContainer>::Select(*this, entity_id, units[i].GetRef(), map);

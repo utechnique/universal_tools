@@ -56,7 +56,7 @@ PlatformContext::PlatformContext(PlatformContext&&) noexcept = default;
 void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& requests)
 {
 	ut::Array<ImageTransitionGroup> transition_groups;
-	const ut::uint32 request_count = static_cast<ut::uint32>(requests.GetNum());
+	const ut::uint32 request_count = static_cast<ut::uint32>(requests.Count());
 	for (ut::uint32 i = 0; i < request_count; i++)
 	{
 		ImageTransitionRequest& request = requests[i];
@@ -80,7 +80,7 @@ void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& reques
 
 		// search this transition variant
 		ut::Optional<ImageTransitionGroup&> suitable_group;
-		const ut::uint32 group_count = static_cast<ut::uint32>(transition_groups.GetNum());
+		const ut::uint32 group_count = static_cast<ut::uint32>(transition_groups.Count());
 		for (ut::uint32 t = 0; t < group_count; t++)
 		{
 			ImageTransitionGroup& current_group = transition_groups[t];
@@ -107,11 +107,11 @@ void PlatformContext::ChangeImageState(ut::Array<ImageTransitionRequest>& reques
 	}
 
 	// perform pipeline barriers - one for each group
-	const ut::uint32 group_count = static_cast<ut::uint32>(transition_groups.GetNum());
+	const ut::uint32 group_count = static_cast<ut::uint32>(transition_groups.Count());
 	for (ut::uint32 t = 0; t < group_count; t++)
 	{
 		ImageTransitionGroup& group = transition_groups[t];
-		const uint32_t barrier_count = static_cast<uint32_t>(group.barriers.GetNum());
+		const uint32_t barrier_count = static_cast<uint32_t>(group.barriers.Count());
 		vkCmdPipelineBarrier(cmd_buffer.GetVkHandle(),
 		                     group.old_stage,
 		                     group.new_stage,
@@ -301,7 +301,7 @@ void Context::CopyTarget(Target& dst,
 	               src_image.GetLayout(),
 	               dst_image.GetVkHandle(),
 	               dst_image.GetLayout(),
-	               static_cast<uint32_t>(img_copy_regions.GetNum()),
+	               static_cast<uint32_t>(img_copy_regions.Count()),
 	               img_copy_regions.GetAddress());
 }
 
@@ -386,7 +386,7 @@ void Context::GenerateMips(Target& target,
 	for (ut::uint32 mip = 1; mip < info.mip_count; mip++)
 	{
 		// change destination and source mip layout
-		transition_requests.Empty();
+		transition_requests.Reset();
 		ImageTransitionRequest mip_src_request = { image, mip == 1 ? image.state : transfer_dst_state,
 		                                           transfer_src_state, false, 0, slice_count, mip - 1, 1 };
 		ImageTransitionRequest mip_dst_request = { image, image.state, transfer_dst_state,
@@ -435,7 +435,7 @@ void Context::GenerateMips(Target& target,
 	                                              true, 0, slice_count, 0, info.mip_count - 1 };
 	ImageTransitionRequest last_mip_request = { image, transfer_dst_state, final_state,
 	                                            true, 0, slice_count, info.mip_count - 1, 1 };
-	transition_requests.Empty();
+	transition_requests.Reset();
 	transition_requests.Add(first_mips_request);
 	transition_requests.Add(last_mip_request);
 	ChangeImageState(transition_requests);
@@ -500,13 +500,13 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	// validate arguments
 	if (!clear_color)
 	{
-		UT_ASSERT(clear_color.GetAlt().GetNum() <= skMaxClearValues);
-		UT_ASSERT(clear_color.GetAlt().GetNum() == render_pass.color_slots.GetNum());
+		UT_ASSERT(clear_color.GetAlt().Count() <= skMaxClearValues);
+		UT_ASSERT(clear_color.GetAlt().Count() == render_pass.color_slots.Count());
 	}
-	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_attachments.GetNum());
+	UT_ASSERT(render_pass.color_slots.Count() == framebuffer.color_attachments.Count());
 	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_attachment : !framebuffer.depth_stencil_attachment);
 	
-	const ut::uint32 color_slot_count = static_cast<ut::uint32>(render_pass.color_slots.GetNum());
+	const ut::uint32 color_slot_count = static_cast<ut::uint32>(render_pass.color_slots.Count());
 	ut::uint32 total_attachment_count = color_slot_count;
 
 	// color attachments
@@ -711,7 +711,7 @@ void Context::DrawIndexedInstanced(ut::uint32 index_count,
 //    @param buffers - array of references to the secondary buffer.
 void Context::ExecuteSecondaryBuffers(ut::Array< ut::Ref<CmdBuffer> >& buffers)
 {
-	const ut::uint32 count = static_cast<ut::uint32>(buffers.GetNum());
+	const ut::uint32 count = static_cast<ut::uint32>(buffers.Count());
 
 	ut::Array<VkCommandBuffer> handles(count);
 	for (ut::uint32 i = 0; i < count; i++)

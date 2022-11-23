@@ -89,7 +89,7 @@ namespace vertex_traits
     template<ComponentType id>
     static ut::Optional<const VertexElement&> MapComponent(const InputAssemblyState& ias)
     {
-        const size_t element_count = ias.elements.GetNum();
+        const size_t element_count = ias.elements.Count();
         for (size_t i = 0; i < element_count; i++)
         {
             const VertexElement& element = ias.elements[i];

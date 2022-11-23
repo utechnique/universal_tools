@@ -306,7 +306,7 @@ void DeferredShading::Shade(Context& context,
 	}
 
 	// directional lights
-	const size_t directional_light_count = lights.directional.GetNum();
+	const size_t directional_light_count = lights.directional.Count();
 	if (directional_light_count > 0)
 	{
 		const size_t pipeline_id = LightPass::Grid::GetId(ibl_preset, Light::source_directional);
@@ -322,7 +322,7 @@ void DeferredShading::Shade(Context& context,
 	}
 
 	// point lights
-	const size_t point_light_count = lights.point.GetNum();
+	const size_t point_light_count = lights.point.Count();
 	if (point_light_count > 0)
 	{
 		const size_t pipeline_id = LightPass::Grid::GetId(ibl_preset, Light::source_point);
@@ -338,7 +338,7 @@ void DeferredShading::Shade(Context& context,
 	}
 
 	// spot lights
-	const size_t spot_light_count = lights.spot.GetNum();
+	const size_t spot_light_count = lights.spot.Count();
 	if (spot_light_count > 0)
 	{
 		const size_t pipeline_id = LightPass::Grid::GetId(ibl_preset, Light::source_spot);
@@ -365,14 +365,14 @@ void DeferredShading::BakeOpaqueModels(Context& context,
 {
 	// get the number of available threads
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
-	UT_ASSERT(thread_count == gpass_desc_set.GetNum());
+	UT_ASSERT(thread_count == gpass_desc_set.Count());
 
 	// get the number of model drawcalls
 	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;
-	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.GetNum());
+	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.Count());
 
 	// initialize secondary buffers for a parallel work
-	secondary_buffer_cache.Empty();
+	secondary_buffer_cache.Reset();
 	for (ut::uint32 i = 0; i < thread_count; i++)
 	{
 		secondary_buffer_cache.Add(data.gpass_cmd[cubeface * thread_count + i]);
@@ -491,7 +491,7 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
 	Buffer* prev_index_buffer = nullptr;
 	ut::uint32 prev_index_offset = 0;
 	ut::uint32 prev_index_count = 0;
-	ut::uint32 prev_batch_id = static_cast<ut::uint32>(batches.GetNum());
+	ut::uint32 prev_batch_id = static_cast<ut::uint32>(batches.Count());
 
 	// number of elements to draw at once
 	ut::uint32 instance_count = 0;

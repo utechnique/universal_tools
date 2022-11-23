@@ -26,7 +26,7 @@ public:
 	//    @return - unique identifier
 	Id Generate()
 	{
-		if (vacant.GetNum() > 0)
+		if (vacant.Count() > 0)
 		{
 			Id id = vacant.GetLast();
 			vacant.PopBack();

@@ -28,7 +28,7 @@ Manager::Manager() : config(LoadCfg())
 //              and false otherwise.
 bool Manager::IsKeyDown(const ut::String& name)
 {
-	const size_t handler_count = handlers.GetNum();
+	const size_t handler_count = handlers.Count();
 	for (size_t i = 0; i < handler_count; i++)
 	{
 		if (handlers[i]->IsKeyDown(name))
@@ -45,7 +45,7 @@ bool Manager::IsKeyDown(const ut::String& name)
 //              returns zero if signal wasn't found.
 Signal::Discrete Manager::GetDiscreteSignal(const ut::String& name)
 {
-	const size_t handler_count = handlers.GetNum();
+	const size_t handler_count = handlers.Count();
 	for (size_t i = 0; i < handler_count; i++)
 	{
 		const Signal::Discrete value = handlers[i]->GetDiscreteSignal(name);
@@ -63,7 +63,7 @@ Signal::Discrete Manager::GetDiscreteSignal(const ut::String& name)
 //              returns zero if signal wasn't found.
 Signal::Analog Manager::GetAnalogSignal(const ut::String& name)
 {
-	const size_t handler_count = handlers.GetNum();
+	const size_t handler_count = handlers.Count();
 	for (size_t i = 0; i < handler_count; i++)
 	{
 		const Signal::Analog value = handlers[i]->GetAnalogSignal(name);
@@ -78,7 +78,7 @@ Signal::Analog Manager::GetAnalogSignal(const ut::String& name)
 // Updates handlers.
 void Manager::Update()
 {
-	const size_t handler_count = handlers.GetNum();
+	const size_t handler_count = handlers.Count();
 	for (size_t i = 0; i < handler_count; i++)
 	{
 		handlers[i]->SwapStates();

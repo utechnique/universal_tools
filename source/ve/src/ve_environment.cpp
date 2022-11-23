@@ -16,7 +16,7 @@ Environment::Environment(Pipeline in_pipeline) : pipeline(ut::Move(in_pipeline))
 Environment::~Environment()
 {
 	// the rule is that entities must be deleted before systems
-	entities.Empty();
+	entities.Reset();
 }
 
 //----------------------------------------------------------------------------->
@@ -250,7 +250,7 @@ void Environment::Exit()
 //              failed to be executed.
 ut::Optional<ut::Error> Environment::ExecuteCommands(CmdArray commands)
 {
-	const size_t cmd_count = commands.GetNum();
+	const size_t cmd_count = commands.Count();
 	for (size_t i = 0; i < cmd_count; i++)
 	{
 		ut::Optional<ut::Error> cmd_error = commands[i]->Execute(*this);

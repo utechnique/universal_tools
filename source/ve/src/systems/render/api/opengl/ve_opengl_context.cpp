@@ -48,8 +48,8 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	                          ut::uint32 stencil_clear_value)
 {
 	// validate arguments
-	UT_ASSERT(color_clear_values.GetNum() <= render_pass.color_slots.GetNum());
-	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_targets.GetNum());
+	UT_ASSERT(color_clear_values.Count() <= render_pass.color_slots.Count());
+	UT_ASSERT(render_pass.color_slots.Count() == framebuffer.color_targets.Count());
 	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_target : !framebuffer.depth_stencil_target);
 
 	// bind framebuffer
@@ -57,7 +57,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 
 	// set draw buffers
 	GLenum draw_buffers[skMaxGlColorAttachments];
-	const ut::uint32 color_attachment_count = static_cast<ut::uint32>(framebuffer.color_targets.GetNum());
+	const ut::uint32 color_attachment_count = static_cast<ut::uint32>(framebuffer.color_targets.Count());
 	for (ut::uint32 i = 0; i < color_attachment_count; i++)
 	{
 		// set draw buffer
@@ -80,7 +80,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	glDrawBuffers(color_attachment_count, draw_buffers);
 	
 	// clear color buffer
-	const ut::uint32 clear_value_count = static_cast<ut::uint32>(color_clear_values.GetNum());
+	const ut::uint32 clear_value_count = static_cast<ut::uint32>(color_clear_values.Count());
 	for (ut::uint32 i = 0; i < clear_value_count; i++)
 	{
 		draw_buffers[i] = GetColorAttachmentId(i);

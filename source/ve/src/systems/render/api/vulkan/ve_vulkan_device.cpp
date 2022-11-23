@@ -685,9 +685,9 @@ VkInstance PlatformDevice::CreateVulkanInstance()
 	inst_info.pNext = nullptr;
 	inst_info.flags = 0;
 	inst_info.pApplicationInfo = &app_info;
-	inst_info.enabledExtensionCount = static_cast<uint32_t>(extensions.GetNum());
+	inst_info.enabledExtensionCount = static_cast<uint32_t>(extensions.Count());
 	inst_info.ppEnabledExtensionNames = extensions.GetAddress();
-	inst_info.enabledLayerCount = static_cast<uint32_t>(layers.GetNum());
+	inst_info.enabledLayerCount = static_cast<uint32_t>(layers.Count());
 	inst_info.ppEnabledLayerNames = layers.GetAddress();
 
 	// create instance itself
@@ -745,14 +745,14 @@ bool PlatformDevice::CheckValidationLayerSupport()
 // Returns physical device that suits best.
 ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(const ut::Array<VkPhysicalDevice>& devices)
 {
-	if (devices.GetNum() == 0)
+	if (devices.Count() == 0)
 	{
 		throw ut::Error(ut::error::empty, "Gpu list is empty");
 	}
 
 	ut::Optional< ut::Pair<VkPhysicalDevice, ut::uint32> > top_scored_device;
 
-	for (size_t i = 0; i < devices.GetNum(); i++)
+	for (size_t i = 0; i < devices.Count(); i++)
 	{
 		ut::uint32 score = 0;
 
@@ -843,7 +843,7 @@ ut::Array<VkPhysicalDevice> PlatformDevice::EnumeratePhysicalDevices()
 }
 
 // Returns an array of queue family properties.
-ut::Map<vulkan_queue::FamilyType, vulkan_queue::Family> PlatformDevice::GetQueueFamilies(VkPhysicalDevice physical_device)
+ut::HashMap<vulkan_queue::FamilyType, vulkan_queue::Family> PlatformDevice::GetQueueFamilies(VkPhysicalDevice physical_device)
 {
 	// get number of queue families
 	uint32_t queue_family_count;
@@ -862,7 +862,7 @@ ut::Map<vulkan_queue::FamilyType, vulkan_queue::Family> PlatformDevice::GetQueue
 	}
 
 	// select needed
-	ut::Map<vulkan_queue::FamilyType, vulkan_queue::Family> out_map;
+	ut::HashMap<vulkan_queue::FamilyType, vulkan_queue::Family> out_map;
 	for (uint32_t i = 0; i < queue_family_count; i++)
 	{
 		if (properties[i].queueCount == 0)
@@ -974,7 +974,7 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 	device_info.pNext = nullptr;
 	device_info.queueCreateInfoCount = 1;
 	device_info.pQueueCreateInfos = &queue_info;
-	device_info.enabledExtensionCount = static_cast<uint32_t>(extensions.GetNum());
+	device_info.enabledExtensionCount = static_cast<uint32_t>(extensions.Count());
 	device_info.ppEnabledExtensionNames = extensions.GetAddress();
 	device_info.enabledLayerCount = 0;
 	device_info.ppEnabledLayerNames = nullptr;
@@ -1993,7 +1993,7 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 	// initialize color attachments
 	bool has_present_surface = false;
 	ut::Array<VkAttachmentReference> color_references;
-	for (size_t i = 0; i < in_color_slots.GetNum(); i++)
+	for (size_t i = 0; i < in_color_slots.Count(); i++)
 	{
 		VkAttachmentDescription color_attachment;
 
@@ -2079,7 +2079,7 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 		}
 
 		// initialize reference
-		depth_reference.attachment = static_cast<uint32_t>(color_references.GetNum());
+		depth_reference.attachment = static_cast<uint32_t>(color_references.Count());
 		depth_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	}
 
@@ -2089,7 +2089,7 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 	subpass.flags = 0;
 	subpass.inputAttachmentCount = 0;
 	subpass.pInputAttachments = nullptr;
-	subpass.colorAttachmentCount = static_cast<uint32_t>(color_references.GetNum());
+	subpass.colorAttachmentCount = static_cast<uint32_t>(color_references.Count());
 	subpass.pColorAttachments = color_references.GetAddress();
 	subpass.pResolveAttachments = nullptr;
 	subpass.pDepthStencilAttachment = in_depth_stencil_slot ? &depth_reference : nullptr;
@@ -2119,7 +2119,7 @@ ut::Result<RenderPass, ut::Error> Device::CreateRenderPass(ut::Array<RenderTarge
 	VkRenderPassCreateInfo rp_info = {};
 	rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	rp_info.pNext = nullptr;
-	rp_info.attachmentCount = static_cast<uint32_t>(attachments.GetNum());
+	rp_info.attachmentCount = static_cast<uint32_t>(attachments.Count());
 	rp_info.pAttachments = attachments.GetAddress();
 	rp_info.subpassCount = 1;
 	rp_info.pSubpasses = &subpass;
@@ -2153,7 +2153,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	// determine width and heights of the framebuffer in pixels
 	ut::uint32 width;
 	ut::uint32 height;
-	if (color_attachments.GetNum() != 0)
+	if (color_attachments.Count() != 0)
 	{
 		const Framebuffer::Attachment& attachment = color_attachments.GetFirst();
 		const Image& color_img = attachment.target->image;
@@ -2174,7 +2174,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 
 	// color attachments
 	ut::Array<VkImageView> image_views;
-	const size_t color_target_count = color_attachments.GetNum();
+	const size_t color_target_count = color_attachments.Count();
 	for (size_t i = 0; i < color_target_count; i++)
 	{
 		const Framebuffer::Attachment& attachment = color_attachments[i];
@@ -2205,7 +2205,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	vk_fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	vk_fb_info.pNext = nullptr;
 	vk_fb_info.renderPass = render_pass.GetVkHandle();
-	vk_fb_info.attachmentCount = static_cast<uint32_t>(image_views.GetNum());
+	vk_fb_info.attachmentCount = static_cast<uint32_t>(image_views.Count());
 	vk_fb_info.pAttachments = image_views.GetAddress();
 	vk_fb_info.width = static_cast<uint32_t>(width);
 	vk_fb_info.height = static_cast<uint32_t>(height);
@@ -2365,7 +2365,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	}
 
 	// shader stages
-	const uint32_t shader_stage_count = static_cast<uint32_t>(shaders.GetNum());
+	const uint32_t shader_stage_count = static_cast<uint32_t>(shaders.Count());
 	ut::Array<VkPipelineShaderStageCreateInfo> shader_stages;
 	for (uint32_t i = 0; i < shader_stage_count; i++)
 	{
@@ -2388,8 +2388,8 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	instance_binding.stride = info.input_assembly_state.instance_stride;
 
 	// vertex attributes
-	const size_t vertex_element_count = info.input_assembly_state.elements.GetNum();
-	const size_t instance_element_count = info.input_assembly_state.instance_elements.GetNum();
+	const size_t vertex_element_count = info.input_assembly_state.elements.Count();
+	const size_t instance_element_count = info.input_assembly_state.instance_elements.Count();
 	const size_t input_element_count = vertex_element_count + instance_element_count;
 	ut::Array<VkVertexInputAttributeDescription> vertex_attributes(input_element_count);
 	for (size_t i = 0; i < vertex_element_count; i++)
@@ -2422,7 +2422,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	vertex_input.flags = 0;
 	vertex_input.vertexBindingDescriptionCount = instance_element_count == 0 ? 1 : 2;
 	vertex_input.pVertexBindingDescriptions = input_bindings;
-	vertex_input.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attributes.GetNum());
+	vertex_input.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attributes.Count());
 	vertex_input.pVertexAttributeDescriptions = vertex_attributes.GetAddress();
 
 	// input assembly state
@@ -2438,7 +2438,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	}
 
 	// generate array of vulkan viewports
-	uint32_t viewport_count = static_cast<uint32_t>(info.viewports.GetNum());
+	uint32_t viewport_count = static_cast<uint32_t>(info.viewports.Count());
 	ut::Array<VkViewport> viewports(viewport_count);
 	ut::Array<VkRect2D> scissors(viewport_count);
 	for (uint32_t i = 0; i < viewport_count; i++)
@@ -2536,7 +2536,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	ds_state.maxDepthBounds = 1.0f;
 
 	// blend attachments
-	const uint32_t blend_attachment_count = static_cast<uint32_t>(info.blend_state.attachments.GetNum());
+	const uint32_t blend_attachment_count = static_cast<uint32_t>(info.blend_state.attachments.Count());
 	ut::Array<VkPipelineColorBlendAttachmentState> blend_attachments;
 	for (uint32_t i = 0; i < blend_attachment_count; i++)
 	{
@@ -2562,7 +2562,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	blend_state.flags = 0;
 	blend_state.pNext = nullptr;
-	blend_state.attachmentCount = static_cast<uint32_t>(blend_attachments.GetNum());
+	blend_state.attachmentCount = static_cast<uint32_t>(blend_attachments.Count());
 	blend_state.pAttachments = blend_attachments.GetAddress();
 	blend_state.logicOpEnable = VK_FALSE;
 	blend_state.logicOp = VK_LOGIC_OP_NO_OP;
@@ -2583,14 +2583,14 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	for (uint32_t stage_id = 0; stage_id < shader_stage_count; stage_id++)
 	{
 		Shader& shader = shaders[stage_id];
-		for (size_t param_id = 0; param_id < shader.info.parameters.GetNum(); param_id++)
+		for (size_t param_id = 0; param_id < shader.info.parameters.Count(); param_id++)
 		{
 			Shader::Parameter& parameter = shader.info.parameters[param_id];
 			const ut::uint32 binding_id = parameter.GetBinding();
 
 			// check if this binding already exists
 			ut::Optional<VkDescriptorSetLayoutBinding&> binding_slot;
-			const size_t binding_count = layout_bindings.GetNum();
+			const size_t binding_count = layout_bindings.Count();
 			for (size_t binding_slot_id = 0; binding_slot_id < binding_count; binding_slot_id++)
 			{
 				if (layout_bindings[binding_slot_id].binding == binding_id)
@@ -2629,7 +2629,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	dsl_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	dsl_info.pNext = nullptr;
 	dsl_info.flags = 0;
-	dsl_info.bindingCount = static_cast<uint32_t>(layout_bindings.GetNum());
+	dsl_info.bindingCount = static_cast<uint32_t>(layout_bindings.Count());
 	dsl_info.pBindings = layout_bindings.GetAddress();
 	VkResult res = vkCreateDescriptorSetLayout(device.GetVkHandle(), &dsl_info, nullptr, &descriptor_set_layout);
 	if (res != VK_SUCCESS)
@@ -2841,7 +2841,7 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 	}
 
 	// if present queue isn't empty - check if cmd buffer is a dynamic buffer
-	const ut::uint32 display_count = static_cast<ut::uint32>(present_queue.GetNum());
+	const ut::uint32 display_count = static_cast<ut::uint32>(present_queue.Count());
 	if (display_count != 0 && !(cmd_buffer.info.usage & CmdBuffer::usage_dynamic))
 	{
 		throw ut::Error(ut::error::invalid_arg, "Render: only dynamic command buffers support present.");
@@ -2940,7 +2940,7 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 void Device::AcquireNextDisplayBuffer(Display& display)
 {
 	ut::uint32 next_buffer_id = display.current_buffer_id + 1;
-	if (next_buffer_id >= display.targets.GetNum())
+	if (next_buffer_id >= display.targets.Count())
 	{
 		next_buffer_id = 0;
 	}

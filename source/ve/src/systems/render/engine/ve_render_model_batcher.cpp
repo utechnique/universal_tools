@@ -18,7 +18,7 @@ ModelBatcher::ModelBatcher(Toolset &toolset) : tools(toolset)
 void ModelBatcher::Register(Entity::Id entity_id, ut::Array< ut::UniquePtr<Unit> >& units)
 {
 	const ut::DynamicType::Handle model_handle = ut::GetPolymorphicHandle<Model>();
-	const size_t unit_count = units.GetNum();
+	const size_t unit_count = units.Count();
 	for (size_t i = 0; i < unit_count; i++)
 	{
 		Unit& unit = units[i].GetRef();
@@ -31,7 +31,7 @@ void ModelBatcher::Register(Entity::Id entity_id, ut::Array< ut::UniquePtr<Unit>
 		ut::ScopeLock lock(mutex);
 
 		Model& model = static_cast<Model&>(unit);
-		const ut::uint32 subset_count = static_cast<ut::uint32>(model.mesh->subsets.GetNum());
+		const ut::uint32 subset_count = static_cast<ut::uint32>(model.mesh->subsets.Count());
 		for (ut::uint32 subset_id = 0; subset_id < subset_count; subset_id++)
 		{
 			draw_calls.Add(Model::DrawCall{ model, entity_id, subset_id });
@@ -43,7 +43,7 @@ void ModelBatcher::Register(Entity::Id entity_id, ut::Array< ut::UniquePtr<Unit>
 void ModelBatcher::Unregister(Entity::Id entity_id)
 {
 	ut::ScopeLock lock(mutex);
-	const size_t count = draw_calls.GetNum();
+	const size_t count = draw_calls.Count();
 	for (size_t i = count; i-- > 0;)
 	{
 		if (draw_calls[i].entity_id == entity_id)
@@ -127,9 +127,9 @@ void ModelBatcher::UpdateBatchById(Context& context, size_t batch_id)
 	FrameData& frame = frame_data[current_frame_id];
 
 	// calculate how many units contains this buffer
-	const size_t dc_count = draw_calls.GetNum();
+	const size_t dc_count = draw_calls.Count();
 	size_t elements_to_update = batch_size;
-	if ((batch_id == frame.batches.GetNum() - 1) && (dc_count % batch_size != 0))
+	if ((batch_id == frame.batches.Count() - 1) && (dc_count % batch_size != 0))
 	{
 		elements_to_update = dc_count % batch_size;
 	}
@@ -142,13 +142,13 @@ void ModelBatcher::UpdateBatchById(Context& context, size_t batch_id)
 void ModelBatcher::UpdateBuffers(Context& context)
 {
 	// calculate how many buffers are needed to cover all model units
-	const size_t dc_count = draw_calls.GetNum();
+	const size_t dc_count = draw_calls.Count();
 	const size_t buffer_need = dc_count / batch_size +
 	                           ((dc_count % batch_size != 0) ? 1 : 0);
 
 	// allocate new buffers
 	FrameData& current_frame = frame_data[tools.frame_mgr.GetCurrentFrameId()];
-	const size_t current_batch_count = current_frame.batches.GetNum();
+	const size_t current_batch_count = current_frame.batches.Count();
 	for (size_t i = current_batch_count; i < buffer_need; i++)
 	{
 		// transform

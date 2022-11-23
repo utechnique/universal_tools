@@ -14,7 +14,7 @@ START_NAMESPACE(input)
 //              and false otherwise.
 bool Handler::IsKeyDown(const ut::String& name)
 {
-	const size_t device_count = cur_state.GetNum();
+	const size_t device_count = cur_state.Count();
 	for (size_t i = 0; i < device_count; i++)
 	{
 		ut::Optional<const Signal&> signal = cur_state[i].FindSignal(name);
@@ -32,7 +32,7 @@ bool Handler::IsKeyDown(const ut::String& name)
 //              returns zero if signal wasn't found.
 Signal::Discrete Handler::GetDiscreteSignal(const ut::String& name)
 {
-	const size_t device_count = cur_state.GetNum();
+	const size_t device_count = cur_state.Count();
 	for (size_t i = 0; i < device_count; i++)
 	{
 		ut::Optional<const Signal&> signal = cur_state[i].FindSignal(name);
@@ -50,7 +50,7 @@ Signal::Discrete Handler::GetDiscreteSignal(const ut::String& name)
 //              returns zero if signal wasn't found.
 Signal::Analog Handler::GetAnalogSignal(const ut::String& name)
 {
-	const size_t device_count = cur_state.GetNum();
+	const size_t device_count = cur_state.Count();
 	for (size_t i = 0; i < device_count; i++)
 	{
 		ut::Optional<const Signal&> signal = cur_state[i].FindSignal(name);
@@ -65,8 +65,8 @@ Signal::Analog Handler::GetAnalogSignal(const ut::String& name)
 // Copies @cur_state to @prev_state.
 void Handler::SwapStates()
 {
-	const size_t cur_device_count = cur_state.GetNum();
-	const size_t prev_device_count = prev_state.GetNum();
+	const size_t cur_device_count = cur_state.Count();
+	const size_t prev_device_count = prev_state.Count();
 
 	if (prev_device_count == cur_device_count)
 	{

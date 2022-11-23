@@ -43,7 +43,7 @@ int DesktopFrontend::MainWindow::handle(int event)
 // Hides this window and deactivates viewports.
 void DesktopFrontend::MainWindow::hide()
 {
-	const size_t viewport_count = frontend.viewports.GetNum();
+	const size_t viewport_count = frontend.viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
 		Viewport::Mode mode = frontend.viewports[i]->GetMode();
@@ -342,7 +342,7 @@ void DesktopFrontend::OnCloseCallback(Fl_Widget* widget, void* data)
 void DesktopFrontend::Close()
 {
 	// make viewports to call signal slots before their windows got destroyed
-	const size_t viewport_count = viewports.GetNum();
+	const size_t viewport_count = viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
 		DesktopViewport& viewport = static_cast<DesktopViewport&>(viewports[i].Get());

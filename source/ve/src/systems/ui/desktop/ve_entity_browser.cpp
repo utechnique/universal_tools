@@ -337,7 +337,7 @@ EntityView::EntityView(EntityView::Proxy& proxy,
 	              width);
 	
 	// initialize widgets for all components
-	const size_t component_count = proxy.components.GetNum();
+	const size_t component_count = proxy.components.Count();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		AddNewComponent(proxy.components[i]);
@@ -364,7 +364,7 @@ void EntityView::Update(EntityView::Proxy& proxy)
 	InvalidateComponents();
 
 	// update existing components or add new ones
-	const size_t component_count = proxy.components.GetNum();
+	const size_t component_count = proxy.components.Count();
 	for (ut::uint32 i = 0; i < component_count; i++)
 	{
 		ComponentView::Proxy& component_proxy = proxy.components[i];
@@ -393,7 +393,7 @@ void EntityView::Update(EntityView::Proxy& proxy)
 // must be shifted up or down.
 void EntityView::UpdateSize()
 {
-	const size_t component_count = components.GetNum();
+	const size_t component_count = components.Count();
 	for (ut::uint32 i = 0; i < component_count; i++)
 	{
 		components[i]->UpdateSize();
@@ -410,7 +410,7 @@ CmdArray EntityView::FlushCommands()
 	CmdArray cmd = ut::Move(pending_commands.Lock());
 	pending_commands.Unlock();
 
-	const size_t component_count = components.GetNum();
+	const size_t component_count = components.Count();
 	for (ut::uint32 i = 0; i < component_count; i++)
 	{
 		cmd += components[i]->FlushCommands();
@@ -564,7 +564,7 @@ void EntityView::InitializeControls(const Theme& theme)
 // ('invalid' means 'not matching any real component in the managed entity')
 void EntityView::InvalidateComponents()
 {
-	const size_t component_count = components.GetNum();
+	const size_t component_count = components.Count();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		components[i]->is_valid = false;
@@ -576,7 +576,7 @@ void EntityView::InvalidateComponents()
 //    @return - optional reference to the desired widget.
 ut::Optional<ComponentView&> EntityView::FindComponent(ut::DynamicType::Handle component_type)
 {
-	const size_t component_count = components.GetNum();
+	const size_t component_count = components.Count();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		ComponentView& component = components[i].GetRef();
@@ -606,7 +606,7 @@ void EntityView::AddNewComponent(ComponentView::Proxy& proxy)
 // ('invalid' means 'not matching any real component in the managed entity')
 void EntityView::RemoveInvalidComponents()
 {
-	const size_t component_count = components.GetNum();
+	const size_t component_count = components.Count();
 	for (size_t i = component_count; i--; )
 	{
 		ComponentView& component = components[i].GetRef();
@@ -634,7 +634,7 @@ void EntityView::RepositionComponents()
 	// update vertical position of all components
 	const ut::uint32 component_width = CalculateComponentViewWidth();
 	int height = y() + caption_box->h() + EntityBrowser::skOffset * 2;
-	const size_t component_count = components.GetNum();
+	const size_t component_count = components.Count();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		ComponentView& component = components[i].GetRef();
@@ -662,7 +662,7 @@ void EntityView::AttachChildWidgets()
 {
 	add(caption.GetRef());
 
-	const size_t component_count = components.GetNum();
+	const size_t component_count = components.Count();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		add(components[i].GetRef());
@@ -679,7 +679,7 @@ void EntityView::DetachChildWidgets()
 {
 	remove(caption.GetRef());
 
-	const size_t component_count = components.GetNum();
+	const size_t component_count = components.Count();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		remove(components[i].GetRef());
@@ -920,21 +920,21 @@ void EntityBrowser::PrepareEntityProxies(EntitySystem::EntityMap& entities)
 {
 	ut::ScopeLock lock(mutex);
 
-	const size_t entity_count = entities.GetNum();
+	const size_t entity_count = entities.Count();
 
-	pending_views.Empty();
+	pending_views.Reset();
 	pending_views.Resize(entity_count);
 
 	for (size_t entity_id = 0; entity_id < entity_count; entity_id++)
 	{
-		ut::Pair<Entity::Id, EntitySystem::ComponentSet>& entity = entities[entity_id];
-		const Entity::Id id = entity.first;
+		ut::Pair<const Entity::Id, EntitySystem::ComponentSet>& entity = entities[entity_id];
+		const Entity::Id id = entity.GetFirst();
 		EntitySystem::ComponentSet& components = entity.second;
 
 		EntityView::Proxy& view_proxy = pending_views[entity_id];
 		view_proxy.id = id;
 
-		const size_t component_count = components.GetNum();
+		const size_t component_count = components.Count();
 		for (size_t component_id = 0; component_id < component_count; component_id++)
 		{
 			const ut::DynamicType& component_type = components[component_id]->Identify();
@@ -968,7 +968,7 @@ void EntityBrowser::UpdateUi()
 
 	view_area->redraw();
 
-	pending_views.Empty();
+	pending_views.Reset();
 }
 
 // Searches for the entity view by id.
@@ -977,7 +977,7 @@ void EntityBrowser::UpdateUi()
 //              if not found.
 ut::Optional<EntityView&> EntityBrowser::FindView(Entity::Id entity_id)
 {
-	const size_t view_count = entity_views.GetNum();
+	const size_t view_count = entity_views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
 		ut::UniquePtr<EntityView>& view = entity_views[i];
@@ -1012,7 +1012,7 @@ void EntityBrowser::AddEntityView(EntityView::Proxy& proxy)
 
 	// insert the view using the 'bubble' principle to retain sorting
 	bool inserted = false;
-	for (size_t i = 0; i < entity_views.GetNum(); i++)
+	for (size_t i = 0; i < entity_views.Count(); i++)
 	{
 		if (new_view->GetId() < entity_views[i]->GetId())
 		{
@@ -1032,7 +1032,7 @@ void EntityBrowser::AddEntityView(EntityView::Proxy& proxy)
 // Marks all enitity views as 'invalid'.
 void EntityBrowser::InvalidateAllViews()
 {
-	const size_t prev_view_count = entity_views.GetNum();
+	const size_t prev_view_count = entity_views.Count();
 	for (size_t i = 0; i < prev_view_count; i++)
 	{
 		entity_views[i]->is_valid = false;
@@ -1042,7 +1042,7 @@ void EntityBrowser::InvalidateAllViews()
 // Updates entity views with @pending_views proxy array.
 void EntityBrowser::UpdateViews()
 {
-	const ut::uint32 pending_entity_count = static_cast<ut::uint32>(pending_views.GetNum());
+	const ut::uint32 pending_entity_count = static_cast<ut::uint32>(pending_views.Count());
 	for (ut::uint32 i = 0; i < pending_entity_count; i++)
 	{
 		EntityView::Proxy& pending_view = pending_views[i];
@@ -1067,7 +1067,7 @@ void EntityBrowser::UpdateViews()
 // Removes all entity views having 'invalid' flag set.
 void EntityBrowser::RemoveInvalidViews()
 {
-	const size_t view_count = entity_views.GetNum();
+	const size_t view_count = entity_views.Count();
 	for (size_t i = view_count; i--; )
 	{
 		EntityView& view = entity_views[i].GetRef();
@@ -1092,7 +1092,7 @@ void EntityBrowser::RepositionViews()
 	ut::Optional<Entity::Id> entity_to_scroll = new_entity_id.Get();
 
 	int y_position = 0;
-	const size_t view_count = entity_views.GetNum();
+	const size_t view_count = entity_views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
 		EntityView& view = entity_views[i].GetRef();
@@ -1128,7 +1128,7 @@ void EntityBrowser::UpdateSize()
 
 	const int view_width = CalculateEntityViewWidth();
 	
-	const size_t view_count = entity_views.GetNum();
+	const size_t view_count = entity_views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
 		EntityView& view = entity_views[i].GetRef();
@@ -1150,7 +1150,7 @@ CmdArray EntityBrowser::FlushCommands()
 	CmdArray cmd = ut::Move(pending_commands.Lock());
 	pending_commands.Unlock();
 
-	const size_t view_count = entity_views.GetNum();
+	const size_t view_count = entity_views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
 		cmd += entity_views[i]->FlushCommands();
@@ -1251,7 +1251,7 @@ void EntityBrowser::ScrollToWidget(Fl_Widget& widget)
 void EntityBrowser::ProcessNewEntity(EntityView& entity_view)
 {
 	// all 'new' entities becomes 'old'
-	const size_t view_count = entity_views.GetNum();
+	const size_t view_count = entity_views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
 		EntityView& view = entity_views[i].GetRef();

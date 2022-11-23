@@ -18,7 +18,7 @@ CameraSystem::CameraSystem() : ComponentSystem<TransformComponent,
 //    @return - empty array of commands.
 System::Result CameraSystem::Update()
 {
-	const size_t count = entities.GetNum();
+	const size_t count = entities.Count();
 	for (size_t i = 0; i < count; i++)
 	{
 		CameraSystem::Set& set = entities[i];
@@ -27,7 +27,7 @@ System::Result CameraSystem::Update()
 		RenderComponent& render = set.Get<RenderComponent>();
 
 		// search for the view unit
-		const size_t unit_count = render.units.GetNum();
+		const size_t unit_count = render.units.Count();
 		for (size_t j = 0; j < unit_count; j++)
 		{
 			ut::UniquePtr<Unit>& unit = render.units[j];

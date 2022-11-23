@@ -25,7 +25,7 @@ System::Result ViewportCameraSystem::Update()
 {
 	CmdArray out_commands;
 
-	const size_t viewport_count = viewports.GetNum();
+	const size_t viewport_count = viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
 		ut::Optional< ut::UniquePtr<Cmd> > cmd = ProcessViewport(viewports[i]);
@@ -55,7 +55,7 @@ ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(ui::Vie
 	const bool observation_mode = input_mgr->IsKeyDown(bindings.observation_mode);
 
 	// search for a camera with desired name
-	const size_t entity_count = entities.GetNum();
+	const size_t entity_count = entities.Count();
 	for (size_t i = 0; i < entity_count; i++)
 	{
 		ViewportCameraSystem::Set& set = entities[i];
@@ -124,7 +124,7 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 {
 	// find render view
 	ut::Optional<render::View&> view;
-	const size_t unit_count = render.units.GetNum();
+	const size_t unit_count = render.units.Count();
 	for (size_t i = 0; i < unit_count; i++)
 	{
 		ut::UniquePtr<render::Unit>& unit = render.units[i];
@@ -406,7 +406,7 @@ ut::Result<ut::UniquePtr<Cmd>, ut::Error> ViewportCameraSystem::CreateCamera(ui:
 // Initializes @viewports array.
 void ViewportCameraSystem::InitializeViewports(ui::Frontend& ui_frontend)
 {
-	viewports.Empty();
+	viewports.Reset();
 	ut::Array< ut::Ref<ui::Viewport> >::Iterator start = ui_frontend.BeginViewports();
 	ut::Array< ut::Ref<ui::Viewport> >::Iterator end = ui_frontend.EndViewports();
 	for (ut::Array< ut::Ref<ui::Viewport> >::Iterator iterator = start; iterator != end; iterator++)

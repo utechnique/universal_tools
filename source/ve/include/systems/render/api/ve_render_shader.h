@@ -88,13 +88,13 @@ public:
 		// otherwise it's a number of dimensions in an array
 		ut::uint32 GetArrayDimensions() const
 		{
-			return static_cast<ut::uint32>(array_dim.GetNum());
+			return static_cast<ut::uint32>(array_dim.Count());
 		}
 
 		// Returns a number of elements in a desired array dimension.
 		ut::uint32 GetArrayElementCount(ut::uint32 dimension) const
 		{
-			UT_ASSERT(dimension < array_dim.GetNum());
+			UT_ASSERT(dimension < array_dim.Count());
 			return array_dim[dimension];
 		}
 

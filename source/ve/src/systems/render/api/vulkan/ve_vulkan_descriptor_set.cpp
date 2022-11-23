@@ -144,7 +144,7 @@ void DescriptorManager::AllocateAndBindDescriptorSet(DescriptorSet& set,
 {
 	// try to allocate set using one of the existing pools
 	ut::Optional<VkDescriptorSet> vk_desc_set;
-	const size_t pool_count = pools.GetNum();
+	const size_t pool_count = pools.Count();
 	for (size_t i = 0; i < pool_count; i++)
 	{
 		vk_desc_set = pools[i].AllocateSet(set, desc_set_layout_handle);
@@ -198,7 +198,7 @@ void DescriptorManager::AllocateAndBindDescriptorSet(DescriptorSet& set,
 // Resets all pools.
 void DescriptorManager::Reset()
 {
-	const size_t pool_count = pools.GetNum();
+	const size_t pool_count = pools.Count();
 	for (size_t i = 0; i < pool_count; i++)
 	{
 		pools[i].Reset();
@@ -211,21 +211,21 @@ void DescriptorManager::Reset()
 void DescriptorManager::UpdateCacheSize(size_t descriptor_count,
                                         size_t separate_element_count)
 {
-	if (write_cache.GetNum() < descriptor_count)
+	if (write_cache.Count() < descriptor_count)
 	{
 		if (!write_cache.Resize(descriptor_count))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
 	}
-	if (buffer_cache.GetNum() < separate_element_count)
+	if (buffer_cache.Count() < separate_element_count)
 	{
 		if (!buffer_cache.Resize(separate_element_count))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
 	}
-	if (image_cache.GetNum() < separate_element_count)
+	if (image_cache.Count() < separate_element_count)
 	{
 		if (!image_cache.Resize(separate_element_count))
 		{
@@ -292,7 +292,7 @@ ut::Optional<size_t> DescriptorManager::InitializeWriteDescriptorSet(VkWriteDesc
 		return ut::Optional<size_t>();
 	}
 
-	const size_t array_elements = binding->slots.GetNum();
+	const size_t array_elements = binding->slots.Count();
 
 	// initialize VkWriteDescriptorSet object
 	wds.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

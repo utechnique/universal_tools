@@ -110,7 +110,7 @@ ut::Array<Shader::MacroDefinition> Mesh::GenerateVertexMacros(VertexFormat verte
 	const ut::String availability_prefix = "VERTEX_HAS_";
 
 	ut::Array<Shader::MacroDefinition> macros;
-	const size_t element_count = ia.elements.GetNum();
+	const size_t element_count = ia.elements.Count();
 	for (size_t element_id = 0; element_id < element_count; element_id++)
 	{
 		const VertexElement& element = ia.elements[element_id];

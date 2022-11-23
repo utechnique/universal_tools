@@ -102,7 +102,7 @@ ut::uint32 FrameManager::GetCurrentFrameId() const
 // will return next frame instead of current.
 void FrameManager::SwapFrames()
 {
-	if (++current_frame_id >= frames.GetNum())
+	if (++current_frame_id >= frames.Count())
 	{
 		current_frame_id = 0;
 	}
@@ -111,7 +111,7 @@ void FrameManager::SwapFrames()
 // Waits until all frames finish rendering.
 void FrameManager::WaitCmdBuffers()
 {
-	const size_t frame_count = frames.GetNum();
+	const size_t frame_count = frames.Count();
 	for (size_t i = 0; i < frame_count; i++)
 	{
 		device.WaitCmdBuffer(frames[i].cmd_buffer);

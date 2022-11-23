@@ -466,7 +466,7 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateKeyboard(const DeviceFileMap& d
 
     // add device
 	cur_state.Add(ut::Move(keyboard_device));
-	keyboard = DeviceFile(cur_state.GetNum() - 1, file, file_path);
+	keyboard = DeviceFile(cur_state.Count() - 1, file, file_path);
 
 	// success
     return ut::Optional<ut::Error>();
@@ -532,7 +532,7 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateMouse(const DeviceFileMap& devi
 
 	// add device
 	cur_state.Add(ut::Move(mouse_device));
-	mouse = DeviceFile(cur_state.GetNum() - 1, file, file_path);
+	mouse = DeviceFile(cur_state.Count() - 1, file, file_path);
 
 	// success
     return ut::Optional<ut::Error>();

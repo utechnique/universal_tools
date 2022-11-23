@@ -20,7 +20,7 @@ System::Result FreeCameraControllerSystem::Update()
 	const float time_step = timer.GetTime<ut::time::seconds, float>();
 	timer.Start();
 
-	const size_t count = entities.GetNum();
+	const size_t count = entities.Count();
 	for (size_t i = 0; i < count; i++)
 	{
 		FreeCameraControllerSystem::Set& set = entities[i];

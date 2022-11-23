@@ -16,7 +16,7 @@ ViewData::ViewData(ut::Array<SwapSlot> in_swap_slots,
                                            , tone_mapping(ut::Move(in_tone_mapping))
                                            , fxaa(ut::Move(in_fxaa))
 {
-	UT_ASSERT(swap_slots.GetNum() == skSwapSlotCount);
+	UT_ASSERT(swap_slots.Count() == skSwapSlotCount);
 }
 
 // Returns a reference to the next intermediate buffer.

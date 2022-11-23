@@ -13,7 +13,7 @@ class EntitySystem : public System
 {
 public:
 	typedef ut::Array< ut::Ref<Component> > ComponentSet;
-	typedef ut::Map<Entity::Id, ComponentSet> EntityMap;
+	typedef ut::HashMap<Entity::Id, ComponentSet> EntityMap;
 
 	// Constructor.
 	//    @param system_name - name of the system.

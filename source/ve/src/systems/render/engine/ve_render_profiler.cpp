@@ -124,7 +124,7 @@ ut::uint32 Profiler::UpdateTextBuffer(Context& context,
                                       double fps)
 {
 	// reset cache
-	text_cache.Empty();
+	text_cache.Reset();
 
 	// how many symbols to display
 	ut::uint32 symbols_to_draw = 0;
@@ -145,7 +145,7 @@ ut::uint32 Profiler::UpdateTextBuffer(Context& context,
 	{
 		ut::log.Lock() << "Render profiler: Warning! Exceeded maximum"
 		               << "number of characters for output buffer." << ut::cret;
-		text_cache.Empty();
+		text_cache.Reset();
 		return 0;
 	}
 
@@ -169,7 +169,7 @@ ut::uint32 Profiler::UpdateTextBuffer(Context& context,
 	VertexReflector vertices(display_input_assembly, map_result.Get());
 
 	// update vertices
-	const ut::uint32 text_count = static_cast<ut::uint32>(text_cache.GetNum());
+	const ut::uint32 text_count = static_cast<ut::uint32>(text_cache.Count());
 	for (ut::uint32 i = 0; i < text_count; i++)
 	{
 		// scale upper-left position to 0..1 size
@@ -244,7 +244,7 @@ ut::uint32 Profiler::UpdateTextBuffer(Context& context,
 ut::uint32 Profiler::GetNumSymbolsInCache()
 {
 	ut::uint32 count = 0;
-	const size_t text_count = text_cache.GetNum();
+	const size_t text_count = text_cache.Count();
 	for (size_t i = 0; i < text_count; i++)
 	{
 		count += static_cast<ut::uint32>(text_cache[i].data.Length());

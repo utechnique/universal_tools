@@ -49,7 +49,7 @@ ChoiceWindow::ChoiceWindow(int x_position,
 	scroll->resizable(scroll.Get());
 
 	// create a button for each variant
-	const ut::uint32 variant_count = static_cast<ut::uint32>(variants.GetNum());
+	const ut::uint32 variant_count = static_cast<ut::uint32>(variants.Count());
 	variant_id.Resize(variant_count);
 	for (ut::uint32 i = 0; i < variant_count; i++)
 	{

@@ -82,9 +82,9 @@ public:
 
 		// generate and return shaderc_include_result object
 		return new shaderc_include_result { info->full_path.GetAddress(),
-		                                    info->full_path.GetNum(),
+		                                    info->full_path.Count(),
 		                                    reinterpret_cast<const char*>(info->contents.GetAddress()),
-		                                    info->contents.GetNum(),
+		                                    info->contents.Count(),
 		                                    info };
 	}
 
@@ -153,7 +153,7 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 	options.SetIncluder(std::move(includer));
 
 	// add macros
-	const size_t macro_count = macros.GetNum();
+	const size_t macro_count = macros.Count();
 	for (size_t i = 0; i < macro_count; i++)
 	{
 		const Shader::MacroDefinition& macro = macros[i];
@@ -206,7 +206,7 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 	spirv_resources.Add(SpirvCrossResources{ Shader::Parameter::storage_buffer, shader_resources.storage_buffers });
 
 	// initialize shader parameters (name and binding)
-	for (size_t rc_id = 0; rc_id < spirv_resources.GetNum(); rc_id++)
+	for (size_t rc_id = 0; rc_id < spirv_resources.Count(); rc_id++)
 	{
 		SpirvCrossResources& resources = spirv_resources[rc_id];
 		Shader::Parameter::Type type = resources.type;

@@ -92,7 +92,7 @@ void Policy<View>::RenderEnvironment(Context& context)
 	lighting_mgr.UpdateLightUniforms(context, lights);
 
 	// render final image for all view units
-	const size_t view_count = views.GetNum();
+	const size_t view_count = views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
 		View& view = views[i];

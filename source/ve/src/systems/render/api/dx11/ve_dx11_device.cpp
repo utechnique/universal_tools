@@ -764,7 +764,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	// determine width and heights of the framebuffer in pixels
 	ut::uint32 width;
 	ut::uint32 height;
-	if (color_attachments.GetNum() != 0)
+	if (color_attachments.Count() != 0)
 	{
 		const Framebuffer::Attachment& attachment = color_attachments.GetFirst();
 		const Image& color_img = attachment.target->image;
@@ -1013,8 +1013,8 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	ID3D11DepthStencilState* depthstencil_state = nullptr;
 
 	// descriptors of dx11 input layout per-vertex elements
-	const UINT vertex_element_count = static_cast<UINT>(info.input_assembly_state.elements.GetNum());
-	const UINT instance_element_count = static_cast<UINT>(info.input_assembly_state.instance_elements.GetNum());
+	const UINT vertex_element_count = static_cast<UINT>(info.input_assembly_state.elements.Count());
+	const UINT instance_element_count = static_cast<UINT>(info.input_assembly_state.instance_elements.Count());
 	UINT input_element_count = vertex_element_count + instance_element_count;
 	ut::Array<D3D11_INPUT_ELEMENT_DESC> input_el_desc(input_element_count);
 	for (UINT i = 0; i < vertex_element_count; i++)
@@ -1067,7 +1067,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	}
 
 	// check if at least one scissor is used
-	const size_t viewport_count = info.viewports.GetNum();
+	const size_t viewport_count = info.viewports.Count();
 	BOOL scissor_enable = FALSE;
 	for (size_t i = 0; i < viewport_count; i++)
 	{
@@ -1121,7 +1121,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	}
 
 	// check blendstate attachment count
-	const size_t blend_attachment_count = info.blend_state.attachments.GetNum();
+	const size_t blend_attachment_count = info.blend_state.attachments.Count();
 	if (blend_attachment_count > 8)
 	{
 		return ut::MakeError(ut::error::fail, "Too many blendstate attachments (max 8 for DX11).");
@@ -1235,7 +1235,7 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 	                ut::Array< ut::Ref<Display> > present_queue)
 {
 	// present
-	const size_t present_count = present_queue.GetNum();
+	const size_t present_count = present_queue.Count();
 	for (size_t i = 0; i < present_count; i++)
 	{
 		Display& display = present_queue[i].Get();

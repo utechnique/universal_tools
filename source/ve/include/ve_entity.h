@@ -27,7 +27,7 @@ public:
 	// Returns the number of components.
 	size_t GetComponentCount() const
 	{
-		return components.GetNum();
+		return components.Count();
 	}
 
 	// Returns a reference to the component with the specified id.

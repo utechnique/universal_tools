@@ -57,7 +57,7 @@ ut::Optional<ut::Error> Entity::RemoveComponent(const ut::DynamicType::Handle co
 	cache.Remove(component_type);
 
 	// find and delete component itself
-	const size_t component_count = components.GetNum();
+	const size_t component_count = components.Count();
 	for (size_t i = 0; i < component_count; i++)
 	{
 		const ut::DynamicType& dyn_type = components[i]->Identify();

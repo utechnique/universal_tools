@@ -26,7 +26,7 @@ Descriptor::Binding::Binding(ut::uint32 in_id,
 void Descriptor::Connect(Shader& shader)
 {
 	const Shader::Info& info = shader.GetInfo();
-	const size_t parameter_count = info.parameters.GetNum();
+	const size_t parameter_count = info.parameters.Count();
 	for (size_t i = 0; i < parameter_count; i++)
 	{
 		const Shader::Parameter& parameter = info.parameters[i];
@@ -123,7 +123,7 @@ const ut::Optional<Descriptor::Binding>& Descriptor::GetBinding() const
 void Descriptor::AssignSlot(void* rc_ptr, ut::uint32 array_id)
 {
 	const ut::uint32 min_array_size = array_id + 1;
-	if (binding->slots.GetNum() < min_array_size)
+	if (binding->slots.Count() < min_array_size)
 	{
 		binding->slots.Resize(min_array_size);
 	}
@@ -143,7 +143,7 @@ DescriptorSet& DescriptorSet::operator =(DescriptorSet&&) noexcept = default;
 // Initializes binding indices for the provided shader stage.
 void DescriptorSet::Connect(Shader& shader)
 {
-	const size_t descriptor_count = descriptors.GetNum();
+	const size_t descriptor_count = descriptors.Count();
 	for (size_t i = 0; i < descriptor_count; i++)
 	{
 		GetDescriptor(i).Connect(shader);
@@ -173,21 +173,21 @@ const DescriptorSet::ResourceCount& DescriptorSet::GetResourceCount()
 // Returns a number of descriptors in this set.
 size_t DescriptorSet::GetDescriptorCount() const
 {
-	return descriptors.GetNum();
+	return descriptors.Count();
 }
 
 // Returns a total number of slots in this set.
 size_t DescriptorSet::GetSlotCount() const
 {
 	size_t slot_count = 0;
-	const size_t descriptor_count = descriptors.GetNum();
+	const size_t descriptor_count = descriptors.Count();
 	for (size_t i = 0; i < descriptor_count; i++)
 	{
 		const Descriptor& descriptor = GetDescriptor(i);
 		const ut::Optional<Descriptor::Binding>& binding = descriptor.GetBinding();
 		if (binding)
 		{
-			slot_count += binding->slots.GetNum();
+			slot_count += binding->slots.Count();
 		}
 	}
 	return slot_count;
@@ -215,7 +215,7 @@ void DescriptorSet::UpdateResourceCount()
 	resource_count.samplers = 0;
 	resource_count.storage_buffers = 0;
 
-	const size_t descriptor_count = descriptors.GetNum();
+	const size_t descriptor_count = descriptors.Count();
 	for (size_t i = 0; i < descriptor_count; i++)
 	{
 		ut::Optional<Descriptor::Binding> binding = GetDescriptor(i).GetBinding();
@@ -239,7 +239,7 @@ void DescriptorSet::UpdateResourceCount()
 void DescriptorSet::Validate()
 {
 	// every parameter must be unique
-	const size_t descriptor_count = descriptors.GetNum();
+	const size_t descriptor_count = descriptors.Count();
 	for (size_t i = 0; i < descriptor_count; i++)
 	{
 		for (size_t j = i + 1; j < descriptor_count; j++)

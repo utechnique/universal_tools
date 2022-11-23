@@ -30,7 +30,7 @@ ut::uint32 Shader::Parameter::GetElementCount() const
 {
 	ut::uint32 element_count = 1;
 
-	const size_t array_dim_count = array_dim.GetNum();
+	const size_t array_dim_count = array_dim.Count();
 	for (size_t i = 0; i < array_dim_count; i++)
 	{
 		element_count *= array_dim[i];

@@ -155,7 +155,7 @@ private:
 	ut::Optional<ut::Error> ExecuteCommands(CmdArray commands);
 
 	// Array of entities, where every entity has a unique id.
-	ut::Map<Entity::Id, Entity> entities;
+	ut::HashMap<Entity::Id, Entity> entities;
 
 	// Id-generator is used to generate unique identifiers for new entities.
 	IdGenerator<Entity::Id> id_generator;

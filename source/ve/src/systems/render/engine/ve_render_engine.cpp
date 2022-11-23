@@ -83,7 +83,7 @@ void Engine::ProcessNextFrame()
 
 	// get active viewports
 	ut::Array< ut::Ref<ViewportManager::Proxy> > active_viewports;
-	for (size_t i = 0; i < viewports.GetNum(); i++)
+	for (size_t i = 0; i < viewports.Count(); i++)
 	{
 		ui::PlatformViewport& viewport_ui_widget = viewports[i].ui_widget;
 		const ui::Viewport::Mode mode = viewport_ui_widget.GetMode();
@@ -95,7 +95,7 @@ void Engine::ProcessNextFrame()
 
 	// generate an array of active displays
 	ut::Array< ut::Ref<Display> > display_array;
-	for (size_t i = 0; i < active_viewports.GetNum(); i++)
+	for (size_t i = 0; i < active_viewports.Count(); i++)
 	{
 		display_array.Add(active_viewports[i]->display);
 		device.AcquireNextDisplayBuffer(display_array.GetLast());
@@ -137,9 +137,9 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportMa
 void Engine::DisplayToUser(Context& context, ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports)
 {
 	ut::Array< ut::Ref<View> >& views = unit_mgr.selector.Get<View>();
-	const size_t view_count = views.GetNum();
+	const size_t view_count = views.Count();
 	
-	for (size_t i = 0; i < active_viewports.GetNum(); i++)
+	for (size_t i = 0; i < active_viewports.Count(); i++)
 	{
 		// find appropriate view unit and extract an image
 		ut::Optional<Image&> image;

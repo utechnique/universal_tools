@@ -217,7 +217,7 @@ ViewportLayout::IconBuffer ViewportLayout::GenerateIconData(const Arrangement& a
 
 	const float margin = 0.06f;
 
-	const size_t element_count = arrangement.GetNum();
+	const size_t element_count = arrangement.Count();
 
 	for (ut::uint32 i = 0; i < size; i++)
 	{
@@ -289,7 +289,7 @@ ViewportTab::ViewportTab(ViewportArea& in_viewport_area,
 void ViewportTab::ChangeViewportProjection(Viewport::Projection projection)
 {
 	ut::Array< ut::Ref<Viewport> > viewports = viewport_area.GetViewports();
-	const size_t viewport_count = viewports.GetNum();
+	const size_t viewport_count = viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
 		Viewport& viewport = viewports[i];
@@ -308,7 +308,7 @@ void ViewportTab::ChangeViewportProjection(Viewport::Projection projection)
 void ViewportTab::ChangeViewportResolution(Viewport::Resolution resolution)
 {
 	ut::Array< ut::Ref<Viewport> > viewports = viewport_area.GetViewports();
-	const size_t viewport_count = viewports.GetNum();
+	const size_t viewport_count = viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
 		Viewport& viewport = viewports[i];
@@ -327,7 +327,7 @@ void ViewportTab::ChangeViewportResolution(Viewport::Resolution resolution)
 void ViewportTab::ChangeViewportRenderMode(Viewport::RenderMode render_mode)
 {
 	ut::Array< ut::Ref<Viewport> > viewports = viewport_area.GetViewports();
-	const size_t viewport_count = viewports.GetNum();
+	const size_t viewport_count = viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
 		Viewport& viewport = viewports[i];
@@ -352,7 +352,7 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateLayoutChoice(LayoutArray& layouts, i
 	                                                            skElementHeight);
 
 	// add layout choices
-	for (size_t i = 0; i < layouts.GetNum(); i++)
+	for (size_t i = 0; i < layouts.Count(); i++)
 	{
 		ViewportLayout& layout = layouts[i].GetRef();
 
@@ -524,9 +524,9 @@ ViewportArea::ViewportArea(const Settings& settings,
 
 	// choose layout that has all viewports activated
 	ut::Optional<size_t> layout_id;
-	for (size_t i = 0; i < tab->layouts.GetNum(); i++)
+	for (size_t i = 0; i < tab->layouts.Count(); i++)
 	{
-		if (tab->layouts[i]->arrangement.GetNum() == skMaxViewports)
+		if (tab->layouts[i]->arrangement.Count() == skMaxViewports)
 		{
 			layout_id = i;
 			break;
@@ -541,12 +541,12 @@ ViewportArea::ViewportArea(const Settings& settings,
 	}
 	else
 	{
-		tab->layout_choice->value(static_cast<int>(layout_id));
+		tab->layout_choice->value(static_cast<int>(layout_id.Get()));
 	}
 
 	// calculate viewport position and size
 	ViewportLayout& layout = tab->layouts[layout_id.Get()].GetRef();
-	const size_t active_vp_count = layout.arrangement.GetNum();
+	const size_t active_vp_count = layout.arrangement.Count();
 	ut::Array< ut::Rect<int> > rects = CalculateViewportSize(layout);
 
 	// viewports call this callback when receive mouse input
@@ -661,12 +661,12 @@ ut::Array<ut::uint32> ViewportArea::GetViewportRenderModes()
 // Updates viewport position and size.
 ut::Optional<ut::Error> ViewportArea::ResizeViewports(const ut::Array< ut::Rect<ut::uint32> >& viewport_rects)
 {
-	if (viewport_rects.GetNum() != skMaxViewports)
+	if (viewport_rects.Count() != skMaxViewports)
 	{
 		return ut::Error(ut::error::out_of_bounds);
 	}
 
-	const size_t visible_viewports = tab->layouts[GetCurrentLayoutId()]->arrangement.GetNum();
+	const size_t visible_viewports = tab->layouts[GetCurrentLayoutId()]->arrangement.Count();
 
 	for (size_t i = 0; i < skMaxViewports; i++)
 	{
@@ -690,7 +690,7 @@ ut::Optional<ut::Error> ViewportArea::ResizeViewports(const ut::Array< ut::Rect<
 // Updates projection type for all viewports.
 void ViewportArea::SetViewportProjections(const ut::Array<ut::uint32>& projections)
 {
-	const size_t proj_count = ut::Min<size_t>(projections.GetNum(), skMaxViewports);
+	const size_t proj_count = ut::Min<size_t>(projections.Count(), skMaxViewports);
 	for (size_t i = 0; i < proj_count; i++)
 	{
 		Viewport& viewport = viewport_boxes[i]->GetViewport();
@@ -708,7 +708,7 @@ void ViewportArea::SetViewportProjections(const ut::Array<ut::uint32>& projectio
 // Updates render modes for all viewports.
 void ViewportArea::SetViewportRenderModes(const ut::Array<ut::uint32>& render_modes)
 {
-	const size_t proj_count = ut::Min<size_t>(render_modes.GetNum(), skMaxViewports);
+	const size_t proj_count = ut::Min<size_t>(render_modes.Count(), skMaxViewports);
 	for (size_t i = 0; i < proj_count; i++)
 	{
 		Viewport& viewport = viewport_boxes[i]->GetViewport();
@@ -727,16 +727,16 @@ void ViewportArea::SetViewportRenderModes(const ut::Array<ut::uint32>& render_mo
 //    @param layout_id - id of the layout to be set.
 void ViewportArea::ChangeLayout(size_t layout_id)
 {
-	UT_ASSERT(tab->layouts.GetNum() != 0);
+	UT_ASSERT(tab->layouts.Count() != 0);
 
-	if (layout_id >= tab->layouts.GetNum())
+	if (layout_id >= tab->layouts.Count())
 	{
 		ut::log.Lock() << "Warning! Invalid layout id: " << layout_id << ut::cret;
-		layout_id = tab->layouts.GetNum() - 1;
+		layout_id = tab->layouts.Count() - 1;
 	}
 
 	ViewportLayout& layout = tab->layouts[layout_id].GetRef();
-	const size_t active_vp_count = layout.arrangement.GetNum();
+	const size_t active_vp_count = layout.arrangement.Count();
 	ut::Array< ut::Rect<int> > rects = CalculateViewportSize(layout);
 	
 	// iterate all viewports
@@ -869,7 +869,7 @@ ut::Array< ut::UniquePtr<ViewportLayout> > ViewportArea::GenerateDefaultLayouts(
 	layout_arrangements.Add(ut::Move(elements));
 
 	ut::Array< ut::UniquePtr<ViewportLayout> > layouts;
-	for (size_t i = 0; i < layout_arrangements.GetNum(); i++)
+	for (size_t i = 0; i < layout_arrangements.Count(); i++)
 	{
 		auto layout_func = ut::MemberFunction<ViewportArea, void(size_t)>(this, &ViewportArea::ChangeLayout);
 
@@ -886,7 +886,7 @@ ut::Array< ut::UniquePtr<ViewportLayout> > ViewportArea::GenerateDefaultLayouts(
 // Transforms size of the viewport from relative to absolute.
 ut::Array< ut::Rect<int> > ViewportArea::CalculateViewportSize(const ViewportLayout& layout)
 {
-	const size_t active_vp_count = layout.arrangement.GetNum();
+	const size_t active_vp_count = layout.arrangement.Count();
 	ut::Array< ut::Rect<int> > rects(active_vp_count);
 
 	// calculate new viewport position and size
@@ -908,7 +908,7 @@ ut::Array< ut::Rect<int> > ViewportArea::CalculateViewportSize(const ViewportLay
 // Modifies provided rects so that they had zero margin.
 void ViewportArea::AdjustViewportEdges(ut::Array< ut::Rect<int> >& rects)
 {
-	const size_t count = rects.GetNum();
+	const size_t count = rects.Count();
 	for (size_t i = 0; i < count; i++)
 	{
 		for (size_t j = 0; j < count; j++)

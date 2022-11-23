@@ -480,7 +480,7 @@ void ResourceManager::Update()
 	}
 
 	// delete unused resources
-	garbage[frame_counter].Empty();
+	garbage[frame_counter].Reset();
 }
 
 //----------------------------------------------------------------------------->

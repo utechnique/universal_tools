@@ -286,10 +286,14 @@ ut::String ReflectionTreeItem::GenerateNodeName(ut::meta::Snapshot& node)
 
 	// check if this node is an array element, and if so - return only number
 	// without preceding characters
-	if (parent && parent->data.parameter->IsArray())
+	if (parent)
 	{
-		const char* element_name = node_name.ToCStr();
-		return element_name + 1;
+		const ut::meta::BaseParameter::Traits parameter_traits = parent->data.parameter->GetTraits();
+		if (parameter_traits.container && parameter_traits.container->contains_multiple_elements)
+		{
+			const char* element_name = node_name.ToCStr();
+			return element_name + 1;
+		}
 	}
 
 	// if this node is a unique pointer - return the type of the managed object
@@ -534,7 +538,7 @@ void Reflector::ConnectModifyItemSignal(ut::Function<ReflectionValue::Callbacks:
 //    @param root - path to the parent node.
 void Reflector::UpdateTreeNode(ut::meta::Snapshot& snapshot, const ut::String& root)
 {
-	const size_t node_count = snapshot.GetNumChildren();
+	const size_t node_count = snapshot.CountChildren();
 	for (size_t i = 0; i < node_count; i++)
 	{
 		ut::meta::Snapshot& node = snapshot[i];
@@ -575,7 +579,7 @@ void Reflector::UpdateTreeNode(ut::meta::Snapshot& snapshot, const ut::String& r
 //              @items array or nothing if not found.
 ut::Optional<size_t> Reflector::FindItem(const ut::String& path)
 {
-	const size_t item_count = items.GetNum();
+	const size_t item_count = items.Count();
 	for (size_t i = 0; i < item_count; i++)
 	{
 		ReflectionTreeItem& item = items[i].GetRef();
@@ -591,7 +595,7 @@ ut::Optional<size_t> Reflector::FindItem(const ut::String& path)
 // Marks all @items as 'invalid'.
 void Reflector::InvalidateItems()
 {
-	const size_t item_count = items.GetNum();
+	const size_t item_count = items.Count();
 	for (size_t i = 0; i < item_count; i++)
 	{
 		ReflectionTreeItem& item = items[i].GetRef();
@@ -602,7 +606,7 @@ void Reflector::InvalidateItems()
 // Removes all items marked as 'invalid'.
 void Reflector::RemoveInvalidItems()
 {
-	const size_t item_count = items.GetNum();
+	const size_t item_count = items.Count();
 	for (size_t i = item_count; i--; )
 	{
 		ReflectionTreeItem& item = items[i].GetRef();

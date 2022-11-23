@@ -70,8 +70,8 @@ void RenderSystem::InitializeUnitsJob(size_t first_entity_id, size_t entity_coun
 		bool changed = false;
 
 		// check if the number of units has changed since the previous frame
-		const size_t unit_count = render_component.units.GetNum();
-		if (unit_count != render_component.cache.GetNum())
+		const size_t unit_count = render_component.units.Count();
+		if (unit_count != render_component.cache.Count())
 		{
 			changed = true;
 		}
@@ -116,7 +116,7 @@ void RenderSystem::InitializeUnitsJob(size_t first_entity_id, size_t entity_coun
 void RenderSystem::InitializeUnits()
 {
 	ut::ThreadPool<void, ut::pool_sync::cond_var>& thread_pool = engine->GetThreadPool();
-	const size_t entity_count = entities.GetNum();
+	const size_t entity_count = entities.Count();
 	const size_t thread_count = thread_pool.GetThreadCount();
 	const size_t entities_per_thread = entity_count / thread_count;
 
@@ -141,12 +141,12 @@ void RenderSystem::InitializeUnits()
 void RenderSystem::UnregisterEntity(Entity::Id id)
 {
 	// reset cache
-	for (size_t i = 0; i < entities.GetNum(); i++)
+	for (size_t i = 0; i < entities.Count(); i++)
 	{
 		if (entities[i].id == id)
 		{
 			RenderComponent& render_component = entities[i].Get<RenderComponent>();
-			render_component.cache.Empty();
+			render_component.cache.Reset();
 			break;
 		}
 	}

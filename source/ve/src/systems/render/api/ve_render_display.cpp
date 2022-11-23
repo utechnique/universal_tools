@@ -18,7 +18,7 @@ Display::Display(PlatformDisplay platform_display,
                                      , current_buffer_id(0)
                                      , vsync(vertical_sync)
 {
-	pending_buffers.Resize(targets.GetNum());
+	pending_buffers.Resize(targets.Count());
 }
 
 // Move constructor.
@@ -58,7 +58,7 @@ ut::uint32 Display::GetCurrentBufferId() const
 // Returns a number of buffers in the associated swapchain.
 ut::uint32 Display::GetBufferCount() const
 {
-	return static_cast<ut::uint32>(targets.GetNum());
+	return static_cast<ut::uint32>(targets.Count());
 }
 
 //----------------------------------------------------------------------------//

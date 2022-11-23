@@ -196,7 +196,7 @@ void LaunchVirtualEnvironment()
 
 	// create test scene
 	ut::Array<ve::Entity> entities = CreateTestScene();
-	for (size_t i = 0; i < entities.GetNum(); i++)
+	for (size_t i = 0; i < entities.Count(); i++)
 	{
 		environment.EnqueueCommand(ut::MakeUnique<ve::CmdAddEntity>(ut::Move(entities[i])));
 	}

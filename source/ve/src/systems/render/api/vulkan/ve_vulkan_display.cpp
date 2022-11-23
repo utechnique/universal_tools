@@ -60,7 +60,7 @@ ut::uint32 PlatformDisplay::AcquireNextBuffer()
 {
 	// update swap counter
 	swap_count++;
-	if (swap_count >= availability_semaphores.GetNum())
+	if (swap_count >= availability_semaphores.Count())
 	{
 		swap_count = 0;
 	}

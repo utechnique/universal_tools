@@ -117,7 +117,7 @@ private:
 			// execute current task
 			DedicatedTask& task = current_task.Get();
 			task(object);
-			current_task.Empty();
+			current_task.Reset();
 		}
 
 		// wake Enqueue() function if it's waiting

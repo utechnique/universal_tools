@@ -351,9 +351,9 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	// validate arguments
 	if (!clear_color)
 	{
-		UT_ASSERT(clear_color.GetAlt().GetNum() == render_pass.color_slots.GetNum());
+		UT_ASSERT(clear_color.GetAlt().Count() == render_pass.color_slots.Count());
 	}
-	UT_ASSERT(render_pass.color_slots.GetNum() == framebuffer.color_attachments.GetNum());
+	UT_ASSERT(render_pass.color_slots.Count() == framebuffer.color_attachments.Count());
 	UT_ASSERT(render_pass.depth_stencil_slot ? framebuffer.depth_stencil_attachment : !framebuffer.depth_stencil_attachment);
 
 	// unbind all possible render targets from shader bindings
@@ -368,7 +368,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 #endif
 
 	// form d3d mrt array
-	const size_t color_target_count = framebuffer.color_attachments.GetNum();
+	const size_t color_target_count = framebuffer.color_attachments.Count();
 	ut::Array<ID3D11RenderTargetView*> rtv(color_target_count);
 	for (size_t i = 0; i < color_target_count; i++)
 	{
@@ -423,7 +423,7 @@ void Context::BindPipelineState(PipelineState& state)
 	d3d11_context->IASetPrimitiveTopology(ConvertPrimitiveTopologyToDX11(state.info.input_assembly_state.topology));
 
 	// set viewports
-	const UINT viewport_count = static_cast<UINT>(state.info.viewports.GetNum());
+	const UINT viewport_count = static_cast<UINT>(state.info.viewports.Count());
 	ut::Array<D3D11_VIEWPORT> viewports(viewport_count);
 	ut::Array<D3D11_RECT> scissors;
 	for (size_t i = 0; i < viewport_count; i++)
@@ -447,7 +447,7 @@ void Context::BindPipelineState(PipelineState& state)
 		}
 	}
 	d3d11_context->RSSetViewports(viewport_count, viewports.GetAddress());
-	d3d11_context->RSSetScissorRects(static_cast<UINT>(scissors.GetNum()), scissors.GetAddress());
+	d3d11_context->RSSetScissorRects(static_cast<UINT>(scissors.Count()), scissors.GetAddress());
 
 	// raster state
 	d3d11_context->RSSetState(state.rasterizer_state.Get());
@@ -488,7 +488,7 @@ void Context::BindDescriptorSet(DescriptorSet& descriptor_set)
 			continue;
 		}
 
-		const size_t slot_count = binding->slots.GetNum();
+		const size_t slot_count = binding->slots.Count();
 		for (size_t j = 0; j < slot_count; j++)
 		{
 			const ut::Optional<Descriptor::Slot>& slot = binding->slots[j];
@@ -656,7 +656,7 @@ void Context::SetTargetState(SharedTargetData** targets,
 //    @param buffers - array of references to the secondary buffer.
 void Context::ExecuteSecondaryBuffers(ut::Array< ut::Ref<CmdBuffer> >& buffers)
 {
-	const ut::uint32 count = static_cast<ut::uint32>(buffers.GetNum());
+	const ut::uint32 count = static_cast<ut::uint32>(buffers.Count());
 	for (ut::uint32 i = 0; i < count; i++)
 	{
 		d3d11_context->ExecuteCommandList(buffers[i]->cmd_list.Get(), FALSE);

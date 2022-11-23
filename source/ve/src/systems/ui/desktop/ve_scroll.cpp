@@ -23,7 +23,7 @@ void Scroll::draw()
 	if (scroll_position)
 	{
 		scroll_to(scroll_position->X(), scroll_position->Y());
-		scroll_position.Empty();
+		scroll_position.Reset();
 	}
 
 	// whole group must be redrawn to apply changes

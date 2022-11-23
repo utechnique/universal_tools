@@ -157,15 +157,15 @@ void ForwardShading::DrawTransparentGeometry(Context& context,
 
 	// get the number of available threads
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
-	UT_ASSERT(thread_count == lightpass_desc_set.GetNum());
+	UT_ASSERT(thread_count == lightpass_desc_set.Count());
 
 	// get the number of model drawcalls
 	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;
-	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.GetNum());
+	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.Count());
 
 	// initialize secondary buffers for a parallel work
 	const ut::uint32 dc_per_thread = dc_count / thread_count; // drawcalls per thread
-	secondary_buffer_cache.Empty();
+	secondary_buffer_cache.Reset();
 	for (ut::uint32 i = 0; i < thread_count; i++)
 	{
 		secondary_buffer_cache.Add(data.lightpass_cmd[cubeface * thread_count + i]);
@@ -318,9 +318,9 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 	Material& material = subset.material;
 
 	// accumulate light from all sources
-	const size_t directional_count = lights.directional.GetNum();
-	const size_t point_count = lights.point.GetNum();
-	const size_t spot_count = lights.spot.GetNum();
+	const size_t directional_count = lights.directional.Count();
+	const size_t point_count = lights.point.Count();
+	const size_t spot_count = lights.spot.Count();
 	const size_t light_count = directional_count + point_count + spot_count;
 	for (size_t light_id = 0; light_id < light_count; light_id++)
 	{
@@ -761,8 +761,8 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateIblPassPipeline(Rende
 // Connects all descriptor sets to the corresponding shaders.
 void ForwardShading::ConnectDescriptors()
 {
-	UT_ASSERT(light_shader.GetNum() != 0);
-	UT_ASSERT(ibl_shader.GetNum() != 0);
+	UT_ASSERT(light_shader.Count() != 0);
+	UT_ASSERT(ibl_shader.Count() != 0);
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
 	lightpass_desc_set.Resize(thread_count);
 	iblpass_desc_set.Resize(thread_count);

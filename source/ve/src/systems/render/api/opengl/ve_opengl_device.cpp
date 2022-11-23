@@ -161,7 +161,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	// determine width and heights of the framebuffer in pixels
 	ut::uint32 width;
 	ut::uint32 height;
-	if (color_targets.GetNum() != 0)
+	if (color_targets.Count() != 0)
 	{
 		const Target& color_target = color_targets.GetFirst();
 		width = color_target.image.GetInfo().width;
@@ -179,7 +179,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	}
 
 	// check width and height of the color targets
-	const size_t color_target_count = color_targets.GetNum();
+	const size_t color_target_count = color_targets.Count();
 	for (size_t i = 0; i < color_target_count; i++)
 	{
 		const ImageInfo& img_info = color_targets[i]->image.GetInfo();
@@ -208,7 +208,7 @@ ut::Result<Framebuffer, ut::Error> Device::CreateFramebuffer(const RenderPass& r
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_handle);
 
 	// validate the number of color attachments
-	const ut::uint32 color_attachment_count = static_cast<ut::uint32>(color_targets.GetNum());
+	const ut::uint32 color_attachment_count = static_cast<ut::uint32>(color_targets.Count());
 	if (color_attachment_count > skMaxGlColorAttachments)
 	{
 		return ut::MakeError(ut::Error(ut::error::out_of_bounds, "OpenGL: too many color attachments"));
@@ -291,11 +291,11 @@ void Device::Submit(CmdBuffer& cmd_buffer,
     bool ignore_vsync = false;
 
 	// present
-	const ut::uint32 present_count = static_cast<ut::uint32>(present_queue.GetNum());
+	const ut::uint32 present_count = static_cast<ut::uint32>(present_queue.Count());
 	for (size_t display_id = 0; display_id < present_count; display_id++)
 	{
 		Display& display = present_queue[display_id].Get();
-		const ut::uint32 buffer_count = static_cast<ut::uint32>(display.targets.GetNum());
+		const ut::uint32 buffer_count = static_cast<ut::uint32>(display.targets.Count());
 		for (size_t target_id = 0; target_id < buffer_count; target_id++)
 		{
 			// search for the present request by backbuffer id
@@ -336,7 +336,7 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 	}
 
     // clear present queue
-	context->present_queue.Empty();
+	context->present_queue.Reset();
 }
 
 // Call this function to wait on the host for the completion of all

@@ -112,7 +112,7 @@ protected:
 	//    @param id - identifier of the entity.
 	virtual void UnregisterEntity(Entity::Id id) override
 	{
-		const size_t entity_count = entities.GetNum();
+		const size_t entity_count = entities.Count();
 		for (size_t i = 0; i < entity_count; i++)
 		{
 			Set& set = entities[i];

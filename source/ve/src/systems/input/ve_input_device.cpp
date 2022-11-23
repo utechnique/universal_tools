@@ -101,7 +101,7 @@ ut::Optional<ut::Error> Device::AddSignal(Signal signal, ut::String name)
 		return ut::Error(ut::error::out_of_memory);
 	}
 
-	if (!map.Insert(name, signals.GetNum() - 1))
+	if (!map.Insert(name, signals.Count() - 1))
 	{
 		return ut::Error(ut::error::already_exists);
 	}
@@ -121,7 +121,7 @@ ut::Optional<ut::Error> Device::AddSignal(Signal signal, ut::String name)
 //    @param value - value to update signal with.
 void Device::UpdateDiscreteSignal(size_t signal_id, Signal::Discrete value)
 {
-	if (signal_id < signals.GetNum())
+	if (signal_id < signals.Count())
 	{
 		signals[signal_id].signal.discrete = value;
 	}
@@ -132,7 +132,7 @@ void Device::UpdateDiscreteSignal(size_t signal_id, Signal::Discrete value)
 //    @param value - value to update signal with.
 void Device::UpdateAnalogSignal(size_t signal_id, Signal::Analog value)
 {
-	if (signal_id < signals.GetNum())
+	if (signal_id < signals.Count())
 	{
 		signals[signal_id].signal.analog = value;
 	}
@@ -147,10 +147,10 @@ void Device::UpdateAnalogSignal(size_t signal_id, Signal::Analog value)
 void Device::Copy(const Device& copy)
 {
 	// full copying if hashes don't match
-	const size_t signal_count = signals.GetNum();
+	const size_t signal_count = signals.Count();
 	if (!CompareId(copy.id) ||
 		hash != copy.hash ||
-		signal_count != copy.signals.GetNum())
+		signal_count != copy.signals.Count())
 	{
 		id = copy.id;
 		signals = copy.signals;

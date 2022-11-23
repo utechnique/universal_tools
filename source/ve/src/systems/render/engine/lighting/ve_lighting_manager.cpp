@@ -78,7 +78,7 @@ void Manager::UpdateLightUniforms(Context& context, Light::Sources& lights)
 	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
 
 	// directional lights
-	const size_t directional_light_count = lights.directional.GetNum();
+	const size_t directional_light_count = lights.directional.Count();
 	for (size_t i = 0; i < directional_light_count; i++)
 	{
 		DirectionalLight& light = lights.directional[i];
@@ -93,7 +93,7 @@ void Manager::UpdateLightUniforms(Context& context, Light::Sources& lights)
 	}
 
 	// point lights
-	const size_t point_light_count = lights.point.GetNum();
+	const size_t point_light_count = lights.point.Count();
 	for (size_t i = 0; i < point_light_count; i++)
 	{
 		PointLight& light = lights.point[i];
@@ -111,7 +111,7 @@ void Manager::UpdateLightUniforms(Context& context, Light::Sources& lights)
 	}
 
 	// spot lights
-	const size_t spot_light_count = lights.spot.GetNum();
+	const size_t spot_light_count = lights.spot.Count();
 	for (size_t i = 0; i < spot_light_count; i++)
 	{
 		SpotLight& light = lights.spot[i];

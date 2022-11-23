@@ -100,7 +100,7 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 
 	// kick off parallel tasks
 	ut::Scheduler<System::Result, PipelineCombiner> scheduler = pool.CreateScheduler<PipelineCombiner>();
-	const size_t parallel_count = parallel.GetNum();
+	const size_t parallel_count = parallel.Count();
 	for (size_t i = 0; i < parallel_count; i++)
 	{
 		auto execute = ut::MemberFunction<Pipeline, TaskSignature>(&parallel[i], &Pipeline::Execute);
@@ -117,7 +117,7 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 	commands += parallel_result.Move();
 
 	// execute serial tasks
-	const size_t serial_count = series.GetNum();
+	const size_t serial_count = series.Count();
 	for (size_t i = 0; i < serial_count; i++)
 	{
 		System::Result execute_result = series[i].Execute(pool);
@@ -144,14 +144,14 @@ void Pipeline::RegisterEntity(Entity::Id id, Entity& entity)
 	}
 
 	// register parallel
-	const size_t parallel_count = parallel.GetNum();
+	const size_t parallel_count = parallel.Count();
 	for (size_t i = 0; i < parallel_count; i++)
 	{
 		parallel[i].RegisterEntity(id, entity);
 	}
 
 	// register series
-	const size_t serial_count = series.GetNum();
+	const size_t serial_count = series.Count();
 	for (size_t i = 0; i < serial_count; i++)
 	{
 		series[i].RegisterEntity(id, entity);
@@ -169,14 +169,14 @@ void Pipeline::UnregisterEntity(Entity::Id id)
 	}
 
 	// unregister parallel
-	const size_t parallel_count = parallel.GetNum();
+	const size_t parallel_count = parallel.Count();
 	for (size_t i = 0; i < parallel_count; i++)
 	{
 		parallel[i].UnregisterEntity(id);
 	}
 
 	// unregister series
-	const size_t serial_count = series.GetNum();
+	const size_t serial_count = series.Count();
 	for (size_t i = 0; i < serial_count; i++)
 	{
 		series[i].UnregisterEntity(id);

@@ -75,7 +75,7 @@ void DirectInputHandler::Update()
 	ut::Optional<Device&> mouse;
 
 	// check what devices already exist
-	const size_t device_count = cur_state.GetNum();
+	const size_t device_count = cur_state.Count();
 	for (size_t i = 0; i < device_count; i++)
 	{
 		Device& device = cur_state[i];
