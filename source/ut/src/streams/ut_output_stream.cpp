@@ -130,7 +130,7 @@ OutputStream& OutputStream::operator << (const String& str)
 {
 	String formatted_string(str);
 	formatted_string.FixCarriageReturn();
-	Optional<Error> write_error = Write(formatted_string.ToCStr(),
+	Optional<Error> write_error = Write(formatted_string.GetAddress(),
 	                                    1,
 	                                    formatted_string.Length());
 	if (write_error)

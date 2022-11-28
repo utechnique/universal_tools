@@ -26,7 +26,7 @@ MessageCmd::MessageCmd(const ut::String& msg,
 	{
 		// encrypt buffer
 		ut::EncryptionStream<ut::encryption::AES128> encryption_stream;
-		encryption_stream.Write(msg.ToCStr(), 1, msg.Length() + 1);
+		encryption_stream.Write(msg.GetAddress(), 1, msg.Length() + 1);
 		encryption_stream.Encrypt(password);
 		buffer = encryption_stream.GetBuffer();
 	}
@@ -34,7 +34,7 @@ MessageCmd::MessageCmd(const ut::String& msg,
 	{
 		// just copy message string to the buffer
 		buffer.Resize(msg.Length() + 1);
-		ut::memory::Copy(buffer.GetAddress(), msg.ToCStr(), msg.Length() + 1);
+		ut::memory::Copy(buffer.GetAddress(), msg.GetAddress(), msg.Length() + 1);
 	}
 }
 

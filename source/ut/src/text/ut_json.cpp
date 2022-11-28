@@ -11,7 +11,7 @@ START_NAMESPACE(ut)
 Optional<Error> JsonDoc::Parse(const String& doc)
 {
 	// create input object with the address of the provided string
-	text::Reader cursor(doc.ToCStr());
+	text::Reader cursor(doc.GetAddress());
 	
 	// remove current contents
 	nodes.Reset();
@@ -655,7 +655,7 @@ Optional<Error> JsonDoc::WriteNode(OutputStream& stream,
 		bool is_bool = false;
 		if (node.data.value_type)
 		{
-			is_numeric = IsNumericType<char>(node.data.value_type.Get());
+			is_numeric = IsNumericType<char>(node.data.value_type->GetAddress());
 			is_bool = node.data.value_type.Get() == Type<bool>::Name();
 		}
 

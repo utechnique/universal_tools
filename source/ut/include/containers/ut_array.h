@@ -340,12 +340,6 @@ public:
 		return arr[id];
 	}
 
-	// Returns a pointer to desired element
-	ElementType* operator () (const size_t id)
-	{
-		return id < num ? &arr[id] : &arr[num - 1];
-	}
-
 	// Additive promotion operator
 	BaseArray operator +(const BaseArray& other) const
 	{

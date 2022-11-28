@@ -2,6 +2,7 @@
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "containers_test.h"
+#include <unordered_map> // to compare with hasmap
 //----------------------------------------------------------------------------//
 ContainersTestUnit::ContainersTestUnit() : TestUnit("CONTAINERS")
 {
@@ -650,6 +651,19 @@ void HashmapTask::Execute()
 	time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
 
+	std::unordered_map<int, MapValue> std_map;
+	report += ut::String("Insert (std int): ");
+	counter.Start();
+	for (size_t i = 0; i < source.Count(); i++)
+	{
+		MapValue val;
+		val.ival = source[i];
+
+		std_map.insert(std::pair<int, MapValue>(source[i], std::move(val)));
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
 	const size_t element_count = map.Count();
 	if (element_count != source.Count())
 	{
@@ -684,6 +698,18 @@ void HashmapTask::Execute()
 	time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
 
+	report += ut::String("Iteration (std): ");
+	counter.Start();
+	std::unordered_map<int, MapValue>::iterator std_iterator;
+	for (std_iterator = std_map.begin(); std_iterator != std_map.end(); ++std_iterator)
+	{
+		std::pair<const int, MapValue>& element = *std_iterator;
+		element.second.ival++;
+		std_iterator->second.ival--;
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
 	report += ut::String("Iteration (const iterator backwards): ");
 	counter.Start();
 	ut::HashMap<int, MapValue>::ConstIterator riterator;
@@ -703,6 +729,22 @@ void HashmapTask::Execute()
 		const int key = source[i];
 		ut::Optional<MapValue&> element = map.Find(key);
 		if (!element || element->ival != key)
+		{
+			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found.";
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	report += ut::String("Search (std): ");
+	counter.Start();
+	for (size_t i = 0; i < element_count; i++)
+	{
+		const int key = source[i];
+		std::unordered_map<int, MapValue>::iterator element = std_map.find(key);
+		if (element == std_map.end() || element->second.ival != key)
 		{
 			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found.";
 			failed_test_counter.Increment();
@@ -1084,7 +1126,7 @@ void OptionalTask::Execute()
 	}
 	else
 	{
-		if (test_str.Count() > 0)
+		if (test_str.Length() > 0)
 		{
 			report += "fail! string was copied instead of being moved.";
 			failed_test_counter.Increment();
@@ -1141,7 +1183,7 @@ void ResultTask::Execute()
 
 	ut::String test_move_str;
 	test_move_str = test_result.Move();
-	if (test_str.Count() != 0)
+	if (test_str.Length() != 0)
 	{
 		report += "fail! string was copied instead of being moved.";
 		failed_test_counter.Increment();
@@ -1183,7 +1225,7 @@ void PairTask::Execute()
 	ut::Pair<ut::String&, ut::String> pair_0(test_str_0, "pair");
 	ut::Pair<ut::String&, ut::String> pair_1(Move(pair_0));
 
-	if (pair_0.second.Count() != 0)
+	if (pair_0.second.Length() != 0)
 	{
 		report += "fail! string was copied instead of being moved.";
 		failed_test_counter.Increment();

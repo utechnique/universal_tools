@@ -71,7 +71,7 @@ void AesTask::Execute()
 	ut::String encrypted_string(buffer.Count());
 	ut::memory::Copy(encrypted_string.GetAddress(), buffer.GetAddress(), buffer.Count());
 
-	for (size_t i = 0; i < encrypted_string.Count() - 1; i++)
+	for (size_t i = 0; i < encrypted_string.Length(); i++)
 	{
 		if (encrypted_string[i] < 32 || encrypted_string[i] > 127)
 		{
@@ -90,7 +90,7 @@ void AesTask::Execute()
 	ut::String decrypted_string(buffer.Count());
 	ut::memory::Copy(decrypted_string.GetAddress(), buffer.GetAddress(), buffer.Count());
 
-	for (size_t i = 0; i < decrypted_string.Count() - 1; i++)
+	for (size_t i = 0; i < decrypted_string.Length(); i++)
 	{
 		if (decrypted_string[i] && (decrypted_string[i] < 32 || decrypted_string[i] > 127))
 		{
@@ -127,7 +127,7 @@ void XorTask::Execute()
 	ut::String encrypted_string(buffer.Count());
 	ut::memory::Copy(encrypted_string.GetAddress(), buffer.GetAddress(), buffer.Count());
 
-	for (size_t i = 0; i < encrypted_string.Count() - 1; i++)
+	for (size_t i = 0; i < encrypted_string.Length(); i++)
 	{
 		if (encrypted_string[i] < 32 || encrypted_string[i] > 127)
 		{
@@ -140,7 +140,7 @@ void XorTask::Execute()
 	ut::String decrypted_string(buffer.Count());
 	ut::memory::Copy(decrypted_string.GetAddress(), buffer.GetAddress(), buffer.Count());
 
-	for (size_t i = 0; i < decrypted_string.Count() - 1; i++)
+	for (size_t i = 0; i < decrypted_string.Length(); i++)
 	{
 		if (decrypted_string[i] && (decrypted_string[i] < 32 || decrypted_string[i] > 127))
 		{

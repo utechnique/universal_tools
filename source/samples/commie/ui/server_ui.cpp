@@ -56,7 +56,7 @@ ut::Optional<ut::Error> ServerUI::DisplayText(const ut::String& text)
 	}
 
 	// print the text
-	output->insert(text.ToCStr());
+	output->insert(text.GetAddress());
 	output->redraw();
 
 	// success

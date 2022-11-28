@@ -659,7 +659,7 @@ template<MatrixElementId rows, MatrixElementId columns, typename Scalar>
 struct Type< Matrix<rows, columns, Scalar, MatrixGeneralTag> >
 {
 	static const String skName;
-	static inline const char* Name() { return skName.ToCStr(); }
+	static inline const char* Name() { return skName.GetAddress(); }
 };
 
 template<MatrixElementId rows, MatrixElementId columns, typename Scalar>
@@ -670,7 +670,7 @@ template<MatrixElementId dim, typename Scalar>
 struct Type< Vector<dim, Scalar> >
 {
 	static const String skName;
-	static inline const char* Name() { return skName.ToCStr(); }
+	static inline const char* Name() { return skName.GetAddress(); }
 };
 
 template<MatrixElementId dim, typename Scalar>
@@ -681,7 +681,7 @@ template<MatrixElementId dim, typename Scalar>
 struct Type< Color<dim, Scalar> >
 {
 	static const String skName;
-	static inline const char* Name() { return skName.ToCStr(); }
+	static inline const char* Name() { return skName.GetAddress(); }
 };
 
 template<MatrixElementId dim, typename Scalar>

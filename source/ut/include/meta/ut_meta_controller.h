@@ -635,7 +635,7 @@ private:
 					return read_error;
 				}
 
-				str.Add(c);
+				str.Append(c);
 			} while (c != '\0');
 		}
 
@@ -657,7 +657,7 @@ private:
 			size_t len = str.Length() + 1;
 
 			// write a string character by character
-			const char* start = str.ToCStr();
+			const char* start = str.GetAddress();
 			for (size_t char_id = 0; char_id < len; char_id++)
 			{
 				Optional<Error> write_error = WriteBinary<char>(start + char_id, 1);

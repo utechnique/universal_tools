@@ -120,7 +120,7 @@ ut::Optional<ut::Error> ClientUI::DisplayText(const ut::String& text)
 	}
 
 	// print the text
-	output->insert(text.ToCStr());
+	output->insert(text.GetAddress());
 	output->redraw();
 
 	// update vertical scroll position
@@ -154,7 +154,7 @@ ut::Optional<ut::Error> ClientUI::UpdateClientList(const ClientList& list)
 	for (size_t i = 0; i < list.Count(); i++)
 	{
 		// add new line
-		clients->add(list[i].name);
+		clients->add(list[i].name.GetAddress());
 
 		// select item if it was previously selected (in old list)
 		if (selected_item >= 0 && list[i].address == selected_address)

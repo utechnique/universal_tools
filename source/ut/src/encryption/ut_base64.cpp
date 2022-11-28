@@ -45,7 +45,7 @@ String EncodeBase64(const void* data, size_t size)
 
 			for (i = 0; (i < 4); i++)
 			{
-				ret.Add(skBase64Characters[char_array_4[i]]);
+				ret.Append(skBase64Characters[char_array_4[i]]);
 			}
 			i = 0;
 		}
@@ -65,16 +65,15 @@ String EncodeBase64(const void* data, size_t size)
 
 		for (j = 0; (j < i + 1); j++)
 		{
-			ret.Add(skBase64Characters[char_array_4[j]]);
+			ret.Append(skBase64Characters[char_array_4[j]]);
 		}
 
 		while ((i++ < 3))
 		{
-			ret.Add('=');
+			ret.Append('=');
 		}
 	}
 
-	ret.Validate();
 	return ret;
 }
 

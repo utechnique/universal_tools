@@ -81,7 +81,7 @@ ut::Optional<ut::Error> MetaEditorItem::Create(Fl_Tree* tree,
 		tile->when(FL_WHEN_NOT_CHANGED);
 
 		// description (entity name) widget
-		description = new Fl_Box(0, 0, skDescriptionWidth, skItemHeight, name->ToCStr());
+		description = new Fl_Box(0, 0, skDescriptionWidth, skItemHeight, name->GetAddress());
 		description->color(FL_WHITE);
 		description->box(FL_NO_BOX);
 		description->align(FL_ALIGN_INSIDE | FL_ALIGN_LEFT);
@@ -365,7 +365,7 @@ ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> MetaEditor::AddTr
 {
 	// add node itself
 	const ut::String path = root + "/" + node.data.name;
-	Fl_Tree_Item* tree_item = tree->add(path.ToCStr());
+	Fl_Tree_Item* tree_item = tree->add(path.GetAddress());
 	if (tree_item == nullptr)
 	{
 		return ut::MakeError(ut::error::fail);
@@ -393,7 +393,7 @@ ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> MetaEditor::AddTr
 	{
 		// create child item
 		ut::Result<ut::Optional<ut::Tree<MetaEditorItem> >, ut::Error> add_node_error = AddTreeNode(node[child],
-		                                                                                            path.ToCStr());
+		                                                                                            path.GetAddress());
 		if (!add_node_error)
 		{
 			return ut::MakeError(add_node_error.MoveAlt());
@@ -436,7 +436,7 @@ MetaEditorTextField::MetaEditorTextField(const ut::text::Node& node,
 	widget->labelsize(font_size);
 	widget->textsize(font_size);
 	widget->show();
-	widget->value(node.value.Get());
+	widget->value(node.value->GetAddress());
 
 	// deactivate inactive widget
 	if (!active)

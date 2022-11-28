@@ -11,7 +11,7 @@ START_NAMESPACE(ut)
 Optional<Error> XmlDoc::Parse(const String& doc)
 {
 	// create input object with the address of the provided string
-	text::Reader cursor(doc.ToCStr());
+	text::Reader cursor(doc.GetAddress());
 
 	// remove current contents
 	nodes.Reset();
@@ -680,7 +680,7 @@ Result<char, Error> XmlDoc::ParseAndAppendData(Tree<text::Node>& node,
 			// Backup until non-whitespace character is found
 			while (Lookup::skWhitespace[value[val_length - 1]] && val_length > 0)
 			{
-				value.Remove(val_length - 1);
+				value.Remove(val_length - 1, 1);
 				--val_length;
 			}
 		}

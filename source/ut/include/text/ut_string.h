@@ -20,12 +20,10 @@ enum CodePage
 };
 
 //----------------------------------------------------------------------------//
-// TString is container class for null-terminated strings, it is derived from
-// Array class, and has similar functionality.
-template <typename T>
-class TString : public Array<T>
+// TString is container class for null-terminated strings.
+template <typename T, class Allocator = DefaultAllocator<T> >
+class TString
 {
-typedef Array<T> Base;
 public:
 	// Default constructor, initialized with @str
 	//    @param str - null-terminated string
@@ -38,30 +36,81 @@ public:
     }
 
 	// Constructor, allocates @size characters, and
-	// sets the last one as null terminator
+	// adds the null terminator to the end.
 	//    @param size - number of allocated characters
-	TString(size_t size) : Base(size + 1)
+	TString(size_t size)
 	{
-		Base::arr[size] = '\0';
+		length = size + 1;
+
+		// sso case
+		if (length <= sso_size)
+		{
+			sso[size] = '\0';
+			return;
+		}
+
+		// heap case
+		heap.Resize(length);
+		heap[size] = '\0';
 	}
 
 	// Constructor, allocates @size characters, and
 	// copies string content from the @ptr
 	//    @param ptr - pointer to the first character of the string
 	//    @param size - number of allocated characters
-	TString(const T* ptr, size_t size) : Base(size + 1)
+	TString(const T* ptr, size_t size)
 	{
-		memory::Copy(Base::arr, ptr, size);
-		Base::arr[size] = '\0';
+		UT_ASSERT(ptr != nullptr);
+		if (size == 0)
+		{
+			length = 1;
+			sso[0] = '\0';
+			return;
+		}
+
+		const bool null_terminated = ptr[size - 1] == '\0';
+		const size_t null_terminated_size = size + (null_terminated ? 0 : 1);
+		length = null_terminated_size;
+
+		// sso case
+		if (null_terminated_size <= sso_size) 
+		{
+			memory::Copy(sso, ptr, size * sizeof(T));
+			sso[null_terminated_size - 1] = '\0';
+			return;
+		}
+
+		// heap case
+		heap.Resize(null_terminated_size);
+		memory::Copy(heap.GetAddress(), ptr, size * sizeof(T));
+		heap[null_terminated_size - 1] = '\0';
 	}
 
 	// Copy constructor
-	TString(const TString& copy) : Base(copy)
-    {}
+	TString(const TString& copy) : length(copy.length)
+    {
+		// sso case
+		if (length <= sso_size) 
+		{
+			memory::Copy(sso, copy.sso, length * sizeof(T));
+			return;
+		}
+
+		// heap case
+		heap = copy.heap;
+	}
 
 	// Move constructor
-	TString(TString&& other) noexcept : Base(Move(other))
-	{}
+	TString(TString&& rval) noexcept : length(rval.length)
+	                                 , heap(Move(rval.heap))
+	{
+		if (length <= sso_size)
+		{
+			memory::Copy(sso, rval.sso, length * sizeof(T));
+		}
+		rval.length = 1;
+		rval.sso[0] = '\0';
+	}
 
 	// Assignment operator
 	TString& operator = (const T* str)
@@ -74,16 +123,38 @@ public:
     }
     
     // Assignment operator
-	TString& operator = (const TString& str)
+	TString& operator = (const TString& copy)
     {
-		Base::operator = (str);
+		length = copy.length;
+
+		// sso case
+		if (length <= sso_size)
+		{
+			memory::Copy(sso, copy.sso, length * sizeof(T));
+			return *this;
+		}
+
+		// heap case
+		heap = copy.heap;
         return *this;
     }
 
 	// Assignment (move) operator
-	TString& operator = (TString && str) noexcept
+	TString& operator = (TString&& rval) noexcept
 	{
-		return static_cast<TString&>(Base::operator = (Move(str)));
+		// move data
+		length = rval.length;
+		heap = Move(rval.heap);
+		if (length <= sso_size)
+		{
+			memory::Copy(sso, rval.sso, length * sizeof(T));
+		}
+
+		// reset r-value
+		rval.length = 1;
+		rval.sso[0] = '\0';
+
+		return *this;
 	}
 
 	// Comparison operator
@@ -138,16 +209,10 @@ public:
 		return Compare(r_str) >= 0 ? true : false;
 	}
 
-	// Bool conversion operator
-	inline operator const T*() const
-	{
-		return Base::GetAddress();
-	}
-
 	// Additive promotion operator
 	TString operator +(const TString& str) const
 	{
-		TString out(Base::arr);
+		TString out(*this);
 		out.Append(str);
 		return out;
 	}
@@ -159,37 +224,52 @@ public:
 		return *this;
 	}
 
-	// Returns a pointer to an array that contains a null-terminated sequence
-	// of characters (i.e., a C-string) representing the current value of the
-	// string object.
-	const T* ToCStr() const
+	// Returns desired element
+	T& operator [] (const size_t id)
 	{
-		if (Base::num == 0)
-		{
-			static const T empty_str[1] = { 0 };
-			return empty_str;
-		}
-		return Base::arr;
+		UT_ASSERT(id < length);
+		return length <= sso_size ? sso[id] : heap[id];
+	}
+
+	// Returns desired element
+	const T& operator [] (const size_t id) const
+	{
+		UT_ASSERT(id < length);
+		return length <= sso_size ? sso[id] : heap[id];
+	}
+
+	// Returns a pointer to the array of characters representing this string.
+	const T* GetAddress() const
+	{
+		return length <= sso_size ? sso : heap.GetAddress();
+	}
+
+	// Returns a pointer to the array of characters representing this string.
+	T* GetAddress()
+	{
+		return length <= sso_size ? sso : heap.GetAddress();
 	}
 
 	// Returns the length of the string, without null terminator
 	inline size_t Length() const
     {
-        return Base::num == 0 ? 0 : (Base::num - 1);
+        return length - 1;
     }
 
 	// Compares self with another string and returns the result
 	//    @param str - string to compare with
 	//    @return - '0' if strings are equal, or difference value
-    inline int Compare(const TString& source) const
+    inline int Compare(const TString& str) const
     {
-		const size_t src_n = source.Count();
-		const size_t n = src_n < Base::num ? src_n : Base::num;
+		const T* left = GetAddress();
+		const T* right = str.GetAddress();
+		const size_t right_n = str.length;
+		const size_t n = right_n < length ? right_n : length;
 
 		for (size_t i = 0; i < n; i++)
 		{
-			const T c1 = Base::arr[i];
-			const T c2 = source[i];
+			const T c1 = left[i];
+			const T c2 = right[i];
 
 			if (c1 != c2 || c1 == '\0')
 			{
@@ -217,7 +297,7 @@ public:
 	//    @return - '0' if strings are equal, or difference value
 	inline int Compare(const T* source) const
 	{
-		const T* s1 = (const T*)Base::arr;
+		const T* s1 = GetAddress();
 		const T* s2 = (const T*)source;
 		T c1, c2;
 		do
@@ -243,19 +323,32 @@ public:
 	//    @param str - string to append
 	void Append(const TString& str)
 	{
-		// resize buffer
-		size_t self_len = Length();
-		size_t str_len = str.Length();
-		Base::Resize(self_len + str_len + 1);
-
-		// append string
-		for (size_t i = 0; i < str_len; i++)
+		const size_t original_size = Length();
+		const size_t append_size = str.Length();
+		const size_t total_length = original_size + append_size;
+		if (total_length == 0 || append_size == 0)
 		{
-			Base::arr[self_len + i] = str[i];
+			return;
 		}
 
-		// add null terminator
-		Base::arr[Base::num - 1] = '\0';
+		// sso->sso case
+		length = total_length + 1;
+		const T* right = str.GetAddress();
+		if (length <= sso_size)
+		{
+			memory::Copy(sso + original_size, right, append_size * sizeof(T));
+			sso[total_length] = '\0';
+			return;
+		}
+
+		// heap->heap and sso->heap case
+		heap.Resize(length);
+		memory::Copy(heap.GetAddress() + original_size, right, append_size * sizeof(T));
+		heap[total_length] = '\0';
+		if (original_size + 1 <= sso_size)
+		{
+			memory::Copy(heap.GetAddress(), sso, original_size * sizeof(T));
+		}
 	}
 
 	// Appends a character
@@ -268,66 +361,162 @@ public:
 			return;
 		}
 
-		// add character and null terminator at the end
-		size_t length = Length();
-		Base::Resize(length + 2);
-		Base::arr[length] = c;
-		Base::arr[length + 1] = '\0';
+		length++;
+
+		// sso case
+		if (length <= sso_size)
+		{
+			sso[length - 2] = c;
+			sso[length - 1] = '\0';
+			return;
+		}
+
+		// heap case
+		heap.Resize(length);
+		if (length == sso_size + 1)
+		{
+			memory::Copy(heap.GetAddress(), sso, sso_size * sizeof(T));
+		}
+		heap[length - 2] = c;
+		heap[length - 1] = '\0';
+	}
+
+	// Inserts a character into the desired position.
+	//    @param pos - insertion position (index).
+	//    @param c - character to insert.
+	void Insert(size_t pos, T c)
+	{
+		// skip null-terminator
+		if (c == '\0')
+		{
+			return;
+		}
+
+		length++;
+
+		// sso->sso case
+		if (length <= sso_size)
+		{
+			for (size_t i = length; i-- > pos + 1;)
+			{
+				sso[i] = sso[i - 1];
+			}
+			sso[pos] = c;
+			return;
+		}
+
+		// heap case
+		heap.Resize(length);
+		if (length == sso_size + 1)
+		{
+			memory::Copy(heap.GetAddress(), sso, sso_size * sizeof(T));
+		}
+		for (size_t i = length; i-- > pos + 1;)
+		{
+			heap[i] = heap[i - 1];
+		}
+		heap[pos] = c;
+	}
+
+	// Removes the character.
+	//    @param pos - position (index) of the first character to be removed.
+	//    @param count - how many characters to be removed, this parameter must
+	//                   not be gteater than Length() - @pos.
+	void Remove(size_t pos, size_t count)
+	{
+		UT_ASSERT(pos + count < length);
+
+		const size_t final_size = length - count;
+
+		// sso->sso case
+		if (length <= sso_size)
+		{
+			for (size_t i = pos + count; i < length; i++)
+			{
+				sso[i - count] = sso[i];
+			}
+			length = final_size;
+			return;
+		}
+
+		// heap->heap case
+		if (final_size > sso_size)
+		{
+			for (size_t i = pos + count; i < length; i++)
+			{
+				heap[i - count] = heap[i];
+			}
+			heap.Resize(final_size);
+			length = final_size;
+			return;
+		}
+
+		// heap->sso case
+		memory::Copy(sso, heap.GetAddress(), pos * sizeof(T));
+		memory::Copy(sso + pos,
+		             heap.GetAddress() + pos + count,
+		             (length - pos - count) * sizeof(T));
+		heap.Reset();
+		length = final_size;
 	}
 
 	// Replaces self with another string
 	//    @param str - null-terminated string
     bool Set(const T* str)
     {
-        if (str)
-        {
-			size_t length = StrLen<T>(str) + 1;
-			if (!Base::Resize(length))
-			{
-				return false;
-			}
-			memory::Copy(Base::arr, str, length * sizeof(T));
-        }
-		else
+		if (str == nullptr)
 		{
-			Base::Reset();
+			heap.Reset();
+			length = 1;
+			sso[0] = '\0';
+			return true;
 		}
 
+		// sso case
+		length = StrLen<T>(str) + 1;
+		if (length <= sso_size)
+		{
+			heap.Reset();
+			memory::Copy(sso, str, length * sizeof(T));
+			return true;
+		}
+
+		// heap case
+		heap.Resize(length);
+		memory::Copy(heap.GetAddress(), str, length * sizeof(T));
 		return true;
     }
 
-	// Crops unused (excess) text after a null terminator
-	// also puts null terminator if none was found
-	void Validate()
+	// Resets this string.
+	void Reset()
 	{
-		for (size_t i = 0; i < Base::Count(); i++)
+		if (length <= sso_size)
 		{
-			if (Base::arr[i] == 0)
-			{
-				Base::Resize(i + 1);
-				return; // exit
-			}
+			sso[0] = '\0';
+			length = 1;
+			return;
 		}
 
-		Base::Add(0);
+		heap.Reset();
 	}
 
 	// Returns isolated filename string (directory is deleted)
 	TString GetIsolatedFilename() const
 	{
-		int i = (int)Length() - 1;
-		for ( ; i >= 0; i--)
+		const T* src = GetAddress();
+		size_t i = Length();
+		for (; i-- > 0;)
 		{
-			if (Base::arr[i] == '\\')
+			if (src[i] == '\\')
 			{
 				break;
 			}
-			if (Base::arr[i] == '/')
+			if (src[i] == '/')
 			{
 				break;
 			}
 		}
-		return TString(&Base::arr[++i]);
+		return TString(&src[++i]);
 	}
 
 	// Leaves only filename, directory is deleted
@@ -342,15 +531,16 @@ public:
 	//    @param include_separator - whether to leave last separator symbol or not
 	TString GetIsolatedLocation(bool include_separator = true) const
 	{
-		int i = (int)Length() - 1;
-		for ( ; i >= 0; i--)
+		size_t i = Length();
+		const T* src = GetAddress();
+		for (; i-- > 0;)
 		{
-			if (Base::arr[i] == '\\' || Base::arr[i] == '/')
+			if (src[i] == '\\' || src[i] == '/')
 			{
 				break;
 			}
 		}
-		return TString(Base::arr, include_separator ? i + 1 : i);
+		return TString(src, include_separator ? i + 1 : i);
 	}
 
 	// Leaves only location, filename is deleted
@@ -365,11 +555,11 @@ public:
 	// Returns 'true' if has absolute path inside
 	bool IsAbsolutePath(void) const
 	{
-		T clsep_str0[] = { ':', '\\', 0 };
-		T clsep_str1[] = { ':', '/', 0 };
+		const T clsep_str0[] = { ':', '\\', 0 };
+		const T clsep_str1[] = { ':', '/', 0 };
 
-		if (StrStr<T>(Base::arr, clsep_str0) ||
-		    StrStr<T>(Base::arr, clsep_str1))
+		if (StrStr<T>(GetAddress(), clsep_str0) ||
+		    StrStr<T>(GetAddress(), clsep_str1))
 		{
 			return true;
 		}
@@ -377,42 +567,14 @@ public:
 		return false;
 	}
 
-	// Deletes extension (ending)
-	void CropExtension()
-	{
-		for (size_t i = Length() - 1; i > 0; i--)
-		{
-			if (Base::arr[i] == '.')
-			{
-				Base::Resize(i + 1);
-				Base::arr[i] = '\0';
-			}
-		}
-	}
-
-	// If has an extension - puts it to the @out_str and returns 'true'
-	// otherwise - just returns 'false'
-	//    @param out_str - extension will be put inside this string object
-	bool GetExtension(TString& out_str) const
-	{
-		for (size_t i = Length() - 1; i > 0; i--)
-		{
-			if (Base::arr[i] == '.')
-			{
-				out_str = &Base::arr[i+1];
-				return true;
-			}
-		}
-		return false;
-	}
-
 	// Returns true if has any literal characters
 	bool HasLiterals() const
 	{
-		size_t len = Length();
+		const T* src = GetAddress();
+		const size_t len = Length();
 		for (size_t i = 0; i < len; i++)
 		{
-			if (ChLiteral<T>(Base::arr[i]))
+			if (ChLiteral<T>(src[i]))
 			{
 				return true;
 			}
@@ -423,9 +585,10 @@ public:
 	// Converts all characters to the lower case
 	void ToLowerCase()
 	{
-		for (size_t i = 0; i < Base::num; i++)
+		T* src = GetAddress();
+		for (size_t i = 0; i < length; i++)
 		{
-			Base::arr[i] = ChToLower<T>(Base::arr[i]);
+			src[i] = ChToLower<T>(src[i]);
 		}
 	}
 
@@ -434,8 +597,7 @@ public:
 	//    @param words - array of strings, every parsed word will be appended to it
 	void Parse(Array<TString>& words) const
 	{
-		// string length
-		size_t len = Length() + 1;
+		const T* src = GetAddress();
 
 		// word start index
 		int start = -1;
@@ -444,20 +606,20 @@ public:
 		bool has_quotes = false;
 
 		// iterate every symbol
-		for (size_t i = 0; i < len; i++)
+		for (size_t i = 0; i < length; i++)
 		{
-			if (ChLiteral<T>(Base::arr[i]))
+			if (ChLiteral<T>(src[i]))
 			{
 				if (start < 0)
 				{
 					start = (int)i;
-					has_quotes = Base::arr[i] == '\"';
+					has_quotes = src[i] == '\"';
 				}
 			}
 			else
 			{
 				// create word
-				if (start >= 0 && (!has_quotes || (i > 0 && Base::arr[i-1] == '\"')))
+				if (start >= 0 && (!has_quotes || (i > 0 && src[i-1] == '\"')))
 				{
 					// get word length
 					size_t word_len = i - (size_t)start;
@@ -467,7 +629,7 @@ public:
 					}
 
 					// create new word
-					words.Add(TString(&Base::arr[has_quotes ? start + 1 : start], sizeof(T) * word_len));
+					words.Add(TString(&src[has_quotes ? start + 1 : start], sizeof(T) * word_len));
 
 					// reset start value
 					start = -1;
@@ -481,18 +643,19 @@ public:
 	// for Windows all '/' symbols will be replaced with '\', vice versa for Linux
 	void ReplacePlatformSeparators()
 	{
-		size_t size = Base::GetSize();
-		for (size_t i = 0; i < size; i++)
+		T* src = GetAddress();
+		const size_t length = Length();
+		for (size_t i = 0; i < length; i++)
 		{
 		#if UT_WINDOWS
-			if (Base::arr[i] == '/')
+			if (src[i] == '/')
 			{
-				Base::arr[i] = '\\';
+				src[i] = '\\';
 			}
 		#else
-			if (Base::arr[i] == '\\')
+			if (src[i] == '\\')
 			{
-				Base::arr[i] = '/';
+				src[i] = '/';
 			}
 		#endif
 		}
@@ -521,8 +684,8 @@ public:
 		size_t offset = 0;
 		while (true)
 		{
-			const T* start = ToCStr();
-			const T* addr = StrStr<T>(start + offset, src.ToCStr());
+			const T* start = GetAddress();
+			const T* addr = StrStr<T>(start + offset, src.GetAddress());
 			if (!addr)
 			{
 				break;
@@ -550,28 +713,27 @@ public:
 	// Replaces \r\n with \n for Linux and \n with \r\n for Windows
 	void FixCarriageReturn()
 	{
-		size_t size = Base::Count();
-		for (size_t i = size; i-- > 0;)
+		T* src = GetAddress();
+		for (size_t i = length; i-- > 0;)
 		{
 #if UT_WINDOWS
-			if (Base::arr[i] == '\n')
+			if (src[i] == '\n')
 			{
-				if (i == 0 || Base::arr[i - 1] != '\r')
+				if (i == 0 || src[i - 1] != '\r')
 				{
-					Base::Insert(i, '\r');
+					Insert(i, '\r');
 				}
 			}
 #else
-			if (Base::arr[i] == '\n')
+			if (src[i] == '\n')
 			{
-				if (i != 0 && Base::arr[i - 1] == '\r')
+				if (i != 0 && src[i - 1] == '\r')
 				{
-					Base::Remove(i - 1);
+					Remove(i - 1, 1);
 				}
 			}
 #endif
 		}
-		Validate();
 	}
 
 	// Writes the C string pointed by @format. If @format includes format 
@@ -585,9 +747,18 @@ public:
 	{
 		va_list args;
 		va_start(args, format);
-		Base::Resize(max_size);
-		int result = VStrPrint<T>(Base::arr, max_size, format, args);
-		Validate();
+		int result;
+		if (max_size <= sso_size)
+		{
+			result = VStrPrint<T>(sso, max_size, format, args);
+			length = StrLen<T>(sso);
+		}
+		else
+		{
+			Array<T> buffer(max_size);
+			result = VStrPrint<T>(buffer.GetAddress(), max_size, format, args);
+			Set(buffer.GetAddress());
+		}
 		return result;
 	}
 
@@ -597,9 +768,9 @@ public:
 	{
 		va_list args;
 		va_start(args, format);
-		Base::Resize(UT_STR_MAX);
-		int result = VStrPrint<T>(Base::arr, UT_STR_MAX, format, args);
-		Validate();
+		T buffer[256];
+		int result = VStrPrint<T>(buffer, 256, format, args);
+		Set(buffer);
 		return result;
 	}
 
@@ -610,7 +781,7 @@ public:
 	{
 		va_list args;
 		va_start(args, format);
-		int result = VStrScan<T>(Base::arr, format, args);
+		int result = VStrScan<T>(GetAddress(), format, args);
 		return result;
 	}
 
@@ -628,6 +799,17 @@ public:
 #endif
 		return str;
 	}
+
+private:
+	// number of characters in this string (including null-terminator)
+	size_t length;
+
+	// small string optimization buffer size
+	static constexpr size_t sso_size = 16;
+	T sso[sso_size];
+
+	// heap buffer
+	Array<T, Allocator> heap;
 };
 
 // Short TString types

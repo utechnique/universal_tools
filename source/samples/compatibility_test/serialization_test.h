@@ -296,6 +296,7 @@ public:
 	ut::uint64 uval;
 	bool bool_val;
 	ut::String str;
+	ut::String long_str;
 	ut::Array<ut::String> strarr;
 	ut::UniquePtr<TestBase> dyn_type_ptr;
 	ut::UniquePtr<TestBase> dyn_ptr_c;

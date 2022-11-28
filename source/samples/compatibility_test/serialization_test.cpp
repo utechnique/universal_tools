@@ -433,8 +433,12 @@ void SerializationVariantsTask::Execute()
 	for (size_t i = 0; i < info_variants.Count(); i++)
 	{
 		report += ut::String("Variant: \"") + info_variants[i].GetFirst() + "\":" + ut::CRet();
+		ut::time::Counter counter;
+		counter.Start();
 		bool result = TestVariant(info_variants[i].second, info_variants[i].GetFirst());
+		const double time = counter.GetTime();
 		report += result ? "Success" : "Failed";
+		report += ut::String(" (") + ut::Print(time) + "ms)";
 
 		if (i != info_variants.Count() - 1)
 		{
@@ -693,6 +697,7 @@ SerializationTest::SerializationTest(bool in_alternate,
                                                              , bool_val(false)
                                                              , fval(0.0f)
                                                              , str("void")
+                                                             , long_str("0123456789abcdefABCDEFghILMnopqrstAhajgagbksbaguauoq1jiaqgp12110099")
 {
 	// static array
 	for (size_t i = 0; i < 12; i++)
@@ -839,6 +844,7 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << uval;
 	snapshot << bool_val;
 	snapshot << str;
+	snapshot << long_str;
 	snapshot << arr;
 	snapshot << a;
 	snapshot << strarr;
@@ -1136,6 +1142,7 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.bool_val = true;
 	object.fval = 123.321f;
 	object.str = "test_string";
+	object.long_str = "012345A6789abcdefABCDEFghILMnoXpqrstAhajgagbksbaguauoq1BBjiaqgp12110099ZZ";
 
 	object.a.u16val = 234;
 	object.a.str = "sub_class";
@@ -1308,6 +1315,7 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	if (object.bool_val != true) return false;
 	if (object.fval > 123.321f + 0.0001f || object.fval < 123.321f - 0.0001f) return false;
 	if (object.str != "test_string") return false;
+	if (object.long_str != "012345A6789abcdefABCDEFghILMnoXpqrstAhajgagbksbaguauoq1BBjiaqgp12110099ZZ") return false;
 
 	if (object.a.u16val != 234) return false;
 	if (object.a.str != "sub_class") return false;

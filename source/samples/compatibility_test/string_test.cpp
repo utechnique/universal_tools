@@ -14,10 +14,10 @@ StringTestUnit::StringTestUnit() : TestUnit("STRING")
 	tasks.Add(ut::MakeUnique<StrConstructorTask>());
 	tasks.Add(ut::MakeUnique<StrComparisonOpTask>());
 	tasks.Add(ut::MakeUnique<StrAppendTask>());
+	tasks.Add(ut::MakeUnique<StrRemoveTask>());
 	tasks.Add(ut::MakeUnique<StrValidationTask>());
 	tasks.Add(ut::MakeUnique<StrIsolateFilenameTask>());
 	tasks.Add(ut::MakeUnique<StrAbsolutePathTask>());
-	tasks.Add(ut::MakeUnique<StrExtensionTask>());
 	tasks.Add(ut::MakeUnique<StrParsingTask>());
 	tasks.Add(ut::MakeUnique<StrSeparatorsTask>());
 	tasks.Add(ut::MakeUnique<StrASCIITask>());
@@ -142,7 +142,7 @@ void StrConstructorTask::Execute()
 	str_2 = str_0;
 	report += "testing constructors: ";
 	report += str_0 + " " + str_1 + " " + str_2;
-	if (!ut::StrCmp<char>(str_2.ToCStr(), "hello"))
+	if (!ut::StrCmp<char>(str_2.GetAddress(), "hello"))
 	{
 		report += " failed";
 		failed_test_counter.Increment();
@@ -182,12 +182,99 @@ StrAppendTask::StrAppendTask() : TestTask("Append String")
 
 void StrAppendTask::Execute()
 {
+	report += ut::String("append test: ");
+
+	ut::String str_concat("0123456789AB");
+	str_concat += ut::String("QolckzjmV2ajakjsfowfoqwfo");
+	if (!ut::StrCmp<char>(str_concat.GetAddress(), "0123456789ABQolckzjmV2ajakjsfowfoqwfo"))
+	{
+		report += " failed";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	ut::String str_c("0123456789ABCD");
+	str_c.Append('E');
+	if (!ut::StrCmp<char>(str_c.GetAddress(), "0123456789ABCDE"))
+	{
+		report += " failed";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	str_c.Append('F');
+	if (!ut::StrCmp<char>(str_c.GetAddress(), "0123456789ABCDEF"))
+	{
+		report += " failed";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	str_c.Append('G');
+	if (!ut::StrCmp<char>(str_c.GetAddress(), "0123456789ABCDEFG"))
+	{
+		report += " failed";
+		failed_test_counter.Increment();
+		return;
+	}
+
+
 	ut::String str_0("hello");
 	ut::String str_1(str_0);
 	ut::String str_a = str_0 + str_1;
 	str_a += str_1;
 	str_0.Append(str_1);
-	report += ut::String("append test: ") + str_0 + "|" + str_a;
+	if (str_a != "hellohellohello")
+	{
+		report += " failed";
+		failed_test_counter.Increment();
+	}
+	else
+	{
+		report += " success";
+	}
+}
+
+//----------------------------------------------------------------------------//
+// Remove characters
+StrRemoveTask::StrRemoveTask() : TestTask("Remove characters")
+{ }
+
+void StrRemoveTask::Execute()
+{
+	report += ut::String("remove test: ");
+
+	ut::String str("0123456789ABCDEFGqsrdtBhJkoPzsd76");
+	str.Remove(30, 1);
+	if (!ut::StrCmp<char>(str.GetAddress(), "0123456789ABCDEFGqsrdtBhJkoPzs76"))
+	{
+		report += " failed";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	str.Remove(12, 20);
+	if (!ut::StrCmp<char>(str.GetAddress(), "0123456789AB"))
+	{
+		report += " failed";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	str.Remove(4, 2);
+	if (!ut::StrCmp<char>(str.GetAddress(), "01236789AB"))
+	{
+		report += " failed";
+		failed_test_counter.Increment();
+		return;
+	}
+
+
+	ut::String str_0("hello");
+	ut::String str_1(str_0);
+	ut::String str_a = str_0 + str_1;
+	str_a += str_1;
+	str_0.Append(str_1);
 	if (str_a != "hellohellohello")
 	{
 		report += " failed";
@@ -207,11 +294,10 @@ StrValidationTask::StrValidationTask() : TestTask("Validate String")
 void StrValidationTask::Execute()
 {
 	ut::String str_0("hello");
-	str_0.Add(0);
-	str_0.Add(0);
-	str_0.Validate();
-	report.Print("validation.. container size must be 6: %u", (ut::uint32)str_0.Count());
-	if (str_0.Count() != 6)
+	str_0.Append(0);
+	str_0.Append(0);
+	report.Print("validation.. container size must be 5: %u", (ut::uint32)str_0.Length());
+	if (str_0.Length() != 5)
 	{
 		report += " failed";
 		failed_test_counter.Increment();
@@ -263,31 +349,6 @@ void StrAbsolutePathTask::Execute()
 	report += (abspath0 ? "true " : "false ");
 	report += (abspath1 ? "true" : "false");
 	if (abspath0 != false || abspath1 != true)
-	{
-		report += " failed";
-		failed_test_counter.Increment();
-	}
-	else
-	{
-		report += " success";
-	}
-}
-
-//----------------------------------------------------------------------------//
-// Extension
-StrExtensionTask::StrExtensionTask() : TestTask("Filename Extension")
-{ }
-
-void StrExtensionTask::Execute()
-{
-	ut::String str_0("taskmgr.exe");
-	ut::String str_1(str_0);
-	str_0.GetExtension(str_1);
-	str_0.CropExtension();
-	bool has_literals = str_0.HasLiterals();
-	report += "extension test: ";
-	report += str_1 + " " + str_0;
-	if (str_1 != "exe" || str_0 != "taskmgr")
 	{
 		report += " failed";
 		failed_test_counter.Increment();

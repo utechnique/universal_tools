@@ -78,6 +78,14 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+class StrRemoveTask : public TestTask
+{
+public:
+	StrRemoveTask();
+	void Execute();
+};
+
+//----------------------------------------------------------------------------//
 class StrValidationTask : public TestTask
 {
 public:
@@ -98,14 +106,6 @@ class StrAbsolutePathTask : public TestTask
 {
 public:
 	StrAbsolutePathTask();
-	void Execute();
-};
-
-//----------------------------------------------------------------------------//
-class StrExtensionTask : public TestTask
-{
-public:
-	StrExtensionTask();
 	void Execute();
 };
 
