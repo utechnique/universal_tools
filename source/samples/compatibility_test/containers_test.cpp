@@ -31,13 +31,14 @@ ut::Array<int> GenerateMapArray(size_t size)
 		out.Add(seed % 32767);
 	}
 
-	for (size_t i = size; i-- > 0; )
+	for (size_t i = out.Count(); i-- > 0; )
 	{
 		for (size_t j = i; j-- > 0;)
 		{
 			if (out[i] == out[j])
 			{
 				out.Remove(j);
+				i--;
 			}
 		}
 	}
@@ -138,6 +139,18 @@ void ArrayOpsTask::Execute()
 	{
 		int val = *iterator;
 		int& val1 = *iterator;
+		ut::String str;
+		str.Print("%i ", val);
+		report += str;
+	}
+
+	// test zero sized iterator
+	ut::Array<int> zarray;
+	ut::Array<int>::Iterator ziterator;
+	for (ziterator = zarray.Begin(ut::iterator::first); ziterator < zarray.End(ut::iterator::last); ++ziterator)
+	{
+		int val = *ziterator;
+		int& val1 = *ziterator;
 		ut::String str;
 		str.Print("%i ", val);
 		report += str;
@@ -591,7 +604,10 @@ void AVLTreeTask::Execute()
 	{
 		ut::AVLTree<int, MapValue>::Node& node = *perf_it;
 		node.value.ival++;
-		node.value.ival--;
+		if (node.value.ival != -1)
+		{
+			node.value.ival--;
+		}
 	}
 	time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
@@ -615,16 +631,19 @@ void AVLTreeTask::Execute()
 
 //----------------------------------------------------------------------------//
 
-HashmapTask::HashmapTask() : TestTask("Hashmap")
-{ }
-
-void HashmapTask::Execute()
+template<class IntHashMapType, class StringHashMapType>
+ut::String HashMapTest()
 {
-	ut::time::Counter counter;
-	ut::HashMap<int, MapValue> map;
-	ut::HashMap<ut::String, MapValue> str_map;
+	ut::String report;
 
-	ut::Array<int> source = GenerateMapArray(perf_arr_count);
+	ut::time::Counter counter;
+	IntHashMapType map;
+	StringHashMapType str_map;
+	std::unordered_map<int, MapValue> std_map;
+
+	ut::Array<int> source = GenerateMapArray(TestTask::perf_arr_count);
+	report += ut::String("Elements: ") + ut::Print(source.Count()) + ". ";
+
 	const size_t test_element_id = source.Count() / 2;
 
 	report += ut::String("Insert (int): ");
@@ -635,6 +654,11 @@ void HashmapTask::Execute()
 		val.ival = source[i];
 
 		map.Insert(source[i], ut::Move(val));
+
+		if (map.Count() != i + 1)
+		{
+			val.ival++;
+		}
 	}
 	double time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
@@ -651,7 +675,6 @@ void HashmapTask::Execute()
 	time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
 
-	std::unordered_map<int, MapValue> std_map;
 	report += ut::String("Insert (std int): ");
 	counter.Start();
 	for (size_t i = 0; i < source.Count(); i++)
@@ -669,58 +692,60 @@ void HashmapTask::Execute()
 	{
 		report += ut::String("FAILED! Invalid element count (") + ut::Print(element_count) + ")\n";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 
-	report += ut::String("Collision(int): ") + ut::Print(map.GetCollisionCount() ) + ". ";
+	report += ut::String("Collision(int): ") + ut::Print(map.GetCollisionCount()) + ". ";
 	report += ut::String("Collision(str): ") + ut::Print(str_map.GetCollisionCount()) + ". ";
-
-	report += ut::String("Iteration (index): ");
-	counter.Start();
-	for (size_t i = 0; i < element_count; i++)
-	{
-		ut::Pair<const int, MapValue>& element = map[i];
-		element.second.ival++;
-		element.second.ival--;
-	}
-	time = counter.GetTime();
-	report += ut::Print(time) + "ms. ";
 
 	report += ut::String("Iteration (iterator): ");
 	counter.Start();
-	ut::HashMap<int, MapValue>::Iterator iterator;
-	for (iterator = map.Begin(ut::iterator::first); iterator < map.End(ut::iterator::last); ++iterator)
+	IntHashMapType::Iterator iterator;
+	size_t it_count = 0;
+	for (iterator = map.Begin(); iterator != map.End(); ++iterator)
 	{
 		ut::Pair<const int, MapValue>& element = *iterator;
 		element.second.ival++;
-		iterator->second.ival--;
+		if (iterator->second.ival != -1)
+		{
+			iterator->second.ival--;
+		}
+		it_count++;
 	}
 	time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
+	if (it_count != map.Count())
+	{
+		report += ut::String("FAILED! Iterated less elements (") + ut::Print(it_count) + ") than the map size.";
+		failed_test_counter.Increment();
+		return report;
+	}
+
+
+	IntHashMapType::ConstIterator riterator;
+	int itertesta = 0;
+	for (riterator = map.Begin(); riterator != map.End(); ++riterator)
+	{
+		const ut::Pair<const int, MapValue>& element = *riterator;
+		itertesta = element.second.ival + riterator->second.ival;
+	}
 
 	report += ut::String("Iteration (std): ");
 	counter.Start();
+	it_count = 0;
 	std::unordered_map<int, MapValue>::iterator std_iterator;
 	for (std_iterator = std_map.begin(); std_iterator != std_map.end(); ++std_iterator)
 	{
 		std::pair<const int, MapValue>& element = *std_iterator;
 		element.second.ival++;
-		std_iterator->second.ival--;
+		if (element.second.ival != -1)
+		{
+			element.second.ival--;
+		}
+		it_count++;
 	}
 	time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
-
-	report += ut::String("Iteration (const iterator backwards): ");
-	counter.Start();
-	ut::HashMap<int, MapValue>::ConstIterator riterator;
-	int itertesta = 0;
-	for (riterator = map.Begin(ut::iterator::last); riterator > map.End(ut::iterator::first); --riterator)
-	{
-		const ut::Pair<const int, MapValue>& element = *riterator;
-		itertesta = element.second.ival + riterator->second.ival;
-	}
-	time = counter.GetTime();
-	report += ut::Print(time) + (itertesta == 0 ? "ms. " : "ms. ");
 
 	report += ut::String("Search (int): ");
 	counter.Start();
@@ -732,7 +757,7 @@ void HashmapTask::Execute()
 		{
 			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found.";
 			failed_test_counter.Increment();
-			return;
+			return report;
 		}
 	}
 	time = counter.GetTime();
@@ -748,7 +773,7 @@ void HashmapTask::Execute()
 		{
 			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found.";
 			failed_test_counter.Increment();
-			return;
+			return report;
 		}
 	}
 	time = counter.GetTime();
@@ -764,18 +789,18 @@ void HashmapTask::Execute()
 		{
 			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found (str).";
 			failed_test_counter.Increment();
-			return;
+			return report;
 		}
 	}
 	time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
 
 	// check constness
-	const ut::HashMap<int, MapValue>& map_cref = map;
+	const IntHashMapType& map_cref = map;
 	ut::Optional<const MapValue&> fcref = map_cref.Find(4);
 
 	// check copy constructor
-	ut::HashMap<int, MapValue> map_copy(map);
+	IntHashMapType map_copy(map);
 	if (map_copy.Count() == map.Count())
 	{
 		ut::Optional<MapValue&> fcres = map_copy.Find(source[test_element_id]);
@@ -784,23 +809,23 @@ void HashmapTask::Execute()
 			if (fcres->ival != source[test_element_id])
 			{
 				report += ut::String("FAILED! Copy constructor - invalid element(") +
-				          ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
+					ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
 				failed_test_counter.Increment();
-				return;
+				return report;
 			}
 		}
 		else
 		{
 			report += "FAILED! Copy constructor - failed to find element.";
 			failed_test_counter.Increment();
-			return;
+			return report;
 		}
 	}
 	else
 	{
 		report += "FAILED! Copy constructor - invalid element count.";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 
 	// check Reset
@@ -809,7 +834,7 @@ void HashmapTask::Execute()
 	{
 		report += "FAILED! Reset() failed.";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 
 	// check copy operator
@@ -822,23 +847,23 @@ void HashmapTask::Execute()
 			if (fcres->ival != source[test_element_id])
 			{
 				report += ut::String("FAILED! Copy operator - invalid element(") +
-				          ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
+					ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
 				failed_test_counter.Increment();
-				return;
+				return report;
 			}
 		}
 		else
 		{
 			report += "FAILED! Copy operator - failed to find element.";
 			failed_test_counter.Increment();
-			return;
+			return report;
 		}
 	}
 	else
 	{
 		report += "FAILED! Copy operator - invalid element count.";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 
 	// check move operator
@@ -848,7 +873,7 @@ void HashmapTask::Execute()
 	{
 		report += "FAILED! Original map was not destroyed after the move operation.";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 	if (map.Count() == source.Count())
 	{
@@ -860,30 +885,30 @@ void HashmapTask::Execute()
 				report += ut::String("FAILED! Move operator - invalid element(") +
 					ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
 				failed_test_counter.Increment();
-				return;
+				return report;
 			}
 		}
 		else
 		{
 			report += "FAILED! Move operator - failed to find element.";
 			failed_test_counter.Increment();
-			return;
+			return report;
 		}
 	}
 	else
 	{
 		report += "FAILED! Move operator - invalid element count.";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 
 	// check move constructor
-	ut::HashMap<int, MapValue> map_move = ut::Move(map);
+	IntHashMapType map_move = ut::Move(map);
 	if (map.Find(source[test_element_id]) || map.Count() != 0)
 	{
 		report += "FAILED! Original map was not destroyed after the move construction.";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 	if (map_move.Count() == source.Count())
 	{
@@ -895,21 +920,21 @@ void HashmapTask::Execute()
 				report += ut::String("FAILED! Move constructor - invalid element(") +
 					ut::Print(fcres.Get()) + "), must be " + ut::Print(source[test_element_id]);
 				failed_test_counter.Increment();
-				return;
+				return report;
 			}
 		}
 		else
 		{
 			report += "FAILED! Move constructor - failed to find element.";
 			failed_test_counter.Increment();
-			return;
+			return report;
 		}
 	}
 	else
 	{
 		report += "FAILED! Move constructor - invalid element count.";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 
 	// check remove
@@ -917,13 +942,13 @@ void HashmapTask::Execute()
 	{
 		report += "FAILED! Element to be removed was not found.";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 	if (map_move.Count() != source.Count() - 1)
 	{
 		report += "FAILED! Invalid element count after Remove() call.";
 		failed_test_counter.Increment();
-		return;
+		return report;
 	}
 	for (size_t i = 0; i < source.Count(); i++)
 	{
@@ -936,9 +961,9 @@ void HashmapTask::Execute()
 			{
 				ut::Optional<MapValue&> element = map_move.Find(key);
 				report += ut::String("FAILED! Found element that must be deleted after Remove(") +
-				          ut::Print(source[test_element_id]) + ") call.";
+					ut::Print(source[test_element_id]) + ") call.";
 				failed_test_counter.Increment();
-				return;
+				return report;
 			}
 		}
 		else
@@ -946,27 +971,60 @@ void HashmapTask::Execute()
 			if (!element)
 			{
 				report += ut::String("FAILED! Element ") + ut::Print(key) +
-				          " was not found after Remove(" +
-				          ut::Print(source[test_element_id]) + ") call.";
+					" was not found after Remove(" +
+					ut::Print(source[test_element_id]) + ") call.";
 
 				report += ut::Print(i) + " " + ut::Print(test_element_id);
 				failed_test_counter.Increment();
-				return;
+				return report;
 			}
 
 			if (element->ival != key)
 			{
 				report += ut::String("FAILED! Element ") + ut::Print(key) +
-				          " is invalid after Remove(" +
-				          ut::Print(source[test_element_id]) + ") call (" +
-				          ut::Print(element->ival) + ").";
+					" is invalid after Remove(" +
+					ut::Print(source[test_element_id]) + ") call (" +
+					ut::Print(element->ival) + ").";
 				failed_test_counter.Increment();
-				return;
+				return report;
 			}
 		}
 	}
+	it_count = 0;
+	for (riterator = map_move.Begin(); riterator != map_move.End(); ++riterator)
+	{
+		const ut::Pair<const int, MapValue>& element = *riterator;
+		it_count++;
+	}
+	if (it_count != map_move.Count())
+	{
+		report += ut::String("FAILED! Iterated less elements (") + ut::Print(it_count) + ") than the map size after Remove().";
+		failed_test_counter.Increment();
+		return report;
+	}
 
-	report += "Success.";
+	// test zero sized map
+	IntHashMapType zmap;
+	for (iterator = zmap.Begin(); iterator != zmap.End(); ++iterator)
+	{
+		ut::Pair<const int, MapValue>& element = *iterator;
+		element.second.ival++;
+	}
+
+	// success
+	return report;
+}
+
+HashmapTask::HashmapTask() : TestTask("Hashmap")
+{ }
+
+void HashmapTask::Execute()
+{
+	report += ut::String("Dense:") + ut::cret;
+	report += HashMapTest<ut::DenseHashMap<int, MapValue>, ut::DenseHashMap<ut::String, MapValue> >();
+
+	report += ut::String("Sparse:") + ut::cret;
+	report += HashMapTest<ut::SparseHashMap<int, MapValue>, ut::SparseHashMap<ut::String, MapValue> >();
 }
 
 //----------------------------------------------------------------------------//

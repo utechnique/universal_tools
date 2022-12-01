@@ -11,24 +11,26 @@
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)
 //----------------------------------------------------------------------------//
-// ut::Parameter<Hashmap> is a template specialization for the hashmap.
-template<typename Key,
+// Meta parameter for the hashmap types.
+template<template<typename, typename, typename, typename, typename> class HashMapTemplate,
+         typename Key,
          typename Value,
          class HashFunction,
          class KeyEqual,
          class Allocator>
-class Parameter< HashMap<Key,
-                         Value,
-                         HashFunction,
-                         KeyEqual,
-                         Allocator> > : public BaseParameter
+class HashMapParameter : public BaseParameter
 {
-	using HashMapType = HashMap<Key,
-	                    Value,
-	                    HashFunction,
-	                    KeyEqual,
-	                    Allocator>;
-	using ThisParameter = Parameter<HashMapType>;
+	using HashMapType = HashMapTemplate<Key,
+	                                    Value,
+	                                    HashFunction,
+	                                    KeyEqual,
+	                                    Allocator>;
+	using ThisParameter = HashMapParameter<HashMapTemplate,
+	                                       Key,
+	                                       Value,
+	                                       HashFunction,
+	                                       KeyEqual,
+	                                       Allocator>;
 
 	// Helper proxy template class to simplify
 	// serialization of the ut::HashMap container.
@@ -51,7 +53,7 @@ class Parameter< HashMap<Key,
 public:
 	// Constructor
 	//    @param p - pointer to the managed array
-	Parameter(HashMapType* p) : BaseParameter(p)
+	HashMapParameter(HashMapType* p) : BaseParameter(p)
 	{}
 
 	// Returns the name of the managed type
@@ -209,10 +211,10 @@ public:
 	{
 		const ut::uptr element_ptr = reinterpret_cast<ut::uptr>(element_address);
 		HashMapType& map = *static_cast<HashMapType*>(ptr);
-		const size_t element_count = map.Count();
-		for (size_t i = 0; i < element_count; i++)
+		typename HashMapType::Iterator iterator;
+		for (iterator = map.Begin(); iterator != map.End(); ++iterator)
 		{
-			Pair<const Key, Value>& pair = map[i];
+			Pair<const Key, Value>& pair = *iterator;
 			if (reinterpret_cast<ut::uptr>(&pair) == element_ptr ||
 				reinterpret_cast<ut::uptr>(&pair.GetFirst()) == element_ptr ||
 				reinterpret_cast<ut::uptr>(&pair.GetSecond()) == element_ptr)
@@ -230,10 +232,10 @@ private:
 	void Import()
 	{
 		HashMapType& map = *static_cast<HashMapType*>(ptr);
-		const size_t element_count = map.Count();
-		for (size_t i = 0; i < element_count; i++)
+		typename HashMapType::Iterator iterator;
+		for (iterator = map.Begin(); iterator != map.End(); ++iterator)
 		{
-			Pair<const Key, Value>& element = map[i];
+			Pair<const Key, Value>& element = *iterator;
 			if (!proxy_nodes.Add(ProxyNode(element.GetFirst(), &element.second)))
 			{
 				throw Error(error::out_of_memory);
@@ -263,6 +265,70 @@ private:
 	// Proxy objects to perform save/load.
 	ut::Array<ProxyNode> proxy_nodes;
 	ut::Array<Value> proxy_values;
+};
+
+//----------------------------------------------------------------------------//
+// Specialization for the ut::DenseHashMap type parameter.
+template<typename Key,
+         typename Value,
+         class HashFunction,
+         class KeyEqual,
+         class Allocator>
+class Parameter<DenseHashMap<Key,
+                             Value,
+                             HashFunction,
+                             KeyEqual,
+                             Allocator> > : public HashMapParameter<DenseHashMap,
+                                                                    Key,
+                                                                    Value,
+                                                                    HashFunction,
+                                                                    KeyEqual,
+                                                                    Allocator>
+{
+public:
+	Parameter(DenseHashMap<Key,
+	                       Value,
+	                       HashFunction,
+	                       KeyEqual,
+	                       Allocator>* p) : HashMapParameter<DenseHashMap,
+	                                                         Key,
+	                                                         Value,
+	                                                         HashFunction,
+	                                                         KeyEqual,
+	                                                         Allocator>(p)
+	{}
+};
+
+//----------------------------------------------------------------------------//
+// Specialization for the ut::SparseHashMap type parameter.
+template<typename Key,
+         typename Value,
+         class HashFunction,
+         class KeyEqual,
+         class Allocator>
+class Parameter<SparseHashMap<Key,
+                              Value,
+                              HashFunction,
+                              KeyEqual,
+                              Allocator> > : public HashMapParameter<SparseHashMap,
+                                                                     Key,
+                                                                     Value,
+                                                                     HashFunction,
+                                                                     KeyEqual,
+                                                                     Allocator>
+{
+public:
+	Parameter(SparseHashMap<Key,
+	                        Value,
+	                        HashFunction,
+	                        KeyEqual,
+	                        Allocator>* p) : HashMapParameter<SparseHashMap,
+	                                                          Key,
+	                                                          Value,
+	                                                          HashFunction,
+	                                                          KeyEqual,
+	                                                          Allocator>(p)
+	{}
 };
 
 //----------------------------------------------------------------------------//
