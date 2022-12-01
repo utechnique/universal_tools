@@ -513,7 +513,7 @@ public:
 	//              'false' if not enough memory, or @position is out of range
 	bool Insert(size_t position, ElementType&& element)
 	{
-		if (position >= num)
+		if (position > num)
 		{
 			return false;
 		}
@@ -527,7 +527,7 @@ public:
 	//              'false' if not enough memory, or @position is out of range
 	bool Insert(size_t position, const ElementType& copy)
 	{
-		if (position >= num)
+		if (position > num)
 		{
 			return false;
 		}
@@ -706,6 +706,11 @@ protected:
 	//              'false' if not enough memory
 	inline bool EmplaceForward(size_t position, ElementType&& element)
 	{
+		if (position == num)
+		{
+			return Add(Forward<ElementType>(element));
+		}
+
 		// allocate memory for the new element
 		if (!Realloc(num + 1))
 		{
