@@ -384,7 +384,7 @@ private:
 
 	// Indicates how much the capacity is increased after the overflow.
 	// The grater this value is - the less collisions occur -> faster search.
-	static constexpr size_t capacity_multiplier = 8;
+	static constexpr size_t capacity_multiplier = 6;
 };
 
 //----------------------------------------------------------------------------//
@@ -536,10 +536,10 @@ public:
 		// Returns constant reference of the managed object
 		Pair<const KeyType, ValueType>& operator*()
 		{
-			const size_t id = capacity - 1;
-			Optional<Node>& node = id >= map->capacity ?
-			                       map->collision_nodes[id - map->capacity] :
-			                       map->arr[id];
+			const size_t id = Base::capacity - 1;
+			Optional<Node>& node = id >= Base::map->capacity ?
+			                       Base::map->collision_nodes[id - Base::map->capacity] :
+			                       Base::map->arr[id];
 			return node.Get();
 		}
 
@@ -547,10 +547,10 @@ public:
 		// Return value can't be changed, it must be constant.
 		Pair<const KeyType, ValueType>* operator->()
 		{
-			const size_t id = capacity - 1;
-			Optional<Node>& node = id >= map->capacity ?
-			                       map->collision_nodes[id - map->capacity] :
-			                       map->arr[id];
+			const size_t id = Base::capacity - 1;
+			Optional<Node>& node = id >= Base::map->capacity ?
+			                       Base::map->collision_nodes[id - Base::map->capacity] :
+			                       Base::map->arr[id];
 			return &node.Get();
 		}
 	};
