@@ -393,19 +393,10 @@ void AVLTreeTask::Execute()
 	int previous_key = 0;
 	for (riterator = tree.Begin(ut::iterator::first); riterator != tree.End(ut::iterator::last); ++riterator)
 	{
-		const ut::AVLTree<int, ut::String>::Node& node = *riterator;
-		report += node.value;
+		const ut::Pair<const int, ut::String>& node = *riterator;
+		report += node.second;
 
-		// check balance
-		ut::int8 balance = node.GetBalance();
-		if (balance < -1 || balance > 1)
-		{
-			report += ut::String(" Error, invalid balance!\n");
-			failed_test_counter.Increment();
-			return;
-		}
-
-		int key = node.GetKey();
+		int key = node.GetFirst();
 		if (previous_key > key)
 		{
 			report += ut::String(" Error, invalid order!\n");
@@ -421,10 +412,10 @@ void AVLTreeTask::Execute()
 	previous_key = 100000;
 	for (literator = tree.Begin(ut::iterator::last); literator != tree.End(ut::iterator::first); --literator)
 	{
-		ut::AVLTree<int, ut::String>::Node& node = *literator;
-		report += node.value;
+		ut::Pair<const int, ut::String>& node = *literator;
+		report += node.second;
 
-		int key = node.GetKey();
+		int key = node.GetFirst();
 		if (previous_key < key)
 		{
 			report += ut::String(" Error, invalid order!\n");
@@ -602,11 +593,11 @@ void AVLTreeTask::Execute()
 	ut::AVLTree<int, MapValue>::Iterator perf_it;
 	for (perf_it = perf_tree.Begin(ut::iterator::first); perf_it != perf_tree.End(ut::iterator::last); perf_it++)
 	{
-		ut::AVLTree<int, MapValue>::Node& node = *perf_it;
-		node.value.ival++;
-		if (node.value.ival != -1)
+		ut::Pair<const int, MapValue>& node = *perf_it;
+		node.second.ival++;
+		if (node.second.ival != -1)
 		{
-			node.value.ival--;
+			node.second.ival--;
 		}
 	}
 	time = counter.GetTime();
@@ -700,7 +691,7 @@ ut::String HashMapTest()
 
 	report += ut::String("Iteration (iterator): ");
 	counter.Start();
-	IntHashMapType::Iterator iterator;
+	typename IntHashMapType::Iterator iterator;
 	size_t it_count = 0;
 	for (iterator = map.Begin(); iterator != map.End(); ++iterator)
 	{
@@ -722,7 +713,7 @@ ut::String HashMapTest()
 	}
 
 
-	IntHashMapType::ConstIterator riterator;
+	typename IntHashMapType::ConstIterator riterator;
 	int itertesta = 0;
 	for (riterator = map.Begin(); riterator != map.End(); ++riterator)
 	{
