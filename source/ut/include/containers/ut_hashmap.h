@@ -624,6 +624,8 @@ public:
 	// Move operator.
 	SparseHashMap& operator = (SparseHashMap&& rval) noexcept
 	{
+		Deallocate(allocator, arr, capacity);
+
 		num = rval.num;
 		capacity = rval.capacity;
 		allocator = Move(rval.allocator);

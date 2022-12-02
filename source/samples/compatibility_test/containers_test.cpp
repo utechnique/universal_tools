@@ -858,7 +858,6 @@ ut::String HashMapTest()
 	}
 
 	// check move operator
-	map.Reset();
 	map = ut::Move(map_copy);
 	if (map_copy.Find(source[test_element_id]) || map_copy.Count() != 0)
 	{
