@@ -107,8 +107,8 @@ public:
 		// update the name/id map
 		if (name)
 		{
-			bool insert_name_result = names.Insert(name.Get(), id);
-			UT_ASSERT(insert_name_result);
+			ut::Optional<ut::Pair<const ut::String, Resource::Id>&> insert_name_result = names.Insert(name.Get(), id);
+			UT_ASSERT(!insert_name_result);
 		}
 
 		// create unique resource object with a reference counter
@@ -118,8 +118,8 @@ public:
 		RcRef<ResourceType> ref(static_cast<ResourceType&>(unique_rc.ptr.GetRef()), unique_rc.ref_counter);
 
 		// add to the map
-		bool insert_result = resources.Insert(id, ut::Move(unique_rc));
-		UT_ASSERT(insert_result);
+		ut::Optional<ut::Pair<const Resource::Id, ReferencedResource>&> insert_rc_result = resources.Insert(id, ut::Move(unique_rc));
+		UT_ASSERT(!insert_rc_result);
 		return ref;
 	}
 

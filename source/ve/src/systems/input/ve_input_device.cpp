@@ -101,7 +101,7 @@ ut::Optional<ut::Error> Device::AddSignal(Signal signal, ut::String name)
 		return ut::Error(ut::error::out_of_memory);
 	}
 
-	if (!map.Insert(name, signals.Count() - 1))
+	if (map.Insert(name, signals.Count() - 1))
 	{
 		return ut::Error(ut::error::already_exists);
 	}

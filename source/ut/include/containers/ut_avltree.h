@@ -6,6 +6,7 @@
 #include "common/ut_common.h"
 #include "containers/ut_allocator.h"
 #include "containers/ut_ref.h"
+#include "containers/ut_pair.h"
 #include "error/ut_error.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
@@ -28,8 +29,10 @@ public:
 	// Each node of the tree has a key/value pair,
 	// balance variable ('left side height' minus 'right side height')
 	// and pointers to all adjacent nodes.
-	class Node
+	class Node : public Pair<const Key, Value>
 	{
+		typedef Pair<const Key, Value> Base;
+
 		// ut::meta::Parameter must be a friend so that
 		// ut::AVLTree::Node could be serializable.
 		template <typename> friend class meta::Parameter;
@@ -37,14 +40,11 @@ public:
 		// ut::AVLTree must be a friend in order to be able to operate with nodes.
 		template<typename, typename, template<typename> class> friend class AVLTree;
 	public:
-		// value is the only public member
-		Value value;
 
 		// Constructor, key and value are copied
 		Node(const Key& k,
 		     const Value& v,
-		     Node* p) : key(k)
-		              , value(v)
+		     Node* p) : Base(k, v)
 		              , balance(0)
 		              , parent(p)
 		              , left(nullptr)
@@ -54,8 +54,7 @@ public:
 		// Constructor, key is copied, value is moved
 		Node(const Key& k,
 			 Value&& v,
-			 Node* p) : key(k)
-			          , value(Move(v))
+			 Node* p) : Base(k, Move(v))
 			          , balance(0)
 			          , parent(p)
 			          , left(nullptr)
@@ -65,8 +64,7 @@ public:
 		// Constructor, key is moved, value is copied
 		Node(Key&& k,
 			 const Value& v,
-			 Node* p) : key(Move(k))
-			          , value(Move(v))
+			 Node* p) : Base(Move(k), v)
 			          , balance(0)
 			          , parent(p)
 			          , left(nullptr)
@@ -76,8 +74,7 @@ public:
 		// Constructor, key and value are moved
 		Node(Key&& k,
 			 Value&& v,
-			 Node* p) : key(Move(k))
-			          , value(Move(v))
+			 Node* p) : Base(Move(k), Move(v))
 			          , balance(0)
 			          , parent(p)
 			          , left(nullptr)
@@ -100,12 +97,6 @@ public:
 				right->~Node();
 				allocator.Deallocate(right, 1);
 			}
-		}
-
-		// Returns const reference to the key
-		const Key& GetKey() const
-		{
-			return key;
 		}
 
 		// Returns current balance value
@@ -216,9 +207,6 @@ public:
 
 			return Optional<Node*>();
 		}
-		
-		// key of any type that supports comparison operators
-		Key key;
 
 		// balance of the node
 		int8 balance;
@@ -261,19 +249,6 @@ private:
 		{
 			node = copy.node;
 			return *this;
-		}
-
-		// Returns constant reference of the managed object
-		IteratorNodeType& operator*() const
-		{
-			return (*node);
-		}
-
-		// Inheritance operator, provides access to the owned object.
-		// Return value can't be changed, it must be constant.
-		IteratorNodeType* operator->() const
-		{
-			return node;
 		}
 
 		// Increment operator
@@ -350,6 +325,18 @@ private:
 			return node != right.node;
 		}
 
+		// Returns reference of the managed object
+		Pair<const Key, Value>& operator*()
+		{
+			return (*node);
+		}
+
+		// Inheritance operator, provides access to the owned object.
+		Pair<const Key, Value>* operator->()
+		{
+			return node;
+		}
+
 	protected:
 		// managed object
 		IteratorNodeType* node;
@@ -421,6 +408,18 @@ public:
 		{
 			return Base::node != &(*right.node);
 		}
+
+		// Returns reference of the managed object
+		const Pair<const Key, Value>& operator*() const
+		{
+			return (*Base::node);
+		}
+
+		// Inheritance operator, provides access to the owned object.
+		const Pair<const Key, Value>* operator->() const
+		{
+			return Base::node;
+		}
 	};
 
 	// Constructor
@@ -485,9 +484,8 @@ public:
 	// Inserts new key-value pair to the map
 	//    @param key - constant l-value refenrence to the key
 	//    @param value - constant l-value refenrence to the value
-	//    @return - 'true' if pair was inserted successfully,
-	//              'false' if pair with such key already exists
-	bool Insert(const Key& key, const Value& value)
+	//    @return - optional reference to the existing element with this key.
+	Optional<Pair<const Key, Value>&> Insert(const Key& key, const Value& value)
 	{
 		return EmplacePair(key, value);
 	}
@@ -496,8 +494,8 @@ public:
 	//    @param key - r-value refenrence to the key
 	//    @param value - r-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
-	//              'false' if pair with such key already exists
-	bool Insert(Key&& key, Value&& value)
+	//    @return - optional reference to the existing element with this key.
+	Optional<Pair<const Key, Value>&> Insert(Key&& key, Value&& value)
 	{
 		return EmplacePair(Move(key), Move(value));
 	}
@@ -506,8 +504,8 @@ public:
 	//    @param key - constant l-value refenrence to the key
 	//    @param value - r-value refenrence to the value
 	//    @return - 'true' if pair was inserted successfully,
-	//              'false' if pair with such key already exists
-	bool Insert(const Key& key, Value&& value)
+	//    @return - optional reference to the existing element with this key.
+	Optional<Pair<const Key, Value>&> Insert(const Key& key, Value&& value)
 	{
 		return EmplacePair(key, Move(value));
 	}
@@ -515,9 +513,8 @@ public:
 	// Inserts new key-value pair to the map
 	//    @param key - r-value refenrence to the key
 	//    @param value - constant l-value refenrence to the value
-	//    @return - 'true' if pair was inserted successfully,
-	//              'false' if pair with such key already exists
-	bool Insert(Key&& key, const Value& value)
+	//    @return - optional reference to the existing element with this key.
+	Optional<Pair<const Key, Value>&> Insert(Key&& key, const Value& value)
 	{
 		return EmplacePair(Move(key), value);
 	}
@@ -602,7 +599,7 @@ private:
 
 		// create a copy
 		node = allocator.Allocate(1);
-		new(node) Node(copy->key, copy->value, parent);
+		new(node) Node(copy->GetFirst(), copy->second, parent);
 
 		// set balance - it stays immutable after copying
 		node->balance = copy->balance;
@@ -615,10 +612,9 @@ private:
 	// Inserts new key-value pair to the tree
 	//    @param key - r-value refenrence to the key
 	//    @param value - r-value refenrence to the value
-	//    @return - 'true' if pair was inserted successfully,
-	//              'false' if pair with such key already exists
+	//    @return - optional reference to the existing element with this key.
 	template <typename KeyType, typename ValueType>
-	inline bool EmplacePair(KeyType && key, ValueType && value)
+	inline Optional<Pair<const Key, Value>&> EmplacePair(KeyType&& key, ValueType&& value)
 	{
 		// check if root exists
 		if (root == nullptr)
@@ -637,9 +633,9 @@ private:
 			while (true)
 			{
 				// prevent insertion of the non-unique key
-				if (n->key == key)
+				if (n->GetFirst() == key)
 				{
-					return false;
+					return *n;
 				}
 
 				// set a node from the previous cycle as a parent node
@@ -647,7 +643,7 @@ private:
 
 				// if key is less than node @n then we go the left node,
 				// otherwise - to the right one
-				const bool left_side = n->key > key;
+				const bool left_side = n->GetFirst() > key;
 				n = left_side ? n->left : n->right;
 
 				// if node @n exists - proceed to the next loop iteration untill reaching empty node
@@ -675,7 +671,7 @@ private:
 		}
 
 		// node was successfully inserted
-		return true;
+		return Optional<Pair<const Key, Value>&>();
 	}
 
 	// Searches for a value by key.
@@ -692,14 +688,14 @@ private:
 		}
 
 		// check if root matches the key, otherwise - start to iterate child nodes
-		if (root->key == key)
+		if (root->GetFirst() == key)
 		{
-			return root->value;
+			return root->second;
 		}
 		else
 		{
 			// intermediate variables for the loop
-			Node* n = key > root->key ? root->right : root->left;
+			Node* n = key > root->GetFirst() ? root->right : root->left;
 
 			// iterate nodes
 			while (true)
@@ -711,13 +707,13 @@ private:
 				}
 				else
 				{
-					if (n->key == key)
+					if (n->GetFirst() == key)
 					{
-						return n->value;
+						return n->second;
 					}
 					else
 					{
-						n = key > n->key ? n->right : n->left;
+						n = key > n->GetFirst() ? n->right : n->left;
 					}
 				}
 			}
@@ -767,12 +763,12 @@ private:
 
 		// if the key to be deleted is smaller than the
 		// parent's key, then it lies in left subtree
-		if (key < parent->key)
+		if (key < parent->GetFirst())
 		{
 			parent->left = DeleteNode(parent->left, key);
 		}
-		else if (key > parent->key) // If the key to be deleted is greater than the
-		{                           // parent's key, then it lies in right subtree
+		else if (key > parent->GetFirst()) // If the key to be deleted is greater than the
+		{                                  // parent's key, then it lies in right subtree
 			parent->right = DeleteNode(parent->right, key);
 		}
 		else // if key is same as parent's key, then this is the node to be deleted
@@ -791,8 +787,7 @@ private:
 				else // one child case
 				{
 					// copy the contents of the non-empty child
-					parent->key = temp->key;
-					parent->value = Move(temp->value);
+					parent->Node::Base::operator = (Move(*temp));
 					parent->balance = temp->balance;
 					parent->left = temp->left;
 					parent->right = temp->right;
@@ -808,11 +803,10 @@ private:
 				Node* temp = GetMinValueNode(parent->right);
 
 				// copy the inorder successor's data to this node  
-				parent->key = temp->key;
-				parent->value = Move(temp->value);
+				parent->Node::Base::operator = (Move(*temp));
 
 				// delete the inorder successor  
-				parent->right = DeleteNode(parent->right, parent->key);
+				parent->right = DeleteNode(parent->right, parent->GetFirst());
 			}
 		}
 

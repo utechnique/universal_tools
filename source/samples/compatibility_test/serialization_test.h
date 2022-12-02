@@ -291,11 +291,13 @@ public:
 	ut::Array< ut::Vector<3, ut::byte> > vec_data;
 	ut::Array<ut::byte> binary0;
 	ut::Array< ut::Vector<3, float> > binary1;
-	ut::HashMap<int, ut::String> hashmap;
+	ut::DenseHashMap<int, ut::String> dhashmap;
+	ut::SparseHashMap<int, ut::String> shashmap;
 	ut::Matrix<4, 4> binary_matrix;
 	ut::uint64 uval;
 	bool bool_val;
 	ut::String str;
+	ut::String long_str;
 	ut::Array<ut::String> strarr;
 	ut::UniquePtr<TestBase> dyn_type_ptr;
 	ut::UniquePtr<TestBase> dyn_ptr_c;

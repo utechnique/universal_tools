@@ -220,7 +220,7 @@ void ComponentView::CreateCaption(const Theme& theme,
 	                                     caption->h());
 	caption_box->box(FL_FLAT_BOX);
 	caption_box->color(ConvertToFlColor(cap_color));
-	caption_box->label(cap_text->ToCStr());
+	caption_box->label(cap_text->GetAddress());
 	caption_box->show();
 
 	// finish group
@@ -280,7 +280,7 @@ void ComponentView::OnItemModified(const ut::String& full_name,
 		const char c = full_name[i];
 		if (c == '\\' || c == '/')
 		{
-			parameter_name = full_name.ToCStr() + i + 1;
+			parameter_name = full_name.GetAddress() + i + 1;
 			break;
 		}
 	}
@@ -499,7 +499,7 @@ void EntityView::CreateCaption(const Theme& theme,
 	                                     skCapHeight);
 	caption_box->box(FL_FLAT_BOX);
 	caption_box->color(ConvertToFlColor(GetCaptionColor()));
-	caption_box->label(cap_text->ToCStr());
+	caption_box->label(cap_text->GetAddress());
 	caption_box->show();
 
 	// initialize controls to be able to operate with this entity
@@ -1216,7 +1216,7 @@ bool EntityBrowser::FilterEntity(EntityView::Proxy& entity_proxy)
 
 	// all numbers must match the entity id
 	const ut::String entity_id = ut::Print(entity_proxy.id);
-	if (ut::StrCmp<char>(entity_id.ToCStr(), filter))
+	if (ut::StrCmp<char>(entity_id.GetAddress(), filter))
 	{
 		return true;
 	}

@@ -124,7 +124,7 @@ void ReflectionTextField::Update(ut::meta::Snapshot& snapshot)
 	                         CheckType<ut::String>(type)  ? Print<ut::String>(data)  :
 	                                                        ut::String();
 
-	input->value(value.ToCStr());
+	input->value(value.GetAddress());
 }
 
 // Callback to be called every time the managed value is modified in UI.
@@ -233,7 +233,7 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 	Fl_Font desc_font = 0;
 	fl_font(desc_font, skItemTextSize);
 	int desc_width, desc_height;
-	fl_measure(name->ToCStr(), desc_width, desc_height);
+	fl_measure(name->GetAddress(), desc_width, desc_height);
 
 	// start creating internal widgets of the parent tree
 	tree.begin();
@@ -244,7 +244,7 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 	group->when(FL_WHEN_NOT_CHANGED);
 
 	// description (entity name) widget
-	description = ut::MakeUnique<Fl_Box>(0, 0, desc_width, skItemHeight, name->ToCStr());
+	description = ut::MakeUnique<Fl_Box>(0, 0, desc_width, skItemHeight, name->GetAddress());
 	description->color(FL_WHITE);
 	description->box(FL_NO_BOX);
 	description->align(FL_ALIGN_INSIDE);
@@ -291,7 +291,7 @@ ut::String ReflectionTreeItem::GenerateNodeName(ut::meta::Snapshot& node)
 		const ut::meta::BaseParameter::Traits parameter_traits = parent->data.parameter->GetTraits();
 		if (parameter_traits.container && parameter_traits.container->contains_multiple_elements)
 		{
-			const char* element_name = node_name.ToCStr();
+			const char* element_name = node_name.GetAddress();
 			return element_name + 1;
 		}
 	}
@@ -474,7 +474,7 @@ Reflector::XpmIcon::XpmIcon(const char* const* xpm_template,
 	{
 		xpm_data[i] = xpm_template[i];
 		xpm_data[i].Replace(color_label, color_id);
-		xpm[i] = xpm_data[i].ToCStr();
+		xpm[i] = xpm_data[i].GetAddress();
 	}
 
 	pixmap = ut::MakeUnique<Fl_Pixmap>(xpm.GetAddress());
@@ -558,7 +558,7 @@ void Reflector::UpdateTreeNode(ut::meta::Snapshot& snapshot, const ut::String& r
 		}
 		else
 		{
-			Fl_Tree_Item* tree_item = tree->add(path.ToCStr());
+			Fl_Tree_Item* tree_item = tree->add(path.GetAddress());
 			tree_item->open(); // all items are open by default
 
 			ut::UniquePtr<ReflectionTreeItem> item_widget = ut::MakeUnique<ReflectionTreeItem>(tree.GetRef(),
@@ -615,7 +615,7 @@ void Reflector::RemoveInvalidItems()
 			continue;
 		}
 		
-		Fl_Tree_Item* fl_tree_item = tree->find_item(item.path->ToCStr());
+		Fl_Tree_Item* fl_tree_item = tree->find_item(item.path->GetAddress());
 		if (fl_tree_item)
 		{
 			tree->remove(fl_tree_item);

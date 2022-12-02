@@ -5,7 +5,8 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "containers/ut_array.h"
-#include "containers/ut_avltree.h"
+#include "containers/ut_ref.h"
+#include "containers/ut_hashmap.h"
 #include "containers/ut_pair.h"
 #include "containers/ut_singleton.h"
 #include "pointers/ut_unique_ptr.h"
@@ -374,7 +375,7 @@ private:
 
 	// AVL tree is used as a container for the (type/name) map as it
 	// provides good search performance.
-	typedef AVLTree<String, DynamicTypePtr> Map;
+	typedef HashMap<String, DynamicTypePtr> Map;
 
 	// Adds provided type to the map and asks parents to register this type too.
 	static void Register(const String& name, const DynamicTypePtr& ptr)
@@ -383,7 +384,7 @@ private:
 		if (!result)
 		{
 			// add shared pointer to the own map at first
-			bool result = GetMap().Insert(name, ptr) && GetArray().Add(ptr.GetRef());
+			bool result = !GetMap().Insert(name, ptr) && GetArray().Add(ptr.GetRef());
 			UT_ASSERT(result);
 
 			// then let parent factories register this type too
@@ -404,8 +405,8 @@ private:
 		Map::ConstIterator it;
 		for (it = map.Begin(iterator::first); it != map.End(iterator::last); ++it)
 		{
-			const Map::Node& node = *it;
-			Register(node.GetKey(), node.value);
+			const Pair<const String, DynamicTypePtr>& element = *it;
+			Register(element.GetFirst(), element.second);
 		}
 	}
 

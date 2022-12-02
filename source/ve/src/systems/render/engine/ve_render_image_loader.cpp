@@ -39,7 +39,7 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 
 	// load image
 	int width, height, channels;
-	ut::UniquePtr<stbi_uc, StbiDeleter> pixels(stbi_load(path->ToCStr(),
+	ut::UniquePtr<stbi_uc, StbiDeleter> pixels(stbi_load(path->GetAddress(),
 	                                                     &width,
 	                                                     &height,
 	                                                     &channels,

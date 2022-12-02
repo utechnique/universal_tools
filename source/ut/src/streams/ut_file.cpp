@@ -60,7 +60,7 @@ Optional<Error> RenameFile(const String& old_fn, const String& new_fn)
 #if UT_WINDOWS
 	WString wold = StrConvert<char, wchar, cp_utf8>(old_fn);
 	WString wnew = StrConvert<char, wchar, cp_utf8>(new_fn);
-	int result = _wrename(wold.ToCStr(), wnew.ToCStr());
+	int result = _wrename(wold.GetAddress(), wnew.GetAddress());
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
@@ -85,7 +85,7 @@ Optional<Error> RemoveFile(const String& filename)
 {
 #if UT_WINDOWS
 	WString wfn = StrConvert<char, wchar, cp_utf8>(filename);
-	int result = _wremove(wfn.ToCStr());
+	int result = _wremove(wfn.GetAddress());
 	if (result != 0)
 	{
 		return Error(ConvertErrno(result));
@@ -122,7 +122,7 @@ Optional<Error> RemoveFolder(const String& folder, bool delete_subdirectories)
 	WString wfolder = StrConvert<char, wchar, cp_utf8>(folder);
 	pattern_str = wfolder;
 	pattern_str += L"\\*.*";
-	directory_handle = ::FindFirstFile(pattern_str.ToCStr(), &file_info);
+	directory_handle = ::FindFirstFile(pattern_str.GetAddress(), &file_info);
 	if (directory_handle != INVALID_HANDLE_VALUE)
 	{
 		do

@@ -39,8 +39,8 @@ public:
 	void Import(const Node& copy)
 	{
 		// import members
-		key = copy.GetKey();
-		value = copy.value;
+		key = copy.GetFirst();
+		value = copy.second;
 		balance = copy.GetBalance();
 
 		// get leaves
@@ -226,11 +226,11 @@ public:
 		int previous_key = 0;
 		for (riterator = tree.Begin(ut::iterator::first); riterator != tree.End(ut::iterator::last); ++riterator)
 		{
-			typename TreeType::Node& node = *riterator;
+			Pair<const Key, Value>& node = *riterator;
 			if (reinterpret_cast<ut::uptr>(&node) == reinterpret_cast<ut::uptr>(element_address) ||
-			    reinterpret_cast<ut::uptr>(&node.value) == reinterpret_cast<ut::uptr>(element_address))
+			    reinterpret_cast<ut::uptr>(&node.second) == reinterpret_cast<ut::uptr>(element_address))
 			{
-				tree.Remove(node.key);
+				tree.Remove(node.GetFirst());
 				break;
 			}
 		}

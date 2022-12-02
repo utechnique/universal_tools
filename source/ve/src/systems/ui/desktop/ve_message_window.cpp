@@ -49,7 +49,7 @@ MessageWindow::MessageWindow(int x_position,
 	                                     0,
 	                                     client_area.w(),
 	                                     client_area.h() - skOkButtonHeight,
-	                                     message->ToCStr());
+	                                     message->GetAddress());
 	message_box->box(FL_NO_BOX);
 	message_box->color(ConvertToFlColor(theme.background_color));
 	message_box->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE);

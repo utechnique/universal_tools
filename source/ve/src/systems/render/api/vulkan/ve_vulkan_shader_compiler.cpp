@@ -82,7 +82,7 @@ public:
 
 		// generate and return shaderc_include_result object
 		return new shaderc_include_result { info->full_path.GetAddress(),
-		                                    info->full_path.Count(),
+		                                    info->full_path.Length(),
 		                                    reinterpret_cast<const char*>(info->contents.GetAddress()),
 		                                    info->contents.Count(),
 		                                    info };
@@ -157,18 +157,18 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 	for (size_t i = 0; i < macro_count; i++)
 	{
 		const Shader::MacroDefinition& macro = macros[i];
-		options.AddMacroDefinition(macro.name.ToCStr(),
+		options.AddMacroDefinition(macro.name.GetAddress(),
 		                           macro.name.Length(),
-		                           macro.value.ToCStr(),
+		                           macro.value.GetAddress(),
 		                           macro.value.Length());
 	}
 
 	// compile
-	shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(code.ToCStr(),
+	shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(code.GetAddress(),
 	                                                                 code.Length(),
 	                                                                 ConvertShaderTypeToShaderc(stage),
-	                                                                 shader_name.ToCStr(),
-	                                                                 entry_point.ToCStr(),
+	                                                                 shader_name.GetAddress(),
+	                                                                 entry_point.GetAddress(),
 	                                                                 options);
 	if (result.GetCompilationStatus() != shaderc_compilation_status_success)
 	{

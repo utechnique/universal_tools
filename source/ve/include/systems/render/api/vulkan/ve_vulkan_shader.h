@@ -39,6 +39,10 @@ public:
 
 private:
 	VkPipelineShaderStageCreateInfo stage_info;
+
+	// VkGraphicsPipelineCreateInfo needs a pointer to the null terminated
+	// string that must remain the same.
+	ut::UniquePtr<ut::String> entry_point_ptr;
 };
 
 //----------------------------------------------------------------------------//

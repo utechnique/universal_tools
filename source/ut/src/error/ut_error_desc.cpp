@@ -96,7 +96,7 @@ String GetErrorDesc(error::Code error)
 
 		case error::types_not_match:
 			return desc + "(types don't match):\nSpecified entities have "
-				"different types. Implementation requires both entities to"
+				"different types. Implementation requires both entities to "
 				"have the same type.";
 
 		case error::connection_closed:

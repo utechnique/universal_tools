@@ -76,7 +76,7 @@ Socket::~Socket(void)
 void Socket::SetAddr(const String& ip, int port)
 {
 	bool empty = ip.Length() == 0;
-	const char* ip_cs = ip.ToCStr();
+	const char* ip_cs = ip.GetAddress();
 #if UT_WINDOWS
 	sock_addr_in.sin_family = AF_INET;  // TCP/UDP family
 	sock_addr_in.sin_port = htons(port);

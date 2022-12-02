@@ -2339,7 +2339,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 	shader_stage.flags = 0;
 	shader_stage.stage = PlatformShader::ConvertTypeToVkStage(info.stage);
 	shader_stage.module = shader_module;
-	shader_stage.pName = info.entry_point.ToCStr();
+	shader_stage.pName = info.entry_point.GetAddress();
 
 	// success
 	PlatformShader platform_shader(device.GetVkHandle(), shader_module, shader_stage);

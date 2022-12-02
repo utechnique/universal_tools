@@ -97,7 +97,7 @@ ut::Result<Entity::Id, ut::Error> Environment::AddEntity(Entity entity)
 	pipeline.RegisterEntity(id, entity);
 
 	// add entity to the array
-	if (!entities.Insert(id, ut::Move(entity)))
+	if (entities.Insert(id, ut::Move(entity)))
 	{
 		return ut::MakeError(ut::error::already_exists);
 	}

@@ -14,7 +14,10 @@ PlatformShader::PlatformShader(VkDevice device_handle,
                                const VkPipelineShaderStageCreateInfo& shader_stage_info) : VkRc<vk::shader_module>(shader_module_handle,
                                                                                                                    device_handle)
                                                                                          , stage_info(shader_stage_info)
-{}
+                                                                                         , entry_point_ptr(ut::MakeUnique<ut::String>(shader_stage_info.pName))
+{
+	stage_info.pName = entry_point_ptr->GetAddress();
+}
 
 // Move constructor.
 PlatformShader::PlatformShader(PlatformShader&&) noexcept = default;

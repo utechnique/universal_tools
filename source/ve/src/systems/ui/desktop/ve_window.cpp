@@ -151,10 +151,10 @@ Window::Window(ut::uint32 position_x,
 	}
 
 	// caption title
-	caption_text = ut::MakeUnique<Fl_Box>(0, 0, button_group->x(), caption_height, title_text->ToCStr());
+	caption_text = ut::MakeUnique<Fl_Box>(0, 0, button_group->x(), caption_height, title_text->GetAddress());
 	caption_text->box(FL_NO_BOX);
 	caption_text->color(ConvertToFlColor(theme.window_caption_color));
-	caption_text->label(title_text->ToCStr());
+	caption_text->label(title_text->GetAddress());
 	caption_text->labelsize(caption_height / 3 * 2);
 	caption_text->labelcolor(ConvertToFlColor(theme.caption_text_color));
 	caption_text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);

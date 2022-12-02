@@ -23,7 +23,7 @@ Button::Button(ut::uint32 x,
 	SetState(state_release);
 	if (text->Length() != 0)
 	{
-		label(text->ToCStr());
+		label(text->GetAddress());
 	}
 }
 

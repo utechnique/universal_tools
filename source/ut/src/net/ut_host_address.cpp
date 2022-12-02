@@ -109,7 +109,7 @@ Result<String, Error> GetHostByName(const String& hostname)
 	volatile const SocketSystem& socksys_ref = socket_system;
 
 #if UT_WINDOWS
-	hostent* htn = gethostbyname(hostname.ToCStr());
+	hostent* htn = gethostbyname(hostname.GetAddress());
 	if (htn == nullptr)
 	{
 		return MakeError(error::fail);

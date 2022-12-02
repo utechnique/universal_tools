@@ -168,7 +168,7 @@ Optional<Error> Snapshot::Load(const Tree<text::Node>& text_node)
 Optional<Snapshot&> Snapshot::FindChildByName(const String& node_name)
 {
 	// skip first slash (if present)
-	const char* start = node_name.ToCStr();
+	const char* start = node_name.GetAddress();
 	if (start[0] == '/' || start[0] == '\\')
 	{
 		start++;
@@ -263,7 +263,7 @@ bool Snapshot::ValidateParameterName(const String& name)
 	}
 
 	// first character must not be a number
-	if (ChIsNumber(name.GetFirst()))
+	if (ChIsNumber(name[0]))
 	{
 		return false;
 	}

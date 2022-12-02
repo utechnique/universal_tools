@@ -433,8 +433,12 @@ void SerializationVariantsTask::Execute()
 	for (size_t i = 0; i < info_variants.Count(); i++)
 	{
 		report += ut::String("Variant: \"") + info_variants[i].GetFirst() + "\":" + ut::CRet();
+		ut::time::Counter counter;
+		counter.Start();
 		bool result = TestVariant(info_variants[i].second, info_variants[i].GetFirst());
+		const double time = counter.GetTime();
 		report += result ? "Success" : "Failed";
+		report += ut::String(" (") + ut::Print(time) + "ms)";
 
 		if (i != info_variants.Count() - 1)
 		{
@@ -693,6 +697,7 @@ SerializationTest::SerializationTest(bool in_alternate,
                                                              , bool_val(false)
                                                              , fval(0.0f)
                                                              , str("void")
+                                                             , long_str("0123456789abcdefABCDEFghILMnopqrstAhajgagbksbaguauoq1jiaqgp12110099")
 {
 	// static array
 	for (size_t i = 0; i < 12; i++)
@@ -784,9 +789,12 @@ SerializationTest::SerializationTest(bool in_alternate,
 	}
 
 	// map
-	hashmap.Insert(1, "1");
-	hashmap.Insert(2, "2");
-	hashmap.Insert(3, "3");
+	dhashmap.Insert(1, "1");
+	dhashmap.Insert(2, "2");
+	dhashmap.Insert(3, "3");
+	shashmap.Insert(1, "1");
+	shashmap.Insert(2, "2");
+	shashmap.Insert(3, "3");
 
 	// avl
 	avltree.Insert(66, "__66");
@@ -833,12 +841,14 @@ void SerializationTest::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot << ut::meta::Binary(binary1, sizeof(float));
 	snapshot << ut::meta::Binary(binary_matrix, sizeof(float));
 	snapshot << vec_data;
-	snapshot << hashmap;
+	snapshot << dhashmap;
+	snapshot << shashmap;
 	snapshot << int16_unique;
 	snapshot << int16_unique_void;
 	snapshot << uval;
 	snapshot << bool_val;
 	snapshot << str;
+	snapshot << long_str;
 	snapshot << arr;
 	snapshot << a;
 	snapshot << strarr;
@@ -1136,6 +1146,7 @@ void ChangeSerializedObject(SerializationTest& object)
 	object.bool_val = true;
 	object.fval = 123.321f;
 	object.str = "test_string";
+	object.long_str = "012345A6789abcdefABCDEFghILMnoXpqrstAhajgagbksbaguauoq1BBjiaqgp12110099ZZ";
 
 	object.a.u16val = 234;
 	object.a.str = "sub_class";
@@ -1249,11 +1260,16 @@ void ChangeSerializedObject(SerializationTest& object)
 	                                        12, 13, 14, 15);
 
 	// map
-	object.hashmap.Reset();
-	object.hashmap.Insert(9, "9");
-	object.hashmap.Insert(8, "8");
-	object.hashmap.Insert(7, "7");
-	object.hashmap.Insert(6, "6");
+	object.dhashmap.Reset();
+	object.dhashmap.Insert(9, "9");
+	object.dhashmap.Insert(8, "8");
+	object.dhashmap.Insert(7, "7");
+	object.dhashmap.Insert(6, "6");
+	object.shashmap.Reset();
+	object.shashmap.Insert(9, "9");
+	object.shashmap.Insert(8, "8");
+	object.shashmap.Insert(7, "7");
+	object.shashmap.Insert(6, "6");
 }
 
 // Checks if serialized object was loaded with the correct values,
@@ -1308,6 +1324,7 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	if (object.bool_val != true) return false;
 	if (object.fval > 123.321f + 0.0001f || object.fval < 123.321f - 0.0001f) return false;
 	if (object.str != "test_string") return false;
+	if (object.long_str != "012345A6789abcdefABCDEFghILMnoXpqrstAhajgagbksbaguauoq1BBjiaqgp12110099ZZ") return false;
 
 	if (object.a.u16val != 234) return false;
 	if (object.a.str != "sub_class") return false;
@@ -1586,11 +1603,16 @@ bool CheckSerializedObject(const SerializationTest& object, bool alternate, bool
 	}
 
 	// map
-	if (object.hashmap.Count() != 4) return false;
-	if (!object.hashmap.Find(9) || object.hashmap.Find(9).Get() != "9") return false;
-	if (!object.hashmap.Find(8) || object.hashmap.Find(8).Get() != "8") return false;
-	if (!object.hashmap.Find(7) || object.hashmap.Find(7).Get() != "7") return false;
-	if (!object.hashmap.Find(6) || object.hashmap.Find(6).Get() != "6") return false;
+	if (object.dhashmap.Count() != 4) return false;
+	if (!object.dhashmap.Find(9) || object.dhashmap.Find(9).Get() != "9") return false;
+	if (!object.dhashmap.Find(8) || object.dhashmap.Find(8).Get() != "8") return false;
+	if (!object.dhashmap.Find(7) || object.dhashmap.Find(7).Get() != "7") return false;
+	if (!object.dhashmap.Find(6) || object.dhashmap.Find(6).Get() != "6") return false;
+	if (object.shashmap.Count() != 4) return false;
+	if (!object.shashmap.Find(9) || object.shashmap.Find(9).Get() != "9") return false;
+	if (!object.shashmap.Find(8) || object.shashmap.Find(8).Get() != "8") return false;
+	if (!object.shashmap.Find(7) || object.shashmap.Find(7).Get() != "7") return false;
+	if (!object.shashmap.Find(6) || object.shashmap.Find(6).Get() != "6") return false;
 
 	return true;
 }

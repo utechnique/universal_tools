@@ -248,7 +248,7 @@ void LinuxInputHandler::UpdateKeyboard()
     // recover keyboard device if it was lost
     if(keyboard->file == 0)
     {
-        keyboard->file = open(keyboard->location.ToCStr(), O_RDONLY | O_NONBLOCK);
+        keyboard->file = open(keyboard->location.GetAddress(), O_RDONLY | O_NONBLOCK);
         if (keyboard->file < 0)
         {
             keyboard->file = 0;
@@ -318,7 +318,7 @@ void LinuxInputHandler::UpdateMouse()
     // recover mouse device if it was lost
     if(mouse->file == 0)
     {
-        mouse->file = open(mouse->location.ToCStr(), O_RDONLY | O_NONBLOCK);
+        mouse->file = open(mouse->location.GetAddress(), O_RDONLY | O_NONBLOCK);
         if (mouse->file < 0)
         {
             mouse->file = 0;
@@ -449,7 +449,7 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateKeyboard(const DeviceFileMap& d
     const ut::String phys_path(reinterpret_cast<const char*>(physbits));
     const size_t id_length = phys_path.Length();
 	Device::Id keyboard_id(id_length);
-	ut::memory::Copy(keyboard_id.GetAddress(), phys_path.ToCStr(), id_length);
+	ut::memory::Copy(keyboard_id.GetAddress(), phys_path.GetAddress(), id_length);
 	Device keyboard_device(ut::Move(keyboard_id));
 
 	// create keys
@@ -503,7 +503,7 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateMouse(const DeviceFileMap& devi
     const ut::String phys_path(reinterpret_cast<const char*>(physbits));
     const size_t id_length = phys_path.Length();
 	Device::Id mouse_id(id_length);
-	ut::memory::Copy(mouse_id.GetAddress(), phys_path.ToCStr(), id_length);
+	ut::memory::Copy(mouse_id.GetAddress(), phys_path.GetAddress(), id_length);
 	Device mouse_device(ut::Move(mouse_id));
 
 	// create buttons
@@ -562,7 +562,7 @@ ut::Result<LinuxInputHandler::DeviceFileMap, ut::Error> LinuxInputHandler::GetFi
 
         ut::String file_path(skEventDir);
         file_path += dirp->d_name;
-        int event_file = open(file_path.ToCStr(), O_RDONLY | O_NONBLOCK);
+        int event_file = open(file_path.GetAddress(), O_RDONLY | O_NONBLOCK);
         if (event_file < 0)
         {
             continue;

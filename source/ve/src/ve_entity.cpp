@@ -37,9 +37,9 @@ ut::Optional<ut::Error> Entity::AddComponent(ut::UniquePtr<Component> component,
 	}
 
 	// add to the cache
-	if (!cache.Insert(type_handle, components.GetLast().GetRef()))
+	if (cache.Insert(type_handle, components.GetLast().GetRef()))
 	{
-		return ut::Error(ut::error::out_of_memory);
+		return ut::Error(ut::error::already_exists);
 	}
 
 	// success

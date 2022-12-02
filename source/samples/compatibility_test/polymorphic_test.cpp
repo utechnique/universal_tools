@@ -111,7 +111,7 @@ void PolymorphicFactoryTestTask::Execute()
 	size_t type_count = ut::Factory<PolymorphicTestBase>::CountTypes();
 	if (type_count != 6)
 	{
-		report += "Error! Invalid number of types.";
+		report += ut::String("Error! Invalid number of types(") + ut::Print(type_count) +").";
 		failed_test_counter.Increment();
 		return;
 	}

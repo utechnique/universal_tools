@@ -6,7 +6,6 @@
 #include "common/ut_common.h"
 #include "meta/ut_meta_parameter.h"
 #include "meta/parameters/ut_binary_parameter.h"
-#include "containers/ut_hashmap.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 START_NAMESPACE(meta)

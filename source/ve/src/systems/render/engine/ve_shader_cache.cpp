@@ -150,10 +150,7 @@ ut::Result<Shader::Info, ut::Error> ShaderCache::CompileFromFile(Shader::Stage s
 	cache.Remove(info.name);
 
 	// add to the cache
-	if (!cache.Insert(info.name, info))
-	{
-		return ut::MakeError(ut::error::out_of_memory);
-	}
+	cache.Insert(info.name, info);
 
 	// success
 	return compile_result.Move();
