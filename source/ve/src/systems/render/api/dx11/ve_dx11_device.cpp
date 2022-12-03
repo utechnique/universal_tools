@@ -1022,7 +1022,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		VertexElement& element = info.input_assembly_state.elements[i];
 
 		D3D11_INPUT_ELEMENT_DESC& desc = input_el_desc[i];
-		desc.SemanticName = element.semantic_name;
+		desc.SemanticName = element.semantic_name.GetAddress();
 		desc.SemanticIndex = 0;
 		desc.Format = ConvertPixelFormatToDX11(element.format);
 		desc.InputSlot = 0;
@@ -1037,7 +1037,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		VertexElement& element = info.input_assembly_state.instance_elements[i - vertex_element_count];
 
 		D3D11_INPUT_ELEMENT_DESC& desc = input_el_desc[i];
-		desc.SemanticName = element.semantic_name;
+		desc.SemanticName = element.semantic_name.GetAddress();
 		desc.SemanticIndex = 0;
 		desc.Format = ConvertPixelFormatToDX11(element.format);
 		desc.InputSlot = 1;
