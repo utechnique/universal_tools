@@ -56,7 +56,7 @@ ut::Optional<ut::String> TestSmartPtr()
 	PtrTest test_obj;
 	ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(test_obj, "test_object");
 
-	// simple
+	// smart ptr, simple type
 	ut::Optional<ut::meta::Snapshot&> parameter = snapshot.FindChildByName("simple");
 	if (!parameter)
 	{
@@ -93,12 +93,17 @@ ut::Optional<ut::String> TestSmartPtr()
 		traits.container->callbacks.reset();
 	}
 
+	if (traits.container->callbacks.get_factory.IsValid())
+	{
+		return ut::String("Error! Simple type can not have factory!");
+	}
+
 	if (test_obj.simple.Get() != nullptr)
 	{
 		return ut::String("Error! Failed to reset smart ptr.");
 	}
 
-	// unique ptr, polymorphic
+	// smart ptr, polymorphic
 	parameter = snapshot.FindChildByName("polymorphic");
 	if (!parameter)
 	{
@@ -142,6 +147,17 @@ ut::Optional<ut::String> TestSmartPtr()
 	if (test_obj.simple.Get() != nullptr)
 	{
 		return ut::String("Error! Failed to reset smart ptr.");
+	}
+
+	if (!traits.container->callbacks.get_factory.IsValid())
+	{
+		return ut::String("Error! Polymorphic type has no factory!");
+	}
+
+	const ut::FactoryView& factory = traits.container->callbacks.get_factory();
+	if (factory.CountTypes() != ut::Factory<TestBase>::CountTypes())
+	{
+		return ut::String("Error! Invalid factory!");
 	}
 
 	return ut::Optional<ut::String>();
