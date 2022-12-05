@@ -262,6 +262,7 @@ public:
 		container_traits.contains_multiple_elements = false;
 		container_traits.managed_type_is_polymorphic = IsBaseOf<Polymorphic, T>::value;
 		container_traits.callbacks.create = MemberFunction<ThisParameter, void(ut::Optional<const DynamicType&>)>(this, &ThisParameter::CreateNewObject);
+		container_traits.callbacks.get_factory = GetFactory<T>();
 		container_traits.callbacks.reset = MemberFunction<ThisParameter, void()>(this, &ThisParameter::Reset);
 
 		Traits traits;
@@ -301,6 +302,20 @@ private:
 	inline String GetTypeNameVariant(SFINAE_IS_NOT_POLYMORPHIC) const
 	{
 		return BaseParameter::DeduceTypeName<T>();
+	}
+
+	// Returns GetFactory() of the polymorphic type.
+	template<typename ElementType>
+	Function<const FactoryView&()> GetFactory(SFINAE_IS_POLYMORPHIC) const
+	{
+		return Function<const FactoryView&()>(&GetPolymorphicFactory<T>);
+	}
+
+	// Returns invalid GetFactory() callback.
+	template<typename ElementType>
+	Function<const FactoryView&()> GetFactory(SFINAE_IS_NOT_POLYMORPHIC) const
+	{
+		return Function<const FactoryView&()>();
 	}
 
 	// Creates a new object using default constructor.

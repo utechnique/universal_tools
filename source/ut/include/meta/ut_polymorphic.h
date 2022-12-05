@@ -49,7 +49,7 @@ public:
 	{ }
 
 	// Returns the reference to the corresponding factory view.
-	virtual Optional<const FactoryView&> GetFactory() const = 0;
+	virtual const FactoryView& GetFactory() const = 0;
 
 	// Creates an object of the derived type.
 	virtual Polymorphic* CreateInstance() const = 0;
@@ -119,7 +119,7 @@ public:
 	{ }
 
 	// Returns the reference to the corresponding factory view.
-	Optional<const FactoryView&> GetFactory() const override;
+	const FactoryView& GetFactory() const override;
 
 	// Creates a new object of the managed typed.
 	Polymorphic* CreateInstance() const
@@ -357,7 +357,6 @@ public:
 	// Returns the polymorphic view of this factory.
 	static const View& GetView()
 	{
-		
 		static const View view;
 		return view;
 	}
@@ -434,8 +433,17 @@ private:
 	}
 };
 
+// Returns the reference to the polymorphic factory view associated
+// with the provided template argument type.
+template<typename T>
+inline static const FactoryView& GetPolymorphicFactory()
+{
+	return Factory<T>::GetView();
+}
+
+// Returns the reference to the corresponding factory view.
 template<typename Base>
-Optional<const FactoryView&> PolymorphicType<Base>::GetFactory() const
+const FactoryView& PolymorphicType<Base>::GetFactory() const
 {
 	return Factory<Base>::GetView();
 }
