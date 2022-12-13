@@ -11,6 +11,12 @@ START_NAMESPACE(ui)
 // Height of the caption in pixels.
 const ut::uint32 ChoiceWindow::skCapHeight = 24;
 
+// Default width of the choice window in pixels.
+const ut::uint32 ChoiceWindow::skDefaultWidth = 280;
+
+// Default height of the choice window in pixels.
+const ut::uint32 ChoiceWindow::skDefaultHeight = 480;
+
 //----------------------------------------------------------------------------//
 // Constructor. Creates a set of buttons for each variant.
 //    @param x - horizontal coordinate of the upper left corner of the window.

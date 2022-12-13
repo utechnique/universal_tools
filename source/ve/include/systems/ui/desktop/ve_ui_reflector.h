@@ -29,10 +29,14 @@ public:
 	{
 		typedef void OnModify(const ut::String& name,
 		                      ut::String value);
+		typedef void OnRecreate(const ut::String& name,
+		                        ut::Optional<const ut::DynamicType&> type);
 		typedef void OnAddArrItem(const ut::String& name);
 		typedef void OnRemoveArrItem(const ut::String& name);
 
 		ut::Function<OnModify> on_modify; // the value is changed
+
+		ut::Function<OnRecreate> on_recreate; // resets the value to the default one
 
 		ut::Function<OnAddArrItem> on_add_arr_item; // a new element is supposed
 		                                            // to be added to the array
@@ -51,8 +55,14 @@ public:
 	// Updates a value from the meta snapshot.
 	virtual void Update(ut::meta::Snapshot& snapshot) = 0;
 
+	// Returns the width of this widget in pixels.
+	virtual int GetWidth() { return skWidth; }
+
 	// This class is polymorphic.
 	virtual ~ReflectionValue() = default;
+
+	// Default width of the value widget.
+	static constexpr int skWidth = 100;
 
 protected:
 	const Callbacks& callbacks;
@@ -129,6 +139,9 @@ public:
 	// Updates the managed value from the meta snapshot.
 	void Update(ut::meta::Snapshot& snapshot) override;
 
+	// Returns the width of this widget in pixels.
+	int GetWidth() override;
+
 private:
 	// Callback to be called every time the managed value is modified in UI.
 	void OnModify();
@@ -138,30 +151,41 @@ private:
 };
 
 //----------------------------------------------------------------------------//
-// ve::ui::ReflectionUniquePtr is an UI representation of the ut::UniquePtr.
-class ReflectionUniquePtr : public ReflectionValue
+// Button that recreates the managed object.
+class RecreateElementButton : public Button
 {
 public:
 	// Constructor.
-	//    @param snapshot - reference to the meta snapshot describing the
-	//                      current state of the managed parameter.
-	//    @param cb - reference to the set of value callbacks.
-	//    @param left - x position of the widget in pixels.
-	//    @param height - height of the widget in pixels.
-	ReflectionUniquePtr(ut::meta::Snapshot& snapshot,
-	                    const ReflectionValue::Callbacks& cb,
-	                    const int left,
-	                    const int height);
-
-	// Updates the managed value from the meta snapshot.
-	void Update(ut::meta::Snapshot& snapshot) override;
+	//    @param x - left position of the button.
+	//    @param size - width and height of the button in pixels.
+	//    @param traits - reference to the traits of the managed parameter.
+	//    @param parameter_path - full name of the managed parameter.
+	//    @param callback - Callback that is triggered when a user
+	//                      clicks the button.
+	//    @param color_theme - color theme.
+	RecreateElementButton(int x,
+	                      int size,
+	                      const ut::meta::BaseParameter::Traits& traits,
+	                      ut::String parameter_path,
+	                      ut::Function<ReflectionValue::Callbacks::OnRecreate> callback,
+	                      const Theme& color_theme);
 
 private:
-	// Callback to be called every time the managed value is modified in UI.
-	void OnModify();
+	// Resets the managed object to the default copy.
+	void Recreate();
 
-	// Checkbox widget.
-	ut::UniquePtr<Button> button;
+	// If the managed object has polymorphic type - a reference
+	// to its factory is needed to select the desired type.
+	ut::Optional<const ut::FactoryView&> factory;
+
+	// Full hierarchical name of the managed parameter.
+	ut::String path;
+
+	// Callback that is triggered when the user clicks the button.
+	ut::Function<ReflectionValue::Callbacks::OnRecreate> callback;
+
+	// Color theme of the widget.
+	const Theme& theme;
 };
 
 //----------------------------------------------------------------------------//
@@ -181,11 +205,13 @@ public:
 	//    @param snapshot - meta snapshot containing the current state of the
 	//                      managed parameter.
 	//    @param cb - reference to the set of value callbacks.
+	//    @param theme - color theme.
 	ReflectionTreeItem(Fl_Tree& tree,
 	                   Fl_Tree_Item& tree_item,
 	                   ut::UniquePtr<ut::String> path,
 	                   ut::meta::Snapshot& snapshot,
-	                   const ReflectionValue::Callbacks& cb);
+	                   const ReflectionValue::Callbacks& cb,
+	                   const Theme& theme);
 
 	// Pointer to the parent tree-item object.
 	Fl_Tree_Item& item;
@@ -209,6 +235,10 @@ public:
 	// Indicates if this item is still valid.
 	bool is_valid;
 
+	// Updates this item with the new meta-data.
+	//    @param node - reference to the meta snapshot of the new parameter.
+	void Update(ut::meta::Snapshot& node);
+
 private:
 	// Returns the user-friendly version of the provided node name.
 	static ut::String GenerateNodeName(ut::meta::Snapshot& node);
@@ -231,6 +261,7 @@ private:
 	//    @param width - width of the widget in pixels.
 	//    @param height - height of the widget in pixels.
 	//    @param font_size - font size of the text field widget.
+	//    @param theme - color theme.
 	//    @return - optionally a new widget or nothing if nothing to be
 	//              displayed to user.
 	static ut::Optional< ut::UniquePtr<ReflectionValue> > CreateValueWidget(ut::meta::Snapshot& snapshot,
@@ -239,7 +270,35 @@ private:
 	                                                                        int left,
 	                                                                        int width,
 	                                                                        int height,
-	                                                                        int font_size);
+	                                                                        int font_size,
+	                                                                        const Theme& theme);
+
+	// Creates attribute widgets. These are special widgets (like buttons) to 
+	// add element, remove element, reset, etc.
+	//    @param snapshot - reference to the meta snapshot of the managed
+	//                      parameter.
+	//    @param cb - reference to the set of value callbacks.
+	//    @param name - name of the managed parameter.
+	//    @param left - x position of the widget in pixels.
+	//    @param height - height of the widget in pixels.
+	//    @param font_size - font size of the text field widget.
+	//    @param theme - color theme.
+	//    @return - array of widgets.
+	static ut::Array< ut::UniquePtr<Fl_Widget> > CreateAttribWidgets(ut::meta::Snapshot& snapshot,
+	                                                                 const ReflectionValue::Callbacks& cb,
+	                                                                 const ut::String& name,
+	                                                                 int left,
+	                                                                 int height,
+	                                                                 int font_size,
+	                                                                 const Theme& theme);
+
+	// Container callback widgets (add element, remove element, reset etc.).
+	ut::Array< ut::UniquePtr<Fl_Widget> > attrib_widgets;
+
+	// Widget metrics.
+	static constexpr int skItemTextSize = 12;
+	static constexpr int skItemHeight = 20;
+	static constexpr int skValueMargin = 10;
 };
 
 //----------------------------------------------------------------------------//
@@ -249,7 +308,6 @@ private:
 // call Reflector::Update() periodically to synchronize UI representation with
 // the real entity. Connect signals to be able to modify original entity.
 class Reflector : public Fl_Group
-                , public ut::NonCopyable
 {
 public:
 	// Constructor.
@@ -267,6 +325,12 @@ public:
 	          ut::meta::Snapshot& snapshot,
 	          const Theme& theme = Theme());
 
+	// Copy/Move operations are prohibited.
+	Reflector(const Reflector&) = delete;
+	Reflector(Reflector&&) = delete;
+	Reflector& operator = (const Reflector&) = delete;
+	Reflector& operator = (Reflector&&) = delete;
+
 	// Overriden virtual function of the base class (Fl_Group).
 	void resize(int x, int y, int w, int h) override;
 
@@ -283,6 +347,9 @@ public:
 
 	// Conects a signal that is triggered when an item is modified.
 	void ConnectModifyItemSignal(ut::Function<ReflectionValue::Callbacks::OnModify> slot);
+
+	// Conects a signal that is triggered when an item is recreated.
+	void ConnectRecreateItemSignal(ut::Function<ReflectionValue::Callbacks::OnRecreate> slot);
 
 private:
 	// ReflectionTree is a modified Fl_Tree class capable of recalculating 
@@ -359,9 +426,15 @@ private:
 	// Signal that is triggered when an item is modified.
 	ut::Signal<ReflectionValue::Callbacks::OnModify> item_modified;
 
+	// Signal that is triggered when an item is recreated.
+	ut::Signal<ReflectionValue::Callbacks::OnRecreate> item_recreated;
+
 	// Icons.
 	XpmIcon open_icon;
 	XpmIcon close_icon;
+
+	// Color theme.
+	Theme theme;
 
 	// Open node icon xpm template.
 	static const char* skOpenXpm[];

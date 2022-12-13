@@ -4,7 +4,6 @@
 #include "systems/ui/desktop/ve_entity_browser.h"
 #include "systems/ui/desktop/ve_choice_window.h"
 #include "systems/ui/desktop/ve_message_window.h"
-#include "commands/ve_cmd_update_component.h"
 #include "commands/ve_cmd_delete_entity.h"
 #include "commands/ve_cmd_delete_component.h"
 #include "commands/ve_cmd_add_component.h"
@@ -91,6 +90,10 @@ ComponentView::ComponentView(ComponentView::Proxy& proxy,
 	// connect reflector modify callback
 	auto on_modify = ut::MemberFunction<ComponentView, ReflectionValue::Callbacks::OnModify>(this, &ComponentView::OnItemModified);
 	reflector->ConnectModifyItemSignal(ut::Move(on_modify));
+
+	// connect reflector recreate callback
+	auto on_recreate = ut::MemberFunction<ComponentView, ReflectionValue::Callbacks::OnRecreate>(this, &ComponentView::OnItemRecreated);
+	reflector->ConnectRecreateItemSignal(ut::Move(on_recreate));
 
 	// resize Fl_Group so that it could fit the reflection tree
 	size(w(), CalculateHeight());
@@ -292,10 +295,10 @@ void ComponentView::OnItemModified(const ut::String& full_name,
 	json << snapshot[0];
 
 	// create command
-	ut::UniquePtr<Cmd> cmd = ut::MakeUnique<CmdUpdateComponent>(entity_id,
-	                                                            type,
-	                                                            ut::Move(json),
-	                                                            full_name);
+	ut::UniquePtr<Cmd> cmd = ut::MakeUnique<CmdModifyItem>(entity_id,
+	                                                       type,
+	                                                       ut::Move(json),
+	                                                       ut::Move(full_name));
 
 	// add command
 	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
@@ -307,6 +310,97 @@ void ComponentView::OnItemModified(const ut::String& full_name,
 	{
 		callbacks.on_update();
 	}
+}
+
+// Callback to be called when a tree item is reset to the default value.
+//    @param full_name - name of the parameter.
+//    @param parameter_type - optional dynamic type reference of the
+//                            new object (if parameter is polymorphic).
+void ComponentView::OnItemRecreated(const ut::String& full_name,
+                                    ut::Optional<const ut::DynamicType&> parameter_type)
+{
+	ut::UniquePtr<CmdRecreateItem> cmd = ut::MakeUnique<CmdRecreateItem>(entity_id,
+	                                                                     type,
+	                                                                     ut::Move(parameter_type),
+	                                                                     ut::Move(full_name));
+	cmd->Connect([&](const ut::Optional<ut::Error>&) { callbacks.on_update(); });
+
+	// add command
+	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
+	CmdArray& commands = locked_commands.Get();
+	commands.Add(ut::Move(cmd));
+}
+
+// Constructor. Creates a command containing a callback that changes the
+// desired parameter on execution.
+//    @param id - identifier of the desired entity.
+//    @param type - handle of of the desired component type.
+//    @param json - serialized json data of the new value of the parameter.
+//    @param name - name of the desired parameter.
+ComponentView::CmdModifyItem::CmdModifyItem(Entity::Id id,
+                                            ut::DynamicType::Handle type,
+                                            ut::JsonDoc json,
+                                            ut::String name) noexcept :
+	CmdUpdateComponent(id, type,
+                       ut::MemberFunction<CmdModifyItem, CmdUpdateComponent::Callback>(this, &CmdModifyItem::Modify),
+                       ut::Move(name)), serialized_data(ut::Move(json))
+{}
+
+// Deserializes provided component meta snapshot using preserialized json data.
+//     @param parameter - a reference to the meta snapshot
+//                        of the desired parameter.
+//     @return - optional error if the deserialization process failed.
+ut::Optional<ut::Error> ComponentView::CmdModifyItem::Modify(ut::meta::Snapshot& parameter)
+{
+	try
+	{
+		serialized_data >> parameter;
+	}
+	catch (const ut::Error& error)
+	{
+		return error;
+	}
+
+	return ut::Optional<ut::Error>();
+}
+
+// Constructor. Creates a command containing a callback that changes the
+// desired parameter on execution.
+//    @param id - identifier of the desired entity.
+//    @param type - handle of of the desired component type.
+//    @param json - serialized json data of the new value of the parameter.
+//    @param name - name of the desired parameter.
+ComponentView::CmdRecreateItem::CmdRecreateItem(Entity::Id id,
+                                                ut::DynamicType::Handle component_type,
+                                                ut::Optional<const ut::DynamicType&> parameter_type,
+                                                ut::String name) noexcept :
+	CmdUpdateComponent(id, component_type,
+	                   ut::MemberFunction<CmdRecreateItem, CmdUpdateComponent::Callback>(this, &CmdRecreateItem::Recreate),
+	                   ut::Move(name)), type(ut::Move(parameter_type))
+{}
+
+// Deserializes provided component meta snapshot using preserialized json data.
+//     @param parameter - a reference to the meta snapshot
+//                        of the desired parameter.
+//     @return - optional error if the deserialization process failed.
+ut::Optional<ut::Error> ComponentView::CmdRecreateItem::Recreate(ut::meta::Snapshot& parameter)
+{
+	const ut::meta::BaseParameter::Traits traits = parameter.data.parameter->GetTraits();
+
+	if (!traits.container.HasValue())
+	{
+		return ut::Error(ut::error::not_supported,
+			"Desired parameter is not a container.");
+	}
+
+	if (!traits.container->callbacks.create.IsValid())
+	{
+		return ut::Error(ut::error::not_supported,
+			"Desired parameter does not support create() callback.");
+	}
+
+	traits.container->callbacks.create(type);
+	return ut::Optional<ut::Error>();
 }
 
 //----------------------------------------------------------------------------//
@@ -744,14 +838,14 @@ void EntityView::CreateNewComponentCallback(const ut::Optional<ut::Error>& error
 		return;
 	}
 
-	const ut::uint32 msg_box_width = 280;
+	const ut::uint32 msg_box_width = ChoiceWindow::skDefaultWidth;
 	ut::Vector<2, int> pos = GetFlAbsPosition(caption.Get());
 	pos.X() += caption->w() / 2 - msg_box_width / 2;
 
 	ShowMessageWindow(pos.X(),
 	                  pos.Y(),
 	                  msg_box_width,
-	                  140,
+	                  ChoiceWindow::skDefaultHeight,
 	                  error->GetDesc(),
 	                  "Error!",
 	                  theme);

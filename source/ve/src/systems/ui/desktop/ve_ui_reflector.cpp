@@ -2,6 +2,7 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/ui/desktop/ve_ui_reflector.h"
+#include "systems/ui/desktop/ve_choice_window.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -160,6 +161,12 @@ void ReflectionBool::Update(ut::meta::Snapshot& snapshot)
 	checkbox->value(*data ? 1 : 0);
 }
 
+// Returns the width of this widget in pixels.
+int ReflectionBool::GetWidth()
+{
+	return checkbox->w();
+}
+
 // Callback to be called every time the managed value is modified in UI.
 void ReflectionBool::OnModify()
 {
@@ -174,34 +181,75 @@ void ReflectionBool::OnModify()
 
 //----------------------------------------------------------------------------//
 // Constructor.
-//    @param snapshot - reference to the meta snapshot describing the
-//                      current state of the managed parameter.
-//    @param cb - reference to the set of value callbacks.
-//    @param left - x position of the widget in pixels.
-//    @param height - height of the widget in pixels.
-ReflectionUniquePtr::ReflectionUniquePtr(ut::meta::Snapshot& snapshot,
-                                         const ReflectionValue::Callbacks& cb,
-                                         const int left,
-                                         const int height) : ReflectionValue(cb, name)
+	//    @param x - left position of the button.
+	//    @param size - width and height of the button in pixels.
+	//    @param traits - reference to the traits of the managed parameter.
+	//    @param parameter_path - full name of the managed parameter.
+	//    @param callback - Callback that is triggered when a user
+	//                      clicks the button.
+	//    @param color_theme - color theme.
+RecreateElementButton::RecreateElementButton(int x,
+                                             int size,
+                                             const ut::meta::BaseParameter::Traits& traits,
+                                             ut::String parameter_path,
+                                             ut::Function<ReflectionValue::Callbacks::OnRecreate> cb,
+                                             const Theme& color_theme) : Button(x, 0, size, size)
+                                                                       , path(ut::Move(parameter_path))
+                                                                       , callback(ut::Move(cb))
+                                                                       , theme(color_theme)
 {
-	
-	
-	button = ut::MakeUnique<Button>(left, 0, height, height);
+	const ut::uint32 icon_size = ut::Max<ut::uint32>(size, 4) - 4;
+	SetIcon(ut::MakeShared<Icon>(Icon::CreateChange(icon_size,
+	                                                icon_size,
+	                                                ut::Color<4, ut::byte>(theme.foreground_color.R(),
+	                                                                       theme.foreground_color.G(),
+	                                                                       theme.foreground_color.B(),
+	                                                                       255))));
 
-	const ut::uint32 icon_size = ut::Max<ut::uint32>(button->h(), 4) - 4;
-	const ut::Color<3, ut::byte> icon_color = ConvertFlColor(FL_FOREGROUND_COLOR);
-	button->SetIcon(ut::MakeShared<Icon>(Icon::CreateChange(icon_size,
-	                                                        icon_size,
-	                                                        ut::Color<4, ut::byte>(icon_color.R(),
-	                                                                               icon_color.G(),
-	                                                                               icon_color.B(),
-	                                                                               255))));
+	const bool is_container = static_cast<bool>(traits.container);
+	if (is_container && traits.container->callbacks.get_factory.IsValid())
+	{
+		factory = traits.container->callbacks.get_factory();
+	}
+
+	SetCallback(ut::MemberFunction<RecreateElementButton, void()>(this, &RecreateElementButton::Recreate));
+
 }
 
-// Updates the managed value from the meta snapshot.
-void ReflectionUniquePtr::Update(ut::meta::Snapshot& snapshot)
+// Resets the managed object to the default copy.
+void RecreateElementButton::Recreate()
 {
+	ut::Optional<const ut::DynamicType&> dynamic_type;
+	if (factory)
+	{
+		// form a list of possible type names
+		const size_t type_count = factory->CountTypes();
+		ut::Array<ut::String> type_names(type_count);
+		for (size_t i = 0; i < type_count; i++)
+		{
+			const ut::DynamicType& dyn_type = factory->GetTypeByIndex(i);
+			type_names[i] = dyn_type.GetName();
+		}
 
+		// show a dialog box to choose a desired type
+		ut::Vector<2, int> pos = GetFlAbsPosition(this);
+		const ut::Optional<ut::uint32> type_id = SelectInDialogWindow(pos.X(),
+		                                                              pos.Y(),
+		                                                              ChoiceWindow::skDefaultWidth,
+		                                                              ChoiceWindow::skDefaultHeight,
+		                                                              "Select Type",
+		                                                              type_names,
+		                                                              theme);
+		if (type_id)
+		{
+			dynamic_type = factory->GetTypeByIndex(type_id.Get());
+		}
+	}
+
+	callback(path, ut::Move(dynamic_type));
+
+	// fix hover bug
+	Fl::awake([](void* ptr) { static_cast<Button*>(ptr)->SetState(Button::state_release); }, this);
 }
 
 //----------------------------------------------------------------------------//
@@ -215,20 +263,17 @@ void ReflectionUniquePtr::Update(ut::meta::Snapshot& snapshot)
 //    @param snapshot - meta snapshot containing the current state of the
 //                      managed parameter.
 //    @param cb - reference to the set of value callbacks.
+//    @param theme - color theme.
 ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
                                        Fl_Tree_Item& tree_item,
                                        ut::UniquePtr<ut::String> reflection_tree_path,
                                        ut::meta::Snapshot& snapshot,
-                                       const ReflectionValue::Callbacks& cb) : item(tree_item)
-                                                                             , name(ut::MakeUnique<ut::String>(GenerateNodeName(snapshot)))
-                                                                             , path(ut::Move(reflection_tree_path))
-                                                                             , is_valid(true)
+                                       const ReflectionValue::Callbacks& cb,
+                                       const Theme& theme) : item(tree_item)
+                                                           , name(ut::MakeUnique<ut::String>(GenerateNodeName(snapshot)))
+                                                           , path(ut::Move(reflection_tree_path))
+                                                           , is_valid(true)
 {
-	const int skItemTextSize = 12;
-	const int skValueWidth = 100;
-	const int skItemHeight = 20;
-	const int skValueMargin = 10;
-
 	// measure description text width
 	Fl_Font desc_font = 0;
 	fl_font(desc_font, skItemTextSize);
@@ -239,13 +284,12 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 	tree.begin();
 
 	// tile widget
-	group = ut::MakeUnique<Fl_Group>(0, 0, desc_width + skValueMargin + skValueWidth, skItemHeight);
+	group = ut::MakeUnique<Fl_Group>(0, 0, desc_width + skValueMargin + ReflectionValue::skWidth, skItemHeight);
 	group->callback(ResizeCallback, &tree);
 	group->when(FL_WHEN_NOT_CHANGED);
 
 	// description (entity name) widget
 	description = ut::MakeUnique<Fl_Box>(0, 0, desc_width, skItemHeight, name->GetAddress());
-	description->color(FL_WHITE);
 	description->box(FL_NO_BOX);
 	description->align(FL_ALIGN_INSIDE);
 	description->labelfont(desc_font);
@@ -260,13 +304,24 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 	                                                                                cb,
 	                                                                                path.GetRef(),
 	                                                                                input_x,
-	                                                                                skValueWidth,
+	                                                                                ReflectionValue::skWidth,
 	                                                                                skItemHeight,
-	                                                                                skItemTextSize);
+	                                                                                skItemTextSize,
+	                                                                                theme);
 	if (input_widget)
 	{
 		value = input_widget.Move();
 	}
+
+	// create attribute widgets (add element, remove element, reset, etc.)
+	attrib_widgets = CreateAttribWidgets(snapshot,
+	                                     cb,
+	                                     path.GetRef(),
+	                                     value.Get() == nullptr ? input_x :
+	                                     (input_x + value->GetWidth()),
+	                                     skItemHeight,
+	                                     skItemTextSize,
+	                                     theme);
 
 	// finish creating tile child widgets
 	group->end();
@@ -276,6 +331,42 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 
 	// finish creating internal widgets of the parent tree
 	tree.end();
+}
+
+// Updates this item with the new meta-data.
+	//    @param node - reference to the meta snapshot of the new parameter.
+void ReflectionTreeItem::Update(ut::meta::Snapshot& node)
+{
+	// update node name
+	ut::String new_name = GenerateNodeName(node);
+	if (new_name != name.GetRef())
+	{
+		name = ut::MakeUnique<ut::String>(GenerateNodeName(node));
+
+		int desc_width, desc_height;
+		Fl_Font desc_font = 0;
+		fl_font(desc_font, skItemTextSize);
+		fl_measure(name->GetAddress(), desc_width, desc_height);
+
+		group->resize(0, 0, desc_width + skValueMargin + ReflectionValue::skWidth, skItemHeight);
+
+		group->remove(description.Get());
+		description = ut::MakeUnique<Fl_Box>(0, 0, desc_width, skItemHeight, name->GetAddress());
+		description->box(FL_NO_BOX);
+		description->align(FL_ALIGN_INSIDE);
+		description->labelfont(desc_font);
+		description->labelsize(skItemTextSize);
+		description->show();
+		group->add(description.Get());
+	}
+
+	// update value
+	if (value)
+	{
+		value->Update(node);
+	}
+
+	is_valid = true;
 }
 
 // Returns the user-friendly version of the provided node name.
@@ -337,6 +428,7 @@ void ReflectionTreeItem::ResizeCallback(Fl_Widget *w, void *data)
 //    @param width - width of the widget in pixels.
 //    @param height - height of the widget in pixels.
 //    @param font_size - font size of the text field widget.
+//    @param theme - color theme.
 //    @return - optionally a new widget or nothing if nothing to be
 //              displayed to user.
 ut::Optional< ut::UniquePtr<ReflectionValue> > ReflectionTreeItem::CreateValueWidget(ut::meta::Snapshot& snapshot,
@@ -345,7 +437,8 @@ ut::Optional< ut::UniquePtr<ReflectionValue> > ReflectionTreeItem::CreateValueWi
                                                                                      int left,
                                                                                      int width,
                                                                                      int height,
-                                                                                     int font_size)
+                                                                                     int font_size,
+                                                                                     const Theme& theme)
 {
 	const ut::String type_name = snapshot.data.parameter->GetTypeName();
 	if (type_name == ut::Type<ut::int8>::Name() ||
@@ -381,21 +474,52 @@ ut::Optional< ut::UniquePtr<ReflectionValue> > ReflectionTreeItem::CreateValueWi
 		                                       height);
 		return value;
 	}
-	else if (type_name == ut::Type< ut::UniquePtr<void> >::Name())
-	{
-		ut::UniquePtr<ReflectionValue> value;
-		value = ut::MakeUnique<ReflectionUniquePtr>(snapshot,
-		                                            cb,
-		                                            left,
-		                                            height);
-		return value;
-	}
 
 	return ut::Optional< ut::UniquePtr<ReflectionValue> >();
 }
 
+// Creates attribute widgets. These are special widgets (like buttons) to 
+// add element, remove element, reset, etc.
+//    @param snapshot - reference to the meta snapshot of the managed
+//                      parameter.
+//    @param cb - reference to the set of value callbacks.
+//    @param name - name of the managed parameter.
+//    @param left - x position of the widget in pixels.
+//    @param height - height of the widget in pixels.
+//    @param font_size - font size of the text field widget.
+//    @param theme - color theme.
+//    @return - array of widgets.
+ut::Array< ut::UniquePtr<Fl_Widget> > ReflectionTreeItem::CreateAttribWidgets(ut::meta::Snapshot& snapshot,
+                                                                              const ReflectionValue::Callbacks& cb,
+                                                                              const ut::String& name,
+                                                                              int left,
+                                                                              int height,
+                                                                              int font_size,
+                                                                              const Theme& theme)
+{
+	ut::Array< ut::UniquePtr<Fl_Widget> > widgets;
 
+	const ut::meta::BaseParameter::Traits traits = snapshot.data.parameter->GetTraits();
 
+	const bool is_container = static_cast<bool>(traits.container);
+	if (!is_container)
+	{
+		return widgets;
+	}
+
+	const bool can_be_changed = traits.container->callbacks.create.IsValid();
+	if (can_be_changed)
+	{
+		widgets.Add(ut::MakeUnique<RecreateElementButton>(left,
+		                                                  height,
+		                                                  traits,
+		                                                  name,
+		                                                  cb.on_recreate,
+		                                                  theme));
+	}
+
+	return widgets;
+}
 
 //----------------------------------------------------------------------------->
 // Constructor.
@@ -411,9 +535,10 @@ Reflector::Reflector(ut::uint32 x,
                      ut::uint32 y,
                      ut::uint32 width,
                      ut::meta::Snapshot& snapshot,
-                     const Theme& theme) : Fl_Group(x, y, width, 0)
-                                         , open_icon(skOpenXpm, ut::Count(skOpenXpm), theme.foreground_color)
-                                         , close_icon(skCloseXpm, ut::Count(skCloseXpm), theme.foreground_color)
+                     const Theme& color_theme) : Fl_Group(x, y, width, 0)
+                                               , open_icon(skOpenXpm, ut::Count(skOpenXpm), color_theme.foreground_color)
+                                               , close_icon(skCloseXpm, ut::Count(skCloseXpm), color_theme.foreground_color)
+                                               , theme(color_theme)
 {
 	// stop initializing Fl_Group elements
 	end();
@@ -421,17 +546,18 @@ Reflector::Reflector(ut::uint32 x,
 	// create tree widgets
 	tree = ut::MakeUnique<ReflectionTree>(x, y, width, 0); // height is undefined yet
 	tree->box(FL_FLAT_BOX);
-	tree->color(FL_BACKGROUND_COLOR);
-	tree->selection_color(FL_SELECTION_COLOR);
+	tree->color(ConvertToFlColor(theme.background_color));
+	tree->item_labelfgcolor(ConvertToFlColor(theme.foreground_color));
+	tree->selection_color(ConvertToFlColor(theme.foreground_color));
 	tree->selectmode(FL_TREE_SELECT_NONE);
 	tree->labeltype(FL_NORMAL_LABEL);
 	tree->labelfont(0);
 	tree->labelsize(14);
-	tree->labelcolor(FL_FOREGROUND_COLOR);
+	tree->labelcolor(ConvertToFlColor(theme.foreground_color));
 	tree->align(Fl_Align(FL_ALIGN_TOP));
 	tree->showroot(0);
 	tree->connectorwidth(15);
-	tree->connectorcolor(FL_FOREGROUND_COLOR);
+	tree->connectorcolor(ConvertToFlColor(theme.foreground_color));
 	tree->connectorstyle(FL_TREE_CONNECTOR_NONE);
 	tree->scrollbar_size(0);
 	tree->resizable(nullptr);
@@ -439,11 +565,13 @@ Reflector::Reflector(ut::uint32 x,
 	tree->openicon(open_icon.pixmap.Get());
 	tree->closeicon(close_icon.pixmap.Get());
 	tree->callback(CollapseCallback, &resize_callback);
-	tree->end();	
+	tree->end();
 	
 	// initialize callbacks
 	item_callbacks.on_modify = [&] (const ut::String& name,
 	                                const ut::String& value) { item_modified(name, value); };
+	item_callbacks.on_recreate = [&] (const ut::String& name,
+	                                  ut::Optional<const ut::DynamicType&> type) { item_recreated(name, ut::Move(type)); };
 
 	// initialize tree
 	Update(snapshot);
@@ -532,6 +660,12 @@ void Reflector::ConnectModifyItemSignal(ut::Function<ReflectionValue::Callbacks:
 	item_modified.Connect(ut::Move(slot));
 }
 
+// Conects a signal that is triggered when an item is recreated.
+void Reflector::ConnectRecreateItemSignal(ut::Function<ReflectionValue::Callbacks::OnRecreate> slot)
+{
+	item_recreated.Connect(ut::Move(slot));
+}
+
 // Recursively updates the provided tree node.
 //    @param snapshot - reference to the meta snapshot of the
 //                      corresponding parameter.
@@ -550,11 +684,7 @@ void Reflector::UpdateTreeNode(ut::meta::Snapshot& snapshot, const ut::String& r
 		if (item_widget_id)
 		{
 			ReflectionTreeItem& item = items[item_widget_id.Get()].GetRef();
-			if (item.value)
-			{
-				item.value->Update(node);
-			}
-			item.is_valid = true;
+			item.Update(node);
 		}
 		else
 		{
@@ -565,7 +695,8 @@ void Reflector::UpdateTreeNode(ut::meta::Snapshot& snapshot, const ut::String& r
 			                                                                                   *tree_item,
 			                                                                                   ut::Move(path_ptr),
 			                                                                                   node,
-			                                                                                   item_callbacks);
+			                                                                                   item_callbacks,
+			                                                                                   theme);
 			items.Add(ut::Move(item_widget));
 		}		
 

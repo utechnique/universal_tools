@@ -39,6 +39,12 @@ public:
 	// Height of the window caption in pixels.
 	static const ut::uint32 skCapHeight;
 
+	// Default width of the choice window in pixels.
+	static const ut::uint32 skDefaultWidth;
+
+	// Default height of the choice window in pixels.
+	static const ut::uint32 skDefaultHeight;
+
 private:
 	struct VariantId
 	{

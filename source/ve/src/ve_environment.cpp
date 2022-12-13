@@ -67,8 +67,7 @@ ut::Optional<ut::Error> Environment::Run()
 }
 
 //----------------------------------------------------------------------------->
-// Enqueues a command, it will be executed at
-// the beginning of the next tick.
+// Enqueues a command, it will be executed at the beginning of the next tick.
 //    @param command - unique pointer to the command to be executed.
 //    @return - optional ut::Error if failed to add provided command.
 ut::Optional<ut::Error> Environment::EnqueueCommand(ut::UniquePtr<Cmd> command)
@@ -82,9 +81,7 @@ ut::Optional<ut::Error> Environment::EnqueueCommand(ut::UniquePtr<Cmd> command)
 }
 
 //----------------------------------------------------------------------------->
-// Adds a new entity to the environment. This function is unsafe if
-// this environment is already running, enqueue ve::CmdAddEntity command
-// instead.
+// Adds a new entity to the environment.
 //    @param entity - new entity object.
 //    @return - id of the entity or ut::Error if failed to
 //              add @entity to the environment.
@@ -106,9 +103,7 @@ ut::Result<Entity::Id, ut::Error> Environment::AddEntity(Entity entity)
 	return id;
 }
 
-// Deletes the entity from the environment. This function is unsafe if
-// this environment is already running, enqueue ve::CmdDeleteEntity command
-// instead.
+// Deletes the entity from the environment.
 //    @param entity_id - identifier of the desired entity.
 //    @return - optional ut::Error if failed.
 ut::Optional<ut::Error> Environment::DeleteEntity(Entity::Id entity_id)
@@ -125,9 +120,7 @@ ut::Optional<ut::Error> Environment::DeleteEntity(Entity::Id entity_id)
 	return ut::Optional<ut::Error>();
 }
 
-// Deletes a component from the desired entity. This function is unsafe if
-// this environment is already running, enqueue ve::CmdDeleteComponent command
-// instead.
+// Deletes a component from the desired entity.
 //    @param entity_id - identifier of the desired entity.
 //    @param component_type - handle of the component type.
 //    @return - optional ut::Error if failed.
@@ -147,9 +140,7 @@ ut::Optional<ut::Error> Environment::DeleteComponent(Entity::Id entity_id,
 	return ut::Optional<ut::Error>();
 }
 
-// Adds a new component to the desired entity. This function is unsafe if
-// this environment is already running, enqueue ve::CmdAddComponent command
-// instead.
+// Adds a new component to the desired entity.
 //    @param entity_id - identifier of the entity to add the component.
 //    @param component - the unique pointer to the component to be added.
 //    @return - optional ut::Error if failed.
@@ -181,58 +172,41 @@ ut::Optional<ut::Error> Environment::AddComponent(Entity::Id entity_id,
 	return ut::Optional<ut::Error>();
 }
 
-// Updates desired component. This function is unsafe if
-// this environment is already running, enqueue ve::CmdUpdateComponent
-// command instead.
+// Updates the desired component.
 //    @param entity_id - id of the entity owning the desired component.
 //    @param component_type - type of the component.
-//    @param serialized_data - reference to the json document representing
-//                             the serialized data.
-//    @param parameter_name - name of the parameter to be updated. Whole
-//                            component will be updated if this parameter
-//                            is empty.
+//    @param callback - reference to the callback that accepts a reference
+//                      to the meta-snapshot of the desired parameter.
+//    @param parameter_name - name of the parameter to be updated.
 //    @return - optional ut::Error if failed to update the component.
 ut::Optional<ut::Error> Environment::UpdateComponent(Entity::Id entity_id,
                                                      ut::DynamicType::Handle component_type,
-                                                     ut::JsonDoc& serialized_data,
-                                                     const ut::Optional<ut::String>& parameter_name)
+                                                     const ut::Function<ut::Optional<ut::Error>(ut::meta::Snapshot&)>& callback,
+                                                     const ut::String& parameter_name)
 {
+	UT_ASSERT(callback.IsValid());
+
 	ut::Optional<Entity&> entity = entities.Find(entity_id);
 	if (!entity)
 	{
-		return ut::Error(ut::error::not_found);
+		return ut::Error(ut::error::not_found, "Desired entity was not found.");
 	}
 
 	ut::Optional<Component&> component = entity->GetComponentByType(component_type);
 	if (!component)
 	{
-		return ut::Error(ut::error::not_found);
+		return ut::Error(ut::error::not_found, "Desired component type was not found.");
 	}
 
 	ut::meta::Snapshot component_snapshot = ut::meta::Snapshot::Capture(component.Get());
-
-	try
+	ut::Optional<ut::meta::Snapshot&> parameter_snapshot = component_snapshot.FindChildByName(parameter_name);
+	if (!parameter_snapshot)
 	{
-		if (parameter_name)
-		{
-			ut::Optional<ut::meta::Snapshot&> parameter_snapshot = component_snapshot.FindChildByName(parameter_name.Get());
-			if (parameter_snapshot)
-			{			
-				serialized_data >> parameter_snapshot.Get();
-			}
-		}
-		else
-		{
-			serialized_data >> component_snapshot;
-		}
-	}
-	catch (const ut::Error& error)
-	{
-		return error;
+		return ut::Error(ut::error::not_found, "Desired parameter was not found.");
 	}
 
 	// success
-	return ut::Optional<ut::Error>();
+	return callback(parameter_snapshot.Get());
 }
 
 //----------------------------------------------------------------------------->

@@ -57,7 +57,7 @@ public:
 
 	// The resource name of the mesh asset. It is needed for the render engine
 	// to be able to initialize @mesh reference.
-	ut::String name;
+	ut::String name = ut::String(engine_rc::skDir) + engine_rc::skBox;
 
 	// Color that is added to the diffuse component of all mesh materials.
 	ut::Color<3> diffuse_add = ut::Color<3>(0);

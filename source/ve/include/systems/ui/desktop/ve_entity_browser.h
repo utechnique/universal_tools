@@ -7,6 +7,7 @@
 #include "systems/ui/desktop/ve_scroll.h"
 #include "systems/ui/desktop/ve_ui_reflector.h"
 #include "commands/ve_cmd_add_entity.h"
+#include "commands/ve_cmd_update_component.h"
 #include "ve_entity_system.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
@@ -85,6 +86,32 @@ private:
 		ut::String value;
 	};
 
+	// Helper class to update the value of the desired parameters.
+	class CmdModifyItem : public CmdUpdateComponent
+	{
+	public:
+		CmdModifyItem(Entity::Id id,
+		              ut::DynamicType::Handle type,
+		              ut::JsonDoc json,
+		              ut::String name) noexcept;
+	private:
+		ut::Optional<ut::Error> Modify(ut::meta::Snapshot& parameter);
+		ut::JsonDoc serialized_data;
+	};
+
+	// Helper class to recreate the value of the desired parameters.
+	class CmdRecreateItem : public CmdUpdateComponent
+	{
+	public:
+		CmdRecreateItem(Entity::Id id,
+		                ut::DynamicType::Handle component_type,
+		                ut::Optional<const ut::DynamicType&> parameter_type,
+		                ut::String name) noexcept;
+	private:
+		ut::Optional<ut::Error> Recreate(ut::meta::Snapshot& parameter);
+		ut::Optional<const ut::DynamicType&> type;
+	};
+
 	// Creates internal child fltk widget for the caption.
 	void CreateCaption(const Theme& theme,
 	                   const ut::String& name,
@@ -108,6 +135,12 @@ private:
 	//    @param parameter_name - name of the modified parameter.
 	//    @param data - string representing a modified value.
 	ReflectionValue::Callbacks::OnModify OnItemModified;
+
+	// Callback to be called when a tree item is reset to the default value.
+//    @param parameter_name - name of the parameter.
+//    @param dynamic_type - optional dynamic type reference of the
+//                          new object (if parameter is polymorphic).
+	ReflectionValue::Callbacks::OnRecreate OnItemRecreated;
 
 	// Identifier of the entity holding the ownership of this component.
 	Entity::Id entity_id;
