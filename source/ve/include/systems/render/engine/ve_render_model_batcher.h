@@ -29,9 +29,6 @@ public:
 	// Unregisters all units with the provided entity identifier..
 	void Unregister(Entity::Id entity_id);
 
-	// Initializes a provided model unit.
-	void Initialize(Model& mesh);
-
 	// Updates a batch (material and transform buffer) with specified units.
 	void UpdateBatch(Context& context,
 	                 Model::Batch& batch,

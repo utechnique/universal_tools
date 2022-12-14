@@ -8,7 +8,9 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Register members here
 void Unit::Reflect(ut::meta::Snapshot& snapshot)
-{}
+{
+	snapshot.Add(initialized, "initialized");
+}
 
 // Makes this unit invalid, it will be recreated by associated policy on the
 // next frame.

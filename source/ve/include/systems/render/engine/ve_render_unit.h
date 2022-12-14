@@ -29,7 +29,7 @@ public:
 	// Identify() method must be implemented for the polymorphic types.
 	virtual const ut::DynamicType& Identify() const = 0;
 
-	// Register members here
+	// Registers @initialized member.
 	virtual void Reflect(ut::meta::Snapshot& snapshot);
 
 	// Abstract classes must have virtual destructor.

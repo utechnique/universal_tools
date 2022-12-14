@@ -53,18 +53,6 @@ void ModelBatcher::Unregister(Entity::Id entity_id)
 	}
 }
 
-// Initializes a provided model unit.
-void ModelBatcher::Initialize(Model& model)
-{
-	// load mesh
-	ut::Result<RcRef<Mesh>, ut::Error> mesh = tools.rc_mgr.Find<Mesh>(model.name);
-	if (!mesh)
-	{
-		throw ut::Error(ut::error::not_found);
-	}
-	model.mesh = mesh.Move();
-}
-
 // Updates a batch (material and transform buffer) with specified units.
 void ModelBatcher::UpdateBatch(Context& context,
                                Model::Batch& batch,

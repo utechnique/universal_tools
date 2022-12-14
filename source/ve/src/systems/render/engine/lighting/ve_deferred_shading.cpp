@@ -511,6 +511,10 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
 		// skip transparent materials
 		if (is_transparent)
 		{
+			PerformModelDrawCall(context, prev_index_buffer,
+			                     prev_index_offset, prev_index_count,
+			                     instance_count, i - 1, batch_size);
+			instance_count = 0;
 			continue;
 		}
 
@@ -558,23 +562,21 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
 		                             prev_index_count != index_count;
 
 		// check if at least one factor has changed since the previous iteration
-		const bool state_changed = shader_rc_changed ||
+		const bool state_changed = pipeline_changed ||
+		                           shader_rc_changed ||
 		                           vertex_buffer_changed ||
 		                           index_buffer_changed ||
 		                           indices_changed;
 
 		// draw previous instance group
-		if ((state_changed && i != offset) || is_transparent)
+		if (state_changed && (i != offset))
 		{
 			PerformModelDrawCall(context, prev_index_buffer,
 			                     prev_index_offset, prev_index_count,
-			                     instance_count, i, batch_size);
+			                     instance_count, i - 1, batch_size);
 			instance_count = 0;
 		}
-		else
-		{
-			instance_count++;
-		}
+		instance_count++;
 
 		// set pipeline state
 		if (pipeline_changed)

@@ -61,8 +61,8 @@ ve::Entity CreateRandomBox(const ut::Vector<3>& position)
 	box_model.local_trasform.translation.X() = (rand() % 200) / 40.0f;
 	box_model.local_trasform.translation.Y() = (rand() % 200) / 40.0f;
 	box_model.local_trasform.translation.Z() = (rand() % 200) / 40.0f;
-	box_model.name = ut::String(ve::render::engine_rc::skDir) +
-	                 (rand() % 3 == 0 ? ve::render::engine_rc::skSphere : ve::render::engine_rc::skBox);
+	box_model.mesh_path = ut::String(ve::render::engine_rc::skDir) +
+	                      (rand() % 3 == 0 ? ve::render::engine_rc::skSphere : ve::render::engine_rc::skBox);
 	box_model.diffuse_mul.R() = r1 / 1000.0f;
 	box_model.diffuse_mul.G() = r2 / 1000.0f;
 	box_model.diffuse_mul.B() = r3 / 1000.0f;

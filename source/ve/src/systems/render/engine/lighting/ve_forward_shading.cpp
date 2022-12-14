@@ -326,7 +326,8 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 	{
 		// figure out source type
 		const Light::SourceType light_type = light_id < directional_count ? Light::source_directional :
-		                                     light_id < point_count ? Light::source_point : Light::source_spot;
+		                                     light_id < (directional_count + point_count) ?
+		                                     Light::source_point : Light::source_spot;
 
 		// extract light data
 		ut::Optional<Buffer&> light_ub;
@@ -350,7 +351,7 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 		}
 		else
 		{
-			continue;
+			UT_ASSERT(false);
 		}
 
 		// calculate batch id
