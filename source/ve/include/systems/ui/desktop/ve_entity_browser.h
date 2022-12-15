@@ -137,10 +137,24 @@ private:
 	ReflectionValue::Callbacks::OnModify OnItemModified;
 
 	// Callback to be called when a tree item is reset to the default value.
-//    @param parameter_name - name of the parameter.
-//    @param dynamic_type - optional dynamic type reference of the
-//                          new object (if parameter is polymorphic).
+	//    @param parameter_name - name of the parameter.
+	//    @param dynamic_type - optional dynamic type reference of the
+	//                          new object (if parameter is polymorphic).
 	ReflectionValue::Callbacks::OnRecreate OnItemRecreated;
+
+	// Callback to be called when a new item is added.
+	//    @param parameter_name - name of the array parameter.
+	ReflectionValue::Callbacks::OnAddArrItem OnItemAdded;
+
+	// Callback to be called when an item is removed.
+	//    @param parameter_name - name of the parameter to be removed.
+	ReflectionValue::Callbacks::OnRemoveArrItem OnItemRemoved;
+
+	// Callback creating a new element in the desired array parameter.
+	static ut::Optional<ut::Error> AddNewArrayItemCallback(ut::meta::Snapshot& parameter);
+
+	// Callback removing an element from the desired array parameter.
+	static ut::Optional<ut::Error> RemoveArrayItemCallback(ut::meta::Snapshot& parameter);
 
 	// Identifier of the entity holding the ownership of this component.
 	Entity::Id entity_id;

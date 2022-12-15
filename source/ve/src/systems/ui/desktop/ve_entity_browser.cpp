@@ -95,6 +95,14 @@ ComponentView::ComponentView(ComponentView::Proxy& proxy,
 	auto on_recreate = ut::MemberFunction<ComponentView, ReflectionValue::Callbacks::OnRecreate>(this, &ComponentView::OnItemRecreated);
 	reflector->ConnectRecreateItemSignal(ut::Move(on_recreate));
 
+	// connect reflector add item callback
+	auto on_add = ut::MemberFunction<ComponentView, ReflectionValue::Callbacks::OnAddArrItem>(this, &ComponentView::OnItemAdded);
+	reflector->ConnectAddItemSignal(ut::Move(on_add));
+
+	// connect reflector add item callback
+	auto on_remove = ut::MemberFunction<ComponentView, ReflectionValue::Callbacks::OnRemoveArrItem>(this, &ComponentView::OnItemRemoved);
+	reflector->ConnectRemoveItemSignal(ut::Move(on_remove));
+
 	// resize Fl_Group so that it could fit the reflection tree
 	size(w(), CalculateHeight());
 
@@ -329,6 +337,99 @@ void ComponentView::OnItemRecreated(const ut::String& full_name,
 	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
 	CmdArray& commands = locked_commands.Get();
 	commands.Add(ut::Move(cmd));
+}
+
+// Callback to be called when a new item is added.
+//    @param full_name - name of the array parameter.
+void ComponentView::OnItemAdded(const ut::String& full_name)
+{
+	ut::UniquePtr<CmdUpdateComponent> cmd = ut::MakeUnique<CmdUpdateComponent>(entity_id,
+	                                                                           type,
+	                                                                           AddNewArrayItemCallback,
+	                                                                           ut::Move(full_name));
+	cmd->Connect([&](const ut::Optional<ut::Error>&) { callbacks.on_update(); });
+
+	// add command
+	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
+	CmdArray& commands = locked_commands.Get();
+	commands.Add(ut::Move(cmd));
+
+	// inform an owner that the component must be updated
+	if (callbacks.on_update.IsValid())
+	{
+		callbacks.on_update();
+	}
+}
+
+// Callback to be called when an item is removed.
+//    @param full_name - name of the parameter to be removed.
+void ComponentView::OnItemRemoved(const ut::String& full_name)
+{
+	ut::UniquePtr<CmdUpdateComponent> cmd = ut::MakeUnique<CmdUpdateComponent>(entity_id,
+	                                                                           type,
+	                                                                           RemoveArrayItemCallback,
+	                                                                           ut::Move(full_name));
+	cmd->Connect([&](const ut::Optional<ut::Error>&) { callbacks.on_update(); });
+
+	// add command
+	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
+	CmdArray& commands = locked_commands.Get();
+	commands.Add(ut::Move(cmd));
+
+	// inform an owner that the component must be updated
+	if (callbacks.on_update.IsValid())
+	{
+		callbacks.on_update();
+	}
+}
+
+// Callback creating a new element in the desired array parameter.
+ut::Optional<ut::Error> ComponentView::AddNewArrayItemCallback(ut::meta::Snapshot& parameter)
+{
+	const ut::meta::BaseParameter::Traits traits = parameter.data.parameter->GetTraits();
+
+	if (!traits.container.HasValue())
+	{
+		return ut::Error(ut::error::not_supported,
+			"Desired parameter is not a container.");
+	}
+
+	if (!traits.container->callbacks.push_back.IsValid())
+	{
+		return ut::Error(ut::error::not_supported,
+			"Desired parameter does not support push_back() callback.");
+	}
+
+	traits.container->callbacks.push_back();
+	return ut::Optional<ut::Error>();
+}
+
+// Callback removing an element from the desired array parameter.
+ut::Optional<ut::Error> ComponentView::RemoveArrayItemCallback(ut::meta::Snapshot& parameter)
+{
+	ut::Optional<ut::meta::Snapshot&> parent = parameter.GetParent();
+	if (!parent)
+	{
+		return ut::Error(ut::error::fail,
+			"Desired parameter cannot be removed, it has no parents.");
+	}
+
+	const ut::meta::BaseParameter::Traits traits = parent->data.parameter->GetTraits();
+
+	if (!traits.container.HasValue())
+	{
+		return ut::Error(ut::error::not_supported,
+			"Desired parameter cannot be removed, its parent is not a container.");
+	}
+
+	if (!traits.container->callbacks.remove_element.IsValid())
+	{
+		return ut::Error(ut::error::not_supported,
+			"Desired parameter does not support remove_element() callback.");
+	}
+
+	traits.container->callbacks.remove_element(parameter.data.parameter->GetAddress());
+	return ut::Optional<ut::Error>();
 }
 
 // Constructor. Creates a command containing a callback that changes the

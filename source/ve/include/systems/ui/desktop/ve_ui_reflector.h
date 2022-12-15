@@ -189,6 +189,64 @@ private:
 };
 
 //----------------------------------------------------------------------------//
+// Button that creates a new array element.
+class AddNewElementButton : public Button
+{
+public:
+	// Constructor.
+	//    @param x - left position of the button.
+	//    @param size - width and height of the button in pixels.
+	//    @param parameter_path - full name of the managed parameter.
+	//    @param callback - Callback that is triggered when a user
+	//                      clicks the button.
+	//    @param theme - color theme.
+	AddNewElementButton(int x,
+	                    int size,
+	                    ut::String parameter_path,
+	                    ut::Function<ReflectionValue::Callbacks::OnAddArrItem> callback,
+	                    const Theme& theme);
+
+private:
+	// Adds a new element to the managed array parameter.
+	void AddElement();
+
+	// Full hierarchical name of the managed parameter.
+	ut::String path;
+
+	// Callback that is triggered when the user clicks the button.
+	ut::Function<ReflectionValue::Callbacks::OnAddArrItem> callback;
+};
+
+//----------------------------------------------------------------------------//
+// Button that creates a new array element.
+class RemoveElementButton : public Button
+{
+public:
+	// Constructor.
+	//    @param x - left position of the button.
+	//    @param size - width and height of the button in pixels.
+	//    @param parameter_path - full name of the managed parameter.
+	//    @param callback - Callback that is triggered when a user
+	//                      clicks the button.
+	//    @param theme - color theme.
+	RemoveElementButton(int x,
+	                    int size,
+	                    ut::String parameter_path,
+	                    ut::Function<ReflectionValue::Callbacks::OnAddArrItem> callback,
+	                    const Theme& theme);
+
+private:
+	// Adds a new element to the managed array parameter.
+	void RemoveElement();
+
+	// Full hierarchical name of the managed parameter.
+	ut::String path;
+
+	// Callback that is triggered when the user clicks the button.
+	ut::Function<ReflectionValue::Callbacks::OnRemoveArrItem> callback;
+};
+
+//----------------------------------------------------------------------------//
 // ve::ui::ReflectionTreeItem represents a single node in a reflection tree.
 // It has a name and optionally an input widget to operate with the value of
 // the managed parameter.
@@ -351,6 +409,12 @@ public:
 	// Conects a signal that is triggered when an item is recreated.
 	void ConnectRecreateItemSignal(ut::Function<ReflectionValue::Callbacks::OnRecreate> slot);
 
+	// Conects a signal that is triggered when a new item is added.
+	void ConnectAddItemSignal(ut::Function<ReflectionValue::Callbacks::OnAddArrItem> slot);
+
+	// Conects a signal that is triggered when an item is removed.
+	void ConnectRemoveItemSignal(ut::Function<ReflectionValue::Callbacks::OnRemoveArrItem> slot);
+
 private:
 	// ReflectionTree is a modified Fl_Tree class capable of recalculating 
 	// its size without redrawing all items.
@@ -423,11 +487,11 @@ private:
 	// (when an item is collapsed for example)
 	ut::Function<void()> resize_callback;
 
-	// Signal that is triggered when an item is modified.
+	// Signals triggered when an item is modified.
 	ut::Signal<ReflectionValue::Callbacks::OnModify> item_modified;
-
-	// Signal that is triggered when an item is recreated.
 	ut::Signal<ReflectionValue::Callbacks::OnRecreate> item_recreated;
+	ut::Signal<ReflectionValue::Callbacks::OnAddArrItem> item_added;
+	ut::Signal<ReflectionValue::Callbacks::OnRemoveArrItem> item_removed;
 
 	// Icons.
 	XpmIcon open_icon;

@@ -181,13 +181,13 @@ void ReflectionBool::OnModify()
 
 //----------------------------------------------------------------------------//
 // Constructor.
-	//    @param x - left position of the button.
-	//    @param size - width and height of the button in pixels.
-	//    @param traits - reference to the traits of the managed parameter.
-	//    @param parameter_path - full name of the managed parameter.
-	//    @param callback - Callback that is triggered when a user
-	//                      clicks the button.
-	//    @param color_theme - color theme.
+//    @param x - left position of the button.
+//    @param size - width and height of the button in pixels.
+//    @param traits - reference to the traits of the managed parameter.
+//    @param parameter_path - full name of the managed parameter.
+//    @param callback - Callback that is triggered when a user
+//                      clicks the button.
+//    @param color_theme - color theme.
 RecreateElementButton::RecreateElementButton(int x,
                                              int size,
                                              const ut::meta::BaseParameter::Traits& traits,
@@ -204,7 +204,8 @@ RecreateElementButton::RecreateElementButton(int x,
 	                                                ut::Color<4, ut::byte>(theme.foreground_color.R(),
 	                                                                       theme.foreground_color.G(),
 	                                                                       theme.foreground_color.B(),
-	                                                                       255))));
+	                                                                       255),
+	                                                icon_size / 8)));
 
 	const bool is_container = static_cast<bool>(traits.container);
 	if (is_container && traits.container->callbacks.get_factory.IsValid())
@@ -213,7 +214,6 @@ RecreateElementButton::RecreateElementButton(int x,
 	}
 
 	SetCallback(ut::MemberFunction<RecreateElementButton, void()>(this, &RecreateElementButton::Recreate));
-
 }
 
 // Resets the managed object to the default copy.
@@ -250,6 +250,74 @@ void RecreateElementButton::Recreate()
 
 	// fix hover bug
 	Fl::awake([](void* ptr) { static_cast<Button*>(ptr)->SetState(Button::state_release); }, this);
+}
+
+//----------------------------------------------------------------------------//
+// Constructor.
+//    @param x - left position of the button.
+//    @param size - width and height of the button in pixels.
+//    @param parameter_path - full name of the managed parameter.
+//    @param callback - Callback that is triggered when a user
+//                      clicks the button.
+//    @param theme - color theme.
+AddNewElementButton::AddNewElementButton(int x,
+                                         int size,
+                                         ut::String parameter_path,
+                                         ut::Function<ReflectionValue::Callbacks::OnAddArrItem> cb,
+                                         const Theme& theme) : Button(x, 0, size, size)
+                                                             , path(ut::Move(parameter_path))
+                                                             , callback(ut::Move(cb))
+{
+	const ut::uint32 icon_size = ut::Max<ut::uint32>(size, 4) - 4;
+	SetIcon(ut::MakeShared<Icon>(Icon::CreatePlus(icon_size,
+	                                              icon_size,
+	                                              ut::Color<4, ut::byte>(theme.foreground_color.R(),
+	                                                                     theme.foreground_color.G(),
+	                                                                     theme.foreground_color.B(),
+	                                                                     255),
+	                                              2, icon_size / 8)));
+
+	SetCallback(ut::MemberFunction<AddNewElementButton, void()>(this, &AddNewElementButton::AddElement));
+}
+
+// Adds a new element to the managed array parameter.
+void AddNewElementButton::AddElement()
+{
+	callback(path);
+}
+
+//----------------------------------------------------------------------------//
+// Constructor.
+//    @param x - left position of the button.
+//    @param size - width and height of the button in pixels.
+//    @param parameter_path - full name of the managed parameter.
+//    @param callback - Callback that is triggered when a user
+//                      clicks the button.
+//    @param theme - color theme.
+RemoveElementButton::RemoveElementButton(int x,
+                                         int size,
+                                         ut::String parameter_path,
+                                         ut::Function<ReflectionValue::Callbacks::OnAddArrItem> cb,
+                                         const Theme& theme) : Button(x, 0, size, size)
+                                                             , path(ut::Move(parameter_path))
+                                                             , callback(ut::Move(cb))
+{
+	const ut::uint32 icon_size = ut::Max<ut::uint32>(size, 4) - 4;
+	SetIcon(ut::MakeShared<Icon>(Icon::CreateCross(icon_size,
+	                                              icon_size,
+	                                              ut::Color<4, ut::byte>(theme.foreground_color.R(),
+	                                                                     theme.foreground_color.G(),
+	                                                                     theme.foreground_color.B(),
+	                                                                     255),
+	                                              icon_size / 8)));
+
+	SetCallback(ut::MemberFunction<RemoveElementButton, void()>(this, &RemoveElementButton::RemoveElement));
+}
+
+// Adds a new element to the managed array parameter.
+void RemoveElementButton::RemoveElement()
+{
+	callback(path);
 }
 
 //----------------------------------------------------------------------------//
@@ -499,6 +567,7 @@ ut::Array< ut::UniquePtr<Fl_Widget> > ReflectionTreeItem::CreateAttribWidgets(ut
 {
 	ut::Array< ut::UniquePtr<Fl_Widget> > widgets;
 
+	ut::Optional<ut::meta::Snapshot&> parent = snapshot.GetParent();
 	const ut::meta::BaseParameter::Traits traits = snapshot.data.parameter->GetTraits();
 
 	const bool is_container = static_cast<bool>(traits.container);
@@ -508,6 +577,11 @@ ut::Array< ut::UniquePtr<Fl_Widget> > ReflectionTreeItem::CreateAttribWidgets(ut
 	}
 
 	const bool can_be_changed = traits.container->callbacks.create.IsValid();
+	const bool push_back_allowed = traits.container->callbacks.push_back.IsValid();
+	const bool remove_allowed = parent.HasValue() &&
+	                            parent->data.parameter->GetTraits().container.HasValue() &&
+	                            parent->data.parameter->GetTraits().container->callbacks.push_back.IsValid();
+
 	if (can_be_changed)
 	{
 		widgets.Add(ut::MakeUnique<RecreateElementButton>(left,
@@ -516,6 +590,27 @@ ut::Array< ut::UniquePtr<Fl_Widget> > ReflectionTreeItem::CreateAttribWidgets(ut
 		                                                  name,
 		                                                  cb.on_recreate,
 		                                                  theme));
+		left += height;
+	}
+
+	if (push_back_allowed)
+	{
+		widgets.Add(ut::MakeUnique<AddNewElementButton>(left,
+		                                                height,
+		                                                name,
+		                                                cb.on_add_arr_item,
+		                                                theme));
+		left += height;
+	}
+
+	if (remove_allowed)
+	{
+		widgets.Add(ut::MakeUnique<RemoveElementButton>(left,
+		                                                height,
+		                                                name,
+		                                                cb.on_remove_arr_item,
+		                                                theme));
+		left += height;
 	}
 
 	return widgets;
@@ -572,6 +667,8 @@ Reflector::Reflector(ut::uint32 x,
 	                                const ut::String& value) { item_modified(name, value); };
 	item_callbacks.on_recreate = [&] (const ut::String& name,
 	                                  ut::Optional<const ut::DynamicType&> type) { item_recreated(name, ut::Move(type)); };
+	item_callbacks.on_add_arr_item = [&] (const ut::String& name) { item_added(name); };
+	item_callbacks.on_remove_arr_item = [&](const ut::String& name) { item_removed(name); };
 
 	// initialize tree
 	Update(snapshot);
@@ -664,6 +761,18 @@ void Reflector::ConnectModifyItemSignal(ut::Function<ReflectionValue::Callbacks:
 void Reflector::ConnectRecreateItemSignal(ut::Function<ReflectionValue::Callbacks::OnRecreate> slot)
 {
 	item_recreated.Connect(ut::Move(slot));
+}
+
+// Conects a signal that is triggered when a new item is added.
+void Reflector::ConnectAddItemSignal(ut::Function<ReflectionValue::Callbacks::OnAddArrItem> slot)
+{
+	item_added.Connect(ut::Move(slot));
+}
+
+// Conects a signal that is triggered when an item is removed.
+void Reflector::ConnectRemoveItemSignal(ut::Function<ReflectionValue::Callbacks::OnRemoveArrItem> slot)
+{
+	item_removed.Connect(ut::Move(slot));
 }
 
 // Recursively updates the provided tree node.
