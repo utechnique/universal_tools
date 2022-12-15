@@ -152,6 +152,11 @@ public:
 		const size_t unit_count = units.Count();
 		for (size_t i = 0; i < unit_count; i++)
 		{
+			if (units[i].Get() == nullptr)
+			{
+				continue;
+			}
+
 			SelectorHelper<last_unit_type_id, BaseContainer>::Select(*this, entity_id, units[i].GetRef(), map);
 		}
 	}

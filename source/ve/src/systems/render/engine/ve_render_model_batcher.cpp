@@ -21,6 +21,11 @@ void ModelBatcher::Register(Entity::Id entity_id, ut::Array< ut::UniquePtr<Unit>
 	const size_t unit_count = units.Count();
 	for (size_t i = 0; i < unit_count; i++)
 	{
+		if (units[i].Get() == nullptr)
+		{
+			continue;
+		}
+
 		Unit& unit = units[i].GetRef();
 		const ut::DynamicType& unit_type = unit.Identify();
 		if (unit_type.GetHandle() != model_handle)

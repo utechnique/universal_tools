@@ -82,18 +82,23 @@ void RenderSystem::InitializeUnitsJob(size_t first_entity_id, size_t entity_coun
 		{
 			Unit* unit = render_component.units[j].Get();
 
+			// check if unit pointer has changed since the previous frame
+			if (!changed && unit != render_component.cache[j])
+			{
+				changed = true;
+			}
+
+			if (unit == nullptr)
+			{
+				continue;
+			}
+
 			// calculate final transform matrix of the unit
 			unit->world_transform = transform_component * unit->local_trasform;
 			unit->world_matrix = unit->world_transform.ToMatrix();
 
 			// initialize rendering resources (buffers, textures, etc.)
 			engine->InitializeUnit(*unit);
-
-			// check if unit pointer has changed since the previous frame
-			if (!changed && unit != render_component.cache[j])
-			{
-				changed = true;
-			}
 		}
 
 		// re-register units and update a cache
