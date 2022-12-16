@@ -32,10 +32,14 @@ public:
 	{
 		snapshot.Add(str, "str");
 		snapshot.Add(boolean, "bool");
+		snapshot.Add(arr, "arr");
+		snapshot.Add(unique, "unique");
 	}
 
 	ut::String str;
 	bool boolean;
+	ut::Array<int> arr;
+	ut::UniquePtr<int> unique;
 };
 UT_REGISTER_TYPE(ve::Component, TestComponent, "test")
 

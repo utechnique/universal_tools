@@ -61,6 +61,13 @@ public:
 	                         const ut::Color<4, ut::byte>& color,
 	                         ut::uint32 margin);
 
+	// Creates an icon with a trash bin.
+	static Icon CreateTrashBin(ut::uint32 width,
+	                           ut::uint32 height,
+	                           const ut::Color<4, ut::byte>& color,
+	                           ut::uint32 margin,
+	                           ut::uint32 thickness);
+
 private:
 	ut::uint32 width; // in pixels
 	ut::uint32 height; // in pixels

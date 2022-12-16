@@ -33,8 +33,11 @@ public:
 		                        ut::Optional<const ut::DynamicType&> type);
 		typedef void OnAddArrItem(const ut::String& name);
 		typedef void OnRemoveArrItem(const ut::String& name);
+		typedef void OnClear(const ut::String& name);
 
 		ut::Function<OnModify> on_modify; // the value is changed
+
+		ut::Function<OnClear> on_clear; // the managed container becomes empty
 
 		ut::Function<OnRecreate> on_recreate; // resets the value to the default one
 
@@ -151,6 +154,35 @@ private:
 };
 
 //----------------------------------------------------------------------------//
+// Button that cleares the managed container.
+class ClearElementButton : public Button
+{
+public:
+	// Constructor.
+	//    @param x - left position of the button.
+	//    @param size - width and height of the button in pixels.
+	//    @param parameter_path - full name of the managed parameter.
+	//    @param callback - Callback that is triggered when a user
+	//                      clicks the button.
+	//    @param theme - color theme.
+	ClearElementButton(int x,
+	                   int size,
+	                   ut::String parameter_path,
+	                   ut::Function<ReflectionValue::Callbacks::OnClear> callback,
+	                   const Theme& theme);
+
+private:
+	// Adds a new element to the managed array parameter.
+	void Clear();
+
+	// Full hierarchical name of the managed parameter.
+	ut::String path;
+
+	// Callback that is triggered when the user clicks the button.
+	ut::Function<ReflectionValue::Callbacks::OnClear> callback;
+};
+
+//----------------------------------------------------------------------------//
 // Button that recreates the managed object.
 class RecreateElementButton : public Button
 {
@@ -232,7 +264,7 @@ public:
 	RemoveElementButton(int x,
 	                    int size,
 	                    ut::String parameter_path,
-	                    ut::Function<ReflectionValue::Callbacks::OnAddArrItem> callback,
+	                    ut::Function<ReflectionValue::Callbacks::OnRemoveArrItem> callback,
 	                    const Theme& theme);
 
 private:
@@ -406,6 +438,9 @@ public:
 	// Conects a signal that is triggered when an item is modified.
 	void ConnectModifyItemSignal(ut::Function<ReflectionValue::Callbacks::OnModify> slot);
 
+	// Conects a signal that is triggered when an item is cleared.
+	void ConnectClearItemSignal(ut::Function<ReflectionValue::Callbacks::OnClear> slot);
+
 	// Conects a signal that is triggered when an item is recreated.
 	void ConnectRecreateItemSignal(ut::Function<ReflectionValue::Callbacks::OnRecreate> slot);
 
@@ -489,6 +524,7 @@ private:
 
 	// Signals triggered when an item is modified.
 	ut::Signal<ReflectionValue::Callbacks::OnModify> item_modified;
+	ut::Signal<ReflectionValue::Callbacks::OnClear> item_cleared;
 	ut::Signal<ReflectionValue::Callbacks::OnRecreate> item_recreated;
 	ut::Signal<ReflectionValue::Callbacks::OnAddArrItem> item_added;
 	ut::Signal<ReflectionValue::Callbacks::OnRemoveArrItem> item_removed;

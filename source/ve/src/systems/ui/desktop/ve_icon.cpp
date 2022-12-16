@@ -214,10 +214,11 @@ Icon Icon::CreateChange(ut::uint32 width,
 {
 	ut::Array< ut::Color<4, ut::byte> > icon_data(width * height);
 
+	const int imargin = static_cast<int>(margin);
 	const int size = ut::Min<ut::uint32>(width, height);
 	const int half_size = size / 2;
 	const int quad_size = size / 4;
-	const int half_size_x = size / 2 - margin;
+	const int half_size_x = size / 2 - imargin;
 	const int odd = size % 2 == 0 ? 1 : 0;
 
 	for (int y = 0; y < size; y++)
@@ -228,7 +229,7 @@ Icon Icon::CreateChange(ut::uint32 width,
 			pixel = color;
 			pixel.A() = 0;
 
-			if (x < margin || x >= (size - margin))
+			if (x < imargin || x >= (size - imargin))
 			{
 				continue;
 			}
@@ -259,6 +260,78 @@ Icon Icon::CreateChange(ut::uint32 width,
 			{
 				pixel.A() = color.A() / 2;
 			}
+		}
+	}
+
+	return Icon(width, height, ut::Move(icon_data));
+}
+
+// Creates an icon with a trash bin.
+Icon Icon::CreateTrashBin(ut::uint32 width,
+                          ut::uint32 height,
+                          const ut::Color<4, ut::byte>& color,
+                          ut::uint32 margin,
+                          ut::uint32 thickness)
+{
+	ut::Array< ut::Color<4, ut::byte> > icon_data(width * height);
+	const int iw = static_cast<int>(width);
+	const int ih = static_cast<int>(height);
+	const int it = static_cast<int>(thickness);
+	const int im = static_cast<int>(margin);
+
+	const int ef_width = iw - im;
+	const int ef_height = ih - im;
+	const int bin_width = ef_width / 2 + ef_width / 4;
+	const int bin_half_width = bin_width / 2;
+	const int bin_quad_height = ef_height / 4;
+	const int half_width = iw / 2;
+	const int half_height = ih / 2;
+	const int cap_height = im + bin_quad_height;
+	const int cap_width = bin_width / 2 + bin_width / 4;
+	const int cap_half_width = cap_width / 2;
+	const int cap_lower_width = ef_width;
+	const int cap_lower_half_width = cap_lower_width / 2;
+	const int rib_offset_x = bin_width / 6 + ut::Max(1, it / 2);
+	const int rib_offset_y = (ef_height) / 6;
+
+	for (int y = 0; y < ih; y++)
+	{
+		for (int x = 0; x < iw; x++)
+		{
+			ut::Color<4, ut::byte>& pixel = icon_data[y*width + x];
+			pixel = color;
+			pixel.A() = 0;
+
+			// bin lines
+			if (y >= cap_height && y < ih - im && x >= half_width - bin_half_width && x < half_width + bin_half_width &&
+			   (x < half_width - bin_half_width + it || x >= half_width + bin_half_width - it ||
+			    y < cap_height + it || y >= ih - im - it))
+			{
+				pixel.A() = 255;
+			}
+
+			// cap lines
+			if (y >= im && y < cap_height && x >= half_width - cap_half_width && x < half_width + cap_half_width &&
+			   (x < half_width - cap_half_width + it || x >= half_width + cap_half_width - it || y < im + it))
+			{
+				pixel.A() = 255;
+			}
+
+			// cap lower line
+			if (x >= half_width - cap_lower_half_width && x < half_width + cap_lower_half_width &&
+			    y >= cap_height && y < cap_height + it)
+			{
+				pixel.A() = 255;
+			}
+			
+			// bin ribs
+			if (y >= cap_height + rib_offset_y && y < ih - im - rib_offset_y &&          
+			   ((x >= half_width - rib_offset_x && x < half_width - rib_offset_x + it) ||
+			     x < half_width + rib_offset_x && x >= half_width + rib_offset_x - it))
+			{
+				pixel.A() = 195;
+			}
+
 		}
 	}
 

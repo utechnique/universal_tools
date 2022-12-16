@@ -91,6 +91,10 @@ ComponentView::ComponentView(ComponentView::Proxy& proxy,
 	auto on_modify = ut::MemberFunction<ComponentView, ReflectionValue::Callbacks::OnModify>(this, &ComponentView::OnItemModified);
 	reflector->ConnectModifyItemSignal(ut::Move(on_modify));
 
+	// connect reflector modify callback
+	auto on_clear = ut::MemberFunction<ComponentView, ReflectionValue::Callbacks::OnClear>(this, &ComponentView::OnItemCleared);
+	reflector->ConnectClearItemSignal(ut::Move(on_clear));
+
 	// connect reflector recreate callback
 	auto on_recreate = ut::MemberFunction<ComponentView, ReflectionValue::Callbacks::OnRecreate>(this, &ComponentView::OnItemRecreated);
 	reflector->ConnectRecreateItemSignal(ut::Move(on_recreate));
@@ -320,6 +324,28 @@ void ComponentView::OnItemModified(const ut::String& full_name,
 	}
 }
 
+// Callback to be called when a tree item is cleared.
+	//    @param full_name - name of the parameter to clean.
+void ComponentView::OnItemCleared(const ut::String& full_name)
+{
+	ut::UniquePtr<CmdUpdateComponent> cmd = ut::MakeUnique<CmdUpdateComponent>(entity_id,
+	                                                                           type,
+	                                                                           ClearItemCallback,
+	                                                                           ut::Move(full_name));
+	cmd->Connect([&](const ut::Optional<ut::Error>&) { callbacks.on_update(); });
+
+	// add command
+	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
+	CmdArray& commands = locked_commands.Get();
+	commands.Add(ut::Move(cmd));
+
+	// inform an owner that the component must be updated
+	if (callbacks.on_update.IsValid())
+	{
+		callbacks.on_update();
+	}
+}
+
 // Callback to be called when a tree item is reset to the default value.
 //    @param full_name - name of the parameter.
 //    @param parameter_type - optional dynamic type reference of the
@@ -337,6 +363,12 @@ void ComponentView::OnItemRecreated(const ut::String& full_name,
 	ut::ScopeSyncLock<CmdArray> locked_commands(pending_commands);
 	CmdArray& commands = locked_commands.Get();
 	commands.Add(ut::Move(cmd));
+
+	// inform an owner that the component must be updated
+	if (callbacks.on_update.IsValid())
+	{
+		callbacks.on_update();
+	}
 }
 
 // Callback to be called when a new item is added.
@@ -381,6 +413,27 @@ void ComponentView::OnItemRemoved(const ut::String& full_name)
 	{
 		callbacks.on_update();
 	}
+}
+
+// Callback that clears the managed container parameter.
+ut::Optional<ut::Error> ComponentView::ClearItemCallback(ut::meta::Snapshot& parameter)
+{
+	const ut::meta::BaseParameter::Traits traits = parameter.data.parameter->GetTraits();
+
+	if (!traits.container.HasValue())
+	{
+		return ut::Error(ut::error::not_supported,
+			"Desired parameter is not a container.");
+	}
+
+	if (!traits.container->callbacks.reset.IsValid())
+	{
+		return ut::Error(ut::error::not_supported,
+			"Desired parameter does not support reset() callback.");
+	}
+
+	traits.container->callbacks.reset();
+	return ut::Optional<ut::Error>();
 }
 
 // Callback creating a new element in the desired array parameter.

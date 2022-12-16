@@ -183,6 +183,40 @@ void ReflectionBool::OnModify()
 // Constructor.
 //    @param x - left position of the button.
 //    @param size - width and height of the button in pixels.
+//    @param parameter_path - full name of the managed parameter.
+//    @param callback - Callback that is triggered when a user
+//                      clicks the button.
+//    @param theme - color theme.
+ClearElementButton::ClearElementButton(int x,
+                                       int size,
+                                       ut::String parameter_path,
+                                       ut::Function<ReflectionValue::Callbacks::OnAddArrItem> cb,
+                                       const Theme& theme) : Button(x, 0, size, size)
+                                                           , path(ut::Move(parameter_path))
+                                                           , callback(ut::Move(cb))
+{
+	const ut::uint32 icon_size = ut::Max<ut::uint32>(size, 4) - 4;
+	SetIcon(ut::MakeShared<Icon>(Icon::CreateTrashBin(icon_size,
+	                                                  icon_size,
+	                                                  ut::Color<4, ut::byte>(theme.foreground_color.R(),
+	                                                                         theme.foreground_color.G(),
+	                                                                         theme.foreground_color.B(),
+	                                                                         255),
+	                                                  icon_size / 16, 1)));
+
+	SetCallback(ut::MemberFunction<ClearElementButton, void()>(this, &ClearElementButton::Clear));
+}
+
+// Adds a new element to the managed array parameter.
+void ClearElementButton::Clear()
+{
+	callback(path);
+}
+
+//----------------------------------------------------------------------------//
+// Constructor.
+//    @param x - left position of the button.
+//    @param size - width and height of the button in pixels.
 //    @param traits - reference to the traits of the managed parameter.
 //    @param parameter_path - full name of the managed parameter.
 //    @param callback - Callback that is triggered when a user
@@ -297,7 +331,7 @@ void AddNewElementButton::AddElement()
 RemoveElementButton::RemoveElementButton(int x,
                                          int size,
                                          ut::String parameter_path,
-                                         ut::Function<ReflectionValue::Callbacks::OnAddArrItem> cb,
+                                         ut::Function<ReflectionValue::Callbacks::OnRemoveArrItem> cb,
                                          const Theme& theme) : Button(x, 0, size, size)
                                                              , path(ut::Move(parameter_path))
                                                              , callback(ut::Move(cb))
@@ -352,7 +386,8 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 	tree.begin();
 
 	// tile widget
-	group = ut::MakeUnique<Fl_Group>(0, 0, desc_width + skValueMargin + ReflectionValue::skWidth, skItemHeight);
+	const int attrib_widgets_size = skItemHeight * 4;
+	group = ut::MakeUnique<Fl_Group>(0, 0, desc_width + skValueMargin + ReflectionValue::skWidth + attrib_widgets_size, skItemHeight);
 	group->callback(ResizeCallback, &tree);
 	group->when(FL_WHEN_NOT_CHANGED);
 
@@ -571,16 +606,22 @@ ut::Array< ut::UniquePtr<Fl_Widget> > ReflectionTreeItem::CreateAttribWidgets(ut
 	const ut::meta::BaseParameter::Traits traits = snapshot.data.parameter->GetTraits();
 
 	const bool is_container = static_cast<bool>(traits.container);
-	if (!is_container)
-	{
-		return widgets;
-	}
-
-	const bool can_be_changed = traits.container->callbacks.create.IsValid();
-	const bool push_back_allowed = traits.container->callbacks.push_back.IsValid();
+	const bool can_be_cleared = is_container && traits.container->callbacks.reset.IsValid();
+	const bool can_be_changed = is_container && traits.container->callbacks.create.IsValid();
+	const bool push_back_allowed = is_container && traits.container->callbacks.push_back.IsValid();
 	const bool remove_allowed = parent.HasValue() &&
 	                            parent->data.parameter->GetTraits().container.HasValue() &&
 	                            parent->data.parameter->GetTraits().container->callbacks.push_back.IsValid();
+
+	if (can_be_cleared)
+	{
+		widgets.Add(ut::MakeUnique<ClearElementButton>(left,
+		                                               height,
+		                                               name,
+		                                               cb.on_clear,
+		                                               theme));
+		left += height;
+	}
 
 	if (can_be_changed)
 	{
@@ -665,6 +706,7 @@ Reflector::Reflector(ut::uint32 x,
 	// initialize callbacks
 	item_callbacks.on_modify = [&] (const ut::String& name,
 	                                const ut::String& value) { item_modified(name, value); };
+	item_callbacks.on_clear = [&](const ut::String& name) { item_cleared(name); };
 	item_callbacks.on_recreate = [&] (const ut::String& name,
 	                                  ut::Optional<const ut::DynamicType&> type) { item_recreated(name, ut::Move(type)); };
 	item_callbacks.on_add_arr_item = [&] (const ut::String& name) { item_added(name); };
@@ -755,6 +797,12 @@ void Reflector::SetResizeCallback(ut::Function<void()> cb)
 void Reflector::ConnectModifyItemSignal(ut::Function<ReflectionValue::Callbacks::OnModify> slot)
 {
 	item_modified.Connect(ut::Move(slot));
+}
+
+// Conects a signal that is triggered when an item is cleared.
+void Reflector::ConnectClearItemSignal(ut::Function<ReflectionValue::Callbacks::OnClear> slot)
+{
+	item_cleared.Connect(ut::Move(slot));
 }
 
 // Conects a signal that is triggered when an item is recreated.

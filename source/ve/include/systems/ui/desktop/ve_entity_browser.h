@@ -136,6 +136,10 @@ private:
 	//    @param data - string representing a modified value.
 	ReflectionValue::Callbacks::OnModify OnItemModified;
 
+	// Callback to be called when a tree item is cleared.
+	//    @param parameter_name - name of the parameter to clean.
+	ReflectionValue::Callbacks::OnClear OnItemCleared;
+
 	// Callback to be called when a tree item is reset to the default value.
 	//    @param parameter_name - name of the parameter.
 	//    @param dynamic_type - optional dynamic type reference of the
@@ -149,6 +153,9 @@ private:
 	// Callback to be called when an item is removed.
 	//    @param parameter_name - name of the parameter to be removed.
 	ReflectionValue::Callbacks::OnRemoveArrItem OnItemRemoved;
+
+	// Callback that clears the managed container parameter.
+	static ut::Optional<ut::Error> ClearItemCallback(ut::meta::Snapshot& parameter);
 
 	// Callback creating a new element in the desired array parameter.
 	static ut::Optional<ut::Error> AddNewArrayItemCallback(ut::meta::Snapshot& parameter);
