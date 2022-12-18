@@ -97,7 +97,7 @@ public:
 	}
 
 	// Constructor. Elements are not initialized.
-	Matrix()
+	Matrix() : table{}
 	{}
 
 	// Constructor. All elements are initialized with a scalar value.
