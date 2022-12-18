@@ -32,13 +32,37 @@ public:
 	{
 		snapshot.Add(str, "str");
 		snapshot.Add(boolean, "bool");
-		snapshot.Add(arr, "arr");
+		snapshot.Add(intv8, "intv8");
+		snapshot.Add(uintv8, "uintv8");
+		snapshot.Add(intv16, "intv16");
+		snapshot.Add(uintv16, "uintv16");
+		snapshot.Add(intv32, "intv32");
+		snapshot.Add(uintv32, "uintv32");
+		snapshot.Add(intv64, "intv64");
+		snapshot.Add(uintv64, "uintv64");
+		snapshot.Add(floatv, "floatv");
+		snapshot.Add(ivec, "ivec");
+		snapshot.Add(arrint, "arrint");
+		snapshot.Add(arrvecint, "arrvecint");
+		snapshot.Add(arrvecfloat, "arrvecfloat");
 		snapshot.Add(unique, "unique");
 	}
 
 	ut::String str;
 	bool boolean;
-	ut::Array<int> arr;
+	ut::int8 intv8 = 0;
+	ut::uint8 uintv8 = 0;
+	ut::int16 intv16 = 0;
+	ut::uint16 uintv16 = 0;
+	ut::int32 intv32 = 0;
+	ut::uint32 uintv32 = 0;
+	ut::int32 intv64 = 0;
+	ut::uint32 uintv64 = 0;
+	float floatv = 1.0f;
+	ut::Vector<3, int> ivec = ut::Vector<3, int>();
+	ut::Array<int> arrint;
+	ut::Array<ut::Vector<3, int> > arrvecint;
+	ut::Array<ut::Vector<3, float> > arrvecfloat;
 	ut::UniquePtr<int> unique;
 };
 UT_REGISTER_TYPE(ve::Component, TestComponent, "test")

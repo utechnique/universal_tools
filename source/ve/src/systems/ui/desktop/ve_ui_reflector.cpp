@@ -116,6 +116,7 @@ void ReflectionTextField::Update(ut::meta::Snapshot& snapshot)
 	                         CheckType<ut::uint8>(type)   ? Print<ut::uint8>(data)   :
 	                         CheckType<ut::int16>(type)   ? Print<ut::int16>(data)   :
 	                         CheckType<ut::uint16>(type)  ? Print<ut::uint16>(data)  :
+	                         CheckType<ut::int32>(type)   ? Print<ut::int32>(data) :
 	                         CheckType<ut::uint32>(type)  ? Print<ut::uint32>(data)  :
 	                         CheckType<ut::int64>(type)   ? Print<ut::int64>(data)   :
 	                         CheckType<ut::uint64>(type)  ? Print<ut::uint64>(data)  :
