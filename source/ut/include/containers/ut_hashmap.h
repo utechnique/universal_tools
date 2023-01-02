@@ -414,23 +414,20 @@ public:
 		friend class SparseHashMap<KeyType, ValueType, HashFunction, KeyEqual, Allocator>;
 	public:
 		// Constructor
-		ConstIterator() : map(nullptr), capacity(-1)
+		ConstIterator() : map(nullptr), id(0)
 		{}
 
 		// Constructor
 		ConstIterator(ThisMap* hashmap,
-		              size_t total_capacity) : map(hashmap)
-		                                     , capacity(total_capacity)
+		              size_t start_id) : map(hashmap)
+		                               , id(start_id)
 		{
-			if (hashmap == nullptr || capacity == 0)
+			if (hashmap == nullptr || id == map->capacity + map->collision_nodes.Count())
 			{
 				return;
 			}
 
-			const size_t id = capacity - 1;
-			Optional<Node>& node = id >= map->capacity ?
-			                       map->collision_nodes[id - map->capacity] :
-			                       map->arr[id];
+			Optional<Node>& node = map->arr[id];
 			if (!node.HasValue())
 			{
 				this->operator++();
@@ -440,7 +437,6 @@ public:
 		// Returns constant reference of the managed object
 		const Pair<const KeyType, ValueType>& operator*() const
 		{
-			const size_t id = capacity - 1;
 			Optional<Node>& node = id >= map->capacity ?
 			                       map->collision_nodes[id - map->capacity] :
 			                       map->arr[id];
@@ -451,7 +447,6 @@ public:
 		// Return value can't be changed, it must be constant.
 		const Pair<const KeyType, ValueType>* operator->() const
 		{
-			const size_t id = capacity - 1;
 			Optional<Node>& node = id >= map->capacity ?
 			                       map->collision_nodes[id - map->capacity] :
 			                       map->arr[id];
@@ -463,12 +458,10 @@ public:
 		{
 			while (true)
 			{
-				if (--capacity == 0)
+				if (++id == map->capacity + map->collision_nodes.Count())
 				{
 					return *this;
 				}
-
-				size_t id = capacity - 1;
 
 				Optional<Node>& node = id >= map->capacity ?
 				                       map->collision_nodes[id - map->capacity] :
@@ -491,18 +484,18 @@ public:
 		// Comparison operator 'equal to'
 		bool operator == (const ConstIterator& right) const
 		{
-			return capacity == right.capacity;
+			return id == right.id;
 		}
 
 		// Comparison operator 'not equal to'
 		bool operator != (const ConstIterator& right) const
 		{
-			return capacity != right.capacity;
+			return id != right.id;
 		}
 
 	protected:
 		ThisMap* map;
-		size_t capacity;
+		size_t id;
 	};
 
 	// ut::SparseHashMap<>::Iterator is a random-access iterator to iterate over parent
@@ -519,7 +512,7 @@ public:
 
 		// Constructor
 		Iterator(ThisMap* hashmap,
-		         size_t total_capacity) : Base(hashmap, total_capacity)
+		         size_t start_id) : Base(hashmap, start_id)
 		{}
 
 		// Copy constructor
@@ -536,10 +529,9 @@ public:
 		// Returns constant reference of the managed object
 		Pair<const KeyType, ValueType>& operator*()
 		{
-			const size_t id = Base::capacity - 1;
-			Optional<Node>& node = id >= Base::map->capacity ?
-			                       Base::map->collision_nodes[id - Base::map->capacity] :
-			                       Base::map->arr[id];
+			Optional<Node>& node = Base::id >= Base::map->capacity ?
+			                       Base::map->collision_nodes[Base::id - Base::map->capacity] :
+			                       Base::map->arr[Base::id];
 			return node.Get();
 		}
 
@@ -547,10 +539,9 @@ public:
 		// Return value can't be changed, it must be constant.
 		Pair<const KeyType, ValueType>* operator->()
 		{
-			const size_t id = Base::capacity - 1;
-			Optional<Node>& node = id >= Base::map->capacity ?
-			                       Base::map->collision_nodes[id - Base::map->capacity] :
-			                       Base::map->arr[id];
+			Optional<Node>& node = Base::id >= Base::map->capacity ?
+			                       Base::map->collision_nodes[Base::id - Base::map->capacity] :
+			                       Base::map->arr[Base::id];
 			return &node.Get();
 		}
 	};
@@ -810,25 +801,25 @@ public:
 	// Returns constant read / write iterator that points to the first element
 	ConstIterator Begin() const
 	{
-		return ConstIterator(this, capacity + collision_nodes.Count());
+		return ConstIterator(this, 0);
 	}
 
 	// Returns constant read / write iterator that points to the last element
 	ConstIterator End() const
 	{
-		return ConstIterator(this, 0);
+		return ConstIterator(this, capacity + collision_nodes.Count());
 	}
 
 	// Returns a read / write iterator that points to the first element
 	Iterator Begin()
 	{
-		return Iterator(this, capacity + collision_nodes.Count());
+		return Iterator(this, 0);
 	}
 
 	// Returns a read / write iterator that points to the last element
 	Iterator End()
 	{
-		return Iterator(this, 0);
+		return Iterator(this, capacity + collision_nodes.Count());
 	}
 
 private:
