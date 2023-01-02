@@ -6,9 +6,11 @@
 #include "systems/ui/desktop/ve_window.h"
 #include "systems/ui/desktop/ve_scroll.h"
 #include "systems/ui/desktop/ve_ui_reflector.h"
+#include "systems/ui/desktop/ve_justify_input.h"
 #include "commands/ve_cmd_add_entity.h"
 #include "commands/ve_cmd_update_component.h"
 #include "ve_entity_system.h"
+#include "FL/Fl_Int_Input.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -269,7 +271,6 @@ private:
 
 	// Creates internal child fltk widget for the caption.
 	void CreateCaption(const Theme& theme,
-	                   const ut::String& name,
 	                   ut::int32 x,
 	                   ut::int32 y,
 	                   ut::uint32 width);
@@ -303,6 +304,10 @@ private:
 
 	// Adds all child widgets to the group.
 	void DetachChildWidgets();
+
+	// Updates the caption group of widgets.
+	//    @param proxy - reference to the new representation of the entity.
+	void UpdateCaption(EntityView::Proxy& proxy);
 
 	// Generates a command to delete this entity.
 	void DeleteThisEntity();
@@ -404,16 +409,56 @@ public:
 	static const int skOffset;
 
 private:
-	// Group of controls to add/filter entities
-	struct Controls
+	// The group of controls to add/filter entities
+	struct EntityControls
 	{
 		ut::UniquePtr<Fl_Group> group;
-		ut::UniquePtr<Fl_Input> filter;
+		ut::UniquePtr<Fl_Input> filter_input;
 		ut::UniquePtr<Button> add_entity_button;
+		ut::Synchronized<ut::String> filter;
+	};
+
+	// Intermediate structure containg an information about the
+	// entities that must be shown on the desired page.
+	struct PageView
+	{
+		size_t first_filtered_id; // Index of the first filtered entity from
+		                          // the @filter_cache in this page.
+		size_t entity_count; // The number of entities to be shown.
+	};
+
+	// The group of widgets controlling the number of entities
+	// showm to the user.
+	class PageControls : public Fl_Group
+	{
+	public:
+		PageControls(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {}
+		void resize(int px, int py, int mw, int mh) override;
+
+		// Widgets.
+		ut::UniquePtr< JustifyInput<Fl_Int_Input> > input;
+		ut::UniquePtr<Button> prev_button;
+		ut::UniquePtr<Button> next_button;
+		ut::UniquePtr<Button> first_button;
+		ut::UniquePtr<Button> last_button;
+		ut::UniquePtr<Fl_Box> page_count_box;
+		ut::UniquePtr<Fl_Box> entity_count_box;
+
+		// Intermediate values.
+		ut::Atomic<ut::uint32> page_count;
+		ut::Atomic<ut::uint32> entity_count;
+		ut::UniquePtr<ut::String> page_count_buffer;
+		ut::UniquePtr<ut::String> entity_count_buffer;
+		ut::Atomic<ut::uint32> page_id = 1;
+		ut::uint32 capacity = 50;
+		static constexpr ut::uint32 font_size = 14;
 	};
 
 	// Creates UI widgets to add/filter entities.
-	void InitializeControls(const Theme& theme);
+	void InitializeEntityControls(const Theme& theme);
+
+	// Creates UI widgets controlling the number of entities shown to the user.
+	void InitializePageControls(const Theme& theme);
 
 	// Creates an array of EntityView::Proxy from the provided entity map that
 	// will be used to update UI component views on the next UI tick.
@@ -467,9 +512,6 @@ private:
 	// Updates entity browser content after an entity was added.
 	void AddEntityCallback(const CmdAddEntity::AddResult&);
 
-	// Returns 'true' if the provided entity passes the filter.
-	bool FilterEntity(EntityView::Proxy& entity_proxy);
-
 	// Scrolls view area right to the provided widget.
 	void ScrollToWidget(Fl_Widget& widget);
 
@@ -477,17 +519,50 @@ private:
 	// user added a new entity.
 	void ProcessNewEntity(EntityView& entity_view);
 
+	// Updates @entity_controls.filter string with
+	// the value of the input widget.
+	void UpdateFilterInput();
+
+	// Updates page id from the input field.
+	void UpdatePageId();
+
+	// Updates all page controls.
+	void UpdateControls();
+
+	// Filters provided entities and stores filtered
+	// indices to the @filter_cache.
+	//    @param entities - the reference to the entity map.
+	//    @return - optional index of the filtered value that needs
+	//              to be scrolled to.
+	ut::Optional<size_t> FilterEntities(EntitySystem::EntityMap& entities);
+
+	// Calculates the first index of the filtered entities and the number of
+	// entities to be shown on the current page.
+	//    @param filtered_scroll_index - optional index of the filtered value
+	//                                   from the @filter_cache array, that must
+	//                                   be scrolled to.
+	//    @return - the EntityBrowser::PageView structure value.
+	PageView PreparePage(const ut::Optional<size_t>& filtered_scroll_index);
+
 	// Contains all entity views located vertically.
 	ut::UniquePtr<Scroll> view_area;
 
-	// group containing controls to create/filter entities.
-	Controls controls;
+	// The group of widgets containing controls to create/filter
+	// entities.
+	EntityControls entity_controls;
+
+	// The group of widgets controlling the number of entities
+	// showm to the user.
+	ut::UniquePtr<PageControls> page;
 
 	// Synchronizes update process.
 	ut::Mutex mutex;
 
 	// Array of proxies to update entity views on the next UI tick.
 	ut::Array<EntityView::Proxy> pending_views;
+
+	// The cache to optimize filtering process.
+	ut::Array<Entity::Id> filter_cache;
 
 	// Entity view widgets.
 	ut::Array< ut::UniquePtr<EntityView> > entity_views;
@@ -509,8 +584,9 @@ private:
 	// to properly scroll view area right to this entity view.
 	ut::Synchronized< ut::Optional<Entity::Id> > new_entity_id;
 
-	// Height of the control group in pixels.
-	static const ut::uint32 skControlGroupHeight;
+	// Height of the control groups in pixels.
+	static const ut::uint32 skEntityControlGroupHeight;
+	static const ut::uint32 skPageControlGroupHeight;
 
 	// Height of the browser caption in pixels.
 	static const ut::uint32 skCapHeight;

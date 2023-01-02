@@ -7,6 +7,7 @@
 #include "commands/ve_cmd_delete_entity.h"
 #include "commands/ve_cmd_delete_component.h"
 #include "commands/ve_cmd_add_component.h"
+#include "components/ve_name_component.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -34,8 +35,9 @@ const ut::uint32 EntityBrowser::skDefaultHeight = 720;
 // Margin distance to the left, right, top and bottom borders in pixels.
 const int EntityBrowser::skOffset = 5;
 
-// Height of the control group in pixels.
-const ut::uint32 EntityBrowser::skControlGroupHeight = 32;
+// Height of the control groups in pixels.
+const ut::uint32 EntityBrowser::skEntityControlGroupHeight = 32;
+const ut::uint32 EntityBrowser::skPageControlGroupHeight = 32;
 
 // Height of the caption in pixels.
 const ut::uint32 EntityBrowser::skCapHeight = 24;
@@ -579,10 +581,10 @@ EntityView::EntityView(EntityView::Proxy& proxy,
 
 	// create caption box
 	CreateCaption(theme,
-	              ut::Print(id),
 	              EntityBrowser::skOffset,
 	              EntityBrowser::skOffset,
 	              width);
+	UpdateCaption(proxy);
 	
 	// initialize widgets for all components
 	const size_t component_count = proxy.components.Count();
@@ -606,6 +608,9 @@ Entity::Id EntityView::GetId() const
 //    @param proxy - reference to the new representation of the entity.
 void EntityView::Update(EntityView::Proxy& proxy)
 {
+	// Update the caption widgets (the name-component could have changed)
+	UpdateCaption(proxy);
+
 	// mark all components as 'invalid', so that all components that
 	// are present in the current view but are absent in the @proxy
 	// could be deleted in the end of this function
@@ -700,7 +705,6 @@ void EntityView::MarkNew(bool status)
 
 // Creates internal child fltk widget for the caption.
 void EntityView::CreateCaption(const Theme& theme,
-                               const ut::String& name,
                                ut::int32 x,
                                ut::int32 y,
                                ut::uint32 width)
@@ -740,14 +744,13 @@ void EntityView::CreateCaption(const Theme& theme,
 	                                                                    false)));
 
 	// create the background with the text
-	cap_text = ut::MakeUnique<ut::String>(ut::Print(id));
 	caption_box = ut::MakeUnique<Fl_Box>(caption->x() + caption->h(),
 	                                     EntityBrowser::skOffset,
 	                                     caption->w() - caption->h() - skCapHeight * 2,
 	                                     skCapHeight);
 	caption_box->box(FL_FLAT_BOX);
+	caption_box->align(FL_ALIGN_INSIDE | FL_ALIGN_LEFT);
 	caption_box->color(ConvertToFlColor(GetCaptionColor()));
-	caption_box->label(cap_text->GetAddress());
 	caption_box->show();
 
 	// initialize controls to be able to operate with this entity
@@ -936,6 +939,32 @@ void EntityView::DetachChildWidgets()
 	expand_state = expand_button->GetState();
 }
 
+// Updates the caption group of widgets.
+//    @param proxy - reference to the new representation of the entity.
+void EntityView::UpdateCaption(EntityView::Proxy& proxy)
+{
+	ut::String name = ut::String("    #") + ut::Print(id);
+
+	const size_t component_count = proxy.components.Count();
+	for (size_t i = 0; i < component_count; i++)
+	{
+		ComponentView::Proxy& component = proxy.components[i];
+		if (component.type == ut::GetPolymorphicHandle<NameComponent>())
+		{
+			ut::Optional<ut::meta::Snapshot&> name_parameter = component.snapshot.FindChildByName("name");
+			if (name_parameter)
+			{
+				const ut::String* name_ptr = static_cast<const ut::String*>(name_parameter->data.parameter->GetAddress());
+				name += ut::String("  ") + *name_ptr;
+				break;
+			}
+		}
+	}
+
+	cap_text = ut::MakeUnique<ut::String>(name);
+	caption_box->label(cap_text->GetAddress());
+}
+
 // Generates a command to delete this entity.
 void EntityView::DeleteThisEntity()
 {
@@ -1050,14 +1079,16 @@ EntityBrowser::EntityBrowser(int x,
 	Fl_Double_Window& client_area = GetClientWindow();
 	client_area.begin();
 
-	// control group
-	InitializeControls(theme);
+	// control groups
+	InitializeEntityControls(theme);
+	InitializePageControls(theme);
 
 	// view area
+	const int view_area_height = client_area.h() - skEntityControlGroupHeight - skPageControlGroupHeight;
 	view_area = ut::MakeUnique<Scroll>(0,
-	                                   skControlGroupHeight,
+	                                   skEntityControlGroupHeight,
 	                                   client_area.w(),
-	                                   client_area.h() - skControlGroupHeight);
+	                                   view_area_height);
 	view_area->type(Fl_Scroll::VERTICAL);
 	view_area->scrollbar_size(Fl::scrollbar_size());
 	view_area->resizable(view_area.Get());
@@ -1124,41 +1155,140 @@ CmdArray EntityBrowser::UpdateEntities(EntitySystem::EntityMap& entities)
 }
 
 // Creates UI widgets to add/filter entities.
-void EntityBrowser::InitializeControls(const Theme& theme)
+void EntityBrowser::InitializeEntityControls(const Theme& theme)
 {
 	Fl_Double_Window& client_area = GetClientWindow();
 
-	controls.group = ut::MakeUnique<Fl_Group>(EntityBrowser::skOffset,
-	                                          0,
-	                                          client_area.w() - EntityBrowser::skOffset * 2,
-	                                          skControlGroupHeight);
+	entity_controls.group = ut::MakeUnique<Fl_Group>(EntityBrowser::skOffset,
+	                                                 0,
+	                                                 client_area.w() - EntityBrowser::skOffset * 2,
+	                                                 skEntityControlGroupHeight);
 
-	controls.filter = ut::MakeUnique<Fl_Input>(controls.group->x(),
-	                                           controls.group->y(),
-	                                           controls.group->w() - skControlGroupHeight,
-	                                           skControlGroupHeight);
-	controls.filter->when(FL_WHEN_CHANGED);
-	controls.filter->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->ImmediateUpdate(); }, this);
+	entity_controls.filter_input = ut::MakeUnique<Fl_Input>(entity_controls.group->x(),
+	                                                        entity_controls.group->y(),
+	                                                        entity_controls.group->w() - skEntityControlGroupHeight,
+	                                                        skEntityControlGroupHeight);
+	entity_controls.filter_input->when(FL_WHEN_CHANGED);
+	entity_controls.filter_input->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->UpdateFilterInput(); }, this);
 
-	controls.add_entity_button = ut::MakeUnique<Button>(controls.group->x() + controls.filter->w(),
-	                                                    controls.group->y(),
-	                                                    skControlGroupHeight,
-	                                                    skControlGroupHeight);
-	controls.add_entity_button->SetIcon(ut::MakeShared<Icon>(Icon::CreatePlus(controls.add_entity_button->w(),
-	                                                                          controls.add_entity_button->h(),
-	                                                                          ut::Color<4, ut::byte>(0, 200, 0, 255),
-	                                                                          4, 4)));
-	controls.add_entity_button->SetBackgroundColor(Button::state_release,
-	                                               ConvertToFlColor(theme.background_color));
-	controls.add_entity_button->SetBackgroundColor(Button::state_hover,
-	                                               ConvertToFlColor(theme.button_hover_color));
-	controls.add_entity_button->SetBackgroundColor(Button::state_push,
-	                                               ConvertToFlColor(theme.button_push_color));
+	entity_controls.add_entity_button = ut::MakeUnique<Button>(entity_controls.group->x() + entity_controls.filter_input->w(),
+	                                                           entity_controls.group->y(),
+	                                                           skEntityControlGroupHeight,
+	                                                           skEntityControlGroupHeight);
+	entity_controls.add_entity_button->SetIcon(ut::MakeShared<Icon>(Icon::CreatePlus(entity_controls.add_entity_button->w(),
+	                                                                                 entity_controls.add_entity_button->h(),
+	                                                                                 ut::Color<4, ut::byte>(0, 200, 0, 255),
+	                                                                                 4, 4)));
+	entity_controls.add_entity_button->SetBackgroundColor(Button::state_release,
+	                                                      ConvertToFlColor(theme.background_color));
+	entity_controls.add_entity_button->SetBackgroundColor(Button::state_hover,
+	                                                      ConvertToFlColor(theme.button_hover_color));
+	entity_controls.add_entity_button->SetBackgroundColor(Button::state_push,
+	                                                      ConvertToFlColor(theme.button_push_color));
 
-	controls.add_entity_button->SetCallback([&] { AddEntity(); });
+	entity_controls.add_entity_button->SetCallback([&] { AddEntity(); });
 	
-	controls.group->resizable(controls.filter.Get());
-	controls.group->end();
+	entity_controls.group->resizable(entity_controls.filter_input.Get());
+	entity_controls.group->end();
+}
+
+// Creates UI widgets controlling the number of entities shown to the user.
+void EntityBrowser::InitializePageControls(const Theme& theme)
+{
+	const int icon_margin = 3;
+	const ut::Color<4, ut::byte> icon_color(theme.foreground_color.R(),
+	                                        theme.foreground_color.G(),
+	                                        theme.foreground_color.B(),
+	                                        180);
+	const int input_offset = 4;
+	int input_width, input_height;
+
+	// calculate metrics of the central input widget
+	Fl_Font input_font = 0;
+	fl_font(input_font, PageControls::font_size);
+	fl_measure("0000", input_width, input_height);
+	input_width += input_offset;
+	input_height += input_offset;
+
+	// create the widget group
+	Fl_Double_Window& client_area = GetClientWindow();
+	page = ut::MakeUnique<PageControls>(EntityBrowser::skOffset,
+	                                    client_area.h() - skPageControlGroupHeight,
+	                                    client_area.w() - EntityBrowser::skOffset * 2,
+	                                    skPageControlGroupHeight);
+
+	// create central input widget
+	page->input = ut::MakeUnique< JustifyInput<Fl_Int_Input> >(page->x() +
+	                                                           page->w() / 2 - input_width / 2,
+	                                                           page->y() +
+	                                                           page->h() / 2 - input_height / 2,
+	                                                           input_width,
+	                                                           input_height);
+	page->input->labelfont(input_font);
+	page->input->labelsize(PageControls::font_size);
+	page->input->align(FL_ALIGN_CENTER);
+	page->input->input()->when(FL_WHEN_CHANGED);
+	page->input->input()->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->UpdatePageId(); }, this);
+	page->input->resizable(nullptr);
+
+	// previous page button decrements the current page id
+	page->prev_button = ut::MakeUnique<Button>(page->input->x() - input_height,
+	                                           page->input->y(),
+	                                           input_height,
+	                                           input_height);
+	page->prev_button->SetIcon(ut::MakeShared<Icon>(Icon::CreateArrow(input_height, input_height,
+	                                                                  icon_color,
+	                                                                  icon_margin, true, false)));
+	page->prev_button->SetCallback([&]() { page->page_id.Store(page->page_id.Read() - 1); ImmediateUpdate(); });
+
+	// first page button sets the current page id to 1
+	page->first_button = ut::MakeUnique<Button>(page->prev_button->x() - input_height,
+	                                            page->input->y(),
+	                                            input_height,
+	                                            input_height);
+	page->first_button->SetIcon(ut::MakeShared<Icon>(Icon::CreateArrow(input_height, input_height,
+	                                                                   icon_color,
+	                                                                   icon_margin, true, true)));
+	page->first_button->SetCallback([&]() { page->page_id.Store(1); ImmediateUpdate(); });
+
+	// next page button increments the current page id
+	page->next_button = ut::MakeUnique<Button>(page->input->x() + page->input->w(),
+	                                           page->input->y(),
+	                                           input_height,
+	                                           input_height);
+	page->next_button->SetIcon(ut::MakeShared<Icon>(Icon::CreateArrow(input_height, input_height,
+	                                                                  icon_color,
+	                                                                  icon_margin, false, false)));
+	page->next_button->SetCallback([&]() { page->page_id.Store(page->page_id.Read() + 1); ImmediateUpdate(); });
+
+	// last page button sets the current page id to the value equal to the page count
+	page->last_button = ut::MakeUnique<Button>(page->next_button->x() + page->next_button->w(),
+	                                           page->input->y(),
+	                                           input_height,
+	                                           input_height);
+	page->last_button->SetIcon(ut::MakeShared<Icon>(Icon::CreateArrow(input_height, input_height,
+	                                                                  icon_color,
+	                                                                  icon_margin, false, true)));
+	page->last_button->SetCallback([&]() { page->page_id.Store(page->page_count.Read()); ImmediateUpdate(); });
+
+	// this description box displays the number of pages
+	page->page_count_box = ut::MakeUnique<Fl_Box>(page->x(),
+	                                              page->y(),
+	                                              page->first_button->x() - page->x(),
+	                                              skPageControlGroupHeight);
+	page->page_count_box->box(FL_NO_BOX);
+	page->page_count_box->align(FL_ALIGN_INSIDE | FL_ALIGN_CENTER);
+
+	// this description box displays the number of entities
+	page->entity_count_box = ut::MakeUnique<Fl_Box>(page->last_button->x() + page->last_button->w(),
+	                                                page->y(),
+	                                                page->x() + page->w() - page->last_button->x() - page->last_button->w(),
+	                                                skPageControlGroupHeight);
+	page->page_count_box->box(FL_NO_BOX);
+	page->entity_count_box->align(FL_ALIGN_INSIDE | FL_ALIGN_CENTER);
+
+	// finish group
+	page->end();
 }
 
 // Creates an array of EntityView::Proxy from the provided entity map that
@@ -1168,28 +1298,39 @@ void EntityBrowser::PrepareEntityProxies(EntitySystem::EntityMap& entities)
 {
 	ut::ScopeLock lock(mutex);
 
-	const size_t entity_count = entities.Count();
-
+	// clear current views array
 	pending_views.Reset();
-	pending_views.Resize(entity_count);
 
-	for (size_t entity_id = 0; entity_id < entity_count; entity_id++)
+	// filter entities
+	ut::Optional<size_t> filtered_scroll_index = FilterEntities(entities);
+	const size_t filtered_entity_count = filter_cache.Count();
+
+	// initialize page data
+	const PageView page_view = PreparePage(filtered_scroll_index);
+
+	// allocate new entity views
+	pending_views.Resize(page_view.entity_count);
+
+	// serialize entities into the appropriate ui views
+	for (size_t i = 0; i < page_view.entity_count; i++)
 	{
-		ut::Pair<const Entity::Id, EntitySystem::ComponentSet>& entity = entities[entity_id];
-		const Entity::Id id = entity.GetFirst();
-		EntitySystem::ComponentSet& components = entity.second;
+		const Entity::Id entity_id = filter_cache[page_view.first_filtered_id + i];
+		ut::Optional<EntitySystem::ComponentSet&> components = entities.Find(entity_id);
+		UT_ASSERT(components.HasValue());
 
-		EntityView::Proxy& view_proxy = pending_views[entity_id];
-		view_proxy.id = id;
+		EntityView::Proxy& view_proxy = pending_views[i];
+		view_proxy.id = entity_id;
 
-		const size_t component_count = components.Count();
-		for (size_t component_id = 0; component_id < component_count; component_id++)
+		const size_t component_count = components->Count();
+		EntitySystem::ComponentSet::Iterator component_it;
+		for (component_it = components->Begin(); component_it != components->End(); ++component_it)
 		{
-			const ut::DynamicType& component_type = components[component_id]->Identify();
-			ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(components[component_id].Get(),
+			Component& component = component_it->Get();
+			const ut::DynamicType& component_type = component.Identify();
+			ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(component,
 			                                                          component_type.GetName(),
 			                                                          ut::meta::Info::CreateComplete());
-			view_proxy.components.Add(ComponentView::Proxy{ ut::Move(snapshot), component_type.GetHandle(), id });
+			view_proxy.components.Add(ComponentView::Proxy{ ut::Move(snapshot), component_type.GetHandle(), entity_id });
 		}
 	}
 }
@@ -1199,23 +1340,18 @@ void EntityBrowser::UpdateUi()
 {
 	ut::ScopeLock lock(mutex);
 
-	if (!this->visible() || pending_views.IsEmpty())
+	if (!this->visible())
 	{
 		return;
 	}
 
 	FixScrollPosition();
-
 	InvalidateAllViews();
-	
 	UpdateViews();
-
 	RepositionViews();
-	
 	RemoveInvalidViews();
-
+	UpdateControls();
 	view_area->redraw();
-
 	pending_views.Reset();
 }
 
@@ -1294,11 +1430,6 @@ void EntityBrowser::UpdateViews()
 	for (ut::uint32 i = 0; i < pending_entity_count; i++)
 	{
 		EntityView::Proxy& pending_view = pending_views[i];
-		if (!FilterEntity(pending_view))
-		{
-			continue;
-		}
-
 		ut::Optional<EntityView&> existing_view = FindView(pending_view.id);
 		if (existing_view)
 		{
@@ -1449,27 +1580,9 @@ void EntityBrowser::AddEntityCallback(const CmdAddEntity::AddResult& add_result)
 
 	if (add_result)
 	{
+		entity_controls.filter.Set(ut::String());
 		new_entity_id.Set(add_result.Get());
 	}
-}
-
-// Returns 'true' if the provided entity passes the filter.
-bool EntityBrowser::FilterEntity(EntityView::Proxy& entity_proxy)
-{
-	const char* filter = controls.filter->value();
-	if (filter == nullptr || ut::StrLen<char>(filter) == 0)
-	{
-		return true;
-	}
-
-	// all numbers must match the entity id
-	const ut::String entity_id = ut::Print(entity_proxy.id);
-	if (ut::StrCmp<char>(entity_id.GetAddress(), filter))
-	{
-		return true;
-	}
-
-	return false;
 }
 
 // Scrolls view area right to the provided widget.
@@ -1513,6 +1626,206 @@ void EntityBrowser::ProcessNewEntity(EntityView& entity_view)
 	// apply color and perform scrolling
 	entity_view.MarkNew(true);
 	ScrollToWidget(entity_view);
+}
+
+// Updates @entity_controls.filter string with
+// the value of the input widget.
+void EntityBrowser::UpdateFilterInput()
+{
+	ut::String filter_text(entity_controls.filter_input->value());
+	entity_controls.filter.Set(ut::Move(filter_text));
+	page->page_id.Store(1);
+	ImmediateUpdate();
+}
+
+// Updates page id from the input field.
+void EntityBrowser::UpdatePageId()
+{
+	const ut::String page_str(page->input->value());
+
+	if (page_str.Length() == 0)
+	{
+		page->page_id.Store(1);
+	}
+	else
+	{
+		page->page_id.Store(ut::Scan<ut::uint32>(page->input->value()));
+	}
+
+	ImmediateUpdate();
+}
+
+// Updates all page controls.
+void EntityBrowser::UpdateControls()
+{
+	if (Fl::focus() != page->input->input() ||
+	    ut::StrLen<char>(page->input->value()) != 0)
+	{
+		const ut::String page_id_str = ut::Print(page->page_id.Read());
+		page->input->value(page_id_str.GetAddress());
+	}
+
+	const ut::String filter = entity_controls.filter.Get();
+	if (filter != entity_controls.filter_input->value())
+	{
+		entity_controls.filter_input->value(filter.GetAddress());
+	}
+
+
+	ut::String page_count_str = ut::String("Pages: ") + ut::Print(page->page_count.Read());
+	ut::String entity_count_str = ut::String("Entities: ") + ut::Print(page->entity_count.Read());
+	page->page_count_buffer = ut::MakeUnique<ut::String>(ut::Move(page_count_str));
+	page->entity_count_buffer = ut::MakeUnique<ut::String>(ut::Move(entity_count_str));
+	page->page_count_box->label(page->page_count_buffer->GetAddress());
+	page->entity_count_box->label(page->entity_count_buffer->GetAddress());
+}
+
+// Filters provided entities and stores filtered
+// indices to the @filter_cache.
+//    @param entities - the reference to the entity map.
+//    @return - optional index of the filtered value that needs
+//              to be scrolled to.
+ut::Optional<size_t> EntityBrowser::FilterEntities(EntitySystem::EntityMap& entities)
+{
+	const ut::Optional<Entity::Id> entity_id_awaiting_scroll = new_entity_id.Get();
+	const ut::String filter = entity_controls.filter.Get();
+	const bool filter_is_not_empty = filter.Length() != 0;
+
+	ut::Optional<size_t> filtered_scroll_index;
+	EntitySystem::EntityMap::ConstIterator entity_it;
+	
+	// interate all entities
+	filter_cache.Reset();
+	for (entity_it = entities.Begin(); entity_it != entities.End(); ++entity_it)
+	{
+		const ut::Pair<const Entity::Id, EntitySystem::ComponentSet>& entity = *entity_it;
+		const Entity::Id id = entity.GetFirst();
+		const EntitySystem::ComponentSet& components = entity.GetSecond();
+
+		// find the name component
+		ut::Optional<const NameComponent&> name_component;
+		EntitySystem::ComponentSet::ConstIterator component_it;
+		for (component_it = components.Begin(); component_it != components.End(); ++component_it)
+		{
+			const Component& component = component_it->Get();
+			if (component.Identify().GetHandle() == ut::GetPolymorphicHandle<NameComponent>())
+			{
+				name_component = static_cast<const NameComponent&>(component);
+				break;
+			}
+		}
+
+		// check if the name matches the filter query
+		const bool name_match = name_component && ut::StrStr(name_component->name.GetAddress(), filter.GetAddress()) != nullptr;
+
+		// check if the id of the entity fully matches the filter query
+		const bool id_match = ut::Print(id) == filter;
+
+		// weed out filtered values
+		if (filter_is_not_empty && !id_match && !name_match)
+		{
+			continue;
+		}
+
+		// add filtered value index to the cache
+		if (!filter_cache.Add(id))
+		{
+			throw ut::Error(ut::error::out_of_memory);
+		}
+
+		// check if this entity is awaiting to be scrolled to
+		if (entity_id_awaiting_scroll.HasValue() && entity_id_awaiting_scroll.Get() == id)
+		{
+			filtered_scroll_index = filter_cache.Count() - 1;
+		}
+	}
+
+	return filtered_scroll_index;
+}
+
+// Calculates the first index of the filtered entities and the number of
+// entities to be shown on the current page.
+//    @param filtered_scroll_index - optional index of the filtered value
+//                                   from the @filter_cache array, that must
+//                                   be scrolled to.
+//    @return - the EntityBrowser::PageView structure value.
+EntityBrowser::PageView EntityBrowser::PreparePage(const ut::Optional<size_t>& filtered_scroll_index)
+{
+	const size_t filtered_entity_count = filter_cache.Count();
+	const ut::uint32 page_count = static_cast<ut::uint32>(filtered_entity_count / page->capacity + 1);
+
+	// find the current page index
+	ut::uint32 current_page_id = page->page_id.Read();
+	if (filtered_scroll_index)
+	{
+		current_page_id = static_cast<ut::uint32>(filtered_scroll_index.Get() / page->capacity + 1);
+	}
+	else
+	{
+		if (current_page_id == 0)
+		{
+			current_page_id = 1;
+		}
+		else if (current_page_id * page->capacity > filtered_entity_count)
+		{
+			current_page_id = page_count;
+		}
+
+		new_entity_id.Set(ut::Optional<Entity::Id>());
+	}
+
+	// update @page controls
+	page->page_id.Store(current_page_id);
+	page->page_count.Store(page_count);
+	page->entity_count.Store(static_cast<ut::uint32>(filtered_entity_count));
+
+	// initialize and return a page view
+	PageView view;
+	view.first_filtered_id = --current_page_id * page->capacity;
+	view.entity_count = ut::Min<size_t>(filtered_entity_count - view.first_filtered_id, page->capacity);
+	return view;
+}
+
+//----------------------------------------------------------------------------//
+// Centers the page index input widget.
+void EntityBrowser::PageControls::resize(int px, int py, int mw, int mh)
+{
+	const int widget_size = input->h();
+	const int input_width = input->w();
+	const int ppx = px + mw / 2 - input_width / 2;
+	const int ppy = py + mh / 2 - widget_size / 2;
+
+	Fl_Group::resize(px, py, mw, mh);
+
+	input->resize(ppx,
+	              ppy,
+	              input_width,
+	              widget_size);
+
+	prev_button->resize(ppx - widget_size,
+	                    ppy,
+	                    widget_size,
+	                    widget_size);
+	first_button->resize(ppx - widget_size * 2,
+	                     ppy,
+	                     widget_size,
+	                     widget_size);
+	next_button->resize(ppx + input_width,
+	                    ppy,
+	                    widget_size,
+	                    widget_size);
+	last_button->resize(ppx + input_width + widget_size,
+	                    ppy,
+	                    widget_size,
+	                    widget_size);
+
+	page_count_box->resize(px, ppy,
+	                       ppx - widget_size * 2 - px,
+	                       widget_size);
+	entity_count_box->resize(ppx + input_width + widget_size * 2,
+	                         ppy,
+	                         px + mw - ppx - input_width - widget_size * 2,
+	                         widget_size);
 }
 
 //----------------------------------------------------------------------------//

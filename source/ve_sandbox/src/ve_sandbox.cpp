@@ -5,6 +5,7 @@
 #include "commands/ve_cmd_add_entity.h"
 #include "components/ve_render_component.h"
 #include "components/ve_transform_component.h"
+#include "components/ve_name_component.h"
 #include "systems/render/engine/units/ve_render_model.h"
 #include "systems/render/engine/units/ve_render_directional_light.h"
 #include "systems/render/engine/units/ve_render_point_light.h"
@@ -70,12 +71,13 @@ UT_REGISTER_TYPE(ve::Component, TestComponent, "test")
 //----------------------------------------------------------------------------//
 
 // Creates a box with random color and scale.
-ve::Entity CreateRandomBox(const ut::Vector<3>& position)
+ve::Entity CreateRandomBox(const ut::Vector<3>& position, size_t id)
 {
 	// random values
 	const float r1 = static_cast<float>(200 + rand() % 800);
 	const float r2 = static_cast<float>(200 + rand() % 800);
 	const float r3 = static_cast<float>(200 + rand() % 800);
+	const bool is_sphere = rand() % 3 == 0;
 
 	// transform
 	ve::TransformComponent transform_component;
@@ -86,11 +88,11 @@ ve::Entity CreateRandomBox(const ut::Vector<3>& position)
 
 	// model unit
 	ve::render::Model box_model;
+	const ut::String mesh_name = is_sphere ? ve::render::engine_rc::skSphere : ve::render::engine_rc::skBox;
 	box_model.local_trasform.translation.X() = (rand() % 200) / 40.0f;
 	box_model.local_trasform.translation.Y() = (rand() % 200) / 40.0f;
 	box_model.local_trasform.translation.Z() = (rand() % 200) / 40.0f;
-	box_model.mesh_path = ut::String(ve::render::engine_rc::skDir) +
-	                      (rand() % 3 == 0 ? ve::render::engine_rc::skSphere : ve::render::engine_rc::skBox);
+	box_model.mesh_path = ut::String(ve::render::engine_rc::skDir) + mesh_name;
 	box_model.diffuse_mul.R() = r1 / 1000.0f;
 	box_model.diffuse_mul.G() = r2 / 1000.0f;
 	box_model.diffuse_mul.B() = r3 / 1000.0f;
@@ -109,14 +111,18 @@ ve::Entity CreateRandomBox(const ut::Vector<3>& position)
 	ve::Entity box;
 	box.AddComponent(ut::MakeUnique<ve::RenderComponent>(ut::Move(render_component)));
 	box.AddComponent(ut::MakeUnique<ve::TransformComponent>(ut::Move(transform_component)));
+	box.AddComponent(ut::MakeUnique<ve::NameComponent>(mesh_name + ut::Print(id)));
 	box.AddComponent(ut::MakeUnique<TestComponent>(TestComponent()));
 	return box;
 }
 
 // Creates a light source.
 ve::Entity CreateLight(ve::render::Light::SourceType type,
-                       const ut::Vector<3>& position = ut::Vector<3>(0))
+                       const ut::Vector<3>& position,
+                       size_t id)
 {
+	ut::String name;
+
 	// transform
 	ve::TransformComponent transform;
 	transform.translation = position;
@@ -128,9 +134,10 @@ ve::Entity CreateLight(ve::render::Light::SourceType type,
 	{
 		case ve::render::Light::source_directional:
 		{
+			name = ut::GetPolymorphicName<ve::render::DirectionalLight>();
 			const ut::Vector<3> light_direction = ut::Vector<3>(1, -1, 1).Normalize();
 			transform.rotation = ut::Quaternion<float>::MakeShortestRotation(ve::render::DirectionalLight::skDirection,
-				light_direction);
+			                                                                 light_direction);
 			ve::render::DirectionalLight light_unit;
 			light_unit.color = ut::Vector<3>(1, 1, 1);
 			light_unit.intensity = 0.8f;
@@ -139,6 +146,7 @@ ve::Entity CreateLight(ve::render::Light::SourceType type,
 
 		case ve::render::Light::source_point:
 		{
+			name = ut::GetPolymorphicName<ve::render::PointLight>();
 			ve::render::PointLight light_unit;
 			light_unit.color = ut::Vector<3>(1, 1, 1);
 			light_unit.intensity = 2.0f;
@@ -148,6 +156,7 @@ ve::Entity CreateLight(ve::render::Light::SourceType type,
 
 		case ve::render::Light::source_spot:
 		{
+			name = ut::GetPolymorphicName<ve::render::SpotLight>();
 			transform.rotation = ut::Quaternion<float>::MakeFromAngles(ut::Vector<3>(0, 0, -60));
 			ve::render::SpotLight light_unit;
 			light_unit.color = ut::Vector<3>(1, 1, 1);
@@ -167,6 +176,7 @@ ve::Entity CreateLight(ve::render::Light::SourceType type,
 	ve::Entity entity;
 	entity.AddComponent(ut::MakeUnique<ve::RenderComponent>(ut::Move(render)));
 	entity.AddComponent(ut::MakeUnique<ve::TransformComponent>(ut::Move(transform)));
+	entity.AddComponent(ut::MakeUnique<ve::NameComponent>(name + ut::Print(id)));
 	return entity;
 }
 
@@ -178,20 +188,24 @@ ut::Array<ve::Entity> CreateTestScene()
 	const float x_offset = 40.0f;
 	
 	// directional light
-	out.Add(CreateLight(ve::render::Light::source_directional));
+	size_t dir_light_id = 0;
+	out.Add(CreateLight(ve::render::Light::source_directional, ut::Vector<3>(0), dir_light_id++));
 
 	// point and spot lights
+	size_t point_light_id = 0;
+	size_t spot_light_id = 0;
 	int point_light_count = 2;
 	for (int i = -point_light_count; i <= point_light_count; i++)
 	{
 		const ut::Vector<3> point_position(x_offset - 25.0f, 40.0f, static_cast<float>(i) * 90.0f);
-		out.Add(CreateLight(ve::render::Light::source_point, point_position));
+		out.Add(CreateLight(ve::render::Light::source_point, point_position, point_light_id++));
 
 		const ut::Vector<3> spot_position(x_offset - 35.0f, -20.0f, static_cast<float>(i) * 90.0f);
-		out.Add(CreateLight(ve::render::Light::source_spot, spot_position));
+		out.Add(CreateLight(ve::render::Light::source_spot, spot_position, spot_light_id++));
 	}
 
 	// boxes
+	size_t mesh_id = 0;
 	const int nx = 2, ny = 10, nz = 10;
 	for (int x = -nx; x < nx; x++)
 	{
@@ -202,7 +216,7 @@ ut::Array<ve::Entity> CreateTestScene()
 				const ut::Vector<3> position(static_cast<float>(x) * 5.0f + x_offset,
 				                             static_cast<float>(y) * 6.0f,
 				                             static_cast<float>(z) * 6.0f);
-				out.Add(CreateRandomBox(position));
+				out.Add(CreateRandomBox(position, mesh_id++));
 			}
 		}
 	}

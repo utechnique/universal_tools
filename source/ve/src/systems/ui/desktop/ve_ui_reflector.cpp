@@ -438,7 +438,7 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 }
 
 // Updates this item with the new meta-data.
-	//    @param node - reference to the meta snapshot of the new parameter.
+//    @param node - reference to the meta snapshot of the new parameter.
 void ReflectionTreeItem::Update(ut::meta::Snapshot& node)
 {
 	// update node name

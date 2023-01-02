@@ -338,6 +338,126 @@ Icon Icon::CreateTrashBin(ut::uint32 width,
 	return Icon(width, height, ut::Move(icon_data));
 }
 
+// Creates an arrow.
+Icon Icon::CreateArrow(ut::uint32 width,
+                       ut::uint32 height,
+                       const ut::Color<4, ut::byte>& color,
+                       ut::uint32 margin,
+                       bool left,
+                       bool double_arrow)
+{
+	ut::Array< ut::Color<4, ut::byte> > icon_data(width * height);
+
+	const int imargin = static_cast<int>(margin);
+	const int size = ut::Min<ut::uint32>(width, height);
+	const int half_size = size / 2;
+	const int half_size_m = (size - imargin * 2) / 2;
+	const int odd = size % 2 == 0 ? 1 : 0;
+	const int not_odd = size % 2 == 0 ? 0 : 1;
+
+	for (int y = 0; y < size; y++)
+	{
+		for (int x = 0; x < size; x++)
+		{
+			ut::Color<4, ut::byte>& pixel = icon_data[y*size + x];
+			pixel = color;
+			pixel.A() = 0;
+
+			if (x < imargin || x >= (size - imargin) ||
+			    y < imargin || y >= (size - imargin))
+			{
+				continue;
+			}
+
+			int rx = x - imargin + (left ? 1 : -1);
+			int ry = y - imargin;
+			rx = left ? rx : 2 * half_size_m - rx - odd;
+
+			if (!double_arrow)
+			{
+				ry = ry * 2 - half_size_m;
+			}
+
+			if (double_arrow && ((left && x >= size / 2) || (!left && x < size / 2)))
+			{
+				rx -= left ? half_size_m : half_size_m;
+			}
+
+			if (half_size_m - rx < ry && half_size_m + rx > ry)
+			{
+				pixel.A() = color.A();
+			}
+		}
+	}
+
+	// antialiasing
+	for (int y = 0; y < size; y++)
+	{
+		for (int x = 0; x < size; x++)
+		{
+			ut::Color<4, ut::byte>& pixel = icon_data[y*size + x];
+
+			const bool center = y == half_size;
+			const ut::byte aa_value = color.A() / 2;
+			
+			if (left && x == imargin && center && !double_arrow)
+			{
+				pixel.A() = aa_value;
+				continue;
+			}
+			else if (!left && x == size - imargin - 1 && center && !double_arrow)
+			{
+				pixel.A() = aa_value;
+				continue;
+			}
+
+			if (pixel.A() != 0)
+			{
+				continue;
+			}
+
+			bool vertical = false;
+			bool horizontal = false;
+			int neighbours = 0;
+			for (int ty = y - 1; ty <= y + 1; ty++)
+			{
+				for (int tx = x - 1; tx <= x + 1; tx++)
+				{
+					const int dmargin = double_arrow ? 0 : 1;
+
+					if (tx < imargin || tx > (size - imargin - 1) ||
+						ty < imargin || ty >= (size - imargin - dmargin))
+					{
+						continue;
+					}
+
+					ut::Color<4, ut::byte>& tp = icon_data[ty*size + tx];
+					if (tp.A() == color.A())
+					{
+						if (tx == x - 1 || tx == x + 1)
+						{
+							vertical = true;
+						}
+						else if (ty == y - 1 || ty == y + 1)
+						{
+							horizontal = true;
+						}
+
+						neighbours++;
+					}
+				}
+			}
+
+			if (neighbours >= 3 && vertical && horizontal)
+			{
+				pixel.A() = aa_value;
+			}
+		}
+	}
+
+	return Icon(width, height, ut::Move(icon_data));
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ui)
 END_NAMESPACE(ve)
