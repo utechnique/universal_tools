@@ -17,9 +17,11 @@ public:
 	PollSystem(ut::SharedPtr<input::Manager> input_mgr_ptr);
 
 	// Updates system. This function is called once per tick.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	System::Result Update();
+	System::Result Update(ComponentAccess& access) override;
 
 private:
 	ut::SharedPtr<input::Manager> input_mgr;

@@ -33,13 +33,16 @@ public:
 	                     ut::SharedPtr<input::Manager> input_mgr_ptr);
 
 	// Updates transform component of the managed entities.
-	//    @return - empty array of commands.
-	System::Result Update();
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
+	//    @return - array of commands.
+	System::Result Update(Base::Access& access) override;
 
 private:
 	// Processes camra that is associated with the provided viewport.
 	// If such camera doesn't exist - a new camera entity will be created.
-	ut::Optional< ut::UniquePtr<Cmd> > ProcessViewport(ui::Viewport& viewport);
+	ut::Optional< ut::UniquePtr<Cmd> > ProcessViewport(Base::Access& access,
+	                                                   ui::Viewport& viewport);
 
 	// Updates camera according to the associated viewport.
 	//    @param transform - reference to the transform component.

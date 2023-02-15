@@ -15,16 +15,18 @@ CameraSystem::CameraSystem() : ComponentSystem<TransformComponent,
 //----------------------------------------------------------------------------->
 // Updates view unit of all entities having transform,
 // render and camera component.
+//    @param access - reference to the object providing access to the
+//                    desired components.
 //    @return - empty array of commands.
-System::Result CameraSystem::Update()
+System::Result CameraSystem::Update(Access& access)
 {
-	const size_t count = entities.Count();
-	for (size_t i = 0; i < count; i++)
+	for (Access::EntityIterator entity = access.BeginEntities(); entity != access.EndEntities(); ++entity)
 	{
-		CameraSystem::Set& set = entities[i];
-		TransformComponent& transform = set.Get<TransformComponent>();
-		CameraComponent& camera = set.Get<CameraComponent>();
-		RenderComponent& render = set.Get<RenderComponent>();
+		const Entity::Id entity_id = entity->GetFirst();
+
+		TransformComponent& transform = access.GetComponent<TransformComponent>(entity_id);
+		CameraComponent& camera = access.GetComponent<CameraComponent>(entity_id);
+		RenderComponent& render = access.GetComponent<RenderComponent>(entity_id);
 
 		// search for the view unit
 		const size_t unit_count = render.units.Count();

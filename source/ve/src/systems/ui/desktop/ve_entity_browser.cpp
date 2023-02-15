@@ -1123,9 +1123,10 @@ void EntityBrowser::resize(int x, int y, int w, int h)
 }
 
 // Updates UI reflection of the provided entities.
-//    @param entities - reference to the entity map.
-//    @return - array of accumulated commands pending to be processed.
-CmdArray EntityBrowser::UpdateEntities(EntitySystem::EntityMap& entities)
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
+	//    @return - array of accumulated commands pending to be processed.
+CmdArray EntityBrowser::UpdateEntities(ComponentAccess& access)
 {
 	// reset immediate update flag
 	const bool needs_immediate_update = immediate_update.Get();
@@ -1144,7 +1145,7 @@ CmdArray EntityBrowser::UpdateEntities(EntitySystem::EntityMap& entities)
 	// update all components with new data
 	if (cmd.IsEmpty())
 	{
-		PrepareEntityProxies(entities);
+		PrepareEntityProxies(access);
 		Fl::awake([](void* ptr) { static_cast<EntityBrowser*>(ptr)->UpdateUi(); }, this);
 	}
 
@@ -1292,9 +1293,10 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 }
 
 // Creates an array of EntityView::Proxy from the provided entity map that
-// will be used to update UI component views on the next UI tick.
-//    @param entities - reference to the entity map.
-void EntityBrowser::PrepareEntityProxies(EntitySystem::EntityMap& entities)
+	// will be used to update UI component views on the next UI tick.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
+void EntityBrowser::PrepareEntityProxies(ComponentAccess& access)
 {
 	ut::ScopeLock lock(mutex);
 
@@ -1302,7 +1304,7 @@ void EntityBrowser::PrepareEntityProxies(EntitySystem::EntityMap& entities)
 	pending_views.Reset();
 
 	// filter entities
-	ut::Optional<size_t> filtered_scroll_index = FilterEntities(entities);
+	ut::Optional<size_t> filtered_scroll_index = FilterEntities(access);
 	const size_t filtered_entity_count = filter_cache.Count();
 
 	// initialize page data
@@ -1315,22 +1317,26 @@ void EntityBrowser::PrepareEntityProxies(EntitySystem::EntityMap& entities)
 	for (size_t i = 0; i < page_view.entity_count; i++)
 	{
 		const Entity::Id entity_id = filter_cache[page_view.first_filtered_id + i];
-		ut::Optional<EntitySystem::ComponentSet&> components = entities.Find(entity_id);
-		UT_ASSERT(components.HasValue());
+		ut::Optional<const Entity&> entity = access.FindEntity(entity_id);
+		UT_ASSERT(entity.HasValue());
 
 		EntityView::Proxy& view_proxy = pending_views[i];
 		view_proxy.id = entity_id;
 
-		const size_t component_count = components->Count();
-		EntitySystem::ComponentSet::Iterator component_it;
-		for (component_it = components->Begin(); component_it != components->End(); ++component_it)
+		const size_t component_count = entity->CountComponents();
+		for (size_t component_index = 0; component_index < component_count; component_index++)
 		{
-			Component& component = component_it->Get();
-			const ut::DynamicType& component_type = component.Identify();
-			ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(component,
-			                                                          component_type.GetName(),
+			const ut::DynamicType::Handle& component_type = entity->GetComponentByIndex(component_index);
+			ut::Optional<ComponentMap&> component_map = access.GetMap(component_type);
+			UT_ASSERT(component_map.HasValue());
+
+			ut::Optional<Component&> component = component_map->Find(entity_id);
+			UT_ASSERT(component.HasValue());
+
+			ut::meta::Snapshot snapshot = ut::meta::Snapshot::Capture(component.Get(),
+			                                                          component->Identify().GetName(),
 			                                                          ut::meta::Info::CreateComplete());
-			view_proxy.components.Add(ComponentView::Proxy{ ut::Move(snapshot), component_type.GetHandle(), entity_id });
+			view_proxy.components.Add(ComponentView::Proxy{ ut::Move(snapshot), component_type, entity_id });
 		}
 	}
 }
@@ -1682,36 +1688,38 @@ void EntityBrowser::UpdateControls()
 
 // Filters provided entities and stores filtered
 // indices to the @filter_cache.
-//    @param entities - the reference to the entity map.
+//    @param access - reference to the object providing access to the
+//                    desired components.
 //    @return - optional index of the filtered value that needs
 //              to be scrolled to.
-ut::Optional<size_t> EntityBrowser::FilterEntities(EntitySystem::EntityMap& entities)
+ut::Optional<size_t> EntityBrowser::FilterEntities(ComponentAccess& access)
 {
 	const ut::Optional<Entity::Id> entity_id_awaiting_scroll = new_entity_id.Get();
 	const ut::String filter = entity_controls.filter.Get();
 	const bool filter_is_not_empty = filter.Length() != 0;
 
 	ut::Optional<size_t> filtered_scroll_index;
-	EntitySystem::EntityMap::ConstIterator entity_it;
+	ComponentAccess::EntityIterator entity_it;
 	
 	// interate all entities
 	filter_cache.Reset();
-	for (entity_it = entities.Begin(); entity_it != entities.End(); ++entity_it)
+	for (entity_it = access.BeginEntities(); entity_it != access.EndEntities(); ++entity_it)
 	{
-		const ut::Pair<const Entity::Id, EntitySystem::ComponentSet>& entity = *entity_it;
-		const Entity::Id id = entity.GetFirst();
-		const EntitySystem::ComponentSet& components = entity.GetSecond();
+		const Entity::Id entity_id = entity_it->GetFirst();
+		const Entity& entity = entity_it->GetSecond();
 
 		// find the name component
 		ut::Optional<const NameComponent&> name_component;
-		EntitySystem::ComponentSet::ConstIterator component_it;
-		for (component_it = components.Begin(); component_it != components.End(); ++component_it)
+		if (entity.HasComponent(ut::GetPolymorphicHandle<NameComponent>()))
 		{
-			const Component& component = component_it->Get();
-			if (component.Identify().GetHandle() == ut::GetPolymorphicHandle<NameComponent>())
+			ut::Optional<ComponentMap&> name_map = access.GetMap<NameComponent>();
+			if (name_map)
 			{
-				name_component = static_cast<const NameComponent&>(component);
-				break;
+				ut::Optional<Component&> name_find_result = name_map->Find(entity_id);
+				if (name_find_result)
+				{
+					name_component = static_cast<const NameComponent&>(name_find_result.Get());
+				}
 			}
 		}
 
@@ -1719,7 +1727,7 @@ ut::Optional<size_t> EntityBrowser::FilterEntities(EntitySystem::EntityMap& enti
 		const bool name_match = name_component && ut::StrStr(name_component->name.GetAddress(), filter.GetAddress()) != nullptr;
 
 		// check if the id of the entity fully matches the filter query
-		const bool id_match = ut::Print(id) == filter;
+		const bool id_match = ut::Print(entity_id) == filter;
 
 		// weed out filtered values
 		if (filter_is_not_empty && !id_match && !name_match)
@@ -1728,13 +1736,13 @@ ut::Optional<size_t> EntityBrowser::FilterEntities(EntitySystem::EntityMap& enti
 		}
 
 		// add filtered value index to the cache
-		if (!filter_cache.Add(id))
+		if (!filter_cache.Add(entity_id))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
 
 		// check if this entity is awaiting to be scrolled to
-		if (entity_id_awaiting_scroll.HasValue() && entity_id_awaiting_scroll.Get() == id)
+		if (entity_id_awaiting_scroll.HasValue() && entity_id_awaiting_scroll.Get() == entity_id)
 		{
 			filtered_scroll_index = filter_cache.Count() - 1;
 		}

@@ -24,8 +24,10 @@ public:
 
 	// Updates view unit of all entities having transform,
 	// render and camera component.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - empty array of commands.
-	System::Result Update();
+	System::Result Update(Access& access) override;
 
 private:
 	// Updates view matrix of the render view.

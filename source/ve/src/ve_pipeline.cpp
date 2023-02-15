@@ -90,7 +90,7 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 	// update system
 	if (system)
 	{
-		System::Result update_result(system->Update());
+		System::Result update_result(system->Update(component_access));
 		if (!update_result)
 		{
 			return update_result;
@@ -137,12 +137,6 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 //    @param entity - reference to the entity to be registered.
 void Pipeline::RegisterEntity(Entity::Id id, Entity& entity)
 {
-	// register in own system
-	if (system)
-	{
-		system->RegisterEntity(id, entity);
-	}
-
 	// register parallel
 	const size_t parallel_count = parallel.Count();
 	for (size_t i = 0; i < parallel_count; i++)
@@ -156,6 +150,14 @@ void Pipeline::RegisterEntity(Entity::Id id, Entity& entity)
 	{
 		series[i].RegisterEntity(id, entity);
 	}
+
+	// check if the set of components of the provided entity
+	// fits the managed system requirements
+	if (system && !component_access.IsEntityRegistered(id) &&
+	    component_access.RegisterEntity(id, entity))
+	{
+		system->RegisterEntity(id, component_access);
+	}
 }
 
 // Iterates all systems and unregisters a provided entity.
@@ -163,9 +165,10 @@ void Pipeline::RegisterEntity(Entity::Id id, Entity& entity)
 void Pipeline::UnregisterEntity(Entity::Id id)
 {
 	// unregister in own system
-	if (system)
+	if (system && component_access.IsEntityRegistered(id))
 	{
-		system->UnregisterEntity(id);
+		system->UnregisterEntity(id, component_access);
+		component_access.UnregisterEntity(id);
 	}
 
 	// unregister parallel
@@ -181,6 +184,102 @@ void Pipeline::UnregisterEntity(Entity::Id id)
 	{
 		series[i].UnregisterEntity(id);
 	}
+}
+
+// Synchronizes the returned component map collection with the internal
+// access map so that the both maps shared the same source.
+//    @return - a reference to the component map collection to
+//              synchronize @component_access with.
+ComponentMapCollection<ut::access_full> Pipeline::SynchronizeComponents()
+{
+	ComponentMapCollection<ut::access_full> map_collection;
+
+	CollectComponentMaps(map_collection);
+	SynchronizeComponents(map_collection);
+
+	return map_collection;
+}
+
+// Collects component maps from all internal systems.
+//    @param map_collection -  reference to the component map collection to
+//                             store component maps in.
+void Pipeline::CollectComponentMaps(ComponentMapCollection<ut::access_full>& map_collection)
+{
+	ut::Optional< ComponentMapCollection<ut::access_full> > compatible_maps = system ? system->SynchronizeComponents()
+	                                                                                 : ut::Optional< ComponentMapCollection<ut::access_full> >();
+
+	// add new maps to the @source and generate access maps
+	if (compatible_maps)
+	{
+		ComponentMapCollection<ut::access_full>::Iterator iterator;
+		for (iterator = compatible_maps->Begin(); iterator != compatible_maps->End(); ++iterator)
+		{
+			const ut::DynamicType::Handle component_type = iterator->GetFirst();
+			map_collection.Insert(component_type, ut::Move(ut::Move(iterator->second)));
+		}
+	}
+
+	// synchronize parallel
+	const size_t parallel_count = parallel.Count();
+	for (size_t i = 0; i < parallel_count; i++)
+	{
+		parallel[i].CollectComponentMaps(map_collection);
+	}
+
+	// synchronize series
+	const size_t serial_count = series.Count();
+	for (size_t i = 0; i < serial_count; i++)
+	{
+		series[i].CollectComponentMaps(map_collection);
+	}
+}
+
+// Recursively synchronizes the provided component map collection with the
+// internal access map so that the both maps shared the same source.
+//    @param source - a reference to the component map collection to
+//                    synchronize @component_access with.
+void Pipeline::SynchronizeComponents(ComponentMapCollection<ut::access_full>& source)
+{
+	// synchronize parallel
+	const size_t parallel_count = parallel.Count();
+	for (size_t i = 0; i < parallel_count; i++)
+	{
+		parallel[i].SynchronizeComponents(source);
+	}
+
+	// synchronize series
+	const size_t serial_count = series.Count();
+	for (size_t i = 0; i < serial_count; i++)
+	{
+		series[i].SynchronizeComponents(source);
+	}
+
+	// exit if no system
+	if (!system)
+	{
+		return;
+	}
+
+	// get a collection of component maps compatible with the managed system
+	ut::Optional< ComponentMapCollection<ut::access_full> > system_compatible_maps = system->SynchronizeComponents();
+	const bool accept_all_entities = !system_compatible_maps.HasValue();
+	ComponentMapCollection<ut::access_full>& compatible_maps = accept_all_entities ? source : system_compatible_maps.Get();
+
+	// generate a collection of shared component maps accessible to the managed system
+	ComponentMapCollection<ut::access_read> accessible_maps;
+	ComponentMapCollection<ut::access_full>::Iterator iterator;
+	for (iterator = compatible_maps.Begin(); iterator != compatible_maps.End(); ++iterator)
+	{
+		const ut::DynamicType::Handle component_type = iterator->GetFirst();
+		ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = source.Find(component_type);
+		if (component_map)
+		{
+			accessible_maps.Insert(component_type, component_map.Get());
+		}
+	}
+
+	// synchronize component maps between the source and the @component_access
+	component_access.Sync(ut::Move(accessible_maps), accept_all_entities);
 }
 
 //----------------------------------------------------------------------------//

@@ -29,19 +29,31 @@ public:
 
 	// Registers provided entity.
 	//    @param id - identifier of the entity.
-	//    @param entity - reference to the entity.
+	//    @param access - reference to the object providing access to
+	//                    components.
 	//    @return - 'true' if entity was registered successfully.
-	virtual bool RegisterEntity(Entity::Id id, Entity& entity);
+	virtual bool RegisterEntity(Entity::Id id, ComponentAccess& access);
 
 	// Unregisters the desired entity by its identifier.
 	//    @param id - identifier of the entity.
-	virtual void UnregisterEntity(Entity::Id id);
+	//    @param access - reference to the object providing access to
+	//                    components.
+	virtual void UnregisterEntity(Entity::Id id, ComponentAccess& access);
 
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	virtual Result Update();
+	virtual Result Update(ComponentAccess& access) = 0;
+
+	// Creates component maps specific to the current system. Depending on
+	// the returned types of components, the @Update method will receive a
+	// reference to the ve::ComponentAccess object (as an argument) providing
+	// the access only for the desired components. If the returned object is
+	// empty - the system will receive all component types.
+	virtual ut::Optional< ComponentMapCollection<ut::access_full> > SynchronizeComponents() const;
 
 	// Returns name of the system.
 	const ut::String& GetName() const;

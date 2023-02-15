@@ -25,8 +25,10 @@ public:
 	FreeCameraControllerSystem(ut::SharedPtr<input::Manager> input_mgr_ptr);
 
 	// Updates transform component of the managed entities.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - empty array of commands.
-	System::Result Update();
+	System::Result Update(Base::Access& access) override;
 
 private:
 	// Updates transform component using camera and controller components.

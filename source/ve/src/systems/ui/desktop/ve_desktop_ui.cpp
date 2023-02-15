@@ -282,11 +282,11 @@ void DesktopFrontend::SaveCfg()
 
 //----------------------------------------------------------------------------->
 // Processes UI events.
-System::Result DesktopFrontend::Update(EntitySystem::EntityMap& entities)
+System::Result DesktopFrontend::Update(ComponentAccess& access)
 {
 	UT_ASSERT(entity_browser);
 	
-	CmdArray commands = entity_browser->UpdateEntities(entities);
+	CmdArray commands = entity_browser->UpdateEntities(access);
 
 	if (exit.Read())
 	{

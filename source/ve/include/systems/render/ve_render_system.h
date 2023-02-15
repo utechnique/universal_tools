@@ -27,21 +27,29 @@ public:
 	~RenderSystem();
 
 	// Draws all renderable components.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	System::Result Update();
+	System::Result Update(Base::Access& access) override;
 
 private:
 	// Initializes a portion of units.
-	void InitializeUnitsJob(size_t first_entity_id, size_t entity_count);
+	void InitializeUnitsJob(Base::Access& access,
+	                        size_t first_entity_id,
+	                        size_t entity_count);
 
 	// Updates the unit cache of the rendering engine, also calculates a
 	// transform matrix for every unit.
-	void InitializeUnits();
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
+	void InitializeUnits(Base::Access& access);
 
 	// Unregisters the desired entity by its identifier.
 	//    @param id - identifier of the entity.
-	void UnregisterEntity(Entity::Id id) override;
+	//    @param access - reference to the object providing access to
+	//                    components.
+	void UnregisterEntity(Entity::Id id, Base::Access& access) override;
 
 	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
 	ut::SharedPtr<Device::Thread> render_thread;

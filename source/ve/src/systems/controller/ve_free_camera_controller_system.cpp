@@ -14,19 +14,20 @@ FreeCameraControllerSystem::FreeCameraControllerSystem(ut::SharedPtr<input::Mana
 
 //----------------------------------------------------------------------------->
 // Updates transform component of the managed entities.
-//    @return - empty array of commands.
-System::Result FreeCameraControllerSystem::Update()
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
+	//    @return - empty array of commands.
+System::Result FreeCameraControllerSystem::Update(Base::Access& access)
 {
 	const float time_step = timer.GetTime<ut::time::seconds, float>();
 	timer.Start();
 
-	const size_t count = entities.Count();
-	for (size_t i = 0; i < count; i++)
+	for (Base::Access::EntityIterator entity = access.BeginEntities(); entity != access.EndEntities(); ++entity)
 	{
-		FreeCameraControllerSystem::Set& set = entities[i];
-		TransformComponent& transform = set.Get<TransformComponent>();
-		CameraComponent& camera = set.Get<CameraComponent>();
-		FreeCameraControllerComponent& controller = set.Get<FreeCameraControllerComponent>();
+		const Entity::Id entity_id = entity->GetFirst();
+		TransformComponent& transform = access.GetComponent<TransformComponent>(entity_id);
+		CameraComponent& camera = access.GetComponent<CameraComponent>(entity_id);
+		FreeCameraControllerComponent& controller = access.GetComponent<FreeCameraControllerComponent>(entity_id);
 		UpdateCamera(transform, camera, controller, time_step);
 	}
 

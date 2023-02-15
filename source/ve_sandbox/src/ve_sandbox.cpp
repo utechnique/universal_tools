@@ -6,6 +6,7 @@
 #include "components/ve_render_component.h"
 #include "components/ve_transform_component.h"
 #include "components/ve_name_component.h"
+#include "ve_component_system.h"
 #include "systems/render/engine/units/ve_render_model.h"
 #include "systems/render/engine/units/ve_render_directional_light.h"
 #include "systems/render/engine/units/ve_render_point_light.h"
@@ -68,10 +69,17 @@ public:
 };
 UT_REGISTER_TYPE(ve::Component, TestComponent, "test")
 
+class TestSystem : public ve::ComponentSystem<TestComponent>
+{
+public:
+	TestSystem() : ve::ComponentSystem<TestComponent>("test_system") {}
+	ve::System::Result Update(Access& access) override { return ve::CmdArray(); }
+};
+
 //----------------------------------------------------------------------------//
 
 // Creates a box with random color and scale.
-ve::Entity CreateRandomBox(const ut::Vector<3>& position, size_t id)
+ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& position, size_t id)
 {
 	// random values
 	const float r1 = static_cast<float>(200 + rand() % 800);
@@ -108,18 +116,18 @@ ve::Entity CreateRandomBox(const ut::Vector<3>& position, size_t id)
 	render_component.units.Add(ut::MakeUnique<ve::render::Model>(ut::Move(box_model)));
 
 	// entity
-	ve::Entity box;
-	box.AddComponent(ut::MakeUnique<ve::RenderComponent>(ut::Move(render_component)));
-	box.AddComponent(ut::MakeUnique<ve::TransformComponent>(ut::Move(transform_component)));
-	box.AddComponent(ut::MakeUnique<ve::NameComponent>(mesh_name + ut::Print(id)));
-	box.AddComponent(ut::MakeUnique<TestComponent>(TestComponent()));
+	ut::Array< ut::UniquePtr<ve::Component> > box;
+	box.Add(ut::MakeUnique<ve::RenderComponent>(ut::Move(render_component)));
+	box.Add(ut::MakeUnique<ve::TransformComponent>(ut::Move(transform_component)));
+	box.Add(ut::MakeUnique<ve::NameComponent>(mesh_name + ut::Print(id)));
+	box.Add(ut::MakeUnique<TestComponent>(TestComponent()));
 	return box;
 }
 
 // Creates a light source.
-ve::Entity CreateLight(ve::render::Light::SourceType type,
-                       const ut::Vector<3>& position,
-                       size_t id)
+ut::Array< ut::UniquePtr<ve::Component> > CreateLight(ve::render::Light::SourceType type,
+                                                      const ut::Vector<3>& position,
+                                                      size_t id)
 {
 	ut::String name;
 
@@ -173,17 +181,17 @@ ve::Entity CreateLight(ve::render::Light::SourceType type,
 	render.units.Add(ut::Move(light));
 
 	// entity
-	ve::Entity entity;
-	entity.AddComponent(ut::MakeUnique<ve::RenderComponent>(ut::Move(render)));
-	entity.AddComponent(ut::MakeUnique<ve::TransformComponent>(ut::Move(transform)));
-	entity.AddComponent(ut::MakeUnique<ve::NameComponent>(name + ut::Print(id)));
-	return entity;
+	ut::Array< ut::UniquePtr<ve::Component> > light_entity;
+	light_entity.Add(ut::MakeUnique<ve::RenderComponent>(ut::Move(render)));
+	light_entity.Add(ut::MakeUnique<ve::TransformComponent>(ut::Move(transform)));
+	light_entity.Add(ut::MakeUnique<ve::NameComponent>(name + ut::Print(id)));
+	return light_entity;
 }
 
 // Creates a set of entities for the test scene.
-ut::Array<ve::Entity> CreateTestScene()
+ut::Array< ut::Array< ut::UniquePtr<ve::Component> > > CreateTestScene()
 {
-	ut::Array<ve::Entity> out;
+	ut::Array< ut::Array< ut::UniquePtr<ve::Component> > > out;
 
 	const float x_offset = 40.0f;
 	
@@ -234,10 +242,12 @@ void LaunchVirtualEnvironment()
 	ut::Optional<ut::Error> log_error = ut::log.Start("log.txt");
 
 	// create default environment
-	ve::Environment environment;
+	ve::Pipeline pipeline = ve::GenDefaultPipeline();
+	pipeline.AddSerial(ve::Pipeline(ut::MakeShared<TestSystem>()));
+	ve::Environment environment(ut::Move(pipeline));
 
 	// create test scene
-	ut::Array<ve::Entity> entities = CreateTestScene();
+	ut::Array< ut::Array< ut::UniquePtr<ve::Component> > > entities = CreateTestScene();
 	for (size_t i = 0; i < entities.Count(); i++)
 	{
 		environment.EnqueueCommand(ut::MakeUnique<ve::CmdAddEntity>(ut::Move(entities[i])));

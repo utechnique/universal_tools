@@ -5,7 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "ve_dedicated_thread.h"
 #include "ve_ui_viewport.h"
-#include "ve_entity_system.h"
+#include "ve_system.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
@@ -23,7 +23,7 @@ public:
 	virtual ~Frontend() = default;
 
 	// Processes UI events.
-	virtual System::Result Update(EntitySystem::EntityMap& entities) = 0;
+	virtual System::Result Update(ComponentAccess& access) = 0;
 
 	// One can start iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.

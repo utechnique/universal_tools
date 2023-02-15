@@ -43,12 +43,14 @@ RenderSystem::~RenderSystem()
 }
 
 // Draws all renderable components.
-//    @return - array of commands to be executed by owning environment,
-//              or ut::Error if system encountered fatal error.
-System::Result RenderSystem::Update()
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
+	//    @return - array of commands to be executed by owning environment,
+	//              or ut::Error if system encountered fatal error.
+System::Result RenderSystem::Update(Base::Access& access)
 {
 	// update units and calculate world transform matrices
-	InitializeUnits();
+	InitializeUnits(access);
 
 	// draw scene in render thread
 	render_thread->Enqueue([&](Device& device) { engine->ProcessNextFrame(); });
@@ -57,13 +59,16 @@ System::Result RenderSystem::Update()
 }
 
 // Initializes a portion of units.
-void RenderSystem::InitializeUnitsJob(size_t first_entity_id, size_t entity_count)
+void RenderSystem::InitializeUnitsJob(Base::Access& access,
+                                      size_t first_entity_id,
+                                      size_t entity_count)
 {
 	const size_t last_entity_id = first_entity_id + entity_count;
 	for (size_t i = first_entity_id; i < last_entity_id; i++)
 	{
-		RenderComponent& render_component = entities[i].Get<RenderComponent>();
-		TransformComponent& transform_component = entities[i].Get<TransformComponent>();
+		const Entity::Id entity_id = access[i].GetFirst();
+		RenderComponent& render_component = access.GetComponent<RenderComponent>(entity_id);
+		TransformComponent& transform_component = access.GetComponent<TransformComponent>(entity_id);
 
 		// an entity must be re-registered if it has obtained new units
 		// or any of the old units has been removed
@@ -110,18 +115,20 @@ void RenderSystem::InitializeUnitsJob(size_t first_entity_id, size_t entity_coun
 				render_component.cache[j] = render_component.units[j].Get();
 			}
 
-			engine->UnregisterEntity(entities[i].id);
-			engine->RegisterEntity(entities[i].id, render_component.units);
+			engine->UnregisterEntity(entity_id);
+			engine->RegisterEntity(entity_id, render_component.units);
 		}
 	}
 }
 
 // Updates the unit cache of the rendering engine, also calculates a
 // transform matrix for every unit.
-void RenderSystem::InitializeUnits()
+//    @param access - reference to the object providing access to the
+//                    desired components.
+void RenderSystem::InitializeUnits(Base::Access& access)
 {
 	ut::ThreadPool<void, ut::pool_sync::cond_var>& thread_pool = engine->GetThreadPool();
-	const size_t entity_count = entities.Count();
+	const size_t entity_count = access.CountEntities();
 	const size_t thread_count = thread_pool.GetThreadCount();
 	const size_t entities_per_thread = entity_count / thread_count;
 
@@ -132,8 +139,8 @@ void RenderSystem::InitializeUnits()
 	{
 		size_t entities_to_initialize = entities_per_thread + (i == 0 ? (entity_count % thread_count) : 0);
 
-		auto function = ut::MemberFunction<RenderSystem, void(size_t, size_t)>(this, &RenderSystem::InitializeUnitsJob);
-		scheduler.Enqueue(ut::MakeUnique<ut::Task<void(size_t, size_t)> >(function, entity_id, entities_to_initialize));
+		auto function = ut::MemberFunction<RenderSystem, void(Base::Access&, size_t, size_t)>(this, &RenderSystem::InitializeUnitsJob);
+		scheduler.Enqueue(ut::MakeUnique<ut::Task<void(Base::Access&, size_t, size_t)> >(function, access, entity_id, entities_to_initialize));
 
 		entity_id += entities_to_initialize;
 	}
@@ -142,23 +149,17 @@ void RenderSystem::InitializeUnits()
 }
 
 // Unregisters the desired entity by its identifier.
-//    @param id - identifier of the entity.
-void RenderSystem::UnregisterEntity(Entity::Id id)
+	//    @param id - identifier of the entity.
+	//    @param access - reference to the object providing access to
+	//                    components.
+void RenderSystem::UnregisterEntity(Entity::Id id, Base::Access& access)
 {
 	// reset cache
-	for (size_t i = 0; i < entities.Count(); i++)
-	{
-		if (entities[i].id == id)
-		{
-			RenderComponent& render_component = entities[i].Get<RenderComponent>();
-			render_component.cache.Reset();
-			break;
-		}
-	}
+	RenderComponent& render_component = access.GetComponent<RenderComponent>(id);
+	render_component.cache.Reset();
 
 	// unregister
 	engine->UnregisterEntity(id);
-	Base::UnregisterEntity(id);
 }
 
 //----------------------------------------------------------------------------//

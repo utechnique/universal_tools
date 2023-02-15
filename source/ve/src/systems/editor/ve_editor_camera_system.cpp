@@ -20,15 +20,17 @@ ViewportCameraSystem::ViewportCameraSystem(ut::SharedPtr<ui::Frontend::Thread> u
 
 //----------------------------------------------------------------------------->
 // Updates transform component of the managed entities.
-//    @return - empty array of commands.
-System::Result ViewportCameraSystem::Update()
+//    @param access - reference to the object providing access to the
+//                    desired components.
+//    @return - array of commands.
+System::Result ViewportCameraSystem::Update(Base::Access& access)
 {
 	CmdArray out_commands;
 
 	const size_t viewport_count = viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
-		ut::Optional< ut::UniquePtr<Cmd> > cmd = ProcessViewport(viewports[i]);
+		ut::Optional< ut::UniquePtr<Cmd> > cmd = ProcessViewport(access, viewports[i]);
 		if (cmd)
 		{
 			out_commands.Add(cmd.Move());
@@ -43,7 +45,8 @@ System::Result ViewportCameraSystem::Update()
 //----------------------------------------------------------------------------->
 // Processes camra that is associated with the provided viewport.
 // If such camera doesn't exist - a new camera entity will be created.
-ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(ui::Viewport& viewport)
+ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(Base::Access& access,
+                                                                         ui::Viewport& viewport)
 {
 	// get viewport info
 	const ui::Viewport::Id viewport_id = viewport.GetId();
@@ -55,23 +58,22 @@ ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(ui::Vie
 	const bool observation_mode = input_mgr->IsKeyDown(bindings.observation_mode);
 
 	// search for a camera with desired name
-	const size_t entity_count = entities.Count();
-	for (size_t i = 0; i < entity_count; i++)
+	for (Base::Access::EntityIterator entity = access.BeginEntities(); entity != access.EndEntities(); ++entity)
 	{
-		ViewportCameraSystem::Set& set = entities[i];
+		const Entity::Id entity_id = entity->GetFirst();
 
 		// check name
-		const ut::String& name = set.Get<NameComponent>().name;
+		const ut::String& name = access.GetComponent<NameComponent>(entity_id).name;
 		if (name != desired_name)
 		{
 			continue;
 		}
 
 		// get components
-		TransformComponent& transform = set.Get<TransformComponent>();
-		CameraComponent& camera = set.Get<CameraComponent>();
-		RenderComponent& render = set.Get<RenderComponent>();
-		FreeCameraControllerComponent& controller = set.Get<FreeCameraControllerComponent>();
+		TransformComponent& transform = access.GetComponent<TransformComponent>(entity_id);
+		CameraComponent& camera = access.GetComponent<CameraComponent>(entity_id);
+		RenderComponent& render = access.GetComponent<RenderComponent>(entity_id);
+		FreeCameraControllerComponent& controller = access.GetComponent<FreeCameraControllerComponent>(entity_id);
 
 		// update camera properties that are not affected by user input
 		UpdateCamera(transform, camera, render, mode, viewport_id);
@@ -353,30 +355,26 @@ void ViewportCameraSystem::ProcessOrthographicCameraInput(TransformComponent& tr
 ut::Result<ut::UniquePtr<Cmd>, ut::Error> ViewportCameraSystem::CreateCamera(ui::Viewport::Id viewport_id,
                                                                              ut::String entity_name)
 {
-	Entity camera;
-	ut::Optional<ut::Error> add_error;
+	ut::Array< ut::UniquePtr<ve::Component> > components;
 
 	// transform
 	TransformComponent transform_component;
 	transform_component.translation = ut::Vector<3>(0);
-	add_error = camera.AddComponent(ut::MakeUnique<TransformComponent>(ut::Move(transform_component)));
-	if (add_error)
+	if (!components.Add(ut::MakeUnique<TransformComponent>(ut::Move(transform_component))))
 	{
-		return ut::MakeError(add_error.Move());
+		return ut::MakeError(ut::error::out_of_memory);
 	}
 
 	// camera
-	add_error = camera.AddComponent(ut::MakeUnique<CameraComponent>());
-	if (add_error)
+	if (!components.Add(ut::MakeUnique<CameraComponent>()))
 	{
-		return ut::MakeError(add_error.Move());
+		return ut::MakeError(ut::error::out_of_memory);
 	}
 
 	// controller
-	add_error = camera.AddComponent(ut::MakeUnique<FreeCameraControllerComponent>());
-	if (add_error)
+	if (!components.Add(ut::MakeUnique<FreeCameraControllerComponent>()))
 	{
-		return ut::MakeError(add_error.Move());
+		return ut::MakeError(ut::error::out_of_memory);
 	}
 
 	// render
@@ -384,21 +382,19 @@ ut::Result<ut::UniquePtr<Cmd>, ut::Error> ViewportCameraSystem::CreateCamera(ui:
 	render::View render_view;
 	render_view.viewport_id = viewport_id;
 	render_component.units.Add(ut::MakeUnique<render::View>(ut::Move(render_view)));
-	add_error = camera.AddComponent(ut::MakeUnique<RenderComponent>(ut::Move(render_component)));
-	if (add_error)
+	if (!components.Add(ut::MakeUnique<RenderComponent>(ut::Move(render_component))))
 	{
-		return ut::MakeError(add_error.Move());
+		return ut::MakeError(ut::error::out_of_memory);
 	}
 
 	// name
-	add_error = camera.AddComponent(ut::MakeUnique<NameComponent>(ut::Move(entity_name)));
-	if (add_error)
+	if (!components.Add(ut::MakeUnique<NameComponent>(ut::Move(entity_name))))
 	{
-		return ut::MakeError(add_error.Move());
+		return ut::MakeError(ut::error::out_of_memory);
 	}
 
 	// success
-	ut::UniquePtr<Cmd> cmd = ut::MakeUnique<CmdAddEntity>(ut::Move(camera));
+	ut::UniquePtr<Cmd> cmd = ut::MakeUnique<CmdAddEntity>(ut::Move(components));
 	return ut::Move(cmd);
 }
 

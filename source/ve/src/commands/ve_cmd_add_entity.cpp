@@ -7,7 +7,7 @@
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 // Constructor.
-CmdAddEntity::CmdAddEntity(Entity in_entity) noexcept : entity(ut::Move(in_entity))
+CmdAddEntity::CmdAddEntity(ut::Array< ut::UniquePtr<ve::Component> > in_components) noexcept : components(ut::Move(in_components))
 {}
 
 // Connects provided function with signal that is triggered after a call
@@ -24,7 +24,20 @@ void CmdAddEntity::Connect(ut::Function<void(const AddResult&)> slot)
 //              the command.
 ut::Optional<ut::Error> CmdAddEntity::Execute(CmdAccessibleEnvironment& environment)
 {
-	ut::Result<Entity::Id, ut::Error> result = environment.AddEntity(ut::Move(entity));
+	ut::Result<Entity::Id, ut::Error> result = environment.AddEntity();
+	if (result)
+	{
+		const size_t component_count = components.Count();
+		for (size_t i = 0; i < component_count; i++)
+		{
+			ut::Optional<ut::Error> add_err = environment.AddComponent(result.Get(), ut::Move(components[i]));
+			if (add_err)
+			{
+				result = ut::MakeError(add_err.Move());
+				break;
+			}
+		}
+	}
 	signal(result);
 	return ut::Optional<ut::Error>();
 }

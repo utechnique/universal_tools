@@ -9,7 +9,7 @@
 #include "systems/ui/desktop/ve_justify_input.h"
 #include "commands/ve_cmd_add_entity.h"
 #include "commands/ve_cmd_update_component.h"
-#include "ve_entity_system.h"
+#include "ve_system.h"
 #include "FL/Fl_Int_Input.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
@@ -397,9 +397,10 @@ public:
 	void resize(int x, int y, int w, int h) override;
 
 	// Updates UI reflection of the provided entities.
-	//    @param entities - reference to the entity map.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - array of accumulated commands pending to be processed.
-	CmdArray UpdateEntities(EntitySystem::EntityMap& entities);
+	CmdArray UpdateEntities(ComponentAccess& access);
 
 	// Default metrics of this window in pixels.
 	static const ut::uint32 skDefaultWidth;
@@ -462,8 +463,9 @@ private:
 
 	// Creates an array of EntityView::Proxy from the provided entity map that
 	// will be used to update UI component views on the next UI tick.
-	//    @param entities - reference to the entity map.
-	void PrepareEntityProxies(EntitySystem::EntityMap& entities);
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
+	void PrepareEntityProxies(ComponentAccess& access);
 
 	// Updates UI representation of all entities.
 	void UpdateUi();
@@ -531,10 +533,11 @@ private:
 
 	// Filters provided entities and stores filtered
 	// indices to the @filter_cache.
-	//    @param entities - the reference to the entity map.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - optional index of the filtered value that needs
 	//              to be scrolled to.
-	ut::Optional<size_t> FilterEntities(EntitySystem::EntityMap& entities);
+	ut::Optional<size_t> FilterEntities(ComponentAccess& access);
 
 	// Calculates the first index of the filtered entities and the number of
 	// entities to be shown on the current page.

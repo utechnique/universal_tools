@@ -3,102 +3,59 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_component.h"
+#include "ut.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 // ve::Entity is a class representing indivisible entity containing different
 // components that model it's behaviour.
-class Entity
+class Entity : private ut::Array<ut::DynamicType::Handle>
 {
+	typedef ut::Array<ut::DynamicType::Handle> Base;
 public:
-	// Explicitly declare defaulted constructors and move operator.
-	Entity() = default;
-	Entity(Entity&&) = default;
-	Entity& operator =(Entity&&) = default;
+	// Returns the reference to the desired entity.
+	//    @param index - counter index of the entity (can be used with
+	//                   CountEntities() method). WARNING! Not the same as
+	//                   ve::Entity::Id!
+	//    @return - handle of the desired component type.
+	inline ut::DynamicType::Handle GetComponentByIndex(size_t index) const
+	{
+		return Base::operator[](index);
+	}
 
-	// Copying is prohibited
-	Entity(const Entity&) = delete;
-	Entity& operator =(const Entity&) = delete;
+	// Returns the number of components in this entity.
+	inline size_t CountComponents() const
+	{
+		return Base::Count();
+	}
+
+	// Adds information about the new component belonging to this entity.
+	//    @param component_type - handle of the component type.
+	//    @return - 'true' if
+	inline void AddComponent(ut::DynamicType::Handle component_type)
+	{
+		if (!Base::Add(component_type))
+		{
+			throw ut::Error(ut::error::out_of_memory);
+		}
+	}
+
+	// Removes information about the desired component.
+	//    @param component_type - handle of the component type.
+	inline void RemoveComponentByIndex(size_t index)
+	{
+		Base::Remove(index);
+	}
+
+	// Removes information about the desired component.
+	//    @param component_type - handle of the component type.
+	void RemoveComponent(ut::DynamicType::Handle component_type);
+
+	// Returns true if this entity has the desired component.
+	bool HasComponent(ut::DynamicType::Handle component_type) const;
 
 	// Type of the identifier that can be associated with entity.
 	typedef ut::uint32 Id;
-
-	// Returns the number of components.
-	size_t GetComponentCount() const
-	{
-		return components.Count();
-	}
-
-	// Returns a reference to the component with the specified id.
-	const Component& GetComponentByIndex(size_t id) const
-	{
-		return components[id].GetRef();
-	}
-
-	// Returns a reference to the component with the specified id.
-	Component& GetComponentByIndex(size_t id)
-	{
-		return components[id].GetRef();
-	}
-
-	// Returns a reference to the component with the specified id.
-	ut::Optional<const Component&> GetComponentByType(ut::DynamicType::Handle type) const
-	{
-		const ut::Optional<const ut::Ref<Component>&> find_result = cache.Find(type);
-		return find_result ? find_result->Get() : ut::Optional<const Component&>();
-	}
-
-	// Returns a reference to the component with the specified id.
-	ut::Optional<Component&> GetComponentByType(ut::DynamicType::Handle type)
-	{
-		ut::Optional<ut::Ref<Component>&> find_result = cache.Find(type);
-		return find_result ? find_result->Get() : ut::Optional<Component&>();
-	}
-
-	// Removes a component of the specified type from the entity.
-	//    @return - optional ut::Error if failed to remove a component.
-	template<typename ComponentType>
-	ut::Optional<ut::Error> RemoveComponent()
-	{
-		return RemoveComponent(ut::GetPolymorphicHandle<ComponentType>());
-	}
-
-	// Returns a reference to the component of the specified type.
-	//    @return - reference to the component or nothing if
-	//              specified component is absent.
-	template<typename ComponentType>
-	ut::Optional<ComponentType&> GetComponent()
-	{
-		const ut::DynamicType::Handle type_handle = ut::GetPolymorphicHandle<ComponentType>();
-		ut::Optional<ut::Ref<Component>&> find_result = cache.Find(type_handle);
-		if (!find_result)
-		{
-			return ut::Optional<ComponentType&>();
-		}
-
-		Component& ref = find_result.Get();
-		return ut::Optional<ComponentType&>(static_cast<ComponentType&>(ref));
-	}
-
-	// Adds provided component to the entity.
-	//    @param component - unique pointer to the new component.
-	//    @param overwrite - flag that controls whether component must be
-	//                       overwritten in case if a component of such
-	//                       type already exists.
-	//    @return - optional ut::Error if failed to add @component.
-	ut::Optional<ut::Error> AddComponent(ut::UniquePtr<Component> component,
-	                                     bool overwrite = false);
-
-	// Removes a component of the specified type from the entity.
-	//    @param component_type - handle to the type of the component
-	//                            to be deleted.
-	//    @return - optional ut::Error if failed to remove a component.
-	ut::Optional<ut::Error> RemoveComponent(const ut::DynamicType::Handle component_type);
-
-private:
-	ut::Array< ut::UniquePtr<Component> > components;
-	ut::AVLTree< ut::DynamicType::Handle, ut::Ref<Component> > cache;
 };
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ve)

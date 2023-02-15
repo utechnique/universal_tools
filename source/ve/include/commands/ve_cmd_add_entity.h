@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "ve_cmd.h"
 #include "ve_entity.h"
+#include "ve_component.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
@@ -16,7 +17,7 @@ public:
 	typedef ut::Result<Entity::Id, ut::Error> AddResult;
 
 	// Constructor.
-	CmdAddEntity(Entity in_entity = Entity()) noexcept;
+	CmdAddEntity(ut::Array< ut::UniquePtr<ve::Component> > components = ut::Array< ut::UniquePtr<ve::Component> >()) noexcept;
 
 	// Calls ve::Environment::AddEntity().
 	//    @param environment - reference to the environment
@@ -30,8 +31,8 @@ public:
 	void Connect(ut::Function<void(const AddResult&)> slot);
 
 private:
-	// Managed entity to be added.
-	Entity entity;
+	// Components to be added.
+	ut::Array< ut::UniquePtr<ve::Component> > components;
 
 	// Signal that is triggered after a call to ve::Environment::AddEntity().
 	ut::Signal<void(const AddResult&)> signal;

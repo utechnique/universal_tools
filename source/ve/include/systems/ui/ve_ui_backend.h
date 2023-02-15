@@ -3,14 +3,14 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ve_entity_system.h"
+#include "ve_system.h"
 #include "ve_ui_frontend.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
 // ve::ui::Backend is a system processing ui events.
-class Backend : public EntitySystem
+class Backend : public System
 {
 public:
 	// Constructor.
@@ -18,9 +18,11 @@ public:
 
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	System::Result Update();
+	System::Result Update(ComponentAccess& access) override;
 
 private:
 	// UI shell with actual widgets.

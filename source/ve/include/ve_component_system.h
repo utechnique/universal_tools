@@ -7,33 +7,50 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
-// ve::ComponentIterator is a helper template class to iterate components
-// inside a provided entity in order to check if it suits a desired preset.
+// ve::ComponentMapStaticIterator is a helper template class to iterate
+// component maps in order to form a fast component access interface for the
+// desired component system.
 template<int id, int depth, typename PtrContainer>
-struct ComponentIterator
+struct ComponentMapStaticIterator
 {
-	typedef typename PtrContainer::template Item<id>::Type ItemPtr;
-	typedef typename ut::RemovePointer<ItemPtr>::Type ItemType;
-
-	static bool Suits(Entity& entity, PtrContainer& container)
+	static void Initialize(ComponentAccess& access, PtrContainer& container)
 	{
-		ut::Optional<ItemType&> result = entity.GetComponent<ItemType>();
-		if (result)
-		{
-			container.template Get<ItemType*>() = static_cast<ItemType*>(&result.Get());
-			return ComponentIterator<id + 1, depth, PtrContainer>::Suits(entity, container);
-		}
-		return false;
+		ComponentMapStaticIterator<id, id, PtrContainer>::Initialize(access, container);
+		ComponentMapStaticIterator<id + 1, depth, PtrContainer>::Initialize(access, container);
+	}
+
+	static void GenerateComponentMaps(ComponentMapCollection<ut::access_full>& component_maps)
+	{
+		ComponentMapStaticIterator<id, id, PtrContainer>::GenerateComponentMaps(component_maps);
+		ComponentMapStaticIterator<id + 1, depth, PtrContainer>::GenerateComponentMaps(component_maps);
 	}
 };
 
-// Specialization of the ve::ComponentIterator for the last component.
-template<int depth, typename PtrContainer>
-struct ComponentIterator<depth, depth, PtrContainer>
+// Specialization of the ve::ComponentMapStaticIterator for the last item.
+template<int id, typename PtrContainer>
+struct ComponentMapStaticIterator<id, id, PtrContainer>
 {
-	static bool Suits(Entity& entity, PtrContainer& container)
+	typedef typename PtrContainer::template Item<id>::Type MapPtrType;
+	typedef typename ut::RemovePointer<MapPtrType>::Type MapType;
+	typedef typename MapType::ComponentType ComponentType;
+	static_assert(ut::IsBaseOf<Component, ComponentType>::value,
+		"ve::ComponentSystem can only operate with template argument types "
+		"inherited from the ve::Component class.");
+
+	static void Initialize(ComponentAccess& access, PtrContainer& container)
 	{
-		return true;
+		ut::Optional<ComponentMap&> map = access.GetMap<ComponentType>();
+		if (!map)
+		{
+			throw ut::Error(ut::error::not_supported);
+		}
+
+		container.template Get<id>() = static_cast<ComponentMapImpl<ComponentType>*>(&map.Get());
+	}
+
+	static void GenerateComponentMaps(ComponentMapCollection<ut::access_full>& component_maps)
+	{
+		component_maps.Insert(ut::GetPolymorphicHandle<ComponentType>(), ut::MakeUnsafeShared< ComponentMapImpl<ComponentType> >());
 	}
 };
 
@@ -47,84 +64,132 @@ struct ComponentIterator<depth, depth, PtrContainer>
 template<typename... Components>
 class ComponentSystem : public System
 {
+	typedef ut::Container<ComponentMapImpl<Components>*...> ComponentContainer;
 public:
-	// Type of container holding pointers to all needed components.
-	typedef ut::Container<Components*...> ComponentPtrSet;
-
 	// Constructor.
 	//    @param system_name - name of the system.
 	ComponentSystem(ut::String system_name) : System(ut::Move(system_name))
 	{}
 
-protected:
-	// Set is a proxy structure holding entity id and
-	// pointers to all needed components.
-	struct Set
+	class Access : private ComponentContainer
 	{
 	public:
-		// Constructor.
-		//    @param entity_id - identifier of the registered entity.
-		Set(Entity::Id entity_id) : id(entity_id)
-		{}
+		typedef ComponentAccess::EntityIterator EntityIterator;
 
-		// Returns a reference to the component of the specified type.
-		template<typename Component>
-		Component& Get()
+		// Template argument list can't be empty.
+		static_assert(ComponentContainer::size > 0, "ve::ComponentSystem must have at least one template argument.");
+
+		const ut::Pair<const Entity::Id, Entity>& operator [] (const size_t id) const
 		{
-			return *components.template Get<Component*>();
+			return access[id];
 		}
 
-		// id of the entity
-		const Entity::Id id;
+		// Returns the reference to the desired entity.
+		//    @param id - counter index of the entity (can be used with
+		//                CountEntities() method). WARNING! Not the same as
+		//                ve::Entity::Id!
+		//    @return - const reference to the Id/Entity pair.
+		Access(ComponentAccess& component_access) : access(component_access)
+		{
+			ComponentMapStaticIterator<0, ComponentContainer::size - 1, ComponentContainer>::Initialize(access, *this);
+		}
 
-		// pointers to the components that belong
-		// to the managed entity
-		ComponentPtrSet components;
+		template<typename ComponentType>
+		inline ComponentType& GetComponent(Entity::Id entity_id)
+		{
+			ut::Optional<Component&> component = ComponentContainer::template Get<ComponentMapImpl<ComponentType>*>()->Find(entity_id);
+			UT_ASSERT(component.HasValue());
+			return static_cast<ComponentType&>(component.Get());
+		}
+
+		// Returns a read / write iterator that points to the first entity.
+		inline EntityIterator BeginEntities() const
+		{
+			return access.BeginEntities();
+		}
+
+		// Returns a read / write iterator that points to the last entity.
+		inline EntityIterator EndEntities() const
+		{
+			return access.EndEntities();
+		}
+
+		// Returns the number of accessible entities.
+		inline size_t CountEntities() const
+		{
+			return access.CountEntities();
+		}
+
+	private:
+		ComponentAccess& access;
 	};
 
-	// Registers provided entity. And it will be registered only if
-	// it has all needed components.
+	// Updates system. This function is called once per tick
+	// by ve::Environment.
+	//    @return - array of commands to be executed by owning environment,
+	//              or ut::Error if system encountered fatal error.
+	virtual System::Result Update(Access& access) = 0;
+
+	// Registers provided entity.
 	//    @param id - identifier of the entity.
-	//    @param entity - reference to the entity.
+	//    @param access - reference to the object providing access to
+	//                    components.
 	//    @return - 'true' if entity was registered successfully.
-	virtual bool RegisterEntity(Entity::Id id, Entity& entity) override
+	virtual bool RegisterEntity(Entity::Id id, Access& access)
 	{
-		// create a new proxy
-		Set set(id);
-
-		// check if entity has all components
-		if (!ComponentIterator<0, ComponentPtrSet::size, ComponentPtrSet>::Suits(entity, set.components))
-		{
-			return false;
-		}
-
-		// add proxy to the array if it has all needed components
-		if (!entities.Add(ut::Move(set)))
-		{
-			return false;
-		}
-
-		// success
 		return true;
+	};
+
+	// Unregisters the desired entity by its identifier.
+	//    @param id - identifier of the entity.
+	//    @param access - reference to the object providing access to
+	//                    components.
+	virtual void UnregisterEntity(Entity::Id id, Access& access)
+	{};
+
+protected:
+	// Creates component maps specific to the current system. Depending on
+	// the returned types of components, the @Update method will receive a
+	// reference to the ve::ComponentAccess object (as an argument) providing
+	// the access only for the desired components. If the returned object is
+	// empty - the system will receive all component types.
+	virtual ut::Optional< ComponentMapCollection<ut::access_full> > SynchronizeComponents() const
+	{
+		ComponentMapCollection<ut::access_full> component_maps;
+		ComponentMapStaticIterator<0, ComponentContainer::size - 1, ComponentContainer>::GenerateComponentMaps(component_maps);
+		return component_maps;
+	}
+
+	// Updates system. This function is called once per tick
+	// by ve::Environment.
+	//    @return - array of commands to be executed by owning environment,
+	//              or ut::Error if system encountered fatal error.
+	System::Result System::Update(ComponentAccess& component_access) override
+	{
+		Access access(component_access);
+		return Update(access);
+	}
+
+	// Registers provided entity.
+	//    @param id - identifier of the entity.
+	//    @param access - reference to the object providing access to
+	//                    components.
+	//    @return - 'true' if entity was registered successfully.
+	bool RegisterEntity(Entity::Id id, ComponentAccess& component_access) override
+	{
+		Access access(component_access);
+		return RegisterEntity(id, access);
 	}
 
 	// Unregisters the desired entity by its identifier.
 	//    @param id - identifier of the entity.
-	virtual void UnregisterEntity(Entity::Id id) override
+	//    @param access - reference to the object providing access to
+	//                    components.
+	void UnregisterEntity(Entity::Id id, ComponentAccess& component_access) override
 	{
-		const size_t entity_count = entities.Count();
-		for (size_t i = 0; i < entity_count; i++)
-		{
-			Set& set = entities[i];
-			if (set.id == id)
-			{
-				entities.Remove(i);
-			}
-		}
+		Access access(component_access);
+		return UnregisterEntity(id, access);
 	}
-
-	// registered entities
-	ut::Array<Set> entities;
 };
 
 //----------------------------------------------------------------------------//

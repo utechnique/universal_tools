@@ -77,9 +77,29 @@ public:
 	//    @param id - id of the provided entity.
 	void UnregisterEntity(Entity::Id id);
 
+	// Synchronizes the returned component map collection with the internal
+	// access map so that the both maps shared the same source.
+	//    @return - a reference to the component map collection to
+	//              synchronize @component_access with.
+	ComponentMapCollection<ut::access_full> SynchronizeComponents();
+
 private:
+	// Collects component maps from all internal systems.
+	//    @param map_collection -  reference to the component map collection to
+	//                             store component maps in.
+	void CollectComponentMaps(ComponentMapCollection<ut::access_full>& map_collection);
+
+	// Recursively synchronizes the provided component map collection with the
+	// internal access map so that the both maps shared the same source.
+	//    @param source - a reference to the component map collection to
+	//                    synchronize @component_access with.
+	void SynchronizeComponents(ComponentMapCollection<ut::access_full>& source);
+
 	// managed system
 	ut::SharedPtr<System> system;
+
+	// Provides an access to the components available for the @system.
+	SynchronizableComponentAccess component_access;
 
 	// child pipelines to be executed simultaneously
 	ut::Array<Pipeline> parallel;
