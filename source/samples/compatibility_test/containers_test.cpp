@@ -622,7 +622,7 @@ void AVLTreeTask::Execute()
 
 //----------------------------------------------------------------------------//
 
-template<class IntHashMapType, class StringHashMapType>
+template<class IntHashMapType, class StringHashMapType, class IntHashMapHashMapType>
 ut::String HashMapTest()
 {
 	ut::String report;
@@ -645,11 +645,6 @@ ut::String HashMapTest()
 		val.ival = source[i];
 
 		map.Insert(source[i], ut::Move(val));
-
-		if (map.Count() != i + 1)
-		{
-			val.ival++;
-		}
 	}
 	double time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
@@ -1001,6 +996,62 @@ ut::String HashMapTest()
 		element.second.ival++;
 	}
 
+	// check map of the maps behaviour
+	report += ut::String("Testing recursive map ");
+	IntHashMapType tmap;
+	for (size_t i = 0; i < source.Count(); i++)
+	{
+		MapValue val;
+		val.ival = source[i];
+		tmap.Insert(source[i], ut::Move(val));
+	}
+	IntHashMapHashMapType map2;
+	map2.Insert(20, IntHashMapType());
+	map2.Insert(10, ut::Move(tmap));
+	map2.Insert(0, IntHashMapType());
+	for (int i = 0; i < 100; i++)
+	{
+		map2.Insert(i, IntHashMapType());
+	}
+
+	ut::Optional<IntHashMapType&> res0 = map2.Find(0);
+	ut::Optional<IntHashMapType&> res1 = map2.Find(10);
+	ut::Optional<IntHashMapType&> res2 = map2.Find(20);
+	if (!res0 || !res2 || res0->Count() != 0 || res2->Count() != 0)
+	{
+		report += ut::String("FAILED! Invalid map (map) element.");
+		failed_test_counter.Increment();
+		return report;
+	}
+
+	if (res1)
+	{
+		if (res1->Count() != source.Count())
+		{
+			report += ut::String("FAILED! Invalid map(map) element count (") + ut::Print(res1->Count()) + ")\n";
+		}
+
+		for (size_t i = 0; i < res1->Count(); i++)
+		{
+			const int key = source[i];
+			ut::Optional<MapValue&> element = res1->Find(key);
+			if (!element || element->ival != key)
+			{
+				report += ut::String("FAILED! Map(map) element ") + ut::Print(key) + " is invalid or was not found.";
+				failed_test_counter.Increment();
+				return report;
+			}
+		}
+
+	}
+	else
+	{
+		report += ut::String("FAILED! Cannot find the desired element in the map(map) object.");
+		failed_test_counter.Increment();
+		return report;
+	}
+	report += ut::String("(ok).\n");
+
 	// success
 	return report;
 }
@@ -1011,10 +1062,14 @@ HashmapTask::HashmapTask() : TestTask("Hashmap")
 void HashmapTask::Execute()
 {
 	report += ut::String("Dense:") + ut::cret;
-	report += HashMapTest<ut::DenseHashMap<int, MapValue>, ut::DenseHashMap<ut::String, MapValue> >();
+	report += HashMapTest<ut::DenseHashMap<int, MapValue>,
+	                      ut::DenseHashMap<ut::String, MapValue>,
+	                      ut::DenseHashMap<int, ut::DenseHashMap<int, MapValue> > >();
 
 	report += ut::String("Sparse:") + ut::cret;
-	report += HashMapTest<ut::SparseHashMap<int, MapValue>, ut::SparseHashMap<ut::String, MapValue> >();
+	report += HashMapTest<ut::SparseHashMap<int, MapValue>,
+	                      ut::SparseHashMap<ut::String, MapValue>,
+	                      ut::SparseHashMap<int, ut::SparseHashMap<int, MapValue> > >();
 }
 
 //----------------------------------------------------------------------------//
