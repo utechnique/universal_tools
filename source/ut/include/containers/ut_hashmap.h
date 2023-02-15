@@ -414,20 +414,20 @@ public:
 		friend class SparseHashMap<KeyType, ValueType, HashFunction, KeyEqual, Allocator>;
 	public:
 		// Constructor
-		ConstIterator() : map(nullptr), id(0)
+		ConstIterator() noexcept : map(nullptr), id(0)
 		{}
 
 		// Constructor
-		ConstIterator(ThisMap* hashmap,
-		              size_t start_id) : map(hashmap)
-		                               , id(start_id)
+		ConstIterator(const ThisMap* hashmap,
+		              size_t start_id) noexcept : map(hashmap)
+		                                        , id(start_id)
 		{
 			if (hashmap == nullptr || id == map->capacity + map->collision_nodes.Count())
 			{
 				return;
 			}
 
-			Optional<Node>& node = map->arr[id];
+			const Optional<Node>& node = map->arr[id];
 			if (!node.HasValue())
 			{
 				this->operator++();
@@ -437,9 +437,9 @@ public:
 		// Returns constant reference of the managed object
 		const Pair<const KeyType, ValueType>& operator*() const
 		{
-			Optional<Node>& node = id >= map->capacity ?
-			                       map->collision_nodes[id - map->capacity] :
-			                       map->arr[id];
+			const Optional<Node>& node = id >= map->capacity ?
+			                             map->collision_nodes[id - map->capacity] :
+			                             map->arr[id];
 			return node.Get();
 		}
 
@@ -447,9 +447,9 @@ public:
 		// Return value can't be changed, it must be constant.
 		const Pair<const KeyType, ValueType>* operator->() const
 		{
-			Optional<Node>& node = id >= map->capacity ?
-			                       map->collision_nodes[id - map->capacity] :
-			                       map->arr[id];
+			const Optional<Node>& node = id >= map->capacity ?
+			                             map->collision_nodes[id - map->capacity] :
+			                             map->arr[id];
 			return &node.Get();
 		}
 
@@ -463,9 +463,9 @@ public:
 					return *this;
 				}
 
-				Optional<Node>& node = id >= map->capacity ?
-				                       map->collision_nodes[id - map->capacity] :
-				                       map->arr[id];
+				const Optional<Node>& node = id >= map->capacity ?
+				                             map->collision_nodes[id - map->capacity] :
+				                             map->arr[id];
 				if (node.HasValue())
 				{
 					return *this;
@@ -494,7 +494,7 @@ public:
 		}
 
 	protected:
-		ThisMap* map;
+		const ThisMap* map;
 		size_t id;
 	};
 
@@ -507,31 +507,26 @@ public:
 		typedef ConstIterator Base;
 	public:
 		// Default constructor
-		Iterator()
+		Iterator() noexcept
 		{}
 
 		// Constructor
 		Iterator(ThisMap* hashmap,
-		         size_t start_id) : Base(hashmap, start_id)
+		         size_t start_id) noexcept : Base(hashmap, start_id)
+		                                   , mutable_hashmap(hashmap)
 		{}
 
 		// Copy constructor
 		Iterator(const Iterator& copy) : Base(copy)
+		                               , mutable_hashmap(copy.mutable_hashmap)
 		{}
-
-		// Assignment operator
-		Iterator& operator = (const Iterator& copy)
-		{
-			Base::operator = (copy);
-			return *this;
-		}
 
 		// Returns constant reference of the managed object
 		Pair<const KeyType, ValueType>& operator*()
 		{
-			Optional<Node>& node = Base::id >= Base::map->capacity ?
-			                       Base::map->collision_nodes[Base::id - Base::map->capacity] :
-			                       Base::map->arr[Base::id];
+			Optional<Node>& node = Base::id >= mutable_hashmap->capacity ?
+			                       mutable_hashmap->collision_nodes[Base::id - mutable_hashmap->capacity] :
+			                       mutable_hashmap->arr[Base::id];
 			return node.Get();
 		}
 
@@ -539,11 +534,14 @@ public:
 		// Return value can't be changed, it must be constant.
 		Pair<const KeyType, ValueType>* operator->()
 		{
-			Optional<Node>& node = Base::id >= Base::map->capacity ?
-			                       Base::map->collision_nodes[Base::id - Base::map->capacity] :
-			                       Base::map->arr[Base::id];
+			Optional<Node>& node = Base::id >= mutable_hashmap->capacity ?
+			                       mutable_hashmap->collision_nodes[Base::id - mutable_hashmap->capacity] :
+			                       mutable_hashmap->arr[Base::id];
 			return &node.Get();
 		}
+
+	private:
+		ThisMap* mutable_hashmap;
 	};
 
 	// Constructor, all members are set to zero.
@@ -778,7 +776,7 @@ public:
 		}
 
 		// search in the collision list
-		return RemoveCollisionNode(key, child_id);
+		return RemoveCollisionNode(node.Get(), key);
 	}
 
 	// Destructs all elements and set element count to zero.
@@ -926,7 +924,7 @@ private:
 		for (size_t i = 0; i < collision_count; i++)
 		{
 			Optional<Node>& node = collision_nodes[i];
-			if (node->next_id > id)
+			if (node->next_id != Node::end && node->next_id > id)
 			{
 				node->next_id--;
 			}
@@ -934,27 +932,37 @@ private:
 	}
 
 	// Recursively removes the element with the desired key.
+	//    @param parent - reference to the parent node.
 	//    @param key - const reference to the key associated
 	//                 with the element to be deleted.
-	//    @param node_id - index of the collision node.
 	//    @return - 'true' if the element was found and deleted
 	//              or 'false' if there is no such element in the map.
-	bool RemoveCollisionNode(const KeyType& key, size_t node_id)
+	bool RemoveCollisionNode(Node& parent, const KeyType& key)
 	{
-		Optional<Node>& node = collision_nodes[node_id];
-		const size_t child_id = node->next_id;
-		const bool is_last_node = child_id == Node::end;
-		if (!equal_function(key, node->GetFirst()))
+		if (parent.next_id == Node::end)
 		{
-			return is_last_node ? false : RemoveCollisionNode(key, node_id);
+			return false;
 		}
 
-		if (!is_last_node)
+		const size_t node_id = parent.next_id;
+		Node& node = collision_nodes[node_id].Get();
+		const size_t child_id = node.next_id;
+		const bool has_child = child_id != Node::end;
+		if (!equal_function(key, node.GetFirst()))
 		{
-			node = Move(collision_nodes[child_id]);
+			return has_child ? RemoveCollisionNode(collision_nodes[child_id].Get(), key) : false;
 		}
 
-		const size_t remove_id = is_last_node ? node_id : child_id;
+		if (has_child)
+		{
+			node = collision_nodes[child_id].Move();
+		}
+		else
+		{
+			parent.next_id = Node::end;
+		}
+
+		const size_t remove_id = has_child ? child_id : node_id;
 		collision_nodes.Remove(remove_id);
 		ShiftCollisionNodeLinks(remove_id);
 		num--;
