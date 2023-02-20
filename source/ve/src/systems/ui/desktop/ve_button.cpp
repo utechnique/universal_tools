@@ -75,7 +75,7 @@ int Button::handle(int e)
 		SetState(state_push);
 		return 1;
 	case FL_RELEASE:
-		if (ex > x() && ey > y() && ex < x() + w() && ey < y() + h())
+		if (ex >= x() && ey >= y() && ex < x() + w() && ey < y() + h())
 		{
 			if (callback.IsValid())
 			{
