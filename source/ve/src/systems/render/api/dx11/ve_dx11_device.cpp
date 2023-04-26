@@ -67,7 +67,6 @@ D3D11_USAGE ConvertUsageToDX11(memory::Usage usage)
 	switch (usage)
 	{
 	case render::memory::gpu_read_write:             return D3D11_USAGE_DEFAULT;
-	case render::memory::gpu_read_write_cpu_staging: return D3D11_USAGE_DEFAULT;
 	case render::memory::gpu_read_cpu_write:         return D3D11_USAGE_DYNAMIC;
 	case render::memory::gpu_immutable:              return D3D11_USAGE_IMMUTABLE;
 	}

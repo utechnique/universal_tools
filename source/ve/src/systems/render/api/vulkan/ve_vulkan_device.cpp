@@ -128,10 +128,6 @@ VmaMemoryUsage ConvertMemoryUsageToVma(memory::Usage usage)
 	// accessible only by the GPU (full access), fast
 	case memory::gpu_read_write: return VMA_MEMORY_USAGE_GPU_ONLY;
 
-	// accessible by both the GPU (full access) and the CPU (full access
-	// using staging buffers), slow
-	case memory::gpu_read_write_cpu_staging: return VMA_MEMORY_USAGE_GPU_ONLY;
-
 	// accessible by both the GPU (read only) and the CPU (write only),
 	// slow, but better than staging
 	case memory::gpu_read_cpu_write: return VMA_MEMORY_USAGE_CPU_TO_GPU;
@@ -1145,9 +1141,8 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	// check if staging is required
 	const size_t ini_size = info.data.GetSize();
 	const bool must_be_initialized = ini_size != 0;
-	const bool must_have_cpu_access = info.usage == render::memory::gpu_read_cpu_write ||
-	                                  info.usage == render::memory::gpu_read_write_cpu_staging;
-	const bool tiling_must_be_linear = must_have_cpu_access;
+	const bool must_have_cpu_write_access = info.usage == render::memory::gpu_read_cpu_write;
+	const bool tiling_must_be_linear = must_have_cpu_write_access;
 	const bool needs_staging = info.usage != render::memory::gpu_read_cpu_write;
 
 	// check if image is used as a render target
