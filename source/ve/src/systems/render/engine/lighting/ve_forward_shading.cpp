@@ -14,8 +14,8 @@ START_NAMESPACE(lighting)
 // Constructor.
 ForwardShading::ForwardShading(Toolset& toolset,
                                ut::uint32 ibl_mip_count) : tools(toolset)
-                                                         , light_shader(CreateLightPassShader())
-                                                         , ibl_shader(CreateIblShader(ibl_mip_count))
+                                                         , light_shader(CreateModelLightPassShader())
+                                                         , ibl_shader(CreateModelIblShader(ibl_mip_count))
 {
 	ConnectDescriptors();
 }
@@ -61,22 +61,24 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 
 	// light pass pipeline states
 	ut::Array<PipelineState> lightpass_pipeline;
-	constexpr size_t light_permutation_count = LightPass::PipelineGrid::size;
+	constexpr size_t light_permutation_count = LightPass::ModelRendering::PipelineGrid::size;
 	for (ut::uint32 i = 0; i < light_permutation_count; i++)
 	{
-		const size_t vertex_format = LightPass::PipelineGrid::GetCoordinate<LightPass::vertex_format_column>(i);
-		const size_t alpha_mode = LightPass::PipelineGrid::GetCoordinate<LightPass::alpha_mode_column>(i);
-		const size_t ibl_preset = LightPass::PipelineGrid::GetCoordinate<LightPass::ibl_column>(i);
-		const size_t source_type = LightPass::PipelineGrid::GetCoordinate<LightPass::light_type_column>(i);
-		const size_t cull_mode = LightPass::PipelineGrid::GetCoordinate<LightPass::cull_mode_column>(i);
+		const size_t vertex_format = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::vertex_format_column>(i);
+		const size_t alpha_test = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::alpha_test_column>(i);
+		const size_t alpha_mode = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::alpha_mode_column>(i);
+		const size_t ibl_preset = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::ibl_column>(i);
+		const size_t source_type = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::light_type_column>(i);
+		const size_t cull_mode = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::cull_mode_column>(i);
 
-		ut::Result<PipelineState, ut::Error> pipeline = CreateLightPassPipeline(lightpass.Get(),
-		                                                                        width, height,
-		                                                                        static_cast<Mesh::VertexFormat>(vertex_format),
-		                                                                        static_cast<LightPass::AlphaMode>(alpha_mode),
-		                                                                        static_cast<LightPass::IblPreset>(ibl_preset),
-		                                                                        static_cast<Light::SourceType>(source_type),
-		                                                                        static_cast<LightPass::CullMode>(cull_mode));
+		ut::Result<PipelineState, ut::Error> pipeline = CreateModelLightPassPipeline(lightpass.Get(),
+		                                                                             width, height,
+		                                                                             static_cast<Mesh::VertexFormat>(vertex_format),
+		                                                                             static_cast<LightPass::ModelRendering::AlphaTest>(alpha_test),
+		                                                                             static_cast<LightPass::ModelRendering::AlphaMode>(alpha_mode),
+		                                                                             static_cast<LightPass::ModelRendering::IblPreset>(ibl_preset),
+		                                                                             static_cast<Light::SourceType>(source_type),
+		                                                                             static_cast<LightPass::ModelRendering::CullMode>(cull_mode));
 		if (!pipeline)
 		{
 			return ut::MakeError(pipeline.MoveAlt());
@@ -90,18 +92,20 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 
 	// ibl pass pipeline states
 	ut::Array<PipelineState> iblpass_pipeline;
-	constexpr size_t ibl_permutation_count = IblPass::PipelineGrid::size;
+	constexpr size_t ibl_permutation_count = IblPass::ModelRendering::PipelineGrid::size;
 	for (ut::uint32 i = 0; i < ibl_permutation_count; i++)
 	{
-		const size_t vertex_format = IblPass::PipelineGrid::GetCoordinate<IblPass::vertex_format_column>(i);
-		const size_t alpha_mode = IblPass::PipelineGrid::GetCoordinate<IblPass::alpha_mode_column>(i);
-		const size_t cull_mode = IblPass::PipelineGrid::GetCoordinate<IblPass::cull_mode_column>(i);
+		const size_t vertex_format = IblPass::ModelRendering::PipelineGrid::GetCoordinate<IblPass::ModelRendering::vertex_format_column>(i);
+		const size_t alpha_test = IblPass::ModelRendering::PipelineGrid::GetCoordinate<IblPass::ModelRendering::alpha_test_column>(i);
+		const size_t alpha_mode = IblPass::ModelRendering::PipelineGrid::GetCoordinate<IblPass::ModelRendering::alpha_mode_column>(i);
+		const size_t cull_mode = IblPass::ModelRendering::PipelineGrid::GetCoordinate<IblPass::ModelRendering::cull_mode_column>(i);
 
-		ut::Result<PipelineState, ut::Error> pipeline = CreateIblPassPipeline(lightpass.Get(),
-		                                                                      width, height,
-		                                                                      static_cast<Mesh::VertexFormat>(vertex_format),
-		                                                                      static_cast<IblPass::AlphaMode>(alpha_mode),
-		                                                                      static_cast<IblPass::CullMode>(cull_mode));
+		ut::Result<PipelineState, ut::Error> pipeline = CreateModelIblPassPipeline(lightpass.Get(),
+		                                                                           width, height,
+		                                                                           static_cast<Mesh::VertexFormat>(vertex_format),
+		                                                                           static_cast<IblPass::ModelRendering::AlphaTest>(alpha_test),
+		                                                                           static_cast<IblPass::ModelRendering::AlphaMode>(alpha_mode),
+		                                                                           static_cast<IblPass::ModelRendering::CullMode>(cull_mode));
 		if (!pipeline)
 		{
 			return ut::MakeError(pipeline.MoveAlt());
@@ -157,7 +161,7 @@ void ForwardShading::DrawTransparentGeometry(Context& context,
 
 	// get the number of available threads
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
-	UT_ASSERT(thread_count == lightpass_desc_set.Count());
+	UT_ASSERT(thread_count == lightpass_model_desc_set.Count());
 
 	// get the number of model drawcalls
 	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;
@@ -231,8 +235,8 @@ void ForwardShading::RenderTransparentModelJob(Context& context,
 		return;
 	}
 
-	const LightPass::IblPreset ibl_preset = ibl_cubemap ? LightPass::ibl_on :
-	                                                      LightPass::ibl_off;
+	const LightPass::ModelRendering::IblPreset ibl_preset = ibl_cubemap ? LightPass::ModelRendering::ibl_on :
+	                                                                      LightPass::ModelRendering::ibl_off;
 	const ut::uint32 last_element = offset + count - 1;
 	for (ut::uint32 i = offset; i <= last_element; i++)
 	{
@@ -255,12 +259,12 @@ void ForwardShading::RenderTransparentModelJob(Context& context,
 			// ibl reflections pass
 			if (ibl_cubemap)
 			{
-				const IblPass::CullMode ibl_cull_mode = cull_mode == front_culling ?
-				                                        IblPass::cull_front :
-				                                        IblPass::cull_back;
-				const IblPass::AlphaMode ibl_alpha_mode = first_pass ?
-				                                          IblPass::alpha_blend :
-				                                          IblPass::alpha_add;
+				const IblPass::ModelRendering::CullMode ibl_cull_mode = cull_mode == front_culling ?
+				                                                        IblPass::ModelRendering::cull_front :
+				                                                        IblPass::ModelRendering::cull_back;
+				const IblPass::ModelRendering::AlphaMode ibl_alpha_mode = first_pass ?
+				                                                          IblPass::ModelRendering::alpha_blend :
+				                                                          IblPass::ModelRendering::alpha_add;
 				RenderTransparentModelIbl(context,
 				                          data,
 				                          ibl_cubemap.Get(),
@@ -274,12 +278,12 @@ void ForwardShading::RenderTransparentModelJob(Context& context,
 			}
 
 			// direct light pass
-			const LightPass::CullMode lightpass_cull_mode = cull_mode == front_culling ?
-			                                                LightPass::cull_front :
-			                                                LightPass::cull_back;
-			const LightPass::AlphaMode lightpass_alpha_mode = first_pass ?
-			                                                  LightPass::alpha_blend :
-			                                                  LightPass::alpha_add;
+			const LightPass::ModelRendering::CullMode lightpass_cull_mode = cull_mode == front_culling ?
+			                                                                LightPass::ModelRendering::cull_front :
+			                                                                LightPass::ModelRendering::cull_back;
+			const LightPass::ModelRendering::AlphaMode lightpass_alpha_mode = first_pass ?
+			                                                                  LightPass::ModelRendering::alpha_blend :
+			                                                                  LightPass::ModelRendering::alpha_add;
 			RenderTransparentModelLights(context,
 			                             data,
 			                             lights,
@@ -300,9 +304,9 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
                                                   Light::Sources& lights,
                                                   Buffer& view_uniform_buffer,
                                                   ModelBatcher& batcher,
-                                                  LightPass::IblPreset ibl_preset,
-                                                  LightPass::CullMode cull_mode,
-                                                  LightPass::AlphaMode alpha_mode,
+                                                  LightPass::ModelRendering::IblPreset ibl_preset,
+                                                  LightPass::ModelRendering::CullMode cull_mode,
+                                                  LightPass::ModelRendering::AlphaMode alpha_mode,
                                                   ut::uint32 drawcall_id,
                                                   ut::uint32 thread_id)
 {
@@ -316,6 +320,9 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 	Mesh& mesh = dc.model.mesh.Get();
 	Mesh::Subset& subset = mesh.subsets[dc.subset_id];
 	Material& material = subset.material;
+	const LightPass::ModelRendering::AlphaTest alpha_test = material.alpha == Material::alpha_masked ?
+	                                                        LightPass::ModelRendering::alpha_test_on :
+	                                                        LightPass::ModelRendering::alpha_test_off;
 
 	// accumulate light from all sources
 	const size_t directional_count = lights.directional.Count();
@@ -360,14 +367,15 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 
 		// bind pipeline state
 		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
-		const size_t pipeline_state_id = LightPass::PipelineGrid::GetId(vertex_format,
-		                                                                ibl_preset,
-		                                                                light_type,
-		                                                                alpha_mode,
-		                                                                cull_mode);
+		const size_t pipeline_state_id = LightPass::ModelRendering::PipelineGrid::GetId(vertex_format,
+		                                                                                ibl_preset,
+		                                                                                light_type,
+		                                                                                alpha_test,
+		                                                                                alpha_mode,
+		                                                                                cull_mode);
 
 		// bind uniforms
-		LightPassDescriptorSet& desc_set = lightpass_desc_set[thread_id];
+		LightPass::ModelRendering::Descriptors& desc_set = lightpass_model_desc_set[thread_id];
 		desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
 		desc_set.light_ub.BindUniformBuffer(light_ub.Get());
 		desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
@@ -395,8 +403,8 @@ void ForwardShading::RenderTransparentModelIbl(Context& context,
                                                Image& ibl_cubemap,
                                                Buffer& view_uniform_buffer,
                                                ModelBatcher& batcher,
-                                               IblPass::CullMode cull_mode,
-                                               IblPass::AlphaMode alpha_mode,
+                                               IblPass::ModelRendering::CullMode cull_mode,
+                                               IblPass::ModelRendering::AlphaMode alpha_mode,
                                                ut::uint32 drawcall_id,
                                                ut::uint32 thread_id)
 {
@@ -410,6 +418,9 @@ void ForwardShading::RenderTransparentModelIbl(Context& context,
 	Mesh& mesh = dc.model.mesh.Get();
 	Mesh::Subset& subset = mesh.subsets[dc.subset_id];
 	Material& material = subset.material;
+	const IblPass::ModelRendering::AlphaTest alpha_test = material.alpha == Material::alpha_masked ?
+	                                                      IblPass::ModelRendering::alpha_test_on :
+	                                                      IblPass::ModelRendering::alpha_test_off;
 
 	// calculate batch id
 	const ut::uint32 batch_id = drawcall_id / batch_size;
@@ -417,12 +428,13 @@ void ForwardShading::RenderTransparentModelIbl(Context& context,
 
 	// get pipeline state
 	const Mesh::VertexFormat vertex_format = mesh.vertex_format;
-	const size_t pipeline_state_id = IblPass::PipelineGrid::GetId(vertex_format,
-	                                                              alpha_mode,
-	                                                              cull_mode);
+	const size_t pipeline_state_id = IblPass::ModelRendering::PipelineGrid::GetId(vertex_format,
+	                                                                              alpha_test,
+	                                                                              alpha_mode,
+	                                                                              cull_mode);
 
 	// bind uniforms
-	IblPassDescriptorSet& desc_set = iblpass_desc_set[thread_id];
+	IblPass::ModelRendering::Descriptors& desc_set = iblpass_model_desc_set[thread_id];
 	desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
 	desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
 	desc_set.transform_ub.BindUniformBuffer(batch.transform);
@@ -475,15 +487,16 @@ void ForwardShading::DrawMesh(Context& context,
 }
 
 // Creates a shader for the lighting pass.
-ut::Array<BoundShader> ForwardShading::CreateLightPassShader()
+ut::Array<BoundShader> ForwardShading::CreateModelLightPassShader()
 {
 	ut::Array<BoundShader> shaders;
-	constexpr size_t light_permutation_count = LightPass::ShaderGrid::size;
+	constexpr size_t light_permutation_count = LightPass::ModelRendering::ShaderGrid::size;
 	for (size_t i = 0; i < light_permutation_count; i++)
 	{
-		const size_t vertex_format = LightPass::ShaderGrid::GetCoordinate<LightPass::vertex_format_column>(i);
-		const size_t ibl_preset = LightPass::ShaderGrid::GetCoordinate<LightPass::ibl_column>(i);
-		const size_t source_type = LightPass::ShaderGrid::GetCoordinate<LightPass::light_type_column>(i);
+		const size_t vertex_format = LightPass::ModelRendering::ShaderGrid::GetCoordinate<LightPass::ModelRendering::vertex_format_column>(i);
+		const size_t ibl_preset = LightPass::ModelRendering::ShaderGrid::GetCoordinate<LightPass::ModelRendering::ibl_column>(i);
+		const size_t source_type = LightPass::ModelRendering::ShaderGrid::GetCoordinate<LightPass::ModelRendering::light_type_column>(i);
+		const size_t alpha_test = LightPass::ModelRendering::ShaderGrid::GetCoordinate<LightPass::ModelRendering::alpha_test_column>(i);
 
 		Shader::Macros macros;
 		Shader::MacroDefinition macro;
@@ -509,7 +522,7 @@ ut::Array<BoundShader> ForwardShading::CreateLightPassShader()
 		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
 		// ibl preset
-		const bool ibl_enabled = ibl_preset == LightPass::ibl_on;
+		const bool ibl_enabled = ibl_preset == LightPass::ModelRendering::ibl_on;
 		shader_name_suffix += ibl_enabled ? "_ibl" : "_noibl";
 		macro.name = "IBL";
 		macro.value = ibl_enabled ? "1" : "0";
@@ -537,6 +550,13 @@ ut::Array<BoundShader> ForwardShading::CreateLightPassShader()
 		macro.value = "1";
 		macros.Add(ut::Move(macro));
 
+		// alpha test
+		const bool alpha_test_enabled = alpha_test == LightPass::ModelRendering::alpha_test_on;
+		macro.name = "ALPHA_TEST";
+		macro.value = alpha_test_enabled ? "1" : "0";
+		macros.Add(macro);
+		shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
+
 		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::vertex,
 		                                                            ut::String("forward_model_lp_vs") + shader_name_suffix,
 		                                                            "VS",
@@ -560,13 +580,14 @@ ut::Array<BoundShader> ForwardShading::CreateLightPassShader()
 }
 
 // Creates a shader for the ibl pass.
-ut::Array<BoundShader> ForwardShading::CreateIblShader(ut::uint32 ibl_mip_count)
+ut::Array<BoundShader> ForwardShading::CreateModelIblShader(ut::uint32 ibl_mip_count)
 {
 	ut::Array<BoundShader> shaders;
-	constexpr size_t ibl_permutation_count = IblPass::ShaderGrid::size;
+	constexpr size_t ibl_permutation_count = IblPass::ModelRendering::ShaderGrid::size;
 	for (size_t i = 0; i < ibl_permutation_count; i++)
 	{
-		const size_t vertex_format = IblPass::ShaderGrid::GetCoordinate<IblPass::vertex_format_column>(i);
+		const size_t vertex_format = IblPass::ModelRendering::ShaderGrid::GetCoordinate<IblPass::ModelRendering::vertex_format_column>(i);
+		const size_t alpha_test = IblPass::ModelRendering::ShaderGrid::GetCoordinate<IblPass::ModelRendering::alpha_test_column>(i);
 
 		Shader::Macros macros;
 		Shader::MacroDefinition macro;
@@ -598,6 +619,13 @@ ut::Array<BoundShader> ForwardShading::CreateIblShader(ut::uint32 ibl_mip_count)
 		// vertex traits
 		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), true);
 		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
+
+		// alpha test
+		const bool alpha_test_enabled = alpha_test == IblPass::ModelRendering::alpha_test_on;
+		macro.name = "ALPHA_TEST";
+		macro.value = alpha_test_enabled ? "1" : "0";
+		macros.Add(macro);
+		shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
 
 		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::vertex,
 		                                                            ut::String("forward_model_ibl_vs") + shader_name_suffix,
@@ -633,19 +661,21 @@ ut::Result<RenderPass, ut::Error> ForwardShading::CreateLightPass(pixel::Format 
 }
 
 // Creates a pipeline state to apply lighting.
-ut::Result<PipelineState, ut::Error> ForwardShading::CreateLightPassPipeline(RenderPass& lightpass,
-                                                                             ut::uint32 width,
-                                                                             ut::uint32 height,
-                                                                             Mesh::VertexFormat vertex_format,
-                                                                             LightPass::AlphaMode alpha_mode,
-                                                                             LightPass::IblPreset ibl_preset,
-                                                                             Light::SourceType source_type,
-                                                                             LightPass::CullMode cull_mode)
+ut::Result<PipelineState, ut::Error> ForwardShading::CreateModelLightPassPipeline(RenderPass& lightpass,
+                                                                                  ut::uint32 width,
+                                                                                  ut::uint32 height,
+                                                                                  Mesh::VertexFormat vertex_format,
+                                                                                  LightPass::ModelRendering::AlphaTest alpha_test,
+                                                                                  LightPass::ModelRendering::AlphaMode alpha_mode,
+                                                                                  LightPass::ModelRendering::IblPreset ibl_preset,
+                                                                                  Light::SourceType source_type,
+                                                                                  LightPass::ModelRendering::CullMode cull_mode)
 {
 	PipelineState::Info info;
-	const size_t shader_id = LightPass::ShaderGrid::GetId(vertex_format,
-	                                                      ibl_preset,
-	                                                      source_type);
+	const size_t shader_id = LightPass::ModelRendering::ShaderGrid::GetId(vertex_format,
+	                                                                      ibl_preset,
+	                                                                      source_type,
+	                                                                      alpha_test);
 	UT_ASSERT(light_shader[shader_id].stages[Shader::vertex]);
 	UT_ASSERT(light_shader[shader_id].stages[Shader::pixel]);
 
@@ -670,10 +700,10 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateLightPassPipeline(Ren
 	info.depth_stencil_state.stencil_write_mask = 0xffffffff;
 	info.depth_stencil_state.stencil_reference = 0x0;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = cull_mode == LightPass::cull_back ?
+	info.rasterization_state.cull_mode = cull_mode == LightPass::ModelRendering::cull_back ?
 	                                                  RasterizationState::back_culling :
 	                                                  RasterizationState::no_culling;
-	if (alpha_mode == LightPass::alpha_blend)
+	if (alpha_mode == LightPass::ModelRendering::alpha_blend)
 	{
 		Blending blending(true,
 		                  Blending::src_alpha,
@@ -685,7 +715,7 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateLightPassPipeline(Ren
 		                  0xf);
 		info.blend_state.attachments.Add(blending);
 	}
-	else if (alpha_mode == LightPass::alpha_add)
+	else if (alpha_mode == LightPass::ModelRendering::alpha_add)
 	{
 		Blending blending(true,
 		                  Blending::src_alpha,
@@ -702,15 +732,16 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateLightPassPipeline(Ren
 }
 
 // Creates a pipeline state to apply ibl reflections.
-ut::Result<PipelineState, ut::Error> ForwardShading::CreateIblPassPipeline(RenderPass& lightpass,
-                                                                           ut::uint32 width,
-                                                                           ut::uint32 height,
-                                                                           Mesh::VertexFormat vertex_format,
-                                                                           IblPass::AlphaMode alpha_mode,
-                                                                           IblPass::CullMode cull_mode)
+ut::Result<PipelineState, ut::Error> ForwardShading::CreateModelIblPassPipeline(RenderPass& lightpass,
+                                                                                ut::uint32 width,
+                                                                                ut::uint32 height,
+                                                                                Mesh::VertexFormat vertex_format,
+                                                                                IblPass::ModelRendering::AlphaTest alpha_test,
+                                                                                IblPass::ModelRendering::AlphaMode alpha_mode,
+                                                                                IblPass::ModelRendering::CullMode cull_mode)
 {
 	PipelineState::Info info;
-	const size_t shader_id = IblPass::ShaderGrid::GetId(vertex_format);
+	const size_t shader_id = IblPass::ModelRendering::ShaderGrid::GetId(vertex_format, alpha_test);
 	UT_ASSERT(ibl_shader[shader_id].stages[Shader::vertex]);
 	UT_ASSERT(ibl_shader[shader_id].stages[Shader::pixel]);
 
@@ -728,10 +759,10 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateIblPassPipeline(Rende
 	info.depth_stencil_state.depth_compare_op = compare::less_or_equal;
 	info.depth_stencil_state.stencil_test_enable = false;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = cull_mode == IblPass::cull_back ?
+	info.rasterization_state.cull_mode = cull_mode == IblPass::ModelRendering::cull_back ?
 	                                                  RasterizationState::back_culling :
 	                                                  RasterizationState::no_culling;
-	if (alpha_mode == IblPass::alpha_blend)
+	if (alpha_mode == IblPass::ModelRendering::alpha_blend)
 	{
 		Blending blending(true,
 		                  Blending::one,
@@ -743,7 +774,7 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateIblPassPipeline(Rende
 		                  0xf);
 		info.blend_state.attachments.Add(blending);
 	}
-	else if (alpha_mode == IblPass::alpha_add)
+	else if (alpha_mode == IblPass::ModelRendering::alpha_add)
 	{
 		Blending blending(true,
 		                  Blending::one,
@@ -765,12 +796,12 @@ void ForwardShading::ConnectDescriptors()
 	UT_ASSERT(light_shader.Count() != 0);
 	UT_ASSERT(ibl_shader.Count() != 0);
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
-	lightpass_desc_set.Resize(thread_count);
-	iblpass_desc_set.Resize(thread_count);
+	lightpass_model_desc_set.Resize(thread_count);
+	iblpass_model_desc_set.Resize(thread_count);
 	for (ut::uint32 i = 0; i < thread_count; i++)
 	{
-		lightpass_desc_set[i].Connect(light_shader.GetFirst());
-		iblpass_desc_set[i].Connect(ibl_shader.GetFirst());
+		lightpass_model_desc_set[i].Connect(light_shader.GetFirst());
+		iblpass_model_desc_set[i].Connect(ibl_shader.GetFirst());
 	}
 }
 

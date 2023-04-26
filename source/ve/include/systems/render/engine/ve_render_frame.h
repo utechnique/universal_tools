@@ -14,6 +14,12 @@ START_NAMESPACE(render)
 class Frame
 {
 public:
+	// Contains information about this frame.
+	struct Info
+	{
+		bool needs_entity_id_buffer_update = false;
+	};
+
 	// Constructor.
 	Frame(CmdBuffer in_cmd_buffer, Buffer in_display_ub);
 
@@ -54,6 +60,9 @@ public:
 	// Creates input assembly state for primitives that can be
 	// rendered directly to a display.
 	static InputAssemblyState CreateInputAssemblyState();
+
+	// Information about this frame.
+	Info info;
 
 private:
 	// vertex type for rendering quads directly to a display

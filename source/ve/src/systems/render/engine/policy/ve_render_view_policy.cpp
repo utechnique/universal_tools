@@ -14,6 +14,7 @@ Policy<View>::Policy(Toolset &toolset,
                                                 , policies(engine_policies)
                                                 , lighting_mgr(toolset)
                                                 , post_process_mgr(toolset)
+                                                , hitmask(toolset)
 {}
 
 //----------------------------------------------------------------------------->
@@ -49,6 +50,15 @@ void Policy<View>::Initialize(View& view)
 			throw ut::Error(ibl_data.MoveAlt());
 		}
 
+		// hitmask
+		ut::Result<HitMask::ViewData, ut::Error> hitmask_data = hitmask.CreateViewData(scene_buffer->depth_stencil,
+		                                                                               view.width,
+		                                                                               view.height);
+		if (!hitmask_data)
+		{
+			throw ut::Error(hitmask_data.MoveAlt());
+		}
+
 		// post-process
 		ut::Result<postprocess::ViewData, ut::Error> post_process_data = post_process_mgr.CreateViewData(view.width,
 		                                                                                                 view.height,
@@ -62,6 +72,7 @@ void Policy<View>::Initialize(View& view)
 		View::FrameData frame_data{ env_map.Move(),
 		                            scene_buffer.Move(),
 		                            ibl_data.Move(),
+		                            hitmask_data.Move(),
 		                            post_process_data.Move(),
 		                            ut::Optional<Image&>() };
 		if (!frames.Add(ut::Move(frame_data)))
@@ -79,8 +90,6 @@ void Policy<View>::Initialize(View& view)
 // Renders all render units to all render views.
 void Policy<View>::RenderEnvironment(Context& context)
 {
-	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
-	Policy<Model>& model_policy = policies.Get<Model>();
 	ut::Array< ut::Ref<View> >& views = selector.Get<View>();
 
 	// extract light units
@@ -95,47 +104,76 @@ void Policy<View>::RenderEnvironment(Context& context)
 	const size_t view_count = views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
-		View& view = views[i];
-
-		// get current frame
-		View::FrameData& frame = view.data->frames[current_frame_id];
-
-		// reset final image
-		frame.final_img = ut::Optional<Image&>();
-
-		// skip if view is inactive
-		if (!view.is_active)
-		{
-			continue;
-		}
-		
-		// image based lighting
-		ut::Optional<Image&> ibl_cubemap;
-		if (tools.config.ibl_enabled && view.mode == View::mode_complete)
-		{
-			RenderIblCubemap(context, view, lights);
-			ibl_cubemap = frame.ibl.filtered_cubemap.GetImage();
-		}
-
-		// render the scene to the final buffer
-		frame.final_img = RenderScene(context,
-		                              frame.scene,
-		                              lights,
-		                              view.view_matrix,
-		                              view.proj_matrix,
-		                              view.camera_position,
-		                              view.mode,
-		                              ibl_cubemap);
-		if (view.mode != View::mode_complete)
-		{
-			continue;
-		}
-
-		// postprocess
-		frame.final_img = post_process_mgr.ApplyEffects(context,
-		                                                frame.post_process,
-		                                                frame.scene.lighting.light_buffer.GetImage());
+		RenderView(context, views[i], lights);
 	}
+}
+
+//----------------------------------------------------------------------------->
+// Renders the provided view.
+void Policy<View>::RenderView(Context& context, View& view, Light::Sources& lights)
+{
+	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
+	Policy<Model>& model_policy = policies.Get<Model>();
+
+	// get current frame
+	View::FrameData& frame = view.data->frames[current_frame_id];
+
+	// reset final image
+	frame.final_img = ut::Optional<Image&>();
+
+	// skip if view is inactive
+	if (!view.is_active)
+	{
+		return;
+	}
+
+	// copy hitmask to the cpu
+	if(frame.hitmask.submitted)
+	{
+		hitmask.Read(context, frame.hitmask, view.hitmask);
+		frame.hitmask.submitted = false;
+	}
+	else
+	{
+		view.hitmask.Reset();
+	}
+
+	// render hitmask
+	if (view.draw_hitmask)
+	{
+		hitmask.Draw(context,
+		             frame.scene.depth_stencil,
+		             frame.hitmask,
+		             frame.scene.view_ub[0],
+		             model_policy.batcher);
+	}
+
+	// image based lighting
+	ut::Optional<Image&> ibl_cubemap;
+	if (tools.config.ibl_enabled && view.mode == View::mode_complete)
+	{
+		RenderIblCubemap(context, view, lights);
+		ibl_cubemap = frame.ibl.filtered_cubemap.GetImage();
+	}
+
+	// render the scene to the final buffer
+	frame.final_img = RenderLightPass(context,
+	                                  frame.scene,
+	                                  lights,
+	                                  view.view_matrix,
+	                                  view.proj_matrix,
+	                                  view.camera_position,
+	                                  view.mode,
+	                                  ibl_cubemap);
+	if (view.mode != View::mode_complete)
+	{
+		return;
+	}
+
+	// postprocess
+	frame.final_img = post_process_mgr.ApplyEffects(context,
+	                                                frame.post_process,
+	                                                frame.scene.lighting.light_buffer.GetImage());
 }
 
 //----------------------------------------------------------------------------->
@@ -211,15 +249,15 @@ ut::Result<View::SceneBuffer, ut::Error> Policy<View>::CreateSceneBuffer(ut::uin
 
 //----------------------------------------------------------------------------->
 // Renders environment.
-ut::Optional<Image&> Policy<View>::RenderScene(Context& context,
-                                               View::SceneBuffer& scene,
-                                               Light::Sources& lights,
-                                               const ut::Matrix<4>& view_matrix,
-                                               const ut::Matrix<4>& proj_matrix,
-                                               const ut::Vector<3>& view_position,
-                                               View::Mode mode,
-                                               ut::Optional<Image&> ibl_cubemap,
-                                               Image::Cube::Face face)
+ut::Optional<Image&> Policy<View>::RenderLightPass(Context& context,
+                                                   View::SceneBuffer& scene,
+                                                   Light::Sources& lights,
+                                                   const ut::Matrix<4>& view_matrix,
+                                                   const ut::Matrix<4>& proj_matrix,
+                                                   const ut::Vector<3>& view_position,
+                                                   View::Mode mode,
+                                                   ut::Optional<Image&> ibl_cubemap,
+                                                   Image::Cube::Face face)
 {
 	Policy<Model>& model_policy = policies.Get<Model>();
 
@@ -290,15 +328,15 @@ void Policy<View>::RenderIblCubemap(Context& context,
 	// draw ibl faces
 	for (ut::uint32 i = frame.ibl.face_id; i < frame.ibl.face_id + faces_to_update; i++)
 	{
-		RenderScene(context,
-		            frame.environment_map,
-		            lights,
-		            lighting_mgr.ibl.CreateFaceViewMatrix(static_cast<Image::Cube::Face>(i), view.camera_position),
-		            lighting_mgr.ibl.CreateFaceProjectionMatrix(view.znear, view.zfar),
-		            view.camera_position,
-		            View::mode_complete,
-		            frame.ibl.filtered_cubemap.GetImage(),
-		            static_cast<Image::Cube::Face>(i));
+		RenderLightPass(context,
+		                frame.environment_map,
+		                lights,
+		                lighting_mgr.ibl.CreateFaceViewMatrix(static_cast<Image::Cube::Face>(i), view.camera_position),
+		                lighting_mgr.ibl.CreateFaceProjectionMatrix(view.znear, view.zfar),
+		                view.camera_position,
+		                View::mode_complete,
+		                frame.ibl.filtered_cubemap.GetImage(),
+		                static_cast<Image::Cube::Face>(i));
 	}
 
 	// ibl source must have full set of mips

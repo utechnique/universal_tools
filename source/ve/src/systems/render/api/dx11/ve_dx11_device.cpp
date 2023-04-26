@@ -265,6 +265,10 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	ID3D11Texture2D *tex2D = nullptr;
 	ID3D11Texture3D *tex3D = nullptr;
 
+	ID3D11Texture1D *tex1D_staging = nullptr;
+	ID3D11Texture2D *tex2D_staging = nullptr;
+	ID3D11Texture3D *tex3D_staging = nullptr;
+
 	// figure out pixel size
 	const ut::uint32 pixel_size = pixel::GetSize(info.format);
 	if (pixel_size == 0)
@@ -372,6 +376,19 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 1d texture.");
 		}
 
+		if (info.has_staging_cpu_read_buffer)
+		{
+			tex1d_desc.Usage = D3D11_USAGE_STAGING;
+			tex1d_desc.BindFlags = 0;
+			tex1d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+			result = d3d11_device->CreateTexture1D(&tex1d_desc, nullptr, &tex1D_staging);
+			if (FAILED(result))
+			{
+				return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 1d staging texture.");
+			}
+		}
+
 		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1D;
 		shader_resource = tex1D;
 	}
@@ -398,6 +415,19 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		if (FAILED(result))
 		{
 			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 2d texture.");
+		}
+
+		if (info.has_staging_cpu_read_buffer)
+		{
+			tex2d_desc.Usage = D3D11_USAGE_STAGING;
+			tex2d_desc.BindFlags = 0;
+			tex2d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+			result = d3d11_device->CreateTexture2D(&tex2d_desc, nullptr, &tex2D_staging);
+			if (FAILED(result))
+			{
+				return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 2d staging texture.");
+			}
 		}
 
 		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -442,6 +472,19 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 			return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 3d texture.");
 		}
 
+		if (info.has_staging_cpu_read_buffer)
+		{
+			tex3d_desc.Usage = D3D11_USAGE_STAGING;
+			tex3d_desc.BindFlags = 0;
+			tex3d_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+			result = d3d11_device->CreateTexture3D(&tex3d_desc, nullptr, &tex3D_staging);
+			if (FAILED(result))
+			{
+				return ut::MakeError(ut::error::fail, ut::Print(result) + " failed to create d3d11 3d staging texture.");
+			}
+		}
+
 		srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
 		shader_resource = tex3D;
 	}
@@ -454,9 +497,9 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	}
 
 	// success
-	PlatformImage platform_img = is_1d ? PlatformImage(tex1D, srv) :
-	                             is_2d ? PlatformImage(tex2D, srv, is_cube ? cube_faces : nullptr) :
-	                             PlatformImage(tex3D, srv);
+	PlatformImage platform_img = is_1d ? PlatformImage(tex1D, tex1D_staging, srv) :
+	                             is_2d ? PlatformImage(tex2D, tex2D_staging, srv, is_cube ? cube_faces : nullptr) :
+	                             PlatformImage(tex3D, tex3D_staging, srv);
 	return Image(ut::Move(platform_img), ut::Move(info));
 }
 
@@ -568,6 +611,7 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 	img_info.type = info.type;
 	img_info.format = info.format;
 	img_info.usage = render::memory::gpu_read_write;
+	img_info.has_staging_cpu_read_buffer = info.has_staging_cpu_read_buffer;
 	img_info.mip_count = info.mip_count;
 	img_info.width = info.width;
 	img_info.height = info.height;
@@ -706,7 +750,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	target_info.usage = Target::Info::usage_present;
 
 	// create render target that will be associated with provided viewport
-	Image texture(PlatformImage(backbuffer, nullptr), ut::Move(backbuffer_info));
+	Image texture(PlatformImage(backbuffer, nullptr, nullptr), ut::Move(backbuffer_info));
 	Target target(PlatformRenderTarget(ut::Move(slice_target_views)), ut::Move(texture), target_info);
 
 	// dx11 does swapping manually, so there is only one buffer available for engine

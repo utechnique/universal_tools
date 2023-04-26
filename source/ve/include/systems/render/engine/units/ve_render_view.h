@@ -7,6 +7,7 @@
 #include "systems/render/engine/ve_render_resource.h"
 #include "systems/render/engine/post_process/ve_post_process_view_data.h"
 #include "systems/render/engine/lighting/ve_lighting_view_data.h"
+#include "systems/render/engine/ve_render_hitmask.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -48,6 +49,7 @@ public:
 		SceneBuffer environment_map;
 		SceneBuffer scene;
 		lighting::IBL::ViewData ibl;
+		HitMask::ViewData hitmask;
 		postprocess::ViewData post_process;
 		ut::Optional<Image&> final_img;
 	};
@@ -90,8 +92,15 @@ public:
 	// The identifier of the UI widget associated with this view.
 	ui::Viewport::Id viewport_id = 0;
 
+	// Indicates if the hitmak pass must be performed for this view on the next
+	// frame.
+	bool draw_hitmask = false;
+
 	// Indicates if this viewport will be processed by the render engine.
 	bool is_active = true;
+
+	// Hitmask pixel data.
+	ut::Array<ve::Entity::Id> hitmask;
 
 	// GPU resources.
 	RcRef<GpuData> data;

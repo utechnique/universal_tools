@@ -61,107 +61,133 @@ private:
 	// Light pass pipeline permutations.
 	struct LightPass
 	{
-		enum AlphaMode
+		struct ModelRendering
 		{
-			alpha_blend,
-			alpha_add,
-			alpha_mode_count
+			enum AlphaTest
+			{
+				alpha_test_off,
+				alpha_test_on,
+				alpha_test_count
+			};
+
+			enum AlphaMode
+			{
+				alpha_blend,
+				alpha_add,
+				alpha_mode_count
+			};
+
+			enum IblPreset
+			{
+				ibl_off,
+				ibl_on,
+				ibl_preset_count
+			};
+
+			enum CullMode
+			{
+				cull_front,
+				cull_back,
+				cull_mode_count
+			};
+
+			static constexpr ut::uint32 vertex_format_column = 0;
+			static constexpr ut::uint32 ibl_column = 1;
+			static constexpr ut::uint32 light_type_column = 2;
+			static constexpr ut::uint32 alpha_test_column = 3;
+			static constexpr ut::uint32 alpha_mode_column = 4;
+			static constexpr ut::uint32 cull_mode_column = 5;
+
+			typedef ut::Grid<Mesh::vertex_format_count,
+			                 ibl_preset_count,
+			                 Light::source_type_count,
+			                 alpha_test_count,
+			                 alpha_mode_count,
+			                 cull_mode_count> PipelineGrid;
+
+			typedef ut::Grid<Mesh::vertex_format_count,
+			                 ibl_preset_count,
+			                 Light::source_type_count,
+			                 alpha_test_count> ShaderGrid;
+
+			// Descriptor set for the light pass shaders.
+			struct Descriptors : public DescriptorSet
+			{
+				Descriptors() : DescriptorSet(view_ub, light_ub, transform_ub,
+				                              material_ub, sampler, diffuse,
+				                              normal, material)
+				{}
+
+				Descriptor view_ub = "g_ub_view";
+				Descriptor light_ub = "g_ub_light";
+				Descriptor transform_ub = "g_ub_transform";
+				Descriptor material_ub = "g_ub_material";
+				Descriptor sampler = "g_sampler";
+				Descriptor diffuse = "g_tex2d_diffuse";
+				Descriptor normal = "g_tex2d_normal";
+				Descriptor material = "g_tex2d_material";
+			};
 		};
-
-		enum IblPreset
-		{
-			ibl_off,
-			ibl_on,
-			ibl_preset_count
-		};
-
-		enum CullMode
-		{
-			cull_front,
-			cull_back,
-			cull_mode_count
-		};
-
-		static constexpr ut::uint32 vertex_format_column = 0;
-		static constexpr ut::uint32 ibl_column = 1;
-		static constexpr ut::uint32 light_type_column = 2;
-		static constexpr ut::uint32 alpha_mode_column = 3;
-		static constexpr ut::uint32 cull_mode_column = 4;
-
-		typedef ut::Grid<Mesh::vertex_format_count,
-		                 ibl_preset_count,
-		                 Light::source_type_count,
-		                 alpha_mode_count,
-		                 cull_mode_count> PipelineGrid;
-
-		typedef ut::Grid<Mesh::vertex_format_count,
-		                 ibl_preset_count,
-		                 Light::source_type_count> ShaderGrid;
 	};
 
 	// IBL pass pipeline permutations.
 	struct IblPass
 	{
-		enum AlphaMode
+		struct ModelRendering
 		{
-			alpha_blend,
-			alpha_add,
-			alpha_mode_count
+			enum AlphaTest
+			{
+				alpha_test_off,
+				alpha_test_on,
+				alpha_test_count
+			};
+
+			enum AlphaMode
+			{
+				alpha_blend,
+				alpha_add,
+				alpha_mode_count
+			};
+
+			enum CullMode
+			{
+				cull_front,
+				cull_back,
+				cull_mode_count
+			};
+
+			static constexpr ut::uint32 vertex_format_column = 0;
+			static constexpr ut::uint32 alpha_test_column = 1;
+			static constexpr ut::uint32 alpha_mode_column = 2;
+			static constexpr ut::uint32 cull_mode_column = 3;
+
+			typedef ut::Grid<Mesh::vertex_format_count,
+			                 alpha_test_count,
+			                 alpha_mode_count,
+			                 cull_mode_count> PipelineGrid;
+
+			typedef ut::Grid<Mesh::vertex_format_count,
+			                 alpha_test_count> ShaderGrid;
+
+			// Descriptor set for the ibl pass shaders.
+			struct Descriptors : public DescriptorSet
+			{
+				Descriptors() : DescriptorSet(view_ub, transform_ub,
+				                              material_ub, sampler,
+				                              diffuse, normal,
+				                              material, ibl_cubemap)
+				{}
+
+				Descriptor view_ub = "g_ub_view";
+				Descriptor transform_ub = "g_ub_transform";
+				Descriptor material_ub = "g_ub_material";
+				Descriptor sampler = "g_sampler";
+				Descriptor diffuse = "g_tex2d_diffuse";
+				Descriptor normal = "g_tex2d_normal";
+				Descriptor material = "g_tex2d_material";
+				Descriptor ibl_cubemap = "g_ibl_cubemap";
+			};
 		};
-
-		enum CullMode
-		{
-			cull_front,
-			cull_back,
-			cull_mode_count
-		};
-
-		static constexpr ut::uint32 vertex_format_column = 0;
-		static constexpr ut::uint32 alpha_mode_column = 1;
-		static constexpr ut::uint32 cull_mode_column = 2;
-
-		typedef ut::Grid<Mesh::vertex_format_count,
-		                 alpha_mode_count,
-		                 cull_mode_count> PipelineGrid;
-
-		typedef ut::Grid<Mesh::vertex_format_count> ShaderGrid;
-	};
-
-	// Descriptor set for the light pass shaders.
-	struct LightPassDescriptorSet : public DescriptorSet
-	{
-		LightPassDescriptorSet() : DescriptorSet(view_ub, light_ub, transform_ub,
-		                                         material_ub, sampler, diffuse,
-		                                         normal, material)
-		{}
-
-		Descriptor view_ub = "g_ub_view";
-		Descriptor light_ub = "g_ub_light";
-		Descriptor transform_ub = "g_ub_transform";
-		Descriptor material_ub = "g_ub_material";
-		Descriptor sampler = "g_sampler";
-		Descriptor diffuse = "g_tex2d_diffuse";
-		Descriptor normal = "g_tex2d_normal";
-		Descriptor material = "g_tex2d_material";
-	};
-
-	// Descriptor set for the ibl pass shaders.
-	struct IblPassDescriptorSet : public DescriptorSet
-	{
-		IblPassDescriptorSet() : DescriptorSet(view_ub, transform_ub,
-		                                       material_ub, sampler,
-		                                       diffuse, normal,
-		                                       material, ibl_cubemap)
-		{}
-
-		Descriptor view_ub = "g_ub_view";
-		Descriptor transform_ub = "g_ub_transform";
-		Descriptor material_ub = "g_ub_material";
-		Descriptor sampler = "g_sampler";
-		Descriptor diffuse = "g_tex2d_diffuse";
-		Descriptor normal = "g_tex2d_normal";
-		Descriptor material = "g_tex2d_material";
-		Descriptor ibl_cubemap = "g_ibl_cubemap";
 	};
 
 	// Renders specified range of models.
@@ -181,9 +207,9 @@ private:
 	                                  Light::Sources& lights,
 	                                  Buffer& view_uniform_buffer,
 	                                  ModelBatcher& batcher,
-	                                  LightPass::IblPreset ibl_preset,
-	                                  LightPass::CullMode cull_mode,
-	                                  LightPass::AlphaMode alpha_mode,
+	                                  LightPass::ModelRendering::IblPreset ibl_preset,
+	                                  LightPass::ModelRendering::CullMode cull_mode,
+	                                  LightPass::ModelRendering::AlphaMode alpha_mode,
 	                                  ut::uint32 drawcall_id,
 	                                  ut::uint32 thread_id);
 
@@ -193,8 +219,8 @@ private:
 	                               Image& ibl_cubemap,
 	                               Buffer& view_uniform_buffer,
 	                               ModelBatcher& batcher,
-	                               IblPass::CullMode cull_mode,
-	                               IblPass::AlphaMode alpha_mode,
+	                               IblPass::ModelRendering::CullMode cull_mode,
+	                               IblPass::ModelRendering::AlphaMode alpha_mode,
 	                               ut::uint32 drawcall_id,
 	                               ut::uint32 thread_id);
 
@@ -209,32 +235,34 @@ private:
 	                     ut::uint32 instance_offset);
 
 	// Creates a shader for the lighting pass.
-	ut::Array<BoundShader> CreateLightPassShader();
+	ut::Array<BoundShader> CreateModelLightPassShader();
 
 	// Creates a shader for the ibl pass.
-	ut::Array<BoundShader> CreateIblShader(ut::uint32 ibl_mip_count);
+	ut::Array<BoundShader> CreateModelIblShader(ut::uint32 ibl_mip_count);
 
 	// Creates a render pass for the shading techniques.
 	ut::Result<RenderPass, ut::Error> CreateLightPass(pixel::Format depth_stencil_format,
 	                                                  pixel::Format light_buffer_format);
 
 	// Creates a pipeline state to apply lighting.
-	ut::Result<PipelineState, ut::Error> CreateLightPassPipeline(RenderPass& light_pass,
-	                                                             ut::uint32 width,
-	                                                             ut::uint32 height,
-	                                                             Mesh::VertexFormat vertex_format,
-	                                                             LightPass::AlphaMode alpha_mode,
-	                                                             LightPass::IblPreset ibl_preset,
-	                                                             Light::SourceType source_type,
-	                                                             LightPass::CullMode cull_mode);
+	ut::Result<PipelineState, ut::Error> CreateModelLightPassPipeline(RenderPass& light_pass,
+	                                                                  ut::uint32 width,
+	                                                                  ut::uint32 height,
+	                                                                  Mesh::VertexFormat vertex_format,
+	                                                                  LightPass::ModelRendering::AlphaTest alpha_test,
+	                                                                  LightPass::ModelRendering::AlphaMode alpha_mode,
+	                                                                  LightPass::ModelRendering::IblPreset ibl_preset,
+	                                                                  Light::SourceType source_type,
+	                                                                  LightPass::ModelRendering::CullMode cull_mode);
 
 	// Creates a pipeline state to apply ibl reflections.
-	ut::Result<PipelineState, ut::Error> CreateIblPassPipeline(RenderPass& light_pass,
-	                                                           ut::uint32 width,
-	                                                           ut::uint32 height,
-	                                                           Mesh::VertexFormat vertex_format,
-	                                                           IblPass::AlphaMode alpha_mode,
-	                                                           IblPass::CullMode cull_mode);
+	ut::Result<PipelineState, ut::Error> CreateModelIblPassPipeline(RenderPass& light_pass,
+	                                                                ut::uint32 width,
+	                                                                ut::uint32 height,
+	                                                                Mesh::VertexFormat vertex_format,
+	                                                                IblPass::ModelRendering::AlphaTest alpha_test,
+	                                                                IblPass::ModelRendering::AlphaMode alpha_mode,
+	                                                                IblPass::ModelRendering::CullMode cull_mode);
 
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();
@@ -247,8 +275,8 @@ private:
 	ut::Array<BoundShader> ibl_shader;
 
 	// Descriptors.
-	ut::Array<LightPassDescriptorSet> lightpass_desc_set;
-	ut::Array<IblPassDescriptorSet> iblpass_desc_set;
+	ut::Array<LightPass::ModelRendering::Descriptors> lightpass_model_desc_set;
+	ut::Array<IblPass::ModelRendering::Descriptors> iblpass_model_desc_set;
 
 	// Secondary command buffers to parallelize cpu work.
 	ut::Array< ut::Ref<CmdBuffer> > secondary_buffer_cache;

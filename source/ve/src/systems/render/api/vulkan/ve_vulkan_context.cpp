@@ -198,6 +198,44 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 		mapped_rc.depth_pitch = layout.depthPitch;
 		mapped_rc.array_pitch = layout.arrayPitch;
 	}
+	else if (info.usage == render::memory::gpu_read_write &&
+	         access == ut::access_read &&
+	         info.has_staging_cpu_read_buffer)
+	{
+		void* address;
+		VkResult res = vmaMapMemory(allocator,
+		                            image.staging_gpu_cpu_buffer.GetDetail().GetAllocation(),
+		                            &address);
+		if (res != VK_SUCCESS)
+		{
+			return ut::MakeError(VulkanError(res, "vkMapMemory(image staging cpu-read buffer)"));
+		}
+
+		VkDeviceSize buffer_offset = 0;
+		ut::uint32 mip_width = info.width;
+		ut::uint32 mip_height = info.height;
+		ut::uint32 mip_depth = info.depth;
+		for (ut::uint32 slice = 0; slice < array_layer; array_layer++)
+		{
+			mip_width = info.width;
+			mip_height = info.height;
+			mip_depth = info.depth;
+
+			for (ut::uint32 mip = 0; mip < mip_level; mip++)
+			{
+				mip_width = ut::Max<ut::uint32>(mip_width / 2, 1);
+				mip_height = ut::Max<ut::uint32>(mip_height / 2, 1);
+				mip_depth = ut::Max<ut::uint32>(mip_depth / 2, 1);
+				buffer_offset += static_cast<VkDeviceSize>(mip_width) *
+				                 mip_height * mip_depth * pixel::GetSize(info.format);
+			}
+		}
+
+		mapped_rc.data = static_cast<ut::byte*>(address) + buffer_offset;
+		mapped_rc.row_pitch = mip_width * pixel::GetSize(info.format);
+		mapped_rc.depth_pitch = mip_height * mip_width * pixel::GetSize(info.format);
+		mapped_rc.array_pitch = 0;
+	}
 	else
 	{
 		return ut::MakeError(ut::error::not_supported);
@@ -207,13 +245,92 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 }
 
 // Unmaps a previously mapped memory object associated with provided image.
-void Context::UnmapImage(Image& image)
+void Context::UnmapImage(Image& image, ut::Access access)
 {
 	const Image::Info& info = image.GetInfo();
 	if (info.usage == render::memory::gpu_read_cpu_write)
 	{
 		vmaUnmapMemory(allocator, image.GetDetail().GetAllocation());
 	}
+	else if (info.usage == render::memory::gpu_read_write &&
+	         access == ut::access_read &&
+	         info.has_staging_cpu_read_buffer)
+	{
+		vmaUnmapMemory(allocator, image.staging_gpu_cpu_buffer.GetDetail().GetAllocation());
+	}
+}
+
+// Copies the provided image to the staging buffer that could be read from
+// the cpu. The image must be created with the
+// ve::render::Image::Info::has_staging_gpu_cpu_buffer flag enabled.
+//    @param image - reference to the ve::render::Image object.
+//    @param first_slice - first array slice id.
+//    @param slice_count - the number of slices to copy,
+//                         0 means all remaining.
+//    @param first_mip - first mip id.
+//    @param mip_count - the number of mips to copy,
+//                       0 means all remaining.
+//    @return - optional ve::Error if operation failed.
+ut::Optional<ut::Error> Context::CopyImageToStagingCpuReadBuffer(Image& image,
+                                                                 ut::uint32 first_slice,
+                                                                 ut::uint32 slice_count,
+                                                                 ut::uint32 first_mip,
+                                                                 ut::uint32 mip_count)
+{
+	if (image.GetInfo().has_staging_cpu_read_buffer == false)
+	{
+		return ut::Error(ut::error::not_supported);
+	}
+
+	const Image::Info& img_info = image.GetInfo();
+
+	// calculate the number of subresources
+	const ut::uint32 img_slice_count = img_info.type == Image::type_cube ? 6 : 1;
+	const ut::uint32 slice_end = slice_count == 0 ? img_slice_count : (first_slice + slice_count);
+	const ut::uint32 mip_end = mip_count == 0 ? img_info.mip_count : (first_mip + mip_count);
+
+	// initialize copy regions
+	VkDeviceSize buffer_offset = 0;
+	ut::Array<VkBufferImageCopy> img_copy_regions;
+	for (ut::uint32 slice = first_slice; slice < slice_end; slice++)
+	{
+		ut::uint32 mip_width = img_info.width;
+		ut::uint32 mip_height = img_info.height;
+		ut::uint32 mip_depth = img_info.depth;
+
+		for (ut::uint32 mip = first_mip; mip < mip_end; mip++)
+		{
+			VkBufferImageCopy region{};
+			region.bufferOffset = buffer_offset;
+			region.bufferRowLength = 0; // Specifying 0 means tightly packed data.
+			region.bufferImageHeight = 0; // Specifying 0 means tightly packed data.
+			region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			region.imageSubresource.mipLevel = mip;
+			region.imageSubresource.baseArrayLayer = slice;
+			region.imageSubresource.layerCount = 1;
+			region.imageOffset = { 0, 0, 0 };
+			region.imageExtent = { mip_width, mip_height, mip_depth };
+
+			img_copy_regions.Add(region);
+
+			// calculate data for the next mip
+			mip_width = ut::Max<ut::uint32>(mip_width / 2, 1);
+			mip_height = ut::Max<ut::uint32>(mip_height / 2, 1);
+			mip_depth = ut::Max<ut::uint32>(mip_depth / 2, 1);
+			buffer_offset += static_cast<VkDeviceSize>(mip_width) *
+			                 mip_height * mip_depth * pixel::GetSize(img_info.format);
+		}
+	}
+
+	vkCmdCopyImageToBuffer(cmd_buffer.GetVkHandle(),
+	                       image.GetVkHandle(),
+	                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	                       image.staging_gpu_cpu_buffer.GetVkHandle(),
+	                       static_cast<uint32_t>(img_copy_regions.Count()),
+	                       img_copy_regions.GetAddress());
+
+	// success
+	return ut::Optional<ut::Error>();
 }
 
 // Copies data between render targets.

@@ -43,7 +43,9 @@ protected:
 	void SetSampler(ut::uint32 slot, ID3D11SamplerState* sampler_state);
 
 	// Returns d3d11 resource associated with provided image.
-	static ID3D11Resource* GetDX11ImageResource(PlatformImage& image, ut::uint32 type);
+	static ID3D11Resource* GetDX11ImageResource(PlatformImage& image,
+	                                            ut::uint32 type,
+	                                            bool staging = false);
 
 	// Native d3d11 context.
 	ID3D11DeviceContext* d3d11_context;

@@ -53,6 +53,7 @@ public:
 		Type type = type_2D;
 		pixel::Format format = pixel::unknown;
 		memory::Usage usage = render::memory::gpu_immutable;
+		bool has_staging_cpu_read_buffer = false;
 		ut::uint32 mip_count = 1;
 		ut::uint32 width = 1;
 		ut::uint32 height = 1;

@@ -286,10 +286,12 @@ ut::Optional<uint32_t> PlatformDevice::FindMemoryTypeFromProperties(uint32_t typ
 //    @param size - buffer size in bytes.
 //    @param usage - buffer usage flags.
 //    @param memory_usage - buffer memory usage flags.
+//    @param memory_property_flags - buffer memory property flags.
 //    @return - buffer resource or error if failed.
 ut::Result<VkRc<vk::buffer>, ut::Error> PlatformDevice::CreateVulkanBuffer(VkDeviceSize size,
 	                                                                       VkBufferUsageFlags usage,
-	                                                                       VmaMemoryUsage memory_usage)
+	                                                                       VmaMemoryUsage memory_usage,
+                                                                           VkMemoryPropertyFlags memory_property_flags)
 {
 	// initialize VkBufferCreateInfo
 	VkBufferCreateInfo buf_info;
@@ -305,6 +307,7 @@ ut::Result<VkRc<vk::buffer>, ut::Error> PlatformDevice::CreateVulkanBuffer(VkDev
 	// initialize VmaAllocationCreateInfo
 	VmaAllocationCreateInfo alloc_info = {};
 	alloc_info.usage = memory_usage;
+	alloc_info.requiredFlags = memory_property_flags;
 
 	// create buffer
 	VkBuffer buffer;
@@ -402,17 +405,17 @@ ut::Result<VkRc<vk::memory>, ut::Error> PlatformDevice::AllocateBufferMemory(VkB
 	return VkRc<vk::memory>(buffer_memory, detail);
 }
 
-// Creates staging buffer.
+// Creates staging buffer for initializing gpu resources.
 //    @param size - size of the buffer in bytes.
 //    @param ini_data - optional array of bytes to initialize buffer with.
 //    @return -buffer object or error if failed.
-ut::Result<PlatformBuffer, ut::Error> PlatformDevice::CreateStagingBuffer(size_t size,
-                                                                          ut::Optional<const ut::Array<ut::byte>&> ini_data)
+ut::Result<PlatformBuffer, ut::Error> PlatformDevice::CreateInitializationStagingBuffer(size_t size,
+                                                                                        ut::Optional<const ut::Array<ut::byte>&> ini_data)
 {
 	// create staging buffer
 	ut::Result<VkRc<vk::buffer>, ut::Error> staging_buffer_result = CreateVulkanBuffer(size,
 	                                                                                   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-	                                                                                   VMA_MEMORY_USAGE_CPU_ONLY);
+	                                                                                   VMA_MEMORY_USAGE_CPU_ONLY, 0);
 	if (!staging_buffer_result)
 	{
 		return ut::MakeError(staging_buffer_result.MoveAlt());
@@ -1252,16 +1255,16 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	}
 
 	// image may need staging buffer
-	ut::Optional<PlatformBuffer> staging_buffer;
+	ut::Optional<PlatformBuffer> init_staging_buffer;
 	if (needs_staging)
 	{
 		// create staging buffer
-		ut::Result<PlatformBuffer, ut::Error> staging_buffer_result = CreateStagingBuffer(image_size);
-		if (!staging_buffer_result)
+		ut::Result<PlatformBuffer, ut::Error> init_staging_buffer_result = CreateInitializationStagingBuffer(image_size);
+		if (!init_staging_buffer_result)
 		{
-			return ut::MakeError(staging_buffer_result.MoveAlt());
+			return ut::MakeError(init_staging_buffer_result.MoveAlt());
 		}
-		staging_buffer = staging_buffer_result.Move();
+		init_staging_buffer = init_staging_buffer_result.Move();
 
 		// set image layout for staging
 		VkImageMemoryBarrier staging_barrier;
@@ -1298,7 +1301,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		VmaAllocation mapped_memory;
 		if (needs_staging)
 		{
-			mapped_memory = staging_buffer->GetDetail().GetAllocation();
+			mapped_memory = init_staging_buffer->GetDetail().GetAllocation();
 		}
 		else
 		{
@@ -1357,7 +1360,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 				if (needs_staging)
 				{
 					CopyVulkanBufferToImage(immediate_buffer.Get(),
-					                        staging_buffer->GetVkHandle(),
+					                        init_staging_buffer->GetVkHandle(),
 					                        image,
 					                        aspect_mask,
 					                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1473,6 +1476,38 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		}
 	}
 
+	// create staging buffer
+	VkRc<vk::buffer> staging_gpu_cpu_buffer;
+	if (info.has_staging_cpu_read_buffer)
+	{
+		ut::uint32 img_size = 0;
+
+		ut::uint32 mipWidth = image_info.extent.width;
+		ut::uint32 mipHeight = image_info.extent.height;
+		ut::uint32 mipDepth = image_info.extent.depth;
+
+		for (ut::uint32 mipLevel = 0; mipLevel < image_info.mipLevels; ++mipLevel)
+		{
+			const ut::uint32 mipSize = static_cast<uint64_t>(mipWidth) * mipHeight * mipDepth * pixel_size;
+			img_size += mipSize * image_info.arrayLayers;
+
+			mipWidth = ut::Max<ut::uint32>(mipWidth / 2, 1u);
+			mipHeight = ut::Max<ut::uint32>(mipHeight / 2, 1u);
+			mipDepth = ut::Max<ut::uint32>(mipDepth / 2, 1u);
+		}
+
+		ut::Result<VkRc<vk::buffer>, ut::Error> staging_buffer_result = CreateVulkanBuffer(img_size,
+		                                                                                   VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		                                                                                   VMA_MEMORY_USAGE_GPU_TO_CPU,
+		                                                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		                                                                                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		if (!staging_buffer_result)
+		{
+			return ut::MakeError(staging_buffer_result.MoveAlt());
+		}
+		staging_gpu_cpu_buffer = staging_buffer_result.Move();
+	}
+
 	// success
 	PlatformImage platform_img(device.GetVkHandle(),
 	                           image,
@@ -1481,7 +1516,8 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	                           image_view,
 	                           is_cube ? cube_faces : nullptr,
 	                           aspect_mask,
-	                           image_state);
+	                           image_state,
+	                           ut::Move(staging_gpu_cpu_buffer));
 	return Image(ut::Move(platform_img), info);
 }
 
@@ -1530,6 +1566,7 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 	img_info.type = info.type;
 	img_info.format = info.format;
 	img_info.usage = render::memory::gpu_read_write;
+	img_info.has_staging_cpu_read_buffer = info.has_staging_cpu_read_buffer;
 	img_info.mip_count = info.mip_count;
 	img_info.width = info.width;
 	img_info.height = info.height;
@@ -1906,7 +1943,8 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		                        VK_NULL_HANDLE, // view
 			                    nullptr, // cube faces
 		                        VK_IMAGE_ASPECT_COLOR_BIT, // aspect_mask
-		                        img_state);
+		                        img_state,
+		                        VkRc<vk::buffer>());
 		Image image(ut::Move(empty_img), info);
 
 		// initialize render target info
@@ -2256,7 +2294,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	VmaMemoryUsage memory_usage = ConvertMemoryUsageToVma(info.usage);
 
 	// create buffer
-	ut::Result<VkRc<vk::buffer>, ut::Error> buffer_result = CreateVulkanBuffer(info.size, usage, memory_usage);
+	ut::Result<VkRc<vk::buffer>, ut::Error> buffer_result = CreateVulkanBuffer(info.size, usage, memory_usage, 0);
 	if (!buffer_result)
 	{
 		return ut::MakeError(buffer_result.MoveAlt());
@@ -2269,7 +2307,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 		if (info.usage == render::memory::gpu_immutable)
 		{
 			// create staging buffer
-			ut::Result<PlatformBuffer, ut::Error> staging_buffer = CreateStagingBuffer(info.size, info.data);
+			ut::Result<PlatformBuffer, ut::Error> staging_buffer = CreateInitializationStagingBuffer(info.size, info.data);
 			if (!staging_buffer)
 			{
 				return ut::MakeError(staging_buffer.MoveAlt());

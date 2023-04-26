@@ -19,6 +19,7 @@ public:
 	{
 		Buffer transform;
 		Buffer material;
+		Buffer entity_id;
 	};
 
 	// Engine divides a model unit into pieces that can be rendered 
@@ -43,6 +44,13 @@ public:
 		ut::Vector<4> diffuse_mul;
 		ut::Vector<4> material_add;
 		ut::Vector<4> material_mul;
+	};
+
+	// CPU representation of the entity-id buffer.
+	struct EntityIdBuffer
+	{
+		typedef ut::Vector<4> Type;
+		alignas(16) Type entity_id;
 	};
 
 	// Identify() method must be implemented for the polymorphic types.

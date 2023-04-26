@@ -66,7 +66,24 @@ public:
 	                                                      ut::uint32 array_layer = 0);
 
 	// Unmaps a previously mapped memory object associated with provided image.
-	void UnmapImage(Image& image);
+	void UnmapImage(Image& image, ut::Access access);
+
+	// Copies the provided image to the staging buffer that could be read from
+	// the cpu. The image must be created with the
+	// ve::render::Image::Info::has_staging_gpu_cpu_buffer flag enabled.
+	//    @param image - reference to the ve::render::Image object.
+	//    @param first_slice - first array slice id.
+	//    @param slice_count - the number of slices to copy,
+	//                         0 means all remaining.
+	//    @param first_mip - first mip id.
+	//    @param mip_count - the number of mips to copy,
+	//                       0 means all remaining.
+	//    @return - optional ve::Error if operation failed.
+	ut::Optional<ut::Error> CopyImageToStagingCpuReadBuffer(Image& image,
+	                                                        ut::uint32 first_slice = 0,
+	                                                        ut::uint32 slice_count = 0,
+	                                                        ut::uint32 first_mip = 0,
+	                                                        ut::uint32 mip_count = 0);
 
 	// Copies data between render targets.
 	//    @param dst - the destination target, must be in transfer_dst state.

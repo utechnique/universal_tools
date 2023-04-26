@@ -32,11 +32,23 @@
 #define IBL_PASS 0
 #endif
 
+// Define 'HITMASK_PASS' macro to compile shader rendering the color
+// associated with the desired entity id.
+#ifndef HITMASK_PASS
+#define HITMASK_PASS 0
+#endif
+
 // Define 'IBL_MIP_COUNT' macro to set the number of
 // mip levels in the ibl cubemap.
 #ifndef IBL_MIP_COUNT
 #define IBL_MIP_COUNT 8
 #endif
+
+#define NEEDS_DIFFUSE_MAP (!HITMASK_PASS || ALPHA_TEST)
+#define NEEDS_NORMAL_MAP (!HITMASK_PASS)
+#define NEEDS_MATERIAL_MAP (!HITMASK_PASS)
+#define NEEDS_MATERIAL_BUFFER (!HITMASK_PASS)
+#define NEEDS_TEXTURE_COORD (NEEDS_DIFFUSE_MAP || NEEDS_NORMAL_MAP || NEEDS_MATERIAL_MAP)
 
 //----------------------------------------------------------------------------//
 #include "vertex.hlsl"
@@ -63,25 +75,29 @@ struct PS_INPUT
 {
 	float4 position : SV_POSITION;
 
-#if !DEFERRED_PASS
-	float3 world_position : TEXCOORD5;
-#endif
-
-#if VERTEX_HAS_TEXCOORD
+#if VERTEX_HAS_TEXCOORD && NEEDS_TEXTURE_COORD
 	float2 texcoord : TEXCOORD0;
 #endif
 
-#if VERTEX_HAS_NORMAL
-	float3 normal : TEXCOORD1;
-#endif
+#if HITMASK_PASS
+	float4 hitmask_id : TEXCOORD1;
+#else // HITMASK_PASS
+	#if VERTEX_HAS_NORMAL
+		float3 normal : TEXCOORD1;
+	#endif
 
-#if VERTEX_HAS_TANGENT
-	float3 tangent : TEXCOORD2;
-	float3 binormal : TEXCOORD3;
-#endif
+	#if VERTEX_HAS_TANGENT
+		float3 tangent : TEXCOORD2;
+		float3 binormal : TEXCOORD3;
+	#endif
+
+	#if !DEFERRED_PASS
+		float3 world_position : TEXCOORD4;
+	#endif
+#endif // !HITMASK_PASS
 
 #if INSTANCING
-	uint instance_id : TEXCOORD4;
+	uint instance_id : TEXCOORD5;
 #endif
 };
 
@@ -105,21 +121,46 @@ cbuffer g_ub_transform : register(b2)
 #endif
 };
 
+#if NEEDS_MATERIAL_BUFFER
 cbuffer g_ub_material : register(b3)
 {
-#if INSTANCING
-	Material g_material[BATCH_SIZE];
-#else
-	Material g_material;
-#endif
+	#if INSTANCING
+		Material g_material[BATCH_SIZE];
+	#else
+		Material g_material;
+	#endif
 };
+#endif // NEEDS_MATERIAL_BUFFER
 
-SamplerState g_sampler : register(s4);
-Texture2D g_tex2d_diffuse : register(t5);
-Texture2D g_tex2d_normal : register(t6);
-Texture2D g_tex2d_material : register(t7);
+#if HITMASK_PASS
+cbuffer g_ub_hitmask_id : register(b4)
+{
+	#if INSTANCING
+		float4 g_hitmask_id[BATCH_SIZE];
+	#else
+		float4 g_hitmask_id;
+	#endif
+};
+#endif // HITMASK_PASS
+
+#if NEEDS_TEXTURE_COORD
+SamplerState g_sampler : register(s5);
+#endif
+
+#if NEEDS_DIFFUSE_MAP
+Texture2D g_tex2d_diffuse : register(t6);
+#endif
+
+#if NEEDS_NORMAL_MAP
+Texture2D g_tex2d_normal : register(t7);
+#endif
+
+#if NEEDS_MATERIAL_MAP
+Texture2D g_tex2d_material : register(t8);
+#endif
+
 #if IBL_PASS
-TextureCube g_ibl_cubemap : register(t8);
+TextureCube g_ibl_cubemap : register(t9);
 #endif
 
 //----------------------------------------------------------------------------//
@@ -143,26 +184,35 @@ PS_INPUT VS(Vertex input)
 	float3 world_position = mul(float4(position_3d, 1.0f), transform);
 	output.position = mul(float4(world_position, 1.0f), g_view_proj);
 
-	// world position
-#if !DEFERRED_PASS
-	output.world_position = world_position;
-#endif
-
 	// texcoord
-#if VERTEX_HAS_TEXCOORD
+#if VERTEX_HAS_TEXCOORD && NEEDS_TEXTURE_COORD
 	output.texcoord = input.texcoord;
 #endif
 
+#if HITMASK_PASS
+	// hitmask id
+	#if INSTANCING
+		output.hitmask_id = g_hitmask_id[input.instance_id];
+	#else
+		output.hitmask_id = g_hitmask_id;
+	#endif
+#else // HITMASK_PASS
+	// world position
+	#if !DEFERRED_PASS
+		output.world_position = world_position;
+	#endif
+
 	// normal
-#if VERTEX_HAS_NORMAL
-	output.normal = mul(input.normal, transform);
-#endif
+	#if VERTEX_HAS_NORMAL
+		output.normal = mul(input.normal, transform);
+	#endif
 
 	// tangent, binormal
-#if VERTEX_HAS_TANGENT
-	output.tangent = mul(input.tangent, transform);
-	output.binormal = cross(output.normal, output.tangent);
-#endif
+	#if VERTEX_HAS_TANGENT
+		output.tangent = mul(input.tangent, transform);
+		output.binormal = cross(output.normal, output.tangent);
+	#endif
+#endif // !HITMASK_PASS
 
 	// instance id
 #if INSTANCING
@@ -179,14 +229,18 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 	PS_OUTPUT output;
 
 	// extract texcoord
-#if VERTEX_HAS_TEXCOORD
+#if VERTEX_HAS_TEXCOORD && NEEDS_TEXTURE_COORD
 	float2 texcoord = input.texcoord;
 #else
 	float2 texcoord = 0.0f;
 #endif
 
 	// sample diffuse texture
+#if NEEDS_DIFFUSE_MAP
 	float4 diffuse_sample = g_tex2d_diffuse.Sample(g_sampler, texcoord);
+#endif
+
+	// perform alpha test
 #if ALPHA_TEST
 	float alpha = diffuse_sample.a;
 	if (alpha < 0.25f)
@@ -195,16 +249,20 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 	}
 #endif // ALPHA_TEST
 
+	// process appropriate render pass
+#if HITMASK_PASS
+	output = input.hitmask_id;
+#else // not HITMASK_PASS
 	// sample normal and material textures
 	float4 normal_sample = g_tex2d_normal.Sample(g_sampler, texcoord);
 	float4 material_sample = g_tex2d_material.Sample(g_sampler, texcoord);
 
 	// calculate material data
-#if INSTANCING
-	Material material = g_material[input.instance_id];
-#else
-	Material material = g_material;
-#endif
+	#if INSTANCING
+		Material material = g_material[input.instance_id];
+	#else
+		Material material = g_material;
+	#endif
 	float3 diffuse_color = diffuse_sample.rgb * material.diffuse_mul.rgb + material.diffuse_add.rgb;
 	float3 normal_color = normal_sample.rgb;
 	float3 material_color = material_sample.rgb * material.material_mul.rgb + material.material_add.rgb;
@@ -212,43 +270,43 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 	float metallic = material_color.g;
 
 	// calculate final normal
-#if VERTEX_HAS_NORMAL && VERTEX_HAS_TANGENT
-	float3x3 world_to_tangent = float3x3(input.tangent, input.binormal, input.normal);
-	float3 tbn_normal = normalize(-1 + (2 * normal_color));
-	float3 normal = normalize(mul(tbn_normal, world_to_tangent));
-#elif VERTEX_HAS_NORMAL
-	float3 normal = input.normal + normal_sample.a;
-#else
-	float3 normal = normal_sample.rgb;
-#endif
-
-	// output
-#if DEFERRED_PASS
-	output.diffuse = float4(diffuse_color.rgb, roughness);
-	output.normal = float4(normal, metallic);
-#else
-	SurfaceData surface;
-	surface.world_position = input.world_position;
-	surface.look = normalize(g_camera_position.xyz - surface.world_position);
-	surface.normal = normal;
-	surface.diffuse = diffuse_color;
-	surface.specular = 0.5f;
-	surface.roughness = roughness;
-	surface.min_roughness = 0.04f;
-	surface.metallic = metallic;
-	surface.cavity = 1.0f;
-
-	#if IBL
-		CalculateMetallicDiffuseSpecular(surface);
+	#if VERTEX_HAS_NORMAL && VERTEX_HAS_TANGENT
+		float3x3 world_to_tangent = float3x3(input.tangent, input.binormal, input.normal);
+		float3 tbn_normal = normalize(-1 + (2 * normal_color));
+		float3 normal = normalize(mul(tbn_normal, world_to_tangent));
+	#elif VERTEX_HAS_NORMAL
+		float3 normal = input.normal + normal_sample.a;
+	#else
+		float3 normal = normal_sample.rgb;
 	#endif
 
-	#if LIGHT_PASS
-		// initialize light source data
-		#if DIRECTIONAL_LIGHT
-			float3 light_direction = -g_light_direction.xyz;
-		#else
-			float3 light_direction = g_light_position.xyz - surface.world_position;
+	#if DEFERRED_PASS
+		output.diffuse = float4(diffuse_color.rgb, roughness);
+		output.normal = float4(normal, metallic);
+	#else
+		SurfaceData surface;
+		surface.world_position = input.world_position;
+		surface.look = normalize(g_camera_position.xyz - surface.world_position);
+		surface.normal = normal;
+		surface.diffuse = diffuse_color;
+		surface.specular = 0.5f;
+		surface.roughness = roughness;
+		surface.min_roughness = 0.04f;
+		surface.metallic = metallic;
+		surface.cavity = 1.0f;
+
+		#if IBL
+			CalculateMetallicDiffuseSpecular(surface);
 		#endif
+
+		#if LIGHT_PASS
+			// initialize light source data
+			#if DIRECTIONAL_LIGHT
+				float3 light_direction = -g_light_direction.xyz;
+			#else
+				float3 light_direction = g_light_position.xyz - surface.world_position;
+			#endif
+
 			LightingData light;
 			light.direction = normalize(light_direction);
 			light.color = g_light_color.rgb;
@@ -261,21 +319,22 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 			// calculate lighting
 			float3 light_amount = ComputeDirectLighting(surface, light);
 			light_amount *= ComputeAttenuation(light);
-	#elif IBL_PASS
-		float3 view_direction = -surface.look;
-		float3 reflection_vector = normalize(reflect(view_direction, surface.normal));
-		float NoV = saturate(dot(view_direction, surface.normal));
-		float3 light_amount = GetImageBasedReflectionLighting(g_ibl_cubemap,
-		                                                      g_sampler,
-		                                                      surface.roughness,
-		                                                      reflection_vector,
-		                                                      NoV,
-		                                                      surface.specular,
-		                                                      IBL_MIP_COUNT);
-	#endif // LIGHT_PASS
-	output.rgb = light_amount;
-	output.a = diffuse_sample.a;
-#endif // !DEFERRED_PASS
+		#elif IBL_PASS
+			float3 view_direction = -surface.look;
+			float3 reflection_vector = normalize(reflect(view_direction, surface.normal));
+			float NoV = saturate(dot(view_direction, surface.normal));
+			float3 light_amount = GetImageBasedReflectionLighting(g_ibl_cubemap,
+			                                                      g_sampler,
+			                                                      surface.roughness,
+			                                                      reflection_vector,
+			                                                      NoV,
+			                                                      surface.specular,
+			                                                      IBL_MIP_COUNT);
+		#endif // LIGHT_PASS
+		output.rgb = light_amount;
+		output.a = diffuse_sample.a;
+	#endif // !DEFERRED_PASS
+#endif // !HITMASK_PASS
 
 	return output;
 }

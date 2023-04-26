@@ -20,6 +20,7 @@ public:
 	           move_backward = "S",
 	           move_left = "A",
 	           move_right = "D";
+	ut::String select_entity = "LMB";
 	ut::String observation_mode = "RMB";
 	ut::String observation_source_x = "MouseX",
 	           observation_source_y = "MouseY";

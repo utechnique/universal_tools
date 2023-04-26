@@ -92,14 +92,16 @@ void PlatformContext::SetSampler(ut::uint32 slot, ID3D11SamplerState* sampler_st
 }
 
 // Returns d3d11 resource associated with provided image.
-ID3D11Resource* PlatformContext::GetDX11ImageResource(PlatformImage& image, ut::uint32 type)
+ID3D11Resource* PlatformContext::GetDX11ImageResource(PlatformImage& image,
+                                                      ut::uint32 type,
+                                                      bool staging)
 {
 	switch (type)
 	{
-	case Image::type_1D: return image.tex1d.Get();
-	case Image::type_2D: return image.tex2d.Get();
-	case Image::type_cube: return image.tex2d.Get();
-	case Image::type_3D: return image.tex3d.Get();
+	case Image::type_1D: return staging ? image.tex1d_staging.Get() : image.tex1d.Get();
+	case Image::type_2D: return staging ? image.tex2d_staging.Get() : image.tex2d.Get();
+	case Image::type_cube: return staging ? image.tex2d_staging.Get() : image.tex2d.Get();
+	case Image::type_3D: return staging ? image.tex3d_staging.Get() : image.tex3d.Get();
 	}
 	return nullptr;
 }
@@ -179,7 +181,17 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 	const Image::Info& info = image.GetInfo();
 
 	D3D11_MAP map_type;
-	if (access == ut::access_read)
+
+	bool staging = false;
+
+	if (info.usage == render::memory::gpu_read_write &&
+	    access == ut::access_read &&
+	    info.has_staging_cpu_read_buffer)
+	{
+		map_type = D3D11_MAP_READ;
+		staging = true;
+	}
+	else if (access == ut::access_read)
 	{
 		UT_ASSERT(info.usage != render::memory::gpu_read_cpu_write);
 		map_type = D3D11_MAP_READ;
@@ -194,46 +206,102 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 		map_type = D3D11_MAP_READ_WRITE;
 	}
 
-	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, info.type);
+	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, info.type, staging);
 	UT_ASSERT(rc_ptr != nullptr);
-
-	const UINT subrc_id = array_layer * info.mip_count + mip_level;
 	
-	// only images created with gpu_read_cpu_write flag have linear layout
-	// and can be accessed without staging buffer
-	if (info.usage == render::memory::gpu_read_cpu_write)
+	D3D11_MAPPED_SUBRESOURCE mapped_subrc;
+	const UINT subrc_id = array_layer * info.mip_count + mip_level;
+	HRESULT result = d3d11_context->Map(rc_ptr, subrc_id, map_type, 0, &mapped_subrc);
+	if (FAILED(result))
 	{
-		D3D11_MAPPED_SUBRESOURCE mapped_subrc;
-		HRESULT result = d3d11_context->Map(rc_ptr, subrc_id, map_type, 0, &mapped_subrc);
-		if (FAILED(result))
-		{
-			return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to map d3d11 buffer."));
-		}
+		return ut::MakeError(ut::Error(ut::error::fail, ut::Print(result) + " failed to map d3d11 buffer."));
+	}
 
-		mapped_rc.data = mapped_subrc.pData;
-		mapped_rc.row_pitch = mapped_subrc.RowPitch;
-		mapped_rc.depth_pitch = mapped_subrc.DepthPitch;
-	}
-	else
-	{
-		return ut::MakeError(ut::error::not_supported);
-	}
+	mapped_rc.data = mapped_subrc.pData;
+	mapped_rc.row_pitch = mapped_subrc.RowPitch;
+	mapped_rc.depth_pitch = mapped_subrc.DepthPitch;
 
 	return mapped_rc;
 }
 
 // Unmaps a previously mapped memory object associated with provided image.
-void Context::UnmapImage(Image& image)
+void Context::UnmapImage(Image& image, ut::Access access)
 {
 	const Image::Info& info = image.GetInfo();
 
-	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, info.type);
+	const bool staging = info.usage == render::memory::gpu_read_write &&
+	                                   access == ut::access_read &&
+	                                   info.has_staging_cpu_read_buffer;
+
+	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, info.type, staging);
 	UT_ASSERT(rc_ptr != nullptr);
 	
 	if (info.usage == render::memory::gpu_read_cpu_write)
 	{
 		d3d11_context->Unmap(rc_ptr, 0);
 	}
+}
+
+// Copies the provided image to the staging buffer that could be read from
+// the cpu. The image must be created with the
+// ve::render::Image::Info::has_staging_gpu_cpu_buffer flag enabled.
+//    @param image - reference to the ve::render::Image object.
+//    @param first_slice - first array slice id.
+//    @param slice_count - the number of slices to copy,
+//                         0 means all remaining.
+//    @param first_mip - first mip id.
+//    @param mip_count - the number of mips to copy,
+//                       0 means all remaining.
+//    @return - optional ve::Error if operation failed.
+ut::Optional<ut::Error> Context::CopyImageToStagingCpuReadBuffer(Image& image,
+                                                                 ut::uint32 first_slice,
+                                                                 ut::uint32 slice_count,
+                                                                 ut::uint32 first_mip,
+                                                                 ut::uint32 mip_count)
+{
+	if (image.GetInfo().has_staging_cpu_read_buffer == false)
+	{
+		return ut::Error(ut::error::not_supported);
+	}
+
+	const Image::Info& img_info = image.GetInfo();
+
+	// get resource
+	ID3D11Resource* src_rc_ptr = GetDX11ImageResource(image, img_info.type, false);
+	UT_ASSERT(src_rc_ptr != nullptr);
+	ID3D11Resource* dst_rc_ptr = GetDX11ImageResource(image, img_info.type, true);
+	UT_ASSERT(dst_rc_ptr != nullptr);
+
+	// calculate the number of subresources
+	const ut::uint32 img_slice_count = img_info.type == Image::type_cube ? 6 : 1;
+	const ut::uint32 slice_end = slice_count == 0 ? img_slice_count : (first_slice + slice_count);
+	const ut::uint32 mip_end = mip_count == 0 ? img_info.mip_count : (first_mip + mip_count);
+
+	// initialize copy regions
+	for (ut::uint32 slice = first_slice; slice < slice_end; slice++)
+	{
+		ut::uint32 mip_width = img_info.width;
+		ut::uint32 mip_height = img_info.height;
+		ut::uint32 mip_depth = img_info.depth;
+
+		for (ut::uint32 mip = first_mip; mip < mip_end; mip++)
+		{
+			UINT src = D3D11CalcSubresource(mip, slice, 1);
+			UINT dst = D3D11CalcSubresource(mip, slice, 1);
+
+			D3D11_BOX src_box;
+			src_box.left = 0;
+			src_box.top = 0;
+			src_box.front = 0;
+			src_box.right = mip_width;
+			src_box.bottom = mip_height;
+			src_box.back = 1;
+
+			d3d11_context->CopySubresourceRegion(dst_rc_ptr, dst, 0, 0, 0, src_rc_ptr, src, &src_box);
+		}
+	}
+
+	return ut::Optional<ut::Error>();
 }
 
 // Copies data between render targets.

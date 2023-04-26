@@ -11,6 +11,7 @@
 #include "components/ve_name_component.h"
 #include "components/ve_render_component.h"
 #include "components/ve_free_camera_controller_component.h"
+#include "systems/render/engine/units/ve_render_view.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(editor)
@@ -52,7 +53,7 @@ private:
 	//    @param viewport_id - id of the viewport associated with the camera.
 	void UpdateCamera(TransformComponent& transform,
 	                  CameraComponent& camera,
-	                  RenderComponent& render,
+	                  render::View& render_view,
 	                  const ui::Viewport::Mode& mode,
 	                  ui::Viewport::Id viewport_id);
 
@@ -88,6 +89,12 @@ private:
 	// Initializes @viewports array.
 	void InitializeViewports(ui::Frontend& ui_frontend);
 
+	// Returnes the identifier of the selected entity id using the hitmask of
+	// the desired viewport.
+	ut::Optional<Entity::Id> SelectEntity(const ui::Viewport& ui_viewport,
+	                                      render::View& render_view);
+
+	ut::Optional< ut::Vector<2> > select_cursor_position;
 	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
 	ut::SharedPtr<input::Manager> input_mgr;
 	ut::Array< ut::Ref<ui::Viewport> > viewports;

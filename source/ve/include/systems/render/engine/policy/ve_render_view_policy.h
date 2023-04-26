@@ -13,6 +13,7 @@
 #include "systems/render/engine/ve_render_unit_mgr.h"
 #include "systems/render/engine/lighting/ve_lighting_manager.h"
 #include "systems/render/engine/post_process/ve_post_process_mgr.h"
+#include "systems/render/engine/ve_render_hitmask.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -32,6 +33,9 @@ public:
 	void RenderEnvironment(Context& context);
 
 private:
+	// Renders the provided view.
+	void RenderView(Context& context, View& view, Light::Sources& lights);
+
 	// Creates hdr scene targets.
 	ut::Result<View::SceneBuffer, ut::Error> CreateSceneBuffer(ut::uint32 width,
 	                                                           ut::uint32 height,
@@ -39,15 +43,15 @@ private:
 	                                                           ut::uint32 light_buffer_mip_count = 1);
 
 	// Renders environment.
-	ut::Optional<Image&> RenderScene(Context& context,
-	                                 View::SceneBuffer& scene,
-	                                 Light::Sources& lights,
-	                                 const ut::Matrix<4>& view_matrix,
-	                                 const ut::Matrix<4>& proj_matrix,
-	                                 const ut::Vector<3>& view_position,
-	                                 View::Mode mode,
-	                                 ut::Optional<Image&> ibl_cubemap = ut::Optional<Image&>(),
-	                                 Image::Cube::Face face = Image::Cube::positive_x);
+	ut::Optional<Image&> RenderLightPass(Context& context,
+	                                     View::SceneBuffer& scene,
+	                                     Light::Sources& lights,
+	                                     const ut::Matrix<4>& view_matrix,
+	                                     const ut::Matrix<4>& proj_matrix,
+	                                     const ut::Vector<3>& view_position,
+	                                     View::Mode mode,
+	                                     ut::Optional<Image&> ibl_cubemap = ut::Optional<Image&>(),
+	                                     Image::Cube::Face face = Image::Cube::positive_x);
 
 	// Renders IBL cubemap.
 	void RenderIblCubemap(Context& context,
@@ -75,6 +79,7 @@ private:
 	// managers
 	lighting::Manager lighting_mgr;
 	postprocess::Manager post_process_mgr;
+	HitMask hitmask;
 };
 
 //----------------------------------------------------------------------------//

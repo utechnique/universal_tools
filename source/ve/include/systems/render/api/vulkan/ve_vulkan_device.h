@@ -85,10 +85,12 @@ protected:
 	//    @param size - buffer size in bytes.
 	//    @param usage - buffer usage flags.
 	//    @param memory_usage - buffer memory usage flags.
+	//    @param memory_property_flags - buffer memory property flags.
 	//    @return - buffer resource or error if failed.
 	ut::Result<VkRc<vk::buffer>, ut::Error> CreateVulkanBuffer(VkDeviceSize size,
 	                                                           VkBufferUsageFlags usage,
-	                                                           VmaMemoryUsage memory_usage);
+	                                                           VmaMemoryUsage memory_usage,
+	                                                           VkMemoryPropertyFlags memory_property_flags);
 
 	// Allocates gpu memory for the specified image.
 	//    @param buffer - buffer handle.
@@ -104,13 +106,13 @@ protected:
 	ut::Result<VkRc<vk::memory>, ut::Error> AllocateBufferMemory(VkBuffer buffer,
 	                                                             VkMemoryPropertyFlags properties);
 
-	// Creates staging buffer.
+	// Creates staging buffer for initializing gpu resources.
 	//    @param size - size of the buffer in bytes.
 	//    @param ini_data - optional array of bytes to initialize buffer with.
 	//    @return -buffer object or error if failed.
-	ut::Result<PlatformBuffer, ut::Error> CreateStagingBuffer(size_t size,
-	                                                          ut::Optional<const ut::Array<ut::byte>&> ini_data =
-	                                                          ut::Optional<const ut::Array<ut::byte>&>());
+	ut::Result<PlatformBuffer, ut::Error> CreateInitializationStagingBuffer(size_t size,
+	                                                                        ut::Optional<const ut::Array<ut::byte>&> ini_data =
+	                                                                        ut::Optional<const ut::Array<ut::byte>&>());
 
 	// Copies pixel data to the image subresource according to the specified
 	// layout.

@@ -2,6 +2,7 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_model_batcher.h"
+#include "systems/render/engine/ve_render_hitmask.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -72,7 +73,7 @@ void ModelBatcher::UpdateBatch(Context& context,
 	ut::Array<ut::byte> cache(transform_size + material_size);
 
 	Model::TransformBuffer* transform_memory = reinterpret_cast<Model::TransformBuffer*>(cache.GetAddress());
-	Model::MaterialBuffer* material_memory = reinterpret_cast<Model::MaterialBuffer*>(transform_memory + element_count);
+	Model::MaterialBuffer* material_memory = reinterpret_cast<Model::MaterialBuffer*>(transform_memory + transform_size);
 #else
 	ut::Result<void*, ut::Error> transform_map_result = context.MapBuffer(batch.transform, ut::access_write);
 	ut::Result<void*, ut::Error> material_map_result = context.MapBuffer(batch.material, ut::access_write);
@@ -88,8 +89,11 @@ void ModelBatcher::UpdateBatch(Context& context,
 	{
 		Model::DrawCall& dc = dc_start[j];
 		Model& model = dc.model;
+
+		// transform
 		ut::memory::Copy(transform_memory + j, &model.world_matrix, sizeof(ut::Matrix<4, 4>));
 
+		// material
 		Model::MaterialBuffer& material = material_memory[j];
 		ut::memory::Copy(&material.diffuse_add, &model.diffuse_add, sizeof(ut::Color<3>));
 		ut::memory::Copy(&material.diffuse_mul, &model.diffuse_mul, sizeof(ut::Color<3>));
@@ -110,6 +114,19 @@ void ModelBatcher::UpdateBatch(Context& context,
 	context.UnmapBuffer(batch.transform);
 	context.UnmapBuffer(batch.material);
 #endif
+
+	// update entity-id buffer if needed
+	if (tools.frame_mgr.GetCurrentFrame().info.needs_entity_id_buffer_update)
+	{
+		ut::Result<void*, ut::Error> id_buffer_map_result = context.MapBuffer(batch.entity_id, ut::access_write);
+		Model::EntityIdBuffer* id_buffer_memory = static_cast<Model::EntityIdBuffer*>(id_buffer_map_result.MoveOrThrow());
+		for (size_t j = 0; j < element_count; j++)
+		{
+			id_buffer_memory[j].entity_id = HitMask::EncodeEntityId(dc_start[j].entity_id);
+		}
+		context.UnmapBuffer(batch.entity_id);
+	}
+	
 }
 
 // Updates desired batch.
@@ -163,8 +180,18 @@ void ModelBatcher::UpdateBuffers(Context& context)
 			throw ut::Error(material_buffer.MoveAlt());
 		}
 
+		// entity-id
+		buffer_info.size = batch_size * sizeof(Model::EntityIdBuffer);
+		ut::Result<Buffer, ut::Error> entity_id_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
+		if (!entity_id_buffer)
+		{
+			throw ut::Error(entity_id_buffer.MoveAlt());
+		}
+
 		// add batch
-		current_frame.batches.Add(Model::Batch{transform_buffer.Move(), material_buffer.Move()});
+		current_frame.batches.Add(Model::Batch{transform_buffer.Move(),
+		                                       material_buffer.Move(),
+		                                       entity_id_buffer.Move()});
 	}
 
 	// update buffers
@@ -199,8 +226,8 @@ ut::uint32 ModelBatcher::GetBatchSize() const
 ut::uint32 ModelBatcher::CalculateBatchSize(Device& device)
 {
 	const size_t ub_max_size = ut::Min<size_t>(65536, device.GetInfo().max_uniform_buffer_size);
-	const ut::uint32 buffer_bound_size = ut::Max<ut::uint32>(sizeof(Model::TransformBuffer),
-	                                                         sizeof(Model::MaterialBuffer));
+	const ut::uint32 buffer_bound_size = ut::Max<ut::uint32>(ut::Max<ut::uint32>(sizeof(Model::TransformBuffer),
+	                                                         sizeof(Model::MaterialBuffer)), sizeof(Model::EntityIdBuffer));
 	return static_cast<ut::uint32>(ub_max_size) / buffer_bound_size;
 }
 

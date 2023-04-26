@@ -54,6 +54,7 @@ struct TargetData : public PlatformRenderTarget
 		pixel::Format format = pixel::unknown;
 		Usage usage = usage_color;
 		State state = state_target;
+		bool has_staging_cpu_read_buffer = false;
 		ut::uint32 mip_count = 1;
 		ut::uint32 width = 1;
 		ut::uint32 height = 1;

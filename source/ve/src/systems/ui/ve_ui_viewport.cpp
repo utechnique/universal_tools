@@ -55,7 +55,7 @@ void Viewport::SetMode(const Viewport::Mode& new_mode)
 // or nothing if it's outside. Position (0,0) is located
 // in the center of the viewport, X-axis is right, Y-axis
 // is up. Distance to the viewport border is 1.
-ut::Optional< ut::Vector<2> > Viewport::GetMousePosition()
+ut::Optional< ut::Vector<2> > Viewport::GetCursorPosition()
 {
 	return ut::Optional< ut::Vector<2> >();
 }
@@ -63,7 +63,7 @@ ut::Optional< ut::Vector<2> > Viewport::GetMousePosition()
 // Returns relative mouse position offset from the previous
 // frame or nothing if it's outside.
 //    @param reset - boolean indicating if current offset must be reset.
-ut::Optional< ut::Vector<2> > Viewport::GetMouseOffset(bool reset)
+ut::Optional< ut::Vector<2> > Viewport::GetCursorOffset(bool reset)
 {
 	return ut::Optional< ut::Vector<2> >();
 }

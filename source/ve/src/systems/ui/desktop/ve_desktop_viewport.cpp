@@ -33,7 +33,7 @@ DesktopViewport::~DesktopViewport()
 
 // Returns relative mouse position inside this viewport
 // or nothing if it's outside.
-ut::Optional< ut::Vector<2> > DesktopViewport::GetMousePosition()
+ut::Optional< ut::Vector<2> > DesktopViewport::GetCursorPosition()
 {
 	return cur_mouse_position.Get();
 }
@@ -41,7 +41,7 @@ ut::Optional< ut::Vector<2> > DesktopViewport::GetMousePosition()
 // Returns relative mouse position offset from the previous
 // frame or nothing if it's outside.
 //    @param reset - boolean indicating if current offset must be reset.
-ut::Optional< ut::Vector<2> > DesktopViewport::GetMouseOffset(bool reset)
+ut::Optional< ut::Vector<2> > DesktopViewport::GetCursorOffset(bool reset)
 {
 	const ut::Optional< ut::Vector<2> > previous = prev_mouse_position.Get();
 	const ut::Optional< ut::Vector<2> > current = cur_mouse_position.Get();

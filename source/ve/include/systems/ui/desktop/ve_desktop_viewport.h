@@ -37,12 +37,12 @@ public:
 
 	// Returns relative mouse position inside this viewport
 	// or nothing if it's outside.
-	ut::Optional< ut::Vector<2> > GetMousePosition() override;
+	ut::Optional< ut::Vector<2> > GetCursorPosition() override;
 
 	// Returns relative mouse position offset from the previous
 	// frame or nothing if it's outside.
 	//    @param reset - boolean indicating if current offset must be reset.
-	ut::Optional< ut::Vector<2> > GetMouseOffset(bool reset) override;
+	ut::Optional< ut::Vector<2> > GetCursorOffset(bool reset) override;
 
 	// Assigns new relative mouse position for the current frame.
 	void SetMousePosition(ut::Optional< ut::Vector<2> > position);

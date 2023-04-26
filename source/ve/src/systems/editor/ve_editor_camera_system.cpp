@@ -58,57 +58,100 @@ ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(Base::A
 	const bool observation_mode = input_mgr->IsKeyDown(bindings.observation_mode);
 
 	// search for a camera with desired name
+	ut::Optional<Entity::Id> entity_id;
 	for (Base::Access::EntityIterator entity = access.BeginEntities(); entity != access.EndEntities(); ++entity)
 	{
-		const Entity::Id entity_id = entity->GetFirst();
+		const Entity::Id id = entity->GetFirst();
 
 		// check name
-		const ut::String& name = access.GetComponent<NameComponent>(entity_id).name;
-		if (name != desired_name)
+		const ut::String& name = access.GetComponent<NameComponent>(id).name;
+		if (name == desired_name)
 		{
-			continue;
+			entity_id = id;
+			break;
 		}
-
-		// get components
-		TransformComponent& transform = access.GetComponent<TransformComponent>(entity_id);
-		CameraComponent& camera = access.GetComponent<CameraComponent>(entity_id);
-		RenderComponent& render = access.GetComponent<RenderComponent>(entity_id);
-		FreeCameraControllerComponent& controller = access.GetComponent<FreeCameraControllerComponent>(entity_id);
-
-		// update camera properties that are not affected by user input
-		UpdateCamera(transform, camera, render, mode, viewport_id);
-
-		// update camera position and direction
-		if (mode.has_input_focus)
-		{
-			const bool observation_allowed = observation_mode && viewport.GetMousePosition();
-			const float time_step = timer.GetTime<ut::time::seconds, float>();
-
-			if (camera.projection == CameraComponent::perspective_projection)
-			{
-				ProcessPerspectiveCameraInput(transform,
-												camera,
-												controller,
-												time_step,
-												observation_allowed);
-			}
-			else if (camera.projection == CameraComponent::orthographic_projection)
-			{
-				ProcessOrthographicCameraInput(transform,
-												camera,
-												viewport.GetMouseOffset(true),
-												observation_allowed);
-			}
-		}
-
-		// success
-		return ut::Optional< ut::UniquePtr<Cmd> >(); // e x i t
 	}
 
 	// a new entity must be created if desired camera doesn't exist
-	ut::Result<ut::UniquePtr<Cmd>, ut::Error> new_camera = CreateCamera(viewport_id,
-	                                                                    ut::Move(desired_name));
-	return new_camera.MoveOrThrow();
+	if (!entity_id)
+	{
+		ut::Result<ut::UniquePtr<Cmd>, ut::Error> new_camera = CreateCamera(viewport_id,
+		                                                                    ut::Move(desired_name));
+		return new_camera.MoveOrThrow();
+	}
+
+	// get components
+	TransformComponent& transform = access.GetComponent<TransformComponent>(entity_id.Get());
+	CameraComponent& camera = access.GetComponent<CameraComponent>(entity_id.Get());
+	RenderComponent& render = access.GetComponent<RenderComponent>(entity_id.Get());
+	FreeCameraControllerComponent& controller = access.GetComponent<FreeCameraControllerComponent>(entity_id.Get());
+
+	// find render view
+	ut::Optional<render::View&> render_view;
+	const size_t unit_count = render.units.Count();
+	for (size_t i = 0; i < unit_count; i++)
+	{
+		ut::UniquePtr<render::Unit>& unit = render.units[i];
+		if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::View>())
+		{
+			render_view = static_cast<render::View&>(unit.GetRef());
+			break;
+		}
+	}
+
+	// re-create view unit if it was somehow removed
+	if (!render_view)
+	{
+		render::View new_render_view;
+		new_render_view.viewport_id = viewport_id;
+		render.units.Add(ut::MakeUnique<render::View>(ut::Move(new_render_view)));
+		render_view = static_cast<render::View&>(render.units.GetLast().GetRef());
+	}
+
+	// update camera properties that are not affected by user input
+	UpdateCamera(transform, camera, render_view.Get(), mode, viewport_id);
+
+	// check if input is allowed
+	if (!mode.has_input_focus)
+	{
+		return ut::Optional< ut::UniquePtr<Cmd> >(); // e x i t
+	}
+
+	// update camera position and direction
+	ut::Optional< ut::Vector<2> > cursor_position = viewport.GetCursorPosition();
+	const bool observation_allowed = observation_mode && cursor_position;
+	const float time_step = timer.GetTime<ut::time::seconds, float>();
+	if (camera.projection == CameraComponent::perspective_projection)
+	{
+		ProcessPerspectiveCameraInput(transform,
+		                              camera,
+		                              controller,
+		                              time_step,
+		                              observation_allowed);
+	}
+	else if (camera.projection == CameraComponent::orthographic_projection)
+	{
+		ProcessOrthographicCameraInput(transform,
+		                               camera,
+		                               viewport.GetCursorOffset(true),
+		                               observation_allowed);
+	}
+
+	// select entities
+	if (cursor_position && input_mgr->IsKeyDown(bindings.select_entity))
+	{
+		select_cursor_position = cursor_position;
+	}
+
+	ut::Optional<Entity::Id> selected_entity = SelectEntity(viewport,
+	                                                        render_view.Get());
+	if (selected_entity)
+	{
+
+	}
+
+	// success
+	return ut::Optional< ut::UniquePtr<Cmd> >(); // e x i t
 }
 
 //----------------------------------------------------------------------------->
@@ -120,41 +163,21 @@ ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(Base::A
 //    @param viewport_id - id of the viewport associated with the camera.
 void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
                                         CameraComponent& camera,
-                                        RenderComponent& render,
+                                        render::View& render_view,
                                         const ui::Viewport::Mode& mode,
                                         ui::Viewport::Id viewport_id)
 {
-	// find render view
-	ut::Optional<render::View&> view;
-	const size_t unit_count = render.units.Count();
-	for (size_t i = 0; i < unit_count; i++)
-	{
-		ut::UniquePtr<render::Unit>& unit = render.units[i];
-		if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::View>())
-		{
-			view = static_cast<render::View&>(unit.GetRef());
-			break;
-		}
-	}
-
-	// re-create view unit if it was somehow removed
-	if (!view)
-	{
-		render::View render_view;
-		render_view.viewport_id = viewport_id;
-		render.units.Add(ut::MakeUnique<render::View>(ut::Move(render_view)));
-		view = static_cast<render::View&>(render.units.GetLast().GetRef());
-	}
+	
 
 	// do not render view if its viewport is inactive
-	view->is_active = mode.is_active;
+	render_view.is_active = mode.is_active;
 
 	// update mode
 	switch (mode.render_mode)
 	{
-		case ui::Viewport::render_mode_complete: view->mode = render::View::mode_complete; break;
-		case ui::Viewport::render_mode_diffuse: view->mode = render::View::mode_diffuse; break;
-		case ui::Viewport::render_mode_normal: view->mode = render::View::mode_normal; break;
+		case ui::Viewport::render_mode_complete: render_view.mode = render::View::mode_complete; break;
+		case ui::Viewport::render_mode_diffuse: render_view.mode = render::View::mode_diffuse; break;
+		case ui::Viewport::render_mode_normal: render_view.mode = render::View::mode_normal; break;
 	}
 
 	// update resolution
@@ -177,11 +200,11 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 		break;
 	}
 
-	if (view->width != desired_width || view->height != desired_height)
+	if (render_view.width != desired_width || render_view.height != desired_height)
 	{
-		view->width = desired_width;
-		view->height = desired_height;
-		view->Invalidate();
+		render_view.width = desired_width;
+		render_view.height = desired_height;
+		render_view.Invalidate();
 	}
 
 	// update aspect ration
@@ -409,6 +432,40 @@ void ViewportCameraSystem::InitializeViewports(ui::Frontend& ui_frontend)
 	{
 		viewports.Add(*iterator);
 	}
+}
+
+//----------------------------------------------------------------------------->
+// Returnes the identifier of the selected entity id using the hitmask of
+// the desired viewport.
+ut::Optional<Entity::Id> ViewportCameraSystem::SelectEntity(const ui::Viewport& ui_viewport,
+                                                            render::View& render_view)
+{
+	// exit if user didn't click
+	if (!select_cursor_position)
+	{
+		return ut::Optional<Entity::Id>();
+	}
+
+	// check if hitmask is ready
+	if (render_view.hitmask.Count() == 0)
+	{
+		render_view.draw_hitmask = true;
+		return ut::Optional<Entity::Id>();
+	}
+
+	// get entity id from the hitmask
+	const ut::uint32 x = static_cast<ut::uint32>((select_cursor_position->X() * 0.5f + 0.5f) * render_view.width);
+	const ut::uint32 y = static_cast<ut::uint32>((1.0f - select_cursor_position->Y() * 0.5f - 0.5f) * render_view.height);
+	const Entity::Id entity_id = render_view.hitmask[y * render_view.width + x];
+
+	// disable hitmask
+	render_view.draw_hitmask = false;
+
+	// reset cursor click position
+	select_cursor_position = ut::Optional< ut::Vector<2> >();
+
+	// id was successfully extracted
+	return entity_id;
 }
 
 //----------------------------------------------------------------------------//

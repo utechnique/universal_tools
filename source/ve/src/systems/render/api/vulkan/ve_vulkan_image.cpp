@@ -16,13 +16,15 @@ PlatformImage::PlatformImage(VkDevice device_handle,
                              VkImageView image_view,
                              VkImageView* cube_faces_arr,
                              VkImageAspectFlags aspect_flags,
-                             const State& image_state) : VkRc<vk::image>(image_handle,
-                                                                         VkDetail<vk::image>(device_handle,
-                                                                                             allocator,
-                                                                                             allocation))
-                                                       , view(image_view, device_handle)
-                                                       , aspect_mask(aspect_flags)
-                                                       , state(image_state)
+                             const State& image_state,
+                             VkRc<vk::buffer> in_staging_gpu_cpu_buffer) : VkRc<vk::image>(image_handle,
+                                                                                           VkDetail<vk::image>(device_handle,
+                                                                                                               allocator,
+                                                                                                               allocation))
+                                                                         , view(image_view, device_handle)
+                                                                         , aspect_mask(aspect_flags)
+                                                                         , state(image_state)
+                                                                         , staging_gpu_cpu_buffer(ut::Move(in_staging_gpu_cpu_buffer))
 {
 	if (cube_faces_arr)
 	{

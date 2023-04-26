@@ -41,6 +41,10 @@ public:
 	ut::ThreadPool<void, ut::pool_sync::cond_var>& GetThreadPool();
 
 private:
+	// Updates the information about the current frame and returns the
+	// reference to this frmae.
+	Frame& UpdateCurrentFrameInfo();
+
 	// Function for recording all commands needed to draw current frame.
 	void RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports);
 

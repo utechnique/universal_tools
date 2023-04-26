@@ -104,12 +104,12 @@ public:
 	// or nothing if it's outside. Position (0,0) is located
 	// in the center of the viewport, X-axis is right, Y-axis
 	// is up. Distance to the viewport border is 1.
-	virtual ut::Optional< ut::Vector<2> > GetMousePosition();
+	virtual ut::Optional< ut::Vector<2> > GetCursorPosition();
 
 	// Returns relative mouse position offset from the call of this
 	// function or nothing if it's outside.
 	//    @param reset - boolean indicating if current offset must be reset.
-	virtual ut::Optional< ut::Vector<2> > GetMouseOffset(bool reset);
+	virtual ut::Optional< ut::Vector<2> > GetCursorOffset(bool reset);
 
 	// Returns unique identifier of the viewport.
 	Id GetId() const;

@@ -96,46 +96,49 @@ private:
 	// Geometry pass pipeline and shaders permutations.
 	struct GeometryPass
 	{
-		enum CullMode
+		struct ModelRendering
 		{
-			cull_none,
-			cull_back,
-			cull_mode_count
+			enum CullMode
+			{
+				cull_none,
+				cull_back,
+				cull_mode_count
+			};
+
+			enum AlphaMode
+			{
+				alpha_opaque,
+				alpha_test,
+				alpha_mode_count
+			};
+
+			static constexpr ut::uint32 vertex_format_column = 0;
+			static constexpr ut::uint32 alpha_mode_column = 1;
+			static constexpr ut::uint32 cull_mode_column = 2;
+
+			typedef ut::Grid<Mesh::vertex_format_count,
+			                 GeometryPass::ModelRendering::alpha_mode_count,
+			                 GeometryPass::ModelRendering::cull_mode_count> PipelineGrid;
+
+			typedef ut::Grid<Mesh::vertex_format_count,
+			                 GeometryPass::ModelRendering::alpha_mode_count> ShaderGrid;
+
+			// Descriptor set for the model geometry pass shaders.
+			struct Descriptors : public DescriptorSet
+			{
+				Descriptors() : DescriptorSet(view_ub, transform_ub, material_ub,
+				                              sampler, diffuse, normal, material)
+				{}
+
+				Descriptor view_ub = "g_ub_view";
+				Descriptor transform_ub = "g_ub_transform";
+				Descriptor material_ub = "g_ub_material";
+				Descriptor sampler = "g_sampler";
+				Descriptor diffuse = "g_tex2d_diffuse";
+				Descriptor normal = "g_tex2d_normal";
+				Descriptor material = "g_tex2d_material";
+			};
 		};
-
-		enum AlphaMode
-		{
-			alpha_opaque,
-			alpha_test,
-			alpha_mode_count
-		};
-
-		static constexpr ut::uint32 vertex_format_column = 0;
-		static constexpr ut::uint32 alpha_mode_column = 1;
-		static constexpr ut::uint32 cull_mode_column = 2;
-
-		typedef ut::Grid<Mesh::vertex_format_count,
-		                 GeometryPass::alpha_mode_count,
-		                 GeometryPass::cull_mode_count> PipelineGrid;
-
-		typedef ut::Grid<Mesh::vertex_format_count,
-		                 GeometryPass::alpha_mode_count> ShaderGrid;
-	};
-
-	// Descriptor set for the model geometry pass shaders.
-	struct GPassModelDescriptorSet : public DescriptorSet
-	{
-		GPassModelDescriptorSet() : DescriptorSet(view_ub, transform_ub, material_ub,
-		                                          sampler, diffuse, normal, material)
-		{}
-
-		Descriptor view_ub = "g_ub_view";
-		Descriptor transform_ub = "g_ub_transform";
-		Descriptor material_ub = "g_ub_material";
-		Descriptor sampler = "g_sampler";
-		Descriptor diffuse = "g_tex2d_diffuse";
-		Descriptor normal = "g_tex2d_normal";
-		Descriptor material = "g_tex2d_material";
 	};
 
 	// Descriptor set for the image based lighting pass.
@@ -195,7 +198,7 @@ private:
 	Shader CreateIblShader(ut::uint32 ibl_mip_count);
 
 	// Creates a render pass for the g-buffer.
-	ut::Result<RenderPass, ut::Error> CreateGeometryPass(pixel::Format depth_stencil_format);
+	ut::Result<RenderPass, ut::Error> CreateModelGeometryPass(pixel::Format depth_stencil_format);
 
 	// Creates a render pass for the shading techniques.
 	ut::Result<RenderPass, ut::Error> CreateLightPass(pixel::Format depth_stencil_format,
@@ -206,8 +209,8 @@ private:
 	                                                              ut::uint32 width,
 	                                                              ut::uint32 height,
 	                                                              Mesh::VertexFormat vertex_format,
-	                                                              GeometryPass::AlphaMode alpha_mode,
-	                                                              GeometryPass::CullMode cull_mode);
+	                                                              GeometryPass::ModelRendering::AlphaMode alpha_mode,
+	                                                              GeometryPass::ModelRendering::CullMode cull_mode);
 
 	// Creates a pipeline state to apply lighting.
 	ut::Result<PipelineState, ut::Error> CreateLightPassPipeline(RenderPass& light_pass,
@@ -236,7 +239,7 @@ private:
 	ut::Array< ut::Ref<CmdBuffer> > secondary_buffer_cache;
 
 	// Descriptors.
-	ut::Array<GPassModelDescriptorSet> gpass_desc_set;
+	ut::Array<GeometryPass::ModelRendering::Descriptors> gpass_model_desc_set;
 	IblDescriptorSet ibl_desc_set;
 	LightPassDescriptorSet lightpass_desc_set;
 

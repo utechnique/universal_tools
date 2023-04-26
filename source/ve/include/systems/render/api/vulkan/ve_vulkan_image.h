@@ -36,8 +36,6 @@ public:
 		VkPipelineStageFlags stages;
 	};
 
-	
-
 	// Constructor.
 	PlatformImage(VkDevice device_handle,
 	              VkImage image_handle,
@@ -46,7 +44,8 @@ public:
 	              VkImageView image_view,
 	              VkImageView* cube_faces_arr, // pass nullptr if not a cubemap
 	              VkImageAspectFlags aspect_flags,
-	              const State& image_state);
+	              const State& image_state,
+	              VkRc<vk::buffer> staging_buffer);
 
 	// Move constructor.
 	PlatformImage(PlatformImage&&) noexcept;
@@ -83,6 +82,9 @@ private:
 	// shader resource view
 	VkRc<vk::image_view> view;
 	VkRc<vk::image_view> cube_faces[6];
+
+	// staging buffer to read gpu data from cpu
+	VkRc<vk::buffer> staging_gpu_cpu_buffer;
 
 	// current state (layout)
 	State state;

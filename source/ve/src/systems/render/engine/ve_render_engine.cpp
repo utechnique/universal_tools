@@ -70,7 +70,7 @@ void Engine::InitializeUnit(Unit& unit)
 void Engine::ProcessNextFrame()
 {
 	// get current frame
-	Frame& frame = tools.frame_mgr.GetCurrentFrame();
+	Frame& frame = UpdateCurrentFrameInfo();
 
 	// wait for the previous frame to finish
 	device.WaitCmdBuffer(frame.cmd_buffer);
@@ -116,6 +116,32 @@ void Engine::ProcessNextFrame()
 ut::ThreadPool<void, ut::pool_sync::cond_var>& Engine::GetThreadPool()
 {
 	return tools.pool;
+}
+
+// Updates the information about the current frame and returns the
+// reference to this frmae.
+Frame& Engine::UpdateCurrentFrameInfo()
+{
+	Frame& frame = tools.frame_mgr.GetCurrentFrame();
+
+	// reset temp flags
+	frame.info.needs_entity_id_buffer_update = false;
+
+	// check if at least one view unit needs hitmask update,
+	// and if so - enable needs_entity_id_buffer_update flag
+	const ut::Array< ut::Ref<View> >& views = unit_mgr.selector.Get<View>();
+	const size_t view_count = views.Count();
+	for (size_t i = 0; i < view_count; i++)
+	{
+		const View& view = views[i];
+		if (view.draw_hitmask)
+		{
+			frame.info.needs_entity_id_buffer_update = true;
+			break;
+		}
+	}
+
+	return frame;
 }
 
 // Function for recording all commands needed to draw current frame.
