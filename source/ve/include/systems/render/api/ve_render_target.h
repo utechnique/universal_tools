@@ -18,7 +18,7 @@ START_NAMESPACE(render)
 struct TargetData : public PlatformRenderTarget
 {
 	// Conveniently stores all essential information about this render target.
-	struct Info
+	struct Info : public Image::Info
 	{
 		// Enumeration of possible ways how a target can be used.
 		enum Usage
@@ -34,7 +34,7 @@ struct TargetData : public PlatformRenderTarget
 			usage_present
 		};
 
-		// Enumeration of possible target states.
+		// Enumeration of possible image states.
 		enum State
 		{
 			// image can be a render target but can't be bound as a shader resource
@@ -50,15 +50,8 @@ struct TargetData : public PlatformRenderTarget
 			state_transfer_dst
 		};
 
-		Image::Type type = Image::type_2D;
-		pixel::Format format = pixel::unknown;
 		Usage usage = usage_color;
-		State state = state_target;
-		bool has_staging_cpu_read_buffer = false;
-		ut::uint32 mip_count = 1;
-		ut::uint32 width = 1;
-		ut::uint32 height = 1;
-		ut::uint32 depth = 1;
+		State state = state_resource;
 	};
 
 	// Constructor.
