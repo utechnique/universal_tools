@@ -73,7 +73,7 @@ void ModelBatcher::UpdateBatch(Context& context,
 	ut::Array<ut::byte> cache(transform_size + material_size);
 
 	Model::TransformBuffer* transform_memory = reinterpret_cast<Model::TransformBuffer*>(cache.GetAddress());
-	Model::MaterialBuffer* material_memory = reinterpret_cast<Model::MaterialBuffer*>(transform_memory + transform_size);
+	Model::MaterialBuffer* material_memory = reinterpret_cast<Model::MaterialBuffer*>(transform_memory + element_count);
 #else
 	ut::Result<void*, ut::Error> transform_map_result = context.MapBuffer(batch.transform, ut::access_write);
 	ut::Result<void*, ut::Error> material_map_result = context.MapBuffer(batch.material, ut::access_write);

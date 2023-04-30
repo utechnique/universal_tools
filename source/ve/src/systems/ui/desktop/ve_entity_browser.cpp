@@ -1218,6 +1218,9 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	                                    client_area.w() - EntityBrowser::skOffset * 2,
 	                                    skPageControlGroupHeight);
 
+    // set default page id
+    page->page_id.Store(1);
+
 	// create central input widget
 	page->input = ut::MakeUnique< JustifyInput<Fl_Int_Input> >(page->x() +
 	                                                           page->w() / 2 - input_width / 2,

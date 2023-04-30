@@ -10,7 +10,7 @@
 #include "commands/ve_cmd_add_entity.h"
 #include "commands/ve_cmd_update_component.h"
 #include "ve_system.h"
-#include "FL/Fl_Int_Input.h"
+#include "FL/Fl_Int_Input.H"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -450,7 +450,7 @@ private:
 		ut::Atomic<ut::uint32> entity_count;
 		ut::UniquePtr<ut::String> page_count_buffer;
 		ut::UniquePtr<ut::String> entity_count_buffer;
-		ut::Atomic<ut::uint32> page_id = 1;
+		ut::Atomic<ut::uint32> page_id;
 		ut::uint32 capacity = 50;
 		static constexpr ut::uint32 font_size = 14;
 	};

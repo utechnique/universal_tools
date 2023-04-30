@@ -164,7 +164,7 @@ protected:
 	// by ve::Environment.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	System::Result System::Update(ComponentAccess& component_access) override
+	System::Result Update(ComponentAccess& component_access) override
 	{
 		Access access(component_access);
 		return Update(access);

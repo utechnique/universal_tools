@@ -24,7 +24,7 @@ public:
 		RenderPass pass;
 		Framebuffer framebuffer;
 		ut::Array<PipelineState> model_pipeline;
-		bool submitted = false;
+		bool submitted;
 	};
 
 	// Constructor.

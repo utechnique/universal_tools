@@ -430,7 +430,7 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateKeyboard(const DeviceFileMap& d
 
     // open input file
     const ut::String& file_path = device_map.keyboard.Get();
-    const int file = open(file_path, O_RDONLY | O_NONBLOCK);
+    const int file = open(file_path.GetAddress(), O_RDONLY | O_NONBLOCK);
     if (file < 0)
     {
         ut::log.Lock() << "Failed to open keyboard input file: " << file_path << ut::cret;
@@ -484,7 +484,7 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateMouse(const DeviceFileMap& devi
 
     // open input file
     const ut::String& file_path = device_map.mouse.Get();
-    const int file = open(file_path, O_RDONLY | O_NONBLOCK);
+    const int file = open(file_path.GetAddress(), O_RDONLY | O_NONBLOCK);
     if (file < 0)
     {
         ut::log.Lock() << "Failed to open keyboard input file: " << file_path << ut::cret;

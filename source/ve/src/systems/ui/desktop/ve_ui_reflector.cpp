@@ -387,13 +387,14 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 	tree.begin();
 
 	// tile widget
-	const int attrib_widgets_size = skItemHeight * 4;
-	group = ut::MakeUnique<Fl_Group>(0, 0, desc_width + skValueMargin + ReflectionValue::skWidth + attrib_widgets_size, skItemHeight);
+	const int item_height = skItemHeight;
+	const int attrib_widgets_size = item_height * 4;
+	group = ut::MakeUnique<Fl_Group>(0, 0, desc_width + skValueMargin + ReflectionValue::skWidth + attrib_widgets_size, item_height);
 	group->callback(ResizeCallback, &tree);
 	group->when(FL_WHEN_NOT_CHANGED);
 
 	// description (entity name) widget
-	description = ut::MakeUnique<Fl_Box>(0, 0, desc_width, skItemHeight, name->GetAddress());
+	description = ut::MakeUnique<Fl_Box>(0, 0, desc_width, item_height, name->GetAddress());
 	description->box(FL_NO_BOX);
 	description->align(FL_ALIGN_INSIDE);
 	description->labelfont(desc_font);
@@ -409,7 +410,7 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 	                                                                                path.GetRef(),
 	                                                                                input_x,
 	                                                                                ReflectionValue::skWidth,
-	                                                                                skItemHeight,
+	                                                                                item_height,
 	                                                                                skItemTextSize,
 	                                                                                theme);
 	if (input_widget)
@@ -423,7 +424,7 @@ ReflectionTreeItem::ReflectionTreeItem(Fl_Tree& tree,
 	                                     path.GetRef(),
 	                                     value.Get() == nullptr ? input_x :
 	                                     (input_x + value->GetWidth()),
-	                                     skItemHeight,
+	                                     item_height,
 	                                     skItemTextSize,
 	                                     theme);
 
@@ -447,15 +448,16 @@ void ReflectionTreeItem::Update(ut::meta::Snapshot& node)
 	{
 		name = ut::MakeUnique<ut::String>(GenerateNodeName(node));
 
+		const int item_height = skItemHeight;
 		int desc_width, desc_height;
 		Fl_Font desc_font = 0;
 		fl_font(desc_font, skItemTextSize);
 		fl_measure(name->GetAddress(), desc_width, desc_height);
 
-		group->resize(0, 0, desc_width + skValueMargin + ReflectionValue::skWidth, skItemHeight);
+		group->resize(0, 0, desc_width + skValueMargin + ReflectionValue::skWidth, item_height);
 
 		group->remove(description.Get());
-		description = ut::MakeUnique<Fl_Box>(0, 0, desc_width, skItemHeight, name->GetAddress());
+		description = ut::MakeUnique<Fl_Box>(0, 0, desc_width, item_height, name->GetAddress());
 		description->box(FL_NO_BOX);
 		description->align(FL_ALIGN_INSIDE);
 		description->labelfont(desc_font);

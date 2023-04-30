@@ -87,7 +87,8 @@ ut::Result<HitMask::ViewData, ut::Error> HitMask::CreateViewData(Target& depth_s
 		target.Move(),
 		render_pass.Move(),
 		framebuffer.Move(),
-		ut::Move(model_pipeline)
+		ut::Move(model_pipeline),
+		false,
 	};
 
 	return ut::Move(data);
@@ -143,7 +144,7 @@ void HitMask::Read(Context& context,
 	}
 
 	const ut::uint32 pixel_size = pixel::GetSize(skHitMaskFormat);
-	byte* hitmask_data = static_cast<ut::byte*>(mapped_hitmask_rc->data);
+	ut::byte* hitmask_data = static_cast<ut::byte*>(mapped_hitmask_rc->data);
 	cpu_buffer.Resize(hitmask_info.width * hitmask_info.height);
 	for (ut::uint32 y = 0; y < hitmask_info.height; y++)
 	{
