@@ -235,11 +235,7 @@ void Context::UnmapImage(Image& image, ut::Access access)
 
 	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, info.type, staging);
 	UT_ASSERT(rc_ptr != nullptr);
-	
-	if (info.usage == render::memory::gpu_read_cpu_write)
-	{
-		d3d11_context->Unmap(rc_ptr, 0);
-	}
+	d3d11_context->Unmap(rc_ptr, 0);
 }
 
 // Copies the provided image to the staging buffer that could be read from
