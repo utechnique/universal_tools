@@ -582,6 +582,21 @@ public:
 		return false;
 	}
 
+	// Returns true if has only numeric characters
+	bool IsNumber() const
+	{
+		const T* src = GetAddress();
+		const size_t len = Length();
+		for (size_t i = 0; i < len; i++)
+		{
+			if (!ChIsNumber<T>(src[i]))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	// Converts all characters to the lower case
 	void ToLowerCase()
 	{
