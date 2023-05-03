@@ -17,7 +17,7 @@ class PlatformDevice
 {
 public:
 	// Constructor
-	PlatformDevice(ID3D11Device* device_ptr);
+	PlatformDevice(const ut::String& gpu_name);
 
 	// Move constructor.
 	PlatformDevice(PlatformDevice&&) noexcept;
@@ -38,8 +38,8 @@ protected:
 	                                                        ID3D11Texture2D*& texture,
 	                                                        ID3D11RenderTargetView*& view);
 	
-	ut::ComPtr<ID3D11Device> d3d11_device;
 	ut::ComPtr<IDXGIFactory1> gi_factory;
+	ut::ComPtr<ID3D11Device> d3d11_device;
 	ut::ComPtr<ID3D11DeviceContext> immediate_context;
 };
 //----------------------------------------------------------------------------//

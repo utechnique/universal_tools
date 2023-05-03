@@ -18,6 +18,22 @@ namespace directories
 }
 
 //----------------------------------------------------------------------------//
+// Default settings.
+class DefaultSettings : public ut::meta::Reflective
+{
+public:
+	// Registers data into reflection tree.
+	//    @param snapshot - reference to the reflection tree
+	void Reflect(ut::meta::Snapshot& snapshot)
+	{
+		snapshot.Add(gpu, "gpu");
+	}
+
+	// Graphics adapter.
+	ut::String gpu = "auto";
+};
+
+//----------------------------------------------------------------------------//
 // Generates default pipeline tree.
 Pipeline GenDefaultPipeline();
 

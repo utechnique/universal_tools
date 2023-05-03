@@ -57,7 +57,12 @@ public:
 	};
 
 	// Constructor.
-	Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend);
+	//    @param ui_frontend - shared pointer to the user interface to be
+	//                         launched in.
+	//    @param gpu - string with the name or index of the desired graphics
+	//                 adapter. Pass 'auto' to use default graphics card.
+	Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend,
+	       const ut::String& gpu = ut::String("auto"));
 
 	// Move constructor.
 	Device(Device&&) noexcept;

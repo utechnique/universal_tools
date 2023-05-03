@@ -214,8 +214,8 @@ VkSamplerAddressMode ConvertAddressModeToVulkan(Sampler::AddressMode mode)
 
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformDevice::PlatformDevice() : instance(CreateVulkanInstance())
-                                 , gpu(nullptr)
+PlatformDevice::PlatformDevice(const ut::String& gpu_name) : instance(CreateVulkanInstance())
+                                                           , gpu(nullptr)
 {
 	// create dbg messenger
 	if (skEnableVulkanValidationLayer)
@@ -224,7 +224,7 @@ PlatformDevice::PlatformDevice() : instance(CreateVulkanInstance())
 	}
 
 	// create device
-	device = VkRc<vk::device>(CreateVulkanDevice());
+	device = VkRc<vk::device>(CreateVulkanDevice(gpu_name));
 
 	// create queues
 	main_queue = CreateQueue(vulkan_queue::main, 0);
@@ -742,17 +742,24 @@ bool PlatformDevice::CheckValidationLayerSupport()
 }
 
 // Returns physical device that suits best.
-ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(const ut::Array<VkPhysicalDevice>& devices)
+ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(const ut::Array<VkPhysicalDevice>& devices,
+                                                                             const ut::String& gpu_name)
 {
 	if (devices.Count() == 0)
 	{
 		throw ut::Error(ut::error::empty, "Gpu list is empty");
 	}
 
-	ut::Optional< ut::Pair<VkPhysicalDevice, ut::uint32> > top_scored_device;
+	const bool use_default = gpu_name == "auto";
+	const bool is_numeric = gpu_name.IsNumber();
+	const ut::uint32 gpu_id = ut::Scan<ut::uint32>(gpu_name);
 
+	ut::Optional< ut::Pair<VkPhysicalDevice, ut::uint32> > top_scored_device;
+	ut::Optional<VkPhysicalDevice> match_device;
+	ut::String adapter_list_msg = "Available GPU adapters:";
 	for (size_t i = 0; i < devices.Count(); i++)
 	{
+		const VkPhysicalDevice device_handle = devices[i];
 		ut::uint32 score = 0;
 
 		VkPhysicalDeviceProperties properties;
@@ -760,10 +767,36 @@ ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(con
 		vkGetPhysicalDeviceProperties(devices[i], &properties);
 		vkGetPhysicalDeviceFeatures(devices[i], &features);
 
+		adapter_list_msg += ut::cret + "  " + ut::Print(i) + " = " +
+		                    properties.deviceName + "(" + ut::Print(properties.deviceID) + ")";
+
+		// check if matches user-defined gpu
+		if (gpu_name == properties.deviceName)
+		{
+			adapter_list_msg += "[match by name]";
+			match_device = device_handle;
+		}
+		else if (is_numeric && gpu_id == properties.deviceID)
+		{
+			adapter_list_msg += "[match by ID]";
+			match_device = device_handle;
+		}
+		else if (is_numeric && gpu_id == i)
+		{
+			adapter_list_msg += "[match by index]";
+			match_device = device_handle;
+		}
+
 		// check features
 		if (!features.fillModeNonSolid ||
 			!features.shaderImageGatherExtended)
 		{
+			if (match_device)
+			{
+				match_device = ut::Optional<VkPhysicalDevice>();
+				adapter_list_msg += "Error! Insufficient features. Skipping..";
+			}
+
 			continue;
 		}
 
@@ -785,8 +818,27 @@ ut::Optional<VkPhysicalDevice> PlatformDevice::SelectPreferredPhysicalDevice(con
 
 		if (!top_scored_device || score > top_scored_device->second)
 		{
-			top_scored_device = ut::Pair<VkPhysicalDevice, ut::uint32>(devices[i], score);
+			top_scored_device = ut::Pair<VkPhysicalDevice, ut::uint32>(device_handle, score);
 		}		
+	}
+
+	if (use_default)
+	{
+		adapter_list_msg += ut::cret + "Desired GPU adapter was set to \"auto\","
+		                               " default adapter will be used.";
+		match_device = ut::Optional<VkPhysicalDevice>();
+	}
+	else if (!match_device)
+	{
+		adapter_list_msg += ut::cret + "Desired GPU adapter (" + gpu_name + ") was not found,"
+		                               " default adapter will be used.";
+	}
+
+	ut::log.Lock() << adapter_list_msg << ut::cret;
+
+	if (match_device)
+	{
+		return match_device.Get();
 	}
 
 	if (top_scored_device)
@@ -925,13 +977,13 @@ VkDebugUtilsMessengerEXT PlatformDevice::CreateDbgMessenger()
 }
 
 // Creates VkDevice object.
-VkDevice PlatformDevice::CreateVulkanDevice()
+VkDevice PlatformDevice::CreateVulkanDevice(const ut::String& gpu_name)
 {
 	// enumerate physical devices
 	ut::Array<VkPhysicalDevice> physical_devices = EnumeratePhysicalDevices();
 
 	// select suitable gpu
-	ut::Optional<VkPhysicalDevice> preferred_gpu = SelectPreferredPhysicalDevice(physical_devices);
+	ut::Optional<VkPhysicalDevice> preferred_gpu = SelectPreferredPhysicalDevice(physical_devices, gpu_name);
 	if (!preferred_gpu)
 	{
 		throw ut::Error(ut::error::not_supported, "Vulkan: no suitable GPU.");
@@ -941,7 +993,7 @@ VkDevice PlatformDevice::CreateVulkanDevice()
 	gpu = preferred_gpu.Get();
 	vkGetPhysicalDeviceProperties(gpu, &gpu_properties);
 	vkGetPhysicalDeviceFeatures(gpu, &gpu_features);
-	ut::log.Lock() << "Vulkan: using " << gpu_properties.deviceName << " for rendering." << ut::cret;
+	ut::log.Lock() << "Using " << gpu_properties.deviceName << " for rendering." << ut::cret;
 
 	// retrieve queue family properties
 	queue_families = PlatformDevice::GetQueueFamilies(gpu);
@@ -1072,7 +1124,8 @@ VkAttachmentStoreOp ConvertStoreOpToVulkan(RenderTargetSlot::StoreOperation stor
 
 //----------------------------------------------------------------------------//
 // Constructor.
-Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : PlatformDevice()
+Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend,
+               const ut::String& gpu_name) : PlatformDevice(gpu_name)
 {
 	info.max_uniform_buffer_size = gpu_properties.limits.maxUniformBufferRange;
 	info.max_storage_buffer_size = gpu_properties.limits.maxStorageBufferRange;

@@ -2,14 +2,28 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/render/api/ve_render_device.h"
+#include "systems/render/engine/ve_render_cfg.h"
 //----------------------------------------------------------------------------//
 #if VE_DX11
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
+// Create DirectX factory.
+IDXGIFactory1* CreateDxgiFactory()
+{
+	IDXGIFactory1* gi_factory_ptr;
+	HRESULT result = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)(&gi_factory_ptr));
+	if (FAILED(result))
+	{
+		throw ut::Error(ut::error::fail, ut::Print(result) + " failed to create dxgi factory.");
+	}
+	return gi_factory_ptr;
+}
+
 // Creates new DirectX 11 device.
-ID3D11Device* CreateDX11Device()
+ID3D11Device* CreateDX11Device(IDXGIFactory1* factory,
+                               const ut::String& gpu_name)
 {
 	ID3D11Device* new_device_ptr = nullptr;
 
@@ -32,20 +46,68 @@ ID3D11Device* CreateDX11Device()
 	};
 	const UINT num_feature_levels = ARRAYSIZE(feature_levels);
 
+	const bool use_default = gpu_name == "auto";
+	const bool is_numeric = gpu_name.IsNumber();
+	const ut::uint32 gpu_id = ut::Scan<ut::uint32>(gpu_name);
+	ut::String adapter_list_msg = "Available GPU adapters:";
+	IDXGIAdapter1* adapter_iterator;
+	IDXGIAdapter1* adapter_choice = nullptr;
+	DXGI_ADAPTER_DESC1 adapter_desc;
+	for (UINT i = 0; factory->EnumAdapters1(i, &adapter_iterator) != DXGI_ERROR_NOT_FOUND; ++i)
+	{
+		adapter_iterator->GetDesc1(&adapter_desc);
+
+		const ut::String mb_adapter_name = ut::StrConvert<ut::wchar, char, ut::cp_utf8>(adapter_desc.Description);
+		adapter_list_msg += ut::cret + "  " + ut::Print(i) + " = " +
+		                    mb_adapter_name + "(" + ut::Print(adapter_desc.DeviceId) + ")";
+
+		if (mb_adapter_name == gpu_name)
+		{
+			adapter_list_msg += "[match by name]";
+			adapter_choice = adapter_iterator;
+		}
+		else if (is_numeric && gpu_id == adapter_desc.DeviceId)
+		{
+			adapter_list_msg += "[match by ID]";
+			adapter_choice = adapter_iterator;
+		}
+		else if (is_numeric && gpu_id == i)
+		{
+			adapter_list_msg += "[match by index]";
+			adapter_choice = adapter_iterator;
+		}
+	}
+
+	if (use_default)
+	{
+		adapter_list_msg += ut::cret + "Desired GPU adapter was set to \"auto\","
+		                               " default adapter will be used.";
+		adapter_choice = nullptr;
+	}
+	else if (adapter_choice == nullptr)
+	{
+		adapter_list_msg += ut::cret + "Desired GPU adapter (" + gpu_name + ") was not found,"
+		                               " default adapter will be used.";
+	}
+
+	ut::log.Lock() << adapter_list_msg << ut::cret;
+
 	HRESULT result = E_FAIL;
 	for (UINT driver_type_id = 0; driver_type_id < num_driver_types; driver_type_id++)
 	{
-		D3D_DRIVER_TYPE driver_type = driver_types[driver_type_id];
-		result = D3D11CreateDevice(nullptr,
-			driver_type,
-			nullptr,
-			create_device_flags,
-			feature_levels,
-			num_feature_levels,
-			D3D11_SDK_VERSION,
-			&new_device_ptr,
-			nullptr,
-			nullptr);
+		const D3D_DRIVER_TYPE driver_type = adapter_choice == nullptr ?
+		                                    driver_types[driver_type_id] :
+		                                    D3D_DRIVER_TYPE_UNKNOWN;
+		result = D3D11CreateDevice(adapter_choice,
+		                           driver_type,
+		                           nullptr,
+		                           create_device_flags,
+		                           feature_levels,
+		                           num_feature_levels,
+		                           D3D11_SDK_VERSION,
+		                           &new_device_ptr,
+		                           nullptr,
+		                           nullptr);
 
 		if (SUCCEEDED(result))
 		{
@@ -57,6 +119,25 @@ ID3D11Device* CreateDX11Device()
 	{
 		throw ut::Error(ut::error::fail, ut::Print(result) + " failed to create dx11 device.");
 	}
+
+	IDXGIDevice1* dxgi_device;
+	result = new_device_ptr->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgi_device);
+	if (FAILED(result))
+	{
+		throw ut::Error(ut::error::fail, ut::Print(result) + " failed to get dx11 GI device.");
+	}
+
+	IDXGIAdapter* active_adapter;
+	result = dxgi_device->GetAdapter(&active_adapter);
+	if (FAILED(result))
+	{
+		throw ut::Error(ut::error::fail, ut::Print(result) + " failed to get dx11 device adapter.");
+	}
+
+	DXGI_ADAPTER_DESC active_adapter_desc;
+	active_adapter->GetDesc(&active_adapter_desc);
+	const ut::String active_adapter_name = ut::StrConvert<ut::wchar, char, ut::cp_utf8>(active_adapter_desc.Description);
+	ut::log.Lock() << "Using " << active_adapter_name << " for rendering." << ut::cret;
 
 	return new_device_ptr;
 }
@@ -171,18 +252,10 @@ D3D11_TEXTURE_ADDRESS_MODE ConvertTexAddressModeToDX11(Sampler::AddressMode mode
 
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformDevice::PlatformDevice(ID3D11Device* device_ptr) : d3d11_device(device_ptr)
-                                                         , immediate_context(GetMainContext())
-{
-	// create dxgi factory
-	IDXGIFactory1* gi_factory_ptr;
-	HRESULT result = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)(&gi_factory_ptr));
-	if (FAILED(result))
-	{
-		throw ut::Error(ut::error::fail, ut::Print(result) + " failed to create dxgi factory.");
-	}
-	gi_factory = ut::ComPtr<IDXGIFactory1>(gi_factory_ptr);
-}
+PlatformDevice::PlatformDevice(const ut::String& gpu_name) : gi_factory(CreateDxgiFactory())
+                                                           , d3d11_device(CreateDX11Device(gi_factory.Get(), gpu_name))
+                                                           , immediate_context(GetMainContext())
+{}
 
 // Move constructor.
 PlatformDevice::PlatformDevice(PlatformDevice&&) noexcept = default;
@@ -223,7 +296,12 @@ ut::Optional<ut::Error> PlatformDevice::ExtractBackBufferTextureAndView(IDXGISwa
 
 //----------------------------------------------------------------------------//
 // Constructor.
-Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend) : PlatformDevice(CreateDX11Device())
+//    @param ui_frontend - shared pointer to the user interface to be
+//                         launched in.
+//    @param gpu - string with the name or index of the desired graphics
+//                 adapter. Pass 'auto' to use default graphics card.
+Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend,
+               const ut::String& gpu) : PlatformDevice(gpu)
 {
 	info.max_uniform_buffer_size = 65536;
 	info.max_storage_buffer_size = 268435456;

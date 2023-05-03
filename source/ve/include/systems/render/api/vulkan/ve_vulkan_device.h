@@ -21,7 +21,7 @@ class PlatformDevice
 {
 public:
 	// Constructor.
-	PlatformDevice();
+	PlatformDevice(const ut::String& gpu_name);
 
 	// Destructor.
 	~PlatformDevice();
@@ -200,7 +200,8 @@ private:
 	static bool CheckValidationLayerSupport();
 
 	// Returns physical device that suits best.
-	static ut::Optional<VkPhysicalDevice> SelectPreferredPhysicalDevice(const ut::Array<VkPhysicalDevice>& devices);
+	static ut::Optional<VkPhysicalDevice> SelectPreferredPhysicalDevice(const ut::Array<VkPhysicalDevice>& devices,
+	                                                                    const ut::String& gpu_name);
 
 	// Returns an array of physical devices.
 	ut::Array<VkPhysicalDevice> EnumeratePhysicalDevices();
@@ -212,7 +213,7 @@ private:
 	VkDebugUtilsMessengerEXT CreateDbgMessenger();
 
 	// Creates VkDevice object.
-	VkDevice CreateVulkanDevice();
+	VkDevice CreateVulkanDevice(const ut::String& gpu_name);
 
 	// Creates desired queue.
 	VkRc<vk::queue> CreateQueue(vulkan_queue::FamilyType family_type, uint32_t id);

@@ -2,23 +2,34 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "ve_default.h"
+#include "ve_config.h"
 #include "systems/ui/ve_ui.h"
 #include "systems/input/ve_input_poll_system.h"
 #include "systems/render/ve_render_system.h"
 #include "systems/render/ve_render_camera_system.h"
 #include "systems/editor/ve_editor_camera_system.h"
 //----------------------------------------------------------------------------//
+template<> const char* ve::Config<ve::DefaultSettings>::skName = "default";
+//----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 // Generates default pipeline tree.
 Pipeline GenDefaultPipeline()
 {
+	// load default configuration
+	Config<DefaultSettings> config;
+	const ut::Optional<ut::Error> load_cfg_error = config.Load();
+	if (load_cfg_error)
+	{
+		config.Save();
+	}
+
 	// create ui window
 	ut::UniquePtr<ui::Frontend> ui_frontend = ut::MakeUnique<ui::PlatformFrontend>();
 	ut::SharedPtr<ui::Frontend::Thread> ui_frontend_thread = ut::MakeShared<ui::Frontend::Thread>(ut::Move(ui_frontend));
 
     // create render thread
-	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>(ui_frontend_thread);
+	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>(ui_frontend_thread, config.gpu);
 
 	// create input state shared among systems
 	ut::SharedPtr<input::Manager> input_mgr = ut::MakeShared<input::Manager>();
