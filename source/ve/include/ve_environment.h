@@ -33,9 +33,13 @@ public:
 	// Adds a new component to the desired entity.
 	//    @param entity_id - identifier of the entity to add the component to.
 	//    @param component - unique pointer to the component to be added.
+	//    @param overwrite - boolean flag, indicating if the component must be
+	//                       overwritten in the case when the desired entity
+	//                       already has a component of this type.
 	//    @return - optional ut::Error if failed.
 	ut::Optional<ut::Error> AddComponent(Entity::Id entity_id,
-	                                     ut::UniquePtr<Component> component);
+	                                     ut::UniquePtr<Component> component,
+	                                     bool overwrite = false);
 
 	// Deletes the entity from the environment.
 	//    @param entity_id - identifier of the desired entity.

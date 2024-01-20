@@ -23,7 +23,7 @@ public:
 	virtual ~Frontend() = default;
 
 	// Processes UI events.
-	virtual System::Result Update(ComponentAccess& access) = 0;
+	virtual System::Result Update(ComponentAccessGroup& access) = 0;
 
 	// One can start iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.

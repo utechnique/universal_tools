@@ -2,7 +2,6 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/editor/ve_editor_camera_system.h"
-#include "systems/render/engine/units/ve_render_view.h"
 #include "commands/ve_cmd_add_entity.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -11,7 +10,7 @@ START_NAMESPACE(editor)
 // Constructor.
 ViewportCameraSystem::ViewportCameraSystem(ut::SharedPtr<ui::Frontend::Thread> ui_frontend_thread,
                                            ut::SharedPtr<input::Manager> input_mgr_ptr) :
-	Base("editor_viewports_and_cameras"), input_mgr(ut::Move(input_mgr_ptr)), ui_thread(ut::Move(ui_frontend_thread))
+	Base("editor_viewport_cameras"), input_mgr(ut::Move(input_mgr_ptr)), ui_thread(ut::Move(ui_frontend_thread))
 {
 
 	ui_thread->Enqueue([&](ui::Frontend& frontend) { InitializeViewports(frontend); });
@@ -30,11 +29,7 @@ System::Result ViewportCameraSystem::Update(Base::Access& access)
 	const size_t viewport_count = viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
-		ut::Optional< ut::UniquePtr<Cmd> > cmd = ProcessViewport(access, viewports[i]);
-		if (cmd)
-		{
-			out_commands.Add(cmd.Move());
-		}
+		out_commands += ProcessViewport(access, viewports[i]);
 	}
 
 	timer.Start();
@@ -45,9 +40,11 @@ System::Result ViewportCameraSystem::Update(Base::Access& access)
 //----------------------------------------------------------------------------->
 // Processes camra that is associated with the provided viewport.
 // If such camera doesn't exist - a new camera entity will be created.
-ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(Base::Access& access,
-                                                                         ui::Viewport& viewport)
+CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
+                                               ui::Viewport& viewport)
 {
+	CmdArray commands;
+
 	// get viewport info
 	const ui::Viewport::Id viewport_id = viewport.GetId();
 	ut::String desired_name = ut::String("editor_camera_") + ut::Print(viewport_id);
@@ -75,9 +72,8 @@ ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(Base::A
 	// a new entity must be created if desired camera doesn't exist
 	if (!entity_id)
 	{
-		ut::Result<ut::UniquePtr<Cmd>, ut::Error> new_camera = CreateCamera(viewport_id,
-		                                                                    ut::Move(desired_name));
-		return new_camera.MoveOrThrow();
+		commands.Add(CreateCamera(viewport_id, ut::Move(desired_name)).MoveOrThrow());
+		return commands;
 	}
 
 	// get components
@@ -114,7 +110,7 @@ ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(Base::A
 	// check if input is allowed
 	if (!mode.has_input_focus)
 	{
-		return ut::Optional< ut::UniquePtr<Cmd> >(); // e x i t
+		return commands; // e x i t
 	}
 
 	// update camera position and direction
@@ -137,21 +133,8 @@ ut::Optional< ut::UniquePtr<Cmd> > ViewportCameraSystem::ProcessViewport(Base::A
 		                               observation_allowed);
 	}
 
-	// select entities
-	if (cursor_position && input_mgr->IsKeyDown(bindings.select_entity))
-	{
-		select_cursor_position = cursor_position;
-	}
-
-	ut::Optional<Entity::Id> selected_entity = SelectEntity(viewport,
-	                                                        render_view.Get());
-	if (selected_entity)
-	{
-
-	}
-
 	// success
-	return ut::Optional< ut::UniquePtr<Cmd> >(); // e x i t
+	return commands;
 }
 
 //----------------------------------------------------------------------------->
@@ -207,7 +190,7 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 		render_view.Invalidate();
 	}
 
-	// update aspect ration
+	// update aspect ratio
 	camera.aspect_ratio = static_cast<float>(mode.width) /
 	                      static_cast<float>(mode.height);
 
@@ -432,40 +415,6 @@ void ViewportCameraSystem::InitializeViewports(ui::Frontend& ui_frontend)
 	{
 		viewports.Add(*iterator);
 	}
-}
-
-//----------------------------------------------------------------------------->
-// Returnes the identifier of the selected entity id using the hitmask of
-// the desired viewport.
-ut::Optional<Entity::Id> ViewportCameraSystem::SelectEntity(const ui::Viewport& ui_viewport,
-                                                            render::View& render_view)
-{
-	// exit if user didn't click
-	if (!select_cursor_position)
-	{
-		return ut::Optional<Entity::Id>();
-	}
-
-	// check if hitmask is ready
-	if (render_view.hitmask.Count() == 0)
-	{
-		render_view.draw_hitmask = true;
-		return ut::Optional<Entity::Id>();
-	}
-
-	// get entity id from the hitmask
-	const ut::uint32 x = static_cast<ut::uint32>((select_cursor_position->X() * 0.5f + 0.5f) * render_view.width);
-	const ut::uint32 y = static_cast<ut::uint32>((1.0f - select_cursor_position->Y() * 0.5f - 0.5f) * render_view.height);
-	const Entity::Id entity_id = render_view.hitmask[y * render_view.width + x];
-
-	// disable hitmask
-	render_view.draw_hitmask = false;
-
-	// reset cursor click position
-	select_cursor_position = ut::Optional< ut::Vector<2> >();
-
-	// id was successfully extracted
-	return entity_id;
 }
 
 //----------------------------------------------------------------------------//

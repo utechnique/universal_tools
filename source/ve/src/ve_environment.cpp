@@ -47,9 +47,13 @@ ut::Result<Entity::Id, ut::Error> CmdAccessibleEnvironment::AddEntity()
 // Adds a new component to the desired entity.
 //    @param entity_id - identifier of the entity to add the component to.
 //    @param component - unique pointer to the component to be added.
+//    @param overwrite - boolean flag, indicating if the component must be
+//                       overwritten in the case when the desired entity
+//                       already has a component of this type.
 //    @return - optional ut::Error if failed.
 ut::Optional<ut::Error> CmdAccessibleEnvironment::AddComponent(Entity::Id entity_id,
-                                                               ut::UniquePtr<Component> component)
+                                                               ut::UniquePtr<Component> component,
+                                                               bool overwrite)
 {
 	// find desired entity by it's identifier
 	ut::Optional<Entity&> entity = entities.Find(entity_id);
@@ -70,7 +74,15 @@ ut::Optional<ut::Error> CmdAccessibleEnvironment::AddComponent(Entity::Id entity
 	// check if this component already exists
 	if (entity->HasComponent(component_type))
 	{
-		return ut::Error(ut::error::already_exists);
+		if (overwrite)
+		{
+			const ut::Optional<ut::Error> delete_error = DeleteComponent(entity_id, component_type);
+			UT_ASSERT(!delete_error);
+		}
+		else
+		{
+			return ut::Error(ut::error::already_exists);
+		}
 	}
 
 	// add component
@@ -142,35 +154,27 @@ ut::Optional<ut::Error> CmdAccessibleEnvironment::DeleteComponent(Entity::Id ent
 	{
 		return ut::Error(ut::error::not_found);
 	}
-
-	// find and remove the desired component
 	Entity& entity = find_result.Get();
-	const size_t component_count = entity.CountComponents();
-	for (size_t i = 0; i < component_count; i++)
+
+	// check if this entity has the desired component
+	if (!entity.HasComponent(component_type))
 	{
-		const ut::DynamicType::Handle component_type_handle = entity.GetComponentByIndex(i);
-		if (component_type_handle != component_type)
-		{
-			continue;
-		}
-
-		// remove the component
-		ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = components.Find(component_type);
-		UT_ASSERT(component_map.HasValue());
-		const bool remove_component_result = component_map.Get()->Remove(entity_id);
-		UT_ASSERT(remove_component_result);
-		entity.RemoveComponent(i);
-
-		// re-register the entity
-		pipeline.UnregisterEntity(entity_id);
-		pipeline.RegisterEntity(entity_id, entity);
-
-		// exit
-		return ut::Optional<ut::Error>();
+		return ut::Error(ut::error::not_found);
 	}
 
-	// the component was not found
-	return ut::Error(ut::error::not_found);
+	// remove the component
+	ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = components.Find(component_type);
+	UT_ASSERT(component_map.HasValue());
+	const bool remove_component_result = component_map.Get()->Remove(entity_id);
+	UT_ASSERT(remove_component_result);
+	entity.RemoveComponent(component_type);
+
+	// re-register the entity
+	pipeline.UnregisterEntity(entity_id);
+	pipeline.RegisterEntity(entity_id, entity);
+
+	// exit
+	return ut::Optional<ut::Error>();
 }
 
 // Updates the desired component.

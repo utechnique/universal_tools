@@ -400,7 +400,7 @@ public:
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
 	//    @return - array of accumulated commands pending to be processed.
-	CmdArray UpdateEntities(ComponentAccess& access);
+	CmdArray UpdateEntities(ComponentAccessGroup& access);
 
 	// Default metrics of this window in pixels.
 	static const ut::uint32 skDefaultWidth;
@@ -465,7 +465,7 @@ private:
 	// will be used to update UI component views on the next UI tick.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
-	void PrepareEntityProxies(ComponentAccess& access);
+	void PrepareEntityProxies(ComponentAccessGroup& access);
 
 	// Updates UI representation of all entities.
 	void UpdateUi();

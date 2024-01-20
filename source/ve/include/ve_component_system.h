@@ -59,37 +59,39 @@ struct ComponentMapStaticIterator<id, id, PtrContainer>
 // entities. It accepts variable number of template arguments, and each one
 // represents a component that must be present inside an entity so that it
 // could be registered. Therefore, only entities that have all(!) needed
-// components will be registered. Registered entities are stored in the special
-// array ('@entities') that holds pointers to the components and entity id.
+// components will be registered. One can get access to the registered entities
+// and components by using ve::ComponentSystem::Access interface that is passed
+// to the overridden virtual ve::ComponentSystem::Update() function.
 template<typename... Components>
 class ComponentSystem : public System
 {
 	typedef ut::Container<ComponentMapImpl<Components>*...> ComponentContainer;
 public:
-	// Constructor.
-	//    @param system_name - name of the system.
-	ComponentSystem(ut::String system_name) : System(ut::Move(system_name))
-	{}
 
+	// ve::ComponentSystem::Access is a wrapper class around the
+	// ve::ComponentAccess object.
 	class Access : private ComponentContainer
 	{
+		template <int, int, typename> friend struct CompoundAccessStaticIterator;
+
+		// This function helps to extract desired component access from the
+		// provided access group.
+		static ComponentAccess GetComponentAccessFromGroup(ComponentAccessGroup& group_access)
+		{
+			ut::Optional<ComponentAccess> component_access = group_access.GetAccess<Components...>();
+			UT_ASSERT(static_cast<bool>(component_access));
+			return component_access.Move();
+		}
+
 	public:
-		typedef ComponentAccess::EntityIterator EntityIterator;
+		// Use this type to iterate registered entities.
+		typedef IterativeComponentSet::Iterator EntityIterator;
 
 		// Template argument list can't be empty.
 		static_assert(ComponentContainer::size > 0, "ve::ComponentSystem must have at least one template argument.");
 
-		const ut::Pair<const Entity::Id, Entity>& operator [] (const size_t id) const
-		{
-			return access[id];
-		}
-
-		// Returns the reference to the desired entity.
-		//    @param id - counter index of the entity (can be used with
-		//                CountEntities() method). WARNING! Not the same as
-		//                ve::Entity::Id!
-		//    @return - const reference to the Id/Entity pair.
-		Access(ComponentAccess& component_access) : access(component_access)
+		// Constructor initializes managed component access.
+		Access(ComponentAccessGroup& group_access) : access(GetComponentAccessFromGroup(group_access))
 		{
 			ComponentMapStaticIterator<0, ComponentContainer::size - 1, ComponentContainer>::Initialize(access, *this);
 		}
@@ -103,13 +105,13 @@ public:
 		}
 
 		// Returns a read / write iterator that points to the first entity.
-		inline EntityIterator BeginEntities() const
+		inline IterativeComponentSet::Iterator BeginEntities() const
 		{
 			return access.BeginEntities();
 		}
 
 		// Returns a read / write iterator that points to the last entity.
-		inline EntityIterator EndEntities() const
+		inline IterativeComponentSet::Iterator EndEntities() const
 		{
 			return access.EndEntities();
 		}
@@ -120,9 +122,22 @@ public:
 			return access.CountEntities();
 		}
 
+		// Returns the desired entity. Call CountEntities() function
+		// to be able to iterate entities using their index numbers.
+		//    @param id - index of the desired entity. 
+		const ut::Pair<const Entity::Id, Entity>& operator [] (const size_t id) const
+		{
+			return access[id];
+		}
+
 	private:
-		ComponentAccess& access;
+		ComponentAccess access;
 	};
+
+	// Constructor.
+	//    @param system_name - name of the system.
+	ComponentSystem(ut::String system_name) : System(ut::Move(system_name))
+	{}
 
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
@@ -151,22 +166,22 @@ protected:
 	// Creates component maps specific to the current system. Depending on
 	// the returned types of components, the @Update method will receive a
 	// reference to the ve::ComponentAccess object (as an argument) providing
-	// the access only for the desired components. If the returned object is
-	// empty - the system will receive all component types.
-	virtual ut::Optional< ComponentMapCollection<ut::access_full> > SynchronizeComponents() const
+	// the access only for the desired components.
+	virtual ut::Array< ComponentSet<ut::access_full> > DefineComponentSets() const override
 	{
-		ComponentMapCollection<ut::access_full> component_maps;
-		ComponentMapStaticIterator<0, ComponentContainer::size - 1, ComponentContainer>::GenerateComponentMaps(component_maps);
-		return component_maps;
+		ut::Array< ComponentSet<ut::access_full> > sets(1);
+		sets.GetFirst().operation = Component::op_intersection;
+		ComponentMapStaticIterator<0, ComponentContainer::size - 1, ComponentContainer>::GenerateComponentMaps(sets.GetFirst().component_maps);
+		return sets;
 	}
 
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	System::Result Update(ComponentAccess& component_access) override
+	System::Result Update(ComponentAccessGroup& group_access) override
 	{
-		Access access(component_access);
+		Access access(group_access);
 		return Update(access);
 	}
 
@@ -175,9 +190,9 @@ protected:
 	//    @param access - reference to the object providing access to
 	//                    components.
 	//    @return - 'true' if entity was registered successfully.
-	bool RegisterEntity(Entity::Id id, ComponentAccess& component_access) override
+	bool RegisterEntity(Entity::Id id, ComponentAccessGroup& group_access) override
 	{
-		Access access(component_access);
+		Access access(group_access);
 		return RegisterEntity(id, access);
 	}
 
@@ -185,9 +200,9 @@ protected:
 	//    @param id - identifier of the entity.
 	//    @param access - reference to the object providing access to
 	//                    components.
-	void UnregisterEntity(Entity::Id id, ComponentAccess& component_access) override
+	void UnregisterEntity(Entity::Id id, ComponentAccessGroup& group_access) override
 	{
-		Access access(component_access);
+		Access access(group_access);
 		return UnregisterEntity(id, access);
 	}
 };

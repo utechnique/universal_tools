@@ -99,7 +99,7 @@ private:
 	ut::SharedPtr<System> system;
 
 	// Provides an access to the components available for the @system.
-	SynchronizableComponentAccess component_access;
+	SynchronizableComponentAccessGroup component_access;
 
 	// child pipelines to be executed simultaneously
 	ut::Array<Pipeline> parallel;

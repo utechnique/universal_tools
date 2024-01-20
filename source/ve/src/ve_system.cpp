@@ -15,7 +15,7 @@ System::System(ut::String system_name) : name(ut::Move(system_name))
 //    @param access - reference to the object providing access to
 //                    components.
 //    @return - 'true' if entity was registered successfully.
-bool System::RegisterEntity(Entity::Id id, ComponentAccess& access)
+bool System::RegisterEntity(Entity::Id id, ComponentAccessGroup& access)
 {
 	return true;
 };
@@ -24,16 +24,16 @@ bool System::RegisterEntity(Entity::Id id, ComponentAccess& access)
 //    @param id - identifier of the entity.
 //    @param access - reference to the object providing access to
 //                    components.
-void System::UnregisterEntity(Entity::Id id, ComponentAccess& access)
+void System::UnregisterEntity(Entity::Id id, ComponentAccessGroup& access)
 {}
 
 // Updates system. This function is called once per tick
 // by ve::Environment.
 //    @return - array of commands to be executed by owning environment,
 //              or ut::Error if system encountered fatal error.
-System::Result System::Update(ComponentAccess& access)
+System::Result System::Update(ComponentAccessGroup& access)
 {
-	CmdArray empty;
+	System::Result empty;
 	return empty;
 }
 
@@ -42,9 +42,9 @@ System::Result System::Update(ComponentAccess& access)
 // reference to the ve::ComponentAccess object (as an argument) providing
 // the access only for the desired components. If the returned object is
 // empty - the system will receive all component types.
-ut::Optional< ComponentMapCollection<ut::access_full> > System::SynchronizeComponents() const
+ut::Array< ComponentSet<ut::access_full> > System::DefineComponentSets() const
 {
-	return ut::Optional< ComponentMapCollection<ut::access_full> >();
+	return ut::Array< ComponentSet<ut::access_full> >();
 }
 
 // Returns name of the system.

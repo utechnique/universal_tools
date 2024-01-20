@@ -32,13 +32,13 @@ public:
 	//    @param access - reference to the object providing access to
 	//                    components.
 	//    @return - 'true' if entity was registered successfully.
-	virtual bool RegisterEntity(Entity::Id id, ComponentAccess& access);
+	virtual bool RegisterEntity(Entity::Id id, ComponentAccessGroup& access);
 
 	// Unregisters the desired entity by its identifier.
 	//    @param id - identifier of the entity.
 	//    @param access - reference to the object providing access to
 	//                    components.
-	virtual void UnregisterEntity(Entity::Id id, ComponentAccess& access);
+	virtual void UnregisterEntity(Entity::Id id, ComponentAccessGroup& access);
 
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
@@ -46,14 +46,14 @@ public:
 	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	virtual Result Update(ComponentAccess& access) = 0;
+	virtual Result Update(ComponentAccessGroup& access) = 0;
 
-	// Creates component maps specific to the current system. Depending on
-	// the returned types of components, the @Update method will receive a
-	// reference to the ve::ComponentAccess object (as an argument) providing
-	// the access only for the desired components. If the returned object is
-	// empty - the system will receive all component types.
-	virtual ut::Optional< ComponentMapCollection<ut::access_full> > SynchronizeComponents() const;
+	// Creates component sets specific to the current system. Depending on
+	// the returned component types, the @Update method will receive a
+	// reference to the ve::ComponentAccessGroup object (as an argument) 
+	// providing the access only for the desired components. If the returned
+	// object is empty - the system will receive all component types.
+	virtual ut::Array< ComponentSet<ut::access_full> > DefineComponentSets() const;
 
 	// Returns name of the system.
 	const ut::String& GetName() const;

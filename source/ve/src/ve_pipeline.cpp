@@ -194,7 +194,10 @@ ComponentMapCollection<ut::access_full> Pipeline::SynchronizeComponents()
 {
 	ComponentMapCollection<ut::access_full> map_collection;
 
+	// Create empty component maps from systems demands.
 	CollectComponentMaps(map_collection);
+
+	// Synchronize component maps with access interface for all systems.
 	SynchronizeComponents(map_collection);
 
 	return map_collection;
@@ -205,17 +208,23 @@ ComponentMapCollection<ut::access_full> Pipeline::SynchronizeComponents()
 //                             store component maps in.
 void Pipeline::CollectComponentMaps(ComponentMapCollection<ut::access_full>& map_collection)
 {
-	ut::Optional< ComponentMapCollection<ut::access_full> > compatible_maps = system ? system->SynchronizeComponents()
-	                                                                                 : ut::Optional< ComponentMapCollection<ut::access_full> >();
-
-	// add new maps to the @source and generate access maps
-	if (compatible_maps)
+	// extract component maps from component sets of the current system 
+	if (system)
 	{
-		ComponentMapCollection<ut::access_full>::Iterator iterator;
-		for (iterator = compatible_maps->Begin(); iterator != compatible_maps->End(); ++iterator)
+		ut::Array< ComponentSet<ut::access_full> > component_sets = system->DefineComponentSets();
+		ut::Array< ComponentSet<ut::access_full> >::Iterator component_set_iterator;
+		ComponentMapCollection<ut::access_full>::Iterator component_map_iterator;
+		for (component_set_iterator = component_sets.Begin();
+		     component_set_iterator != component_sets.End();
+		     ++component_set_iterator)
 		{
-			const ut::DynamicType::Handle component_type = iterator->GetFirst();
-			map_collection.Insert(component_type, ut::Move(ut::Move(iterator->second)));
+			for (component_map_iterator = component_set_iterator->component_maps.Begin();
+			     component_map_iterator != component_set_iterator->component_maps.End();
+			     ++component_map_iterator)
+			{
+				const ut::DynamicType::Handle component_type = component_map_iterator->GetFirst();
+				map_collection.Insert(component_type, ut::Move(component_map_iterator->second));
+			}
 		}
 	}
 
@@ -260,26 +269,51 @@ void Pipeline::SynchronizeComponents(ComponentMapCollection<ut::access_full>& so
 		return;
 	}
 
-	// get a collection of component maps compatible with the managed system
-	ut::Optional< ComponentMapCollection<ut::access_full> > system_compatible_maps = system->SynchronizeComponents();
-	const bool accept_all_entities = !system_compatible_maps.HasValue();
-	ComponentMapCollection<ut::access_full>& compatible_maps = accept_all_entities ? source : system_compatible_maps.Get();
-
-	// generate a collection of shared component maps accessible to the managed system
-	ComponentMapCollection<ut::access_read> accessible_maps;
-	ComponentMapCollection<ut::access_full>::Iterator iterator;
-	for (iterator = compatible_maps.Begin(); iterator != compatible_maps.End(); ++iterator)
+	// generate component sets for system access
+	ut::Array< ComponentSet<ut::access_full> > system_sets = system->DefineComponentSets();
+	const bool accept_all_entities = system_sets.IsEmpty();
+	ut::Array< ComponentSet<ut::access_read> > access_sets;
+	if (accept_all_entities)
 	{
-		const ut::DynamicType::Handle component_type = iterator->GetFirst();
-		ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = source.Find(component_type);
-		if (component_map)
+		ComponentSet<ut::access_read> access_set;
+		access_set.operation = Component::op_union;
+
+		ComponentMapCollection<ut::access_full>::Iterator map_iterator;
+		for (map_iterator = source.Begin();
+		     map_iterator != source.End();
+		     ++map_iterator)
 		{
-			accessible_maps.Insert(component_type, component_map.Get());
+			access_set.component_maps.Insert(map_iterator->GetFirst(), map_iterator->GetSecond());
+		}
+
+		access_sets.Add(ut::Move(access_set));
+	}
+	else
+	{
+		ut::Array< ComponentSet<ut::access_full> >::Iterator sys_set_iterator;
+		for (sys_set_iterator = system_sets.Begin();
+		     sys_set_iterator != system_sets.End();
+		     ++sys_set_iterator)
+		{
+			ComponentSet<ut::access_read> access_set;
+			access_set.operation = sys_set_iterator->operation;
+			
+			ComponentMapCollection<ut::access_full>::Iterator map_iterator;
+			for (map_iterator = sys_set_iterator->component_maps.Begin();
+			     map_iterator != sys_set_iterator->component_maps.End();
+			     ++map_iterator)
+			{
+				const ut::DynamicType::Handle component_type = map_iterator->GetFirst();
+				ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = source.Find(component_type);
+				access_set.component_maps.Insert(component_type, component_map.Get());
+			}
+
+			access_sets.Add(ut::Move(access_set));
 		}
 	}
 
 	// synchronize component maps between the source and the @component_access
-	component_access.Sync(ut::Move(accessible_maps), accept_all_entities);
+	component_access = SynchronizableComponentAccessGroup(access_sets);
 }
 
 //----------------------------------------------------------------------------//

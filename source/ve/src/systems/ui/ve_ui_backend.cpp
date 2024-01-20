@@ -18,7 +18,7 @@ Backend::Backend(ut::SharedPtr<Frontend::Thread> in_frontend_thread) : System("u
 	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-System::Result Backend::Update(ComponentAccess& access)
+System::Result Backend::Update(ComponentAccessGroup& access)
 {
 	// return value
 	ut::Array< ut::UniquePtr<Cmd> > commands;

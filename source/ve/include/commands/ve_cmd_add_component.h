@@ -16,8 +16,12 @@ public:
 	// Constructor.
 	//    @param entity_id - identifier of the entity to add the component.
 	//    @param component - the unique pointer to the component to be added.
+	//    @param overwrite - boolean flag, indicating if the component must be
+	//                       overwritten in the case when the desired entity
+	//                       already has a component of this type.
 	CmdAddComponent(Entity::Id entity_id,
-	                ut::UniquePtr<Component> component) noexcept;
+	                ut::UniquePtr<Component> component,
+	                bool overwrite = false) noexcept;
 
 	// Calls ve::Environment::AddComponent().
 	//    @param environment - reference to the environment
@@ -33,6 +37,10 @@ public:
 private:
 	// Entity to add the component to.
 	Entity::Id entity_id;
+
+	// Indicates if the component must be overwritten in the case when
+	// the desired entity already has a component of this type.
+	bool overwrite;
 
 	// Component to be added.
 	ut::UniquePtr<Component> component;

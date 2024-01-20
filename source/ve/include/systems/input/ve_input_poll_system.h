@@ -21,7 +21,7 @@ public:
 	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	System::Result Update(ComponentAccess& access) override;
+	System::Result Update(ComponentAccessGroup& access) override;
 
 private:
 	ut::SharedPtr<input::Manager> input_mgr;

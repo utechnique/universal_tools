@@ -9,9 +9,14 @@ START_NAMESPACE(ve)
 // Constructor.
 //    @param entity_id - identifier of the entity to add the component.
 //    @param component - the unique pointer to the component to be added.
+//    @param overwrite - boolean flag, indicating if the component must be
+//                       overwritten in the case when the desired entity
+//                       already has a component of this type.
 CmdAddComponent::CmdAddComponent(Entity::Id in_entity_id,
-                                 ut::UniquePtr<Component> in_component) noexcept : entity_id(in_entity_id)
-                                                                                 , component(ut::Move(in_component))
+                                 ut::UniquePtr<Component> in_component,
+                                 bool in_overwrite ) noexcept : entity_id(in_entity_id)
+                                                              , component(ut::Move(in_component))
+                                                              , overwrite(in_overwrite)
 {}
 
 // Calls ve::Environment::AddComponent().
@@ -21,7 +26,9 @@ CmdAddComponent::CmdAddComponent(Entity::Id in_entity_id,
 //              the command.
 ut::Optional<ut::Error> CmdAddComponent::Execute(CmdAccessibleEnvironment& environment)
 {
-	ut::Optional<ut::Error> error = environment.AddComponent(entity_id, ut::Move(component));
+	ut::Optional<ut::Error> error = environment.AddComponent(entity_id,
+	                                                         ut::Move(component),
+	                                                         overwrite);
 	signal(error);
 	return ut::Optional<ut::Error>();
 }

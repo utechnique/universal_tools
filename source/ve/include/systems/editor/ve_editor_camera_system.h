@@ -40,10 +40,10 @@ public:
 	System::Result Update(Base::Access& access) override;
 
 private:
-	// Processes camra that is associated with the provided viewport.
+	// Processes camera that is associated with the provided viewport.
 	// If such camera doesn't exist - a new camera entity will be created.
-	ut::Optional< ut::UniquePtr<Cmd> > ProcessViewport(Base::Access& access,
-	                                                   ui::Viewport& viewport);
+	CmdArray ProcessViewport(Base::Access& access,
+	                         ui::Viewport& viewport);
 
 	// Updates camera according to the associated viewport.
 	//    @param transform - reference to the transform component.
@@ -89,12 +89,6 @@ private:
 	// Initializes @viewports array.
 	void InitializeViewports(ui::Frontend& ui_frontend);
 
-	// Returnes the identifier of the selected entity id using the hitmask of
-	// the desired viewport.
-	ut::Optional<Entity::Id> SelectEntity(const ui::Viewport& ui_viewport,
-	                                      render::View& render_view);
-
-	ut::Optional< ut::Vector<2> > select_cursor_position;
 	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
 	ut::SharedPtr<input::Manager> input_mgr;
 	ut::Array< ut::Ref<ui::Viewport> > viewports;

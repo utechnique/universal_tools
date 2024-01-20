@@ -16,7 +16,7 @@ PollSystem::PollSystem(ut::SharedPtr<input::Manager> input_mgr_ptr) : System("in
 //                    desired components.
 //    @return - array of commands to be executed by owning environment,
 //              or ut::Error if system encountered fatal error.
-System::Result PollSystem::Update(ComponentAccess& access)
+System::Result PollSystem::Update(ComponentAccessGroup& access)
 {
 	UT_ASSERT(input_mgr);
 	input_mgr->Update();

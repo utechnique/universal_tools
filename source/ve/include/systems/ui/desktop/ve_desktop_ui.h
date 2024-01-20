@@ -69,7 +69,7 @@ public:
 	void SaveCfg();
 
 	// Processes UI events.
-	System::Result Update(ComponentAccess& access) override;
+	System::Result Update(ComponentAccessGroup& access) override;
 
 	// One can start iterating viewports by calling this function.
 	//    @return - viewport iterator, elements can be modified.

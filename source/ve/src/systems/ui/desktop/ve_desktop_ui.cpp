@@ -282,7 +282,7 @@ void DesktopFrontend::SaveCfg()
 
 //----------------------------------------------------------------------------->
 // Processes UI events.
-System::Result DesktopFrontend::Update(ComponentAccess& access)
+System::Result DesktopFrontend::Update(ComponentAccessGroup& access)
 {
 	UT_ASSERT(entity_browser);
 	

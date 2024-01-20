@@ -25,6 +25,7 @@ public:
 	ut::String observation_source_x = "MouseX",
 	           observation_source_y = "MouseY";
 	ut::String zoom_source = "MouseWheel";
+	ut::String multiplication_modifier = "LCtrl";
 };
 
 //----------------------------------------------------------------------------//

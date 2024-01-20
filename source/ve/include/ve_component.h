@@ -14,6 +14,19 @@ START_NAMESPACE(ve)
 class Component : public ut::Polymorphic, public ut::meta::Reflective
 {
 public:
+	// These operation types define how component sets (in analogy to
+	// mathematic set theory) are associated with a particular entity.
+	enum EntityAssociationOperation
+	{
+		// Entities associated with AT LEAST ONE component from a list
+		// are registered:
+		op_union,
+
+		// Only entities associated with ALL components from a list
+		// are registered:
+		op_intersection
+	};
+
 	// Identify() method must be implemented for the polymorphic types.
 	virtual const ut::DynamicType& Identify() const = 0;
 
@@ -162,14 +175,40 @@ template<ut::Access access = ut::access_read>
 using ComponentMapCollection = ut::DenseHashMap<ut::DynamicType::Handle, typename SharedComponentMap<access>::Type >;
 
 //----------------------------------------------------------------------------->
-// ve::ComponentAccess is a safe interface providing a selective access for the
-// desired components maps. One can modify components inside a map, but cannot
-// change the map itself.
+// ve::ComponentSet represents a set of entities where every entity
+// is guaranteed to be associated with components from the @component_maps.
+template<ut::Access access>
+struct ComponentSet
+{
+	static_assert(access != ut::access_write,
+		"ut::access_write is not allowed, use ut::access_read or ut::access_full.");
+
+	// This map contains hashmaps of components (one map per component type).
+	ComponentMapCollection<access> component_maps;
+
+	// The type of this set, can be 'union' or 'intersection' in analogy to the
+	// mathematic set theory
+	Component::EntityAssociationOperation operation = Component::op_intersection;
+};
+
+// The same as ve::ComponentSet<ut::access_read> but also provides an interface
+// to iterate entities associated with desired components.
+struct IterativeComponentSet : public ComponentSet<ut::access_read>
+                             , public ut::DenseHashMap<Entity::Id, Entity>
+{
+	typedef ComponentSet<ut::access_read> Base;
+	IterativeComponentSet(Base&& base) : Base(ut::Move(base)) {}
+};
+
+//----------------------------------------------------------------------------->
+// ve::ComponentAccess provides a read-only access to the 
+// ve::IterativeComponentSet object.
 class ComponentAccess
 {
 public:
-	typedef ut::DenseHashMap<Entity::Id, Entity> EntityMap;
-	typedef EntityMap::ConstIterator EntityIterator;
+	// Constructor accepts the reference to the component set.
+	ComponentAccess(IterativeComponentSet& in_component_set) : component_set(in_component_set)
+	{}
 
 	// Returns the reference to the desired entity.
 	//    @param id - counter index of the entity (can be used with
@@ -178,90 +217,168 @@ public:
 	//    @return - const reference to the Id/Entity pair.
 	const ut::Pair<const Entity::Id, Entity>& operator [] (const size_t index) const
 	{
-		return entities[index];
+		return component_set[index];
 	}
 
 	// Returns the component map of the desired type or nothing if not found.
 	template<typename ComponentType>
-	inline ut::Optional<ComponentMap&> GetMap()
+	inline ut::Optional<ComponentMap&> GetMap() const
 	{
-		ut::Optional<SharedComponentMap<ut::access_read>::Type&> map = component_maps.Find(ut::GetPolymorphicHandle<ComponentType>());
+		ut::Optional<SharedComponentMap<ut::access_read>::Type&> map = component_set.component_maps.Find(ut::GetPolymorphicHandle<ComponentType>());
 		return map ? ut::Optional<ComponentMap&>(map->GetRef()) : ut::Optional<ComponentMap&>();
 	}
 
 	// Returns the component map of the desired type or nothing if not found.
-	template<typename ComponentType>
-	inline ut::Optional<const ComponentMap&> GetMap() const
+	inline ut::Optional<ComponentMap&> GetMap(ut::DynamicType::Handle component_type) const
 	{
-		ut::Optional<const SharedComponentMap<ut::access_read>::Type&> map = component_maps.Find(ut::GetPolymorphicHandle<ComponentType>());
-		return map ? ut::Optional<const ComponentMap&>(map->GetRef()) : ut::Optional<const ComponentMap&>();
-	}
-
-	// Returns the component map of the desired type or nothing if not found.
-	inline ut::Optional<ComponentMap&> GetMap(ut::DynamicType::Handle component_type)
-	{
-		ut::Optional<SharedComponentMap<ut::access_read>::Type&> map = component_maps.Find(component_type);
+		ut::Optional<SharedComponentMap<ut::access_read>::Type&> map = component_set.component_maps.Find(component_type);
 		return map ? ut::Optional<ComponentMap&>(map->GetRef()) : ut::Optional<ComponentMap&>();
-	}
-
-	// Returns the component map of the desired type or nothing if not found.
-	inline ut::Optional<const ComponentMap&> GetMap(ut::DynamicType::Handle component_type) const
-	{
-		ut::Optional<const SharedComponentMap<ut::access_read>::Type&> map = component_maps.Find(component_type);
-		return map ? ut::Optional<const ComponentMap&>(map->GetRef()) : ut::Optional<const ComponentMap&>();
 	}
 
 	// Returns 'true' if an entity with such id is registered.
 	inline bool IsEntityRegistered(Entity::Id entity_id) const
 	{
-		return entities.Find(entity_id).HasValue();
+		return component_set.Find(entity_id).HasValue();
 	}
 
 	// Returns a read / write iterator that points to the first entity.
-	inline EntityIterator BeginEntities() const
+	inline IterativeComponentSet::Iterator BeginEntities() const
 	{
-		return entities.Begin();
+		return component_set.Begin();
 	}
 
 	// Returns a read / write iterator that points to the last entity.
-	inline EntityIterator EndEntities() const
+	inline IterativeComponentSet::Iterator EndEntities() const
 	{
-		return entities.End();
+		return component_set.End();
 	}
 
 	inline ut::Optional<const Entity&> FindEntity(Entity::Id id) const
 	{
-		return entities.Find(id);
+		return static_cast<const IterativeComponentSet&>(component_set).Find(id);
 	}
 
 	// Returns the number of entities that can be accessed.
 	inline size_t CountEntities() const
 	{
-		return entities.Count();
+		return component_set.Count();
+	}
+
+	// Returns the number of component types that can be accessed.
+	inline size_t CountComponentTypes() const
+	{
+		return component_set.component_maps.Count();
+	}
+
+private:
+	IterativeComponentSet& component_set;
+};
+
+//----------------------------------------------------------------------------->
+// ve::ComponentAccess is a safe interface providing a selective access for the
+// desired components maps. One can modify components inside a map, but cannot
+// change the map itself.
+class ComponentAccessGroup
+{
+	template<typename Component, typename... ComponentTail>
+	struct AccessHelper
+	{
+		static bool CheckIfSetContainsAllAndOnlyComponents(const ComponentAccess& access, size_t index = 1)
+		{
+			return AccessHelper<Component>::CheckIfSetContainsAllAndOnlyComponents(access, access.CountComponentTypes()) ?
+				AccessHelper<ComponentTail...>::CheckIfSetContainsAllAndOnlyComponents(access, index + 1) : false;
+		}
+	};
+
+	template<typename Component>
+	struct AccessHelper<Component>
+	{
+		static bool CheckIfSetContainsAllAndOnlyComponents(const ComponentAccess& access, size_t index = 1)
+		{
+			return index == access.CountComponentTypes() && static_cast<bool>(access.GetMap<Component>());
+		}
+	};
+
+	// Returns the component access set providing the access to all (and only)
+	// desired component types.
+	template<typename AccessType, typename... Components>
+	inline ut::Optional<AccessType> GetAccessImpl()
+	{
+		const size_t access_set_count = component_sets.Count();
+		for (size_t i = 0; i < access_set_count; i++)
+		{
+			AccessType access_set = component_sets[i];
+			if (AccessHelper<Components...>::CheckIfSetContainsAllAndOnlyComponents(access_set))
+			{
+				return access_set;
+			}
+		}
+
+		return ut::Optional<AccessType>();
+	}
+
+public:
+	// Returns the refenrece to the ve::ComponentAccess object providing an
+	// access to the entities associated simultaneously with all desired
+	// template component argument types (and only them) or nothing if there
+	// is no such access configuration available in this group.
+	template<typename... Components>
+	ut::Optional<ComponentAccess> GetAccess()
+	{
+		const size_t component_set_count = component_sets.Count();
+		for (size_t i = 0; i < component_set_count; i++)
+		{
+			IterativeComponentSet& component_set = component_sets[i];
+			if (AccessHelper<Components...>::CheckIfSetContainsAllAndOnlyComponents(component_set))
+			{
+				return ComponentAccess(component_set);
+			}
+		}
+
+		return ut::Optional<ComponentAccess>();
+	}
+
+	// Returns the component access set with the desired index (const).
+	ComponentAccess GetAccess(size_t index)
+	{
+		return ComponentAccess(component_sets[index]);
+	}
+
+	// Returns the number of component combinations that can be accessed.
+	inline size_t CountComponentSets() const
+	{
+		return component_sets.Count();
 	}
 
 protected:
-	// This map contains hashmaps of components (one map per component type).
-	ComponentMapCollection<ut::access_read> component_maps;
-
-	// Entity ID hashmap.
-	EntityMap entities;
+	ut::Array<IterativeComponentSet> component_sets;
 };
 
 // ve::SynchronizableComponentAccess is a ve::ComponentAccess
 // that can be synchronized with the external component map collection.
-class SynchronizableComponentAccess : public ComponentAccess
+class SynchronizableComponentAccessGroup : public ComponentAccessGroup
 {
 public:
-	// Synchronizes internal component maps with the provided collection.
-	//    @param source - shared component map collection.
-	//    @param accept_all - set this parameter to 'true' if you want to
-	//                        accept all entities.
-	void Sync(ComponentMapCollection<ut::access_read> source, bool accept_all = false)
+	typedef ut::Array< ComponentSet<ut::access_read> > SyncSource;
+
+	// Default constructor initializes child ve::ComponentAccessGroup
+	// class to have access to the managed component maps.
+	SynchronizableComponentAccessGroup(SyncSource source = SyncSource())
 	{
-		component_maps = ut::Move(source);
-		accept_all_entities = accept_all;
+		const size_t src_maps_count = source.Count();
+		for (size_t i = 0; i < src_maps_count; i++)
+		{
+			component_sets.Add(IterativeComponentSet(ut::Move(source[i])));
+		}
 	}
+
+	// Copying is prohibited.
+	SynchronizableComponentAccessGroup(const SynchronizableComponentAccessGroup&) = delete;
+	SynchronizableComponentAccessGroup& operator = (const SynchronizableComponentAccessGroup&) = delete;
+
+	// Move is allowed.
+	SynchronizableComponentAccessGroup(SynchronizableComponentAccessGroup&&) = default;
+	SynchronizableComponentAccessGroup& operator = (SynchronizableComponentAccessGroup&&) = default;
 
 	// Registers the provided entity if it has exactly
 	// the same set of components.
@@ -271,34 +388,72 @@ public:
 	//              or 'false' otherwise.
 	bool RegisterEntity(Entity::Id entity_id, const Entity& entity)
 	{
-		if (!accept_all_entities)
-		{
-			if (component_maps.Count() == 0)
-			{
-				return false;
-			}
+		bool result = false;
 
-			ComponentMapCollection<ut::access_read>::ConstIterator component_map_iterator;
-			for (component_map_iterator = component_maps.Begin(); component_map_iterator != component_maps.End(); ++component_map_iterator)
+		const size_t component_set_count = component_sets.Count();
+		for (size_t i = 0; i < component_set_count; i++)
+		{
+			IterativeComponentSet& set = component_sets[i];
+			
+			if (set.operation == Component::op_intersection)
 			{
-				if (!entity.HasComponent(component_map_iterator->GetFirst()))
+				bool has_all_components = true;
+
+				ComponentMapCollection<ut::access_read>::ConstIterator component_map_iterator;
+				for (component_map_iterator = set.component_maps.Begin();
+				     component_map_iterator != set.component_maps.End();
+				     ++component_map_iterator)
 				{
-					return false;
+					if (!entity.HasComponent(component_map_iterator->GetFirst()))
+					{
+						has_all_components = false;
+						break;
+					}
+				}
+
+				if (!has_all_components)
+				{
+					continue;
 				}
 			}
+
+			set.Insert(entity_id, entity);
+			result = true;
 		}
 
-		entities.Insert(entity_id, entity);
-		return true;
+		return result;
 	}
 
 	// Unregisters the provided entity.
 	//    @param entity_id - id of the entity to be unregistered.
-	//    @return - 'true' if successfully unregistered the entity
-	//              or 'false' if there was no entity with such id.
+	//    @return - 'true' if provided entity was found and unregistered.
 	bool UnregisterEntity(Entity::Id entity_id)
 	{
-		return entities.Remove(entity_id);
+		bool result = false;
+		const size_t component_set_count = component_sets.Count();
+		for (size_t i = 0; i < component_set_count; i++)
+		{
+			const bool remove_result = component_sets[i].Remove(entity_id);
+			if (!result)
+			{
+				result = remove_result;
+			}
+		}
+		return result;
+	}
+
+	// Returns 'true' if an entity with such id is registered.
+	inline bool IsEntityRegistered(Entity::Id entity_id) const
+	{
+		const size_t component_set_count = component_sets.Count();
+		for (size_t i = 0; i < component_set_count; i++)
+		{
+			if (component_sets[i].Find(entity_id))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 private:

@@ -8,6 +8,7 @@
 #include "systems/render/ve_render_system.h"
 #include "systems/render/ve_render_camera_system.h"
 #include "systems/editor/ve_editor_camera_system.h"
+#include "systems/editor/ve_editor_selection_system.h"
 //----------------------------------------------------------------------------//
 template<> const char* ve::Config<ve::DefaultSettings>::skName = "default";
 //----------------------------------------------------------------------------//
@@ -39,6 +40,7 @@ Pipeline GenDefaultPipeline()
 	pipeline.AddSerial(Pipeline(ut::MakeShared<input::PollSystem>(input_mgr)));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread)));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<editor::ViewportCameraSystem>(ui_frontend_thread, input_mgr)));
+	pipeline.AddSerial(Pipeline(ut::MakeShared<editor::ViewportSelectionSystem>(ui_frontend_thread, input_mgr)));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<render::CameraSystem>()));
 	pipeline.AddSerial(Pipeline(ut::MakeShared<render::RenderSystem>(render_thread, ui_frontend_thread)));
 

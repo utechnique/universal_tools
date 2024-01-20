@@ -1126,7 +1126,7 @@ void EntityBrowser::resize(int x, int y, int w, int h)
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
 	//    @return - array of accumulated commands pending to be processed.
-CmdArray EntityBrowser::UpdateEntities(ComponentAccess& access)
+CmdArray EntityBrowser::UpdateEntities(ComponentAccessGroup& group_access)
 {
 	// reset immediate update flag
 	const bool needs_immediate_update = immediate_update.Get();
@@ -1145,7 +1145,7 @@ CmdArray EntityBrowser::UpdateEntities(ComponentAccess& access)
 	// update all components with new data
 	if (cmd.IsEmpty())
 	{
-		PrepareEntityProxies(access);
+		PrepareEntityProxies(group_access);
 		Fl::awake([](void* ptr) { static_cast<EntityBrowser*>(ptr)->UpdateUi(); }, this);
 	}
 
@@ -1299,7 +1299,7 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	// will be used to update UI component views on the next UI tick.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
-void EntityBrowser::PrepareEntityProxies(ComponentAccess& access)
+void EntityBrowser::PrepareEntityProxies(ComponentAccessGroup& group_access)
 {
 	ut::ScopeLock lock(mutex);
 
@@ -1307,6 +1307,7 @@ void EntityBrowser::PrepareEntityProxies(ComponentAccess& access)
 	pending_views.Reset();
 
 	// filter entities
+	ComponentAccess access = group_access.GetAccess(0);
 	ut::Optional<size_t> filtered_scroll_index = FilterEntities(access);
 	const size_t filtered_entity_count = filter_cache.Count();
 
@@ -1702,7 +1703,7 @@ ut::Optional<size_t> EntityBrowser::FilterEntities(ComponentAccess& access)
 	const bool filter_is_not_empty = filter.Length() != 0;
 
 	ut::Optional<size_t> filtered_scroll_index;
-	ComponentAccess::EntityIterator entity_it;
+	IterativeComponentSet::Iterator entity_it;
 	
 	// interate all entities
 	filter_cache.Reset();
