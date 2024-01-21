@@ -26,10 +26,11 @@ struct CompoundAccessStaticIterator<id, id, CompoundAccessContainer>
 {
 	static void GenerateComponentSets(ut::Array< ComponentSet<ut::access_full> >& component_sets)
 	{
+        typedef typename CompoundAccessContainer::template Item<id>::Type AccessType;
+
 		component_sets.Add(ComponentSet<ut::access_full>());
-		ComponentMapStaticIterator<0,
-			CompoundAccessContainer::template Item<id>::Type::size - 1,
-			CompoundAccessContainer::template Item<id>::Type>::GenerateComponentMaps(component_sets.GetLast().component_maps);
+		ComponentMapStaticIterator<0, AccessType::size - 1,
+		                           AccessType>::GenerateComponentMaps(component_sets.GetLast().component_maps);
 		component_sets.GetLast().operation = Component::op_intersection;
 	}
 };
@@ -43,7 +44,7 @@ using CompoundAccess = typename ComponentSystem<Components...>::Access;
 
 //----------------------------------------------------------------------------//
 // ve::CompoundSystem is a template class that simplifies registration of
-// entities that are grouped by component sets. It accepts variable number 
+// entities that are grouped by component sets. It accepts variable number
 // of template arguments, and each of them must be a ve::CompoundAccess template
 // containing component types that must be present inside a desired group of
 // entities. One can get access to the registered entity group by using

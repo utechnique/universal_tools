@@ -72,6 +72,7 @@ public:
 	// ve::ComponentAccess object.
 	class Access : private ComponentContainer
 	{
+        template <int, int, typename> friend struct ComponentMapStaticIterator;
 		template <int, int, typename> friend struct CompoundAccessStaticIterator;
 
 		// This function helps to extract desired component access from the
@@ -124,7 +125,7 @@ public:
 
 		// Returns the desired entity. Call CountEntities() function
 		// to be able to iterate entities using their index numbers.
-		//    @param id - index of the desired entity. 
+		//    @param id - index of the desired entity.
 		const ut::Pair<const Entity::Id, Entity>& operator [] (const size_t id) const
 		{
 			return access[id];
