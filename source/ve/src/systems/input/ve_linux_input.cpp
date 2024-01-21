@@ -270,12 +270,17 @@ void LinuxInputHandler::UpdateKeyboard()
     const int read_result = read(keyboard->file, events, sizeof(struct input_event) * max_events);
     if (read_result < static_cast<int>(sizeof(struct input_event)))
     {
-        if(read_result < 0 && errno == ENODEV)
+        if (read_result < 0 && errno == ENODEV)
         {
             ut::log.Lock() << "Warning! Keyboard device lost. " << ut::cret;
             close(keyboard->file);
             keyboard->file = 0;
         }
+        else if (read_result < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+        {
+            ut::log.Lock() << "Warning! Keyboard read result failed. Error code " << errno << ut::cret;
+        }
+
         return;
     }
 
@@ -587,6 +592,16 @@ ut::Result<LinuxInputHandler::DeviceFileMap, ut::Error> LinuxInputHandler::GetFi
         {
             out.mouse = file_path;
         }
+    }
+
+    if (out.keyboard)
+    {
+        ut::log.Lock() << "Keyboard events source was set to: " << out.keyboard.Get() << ut::cret;
+    }
+
+    if (out.mouse)
+    {
+        ut::log.Lock() << "Mouse events source was set to: " << out.mouse.Get() << ut::cret;
     }
 
     closedir(dp);
