@@ -704,11 +704,12 @@ protected:
 	//    @param element - element to be added
 	//    @return - 'true' if element was added successfully
 	//              'false' if not enough memory
-	inline bool EmplaceForward(size_t position, ElementType&& element)
+	template <typename ArgType>
+	inline bool EmplaceForward(size_t position, ArgType&& element)
 	{
 		if (position == num)
 		{
-			return Add(Forward<ElementType>(element));
+			return Add(Forward<ArgType>(element));
 		}
 
 		// allocate memory for the new element
@@ -727,7 +728,7 @@ protected:
 		}
 
 		// emplace new element
-		new(arr + position) ElementType(Forward<ElementType>(element));
+		new(arr + position) ElementType(Forward<ArgType>(element));
 
 		// success
 		return true;
