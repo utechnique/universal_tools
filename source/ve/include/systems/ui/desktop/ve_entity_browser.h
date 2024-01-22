@@ -589,10 +589,8 @@ private:
 
 	// Height of the control groups in pixels.
 	static const ut::uint32 skEntityControlGroupHeight;
+	static const ut::uint32 skEntityControlGroupMargin;
 	static const ut::uint32 skPageControlGroupHeight;
-
-	// Height of the browser caption in pixels.
-	static const ut::uint32 skCapHeight;
 
 	// Periods of time (in seconds) between entity updates.
 	static const float skUpdatePeriod;

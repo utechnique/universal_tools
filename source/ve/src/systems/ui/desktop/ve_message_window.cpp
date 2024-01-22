@@ -37,25 +37,20 @@ MessageWindow::MessageWindow(int x_position,
                                                           ut::Max<ut::uint32>(width, skOkButtonWidth + 2),
                                                           ut::Max<ut::uint32>(height, skCapHeight + skOkButtonHeight + 2),
                                                           title,
-                                                          1, skCapHeight,
-	                                                      theme,
-                                                          Window::has_close_button)
+	                                                      theme)
                                                  , message(ut::MakeUnique<ut::String>(text))
 {
-	Fl_Double_Window& client_area = GetClientWindow();
-	client_area.begin();
-
 	message_box = ut::MakeUnique<Fl_Box>(0,
 	                                     0,
-	                                     client_area.w(),
-	                                     client_area.h() - skOkButtonHeight,
+	                                     w(),
+	                                     h() - skOkButtonHeight,
 	                                     message->GetAddress());
 	message_box->box(FL_NO_BOX);
 	message_box->color(ConvertToFlColor(theme.background_color));
 	message_box->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE);
 
-	ok_button = ut::MakeUnique<Button>(client_area.w() / 2 - skOkButtonWidth / 2,
-	                                   client_area.h() - skOkButtonHeight,
+	ok_button = ut::MakeUnique<Button>(w() / 2 - skOkButtonWidth / 2,
+	                                   h() - skOkButtonHeight,
 	                                   skOkButtonWidth,
 	                                   skOkButtonHeight,
 	                                  "Ok");
@@ -64,10 +59,8 @@ MessageWindow::MessageWindow(int x_position,
 	ok_button->SetBackgroundColor(Button::state_hover, ConvertToFlColor(theme.unfocus_border_color));
 	ok_button->SetCallback([&]() { hide(); });
 
-	client_area.resizable(nullptr);
-	client_area.end();
-
 	resizable(nullptr);
+	end();
 }
 
 // Shows a dialog window with the provided text and the 'Ok' button.
@@ -102,8 +95,6 @@ void ShowMessageWindow(int x_position,
 	                                                                     text,
 	                                                                     title,
 	                                                                     theme);
-	msg_wnd->EnableHorizontalResize(false);
-	msg_wnd->EnableVerticalResize(false);
 	msg_wnd->set_modal();
 	msg_wnd->show();
 	while (msg_wnd->shown())

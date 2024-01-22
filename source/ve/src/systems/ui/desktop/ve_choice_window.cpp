@@ -38,18 +38,13 @@ ChoiceWindow::ChoiceWindow(int x_position,
                                                         width,
                                                         height,
                                                         ut::Move(title),
-                                                        1, skCapHeight,
-	                                                    theme,
-                                                        Window::has_close_button)
+	                                                    theme)
 {
 	const int variant_height = 32;
 	const int margin = 24;
 
-	Fl_Double_Window& client_area = GetClientWindow();
-	client_area.begin();
-
 	// user must be able to scroll down if the number of variants is big
-	scroll = ut::MakeUnique<Scroll>(0, 0, client_area.w(), client_area.h());
+	scroll = ut::MakeUnique<Scroll>(0, 0, w(), h());
 	scroll->type(Fl_Scroll::VERTICAL);
 	scroll->scrollbar_size(Fl::scrollbar_size());
 	scroll->resizable(scroll.Get());
@@ -80,16 +75,19 @@ ChoiceWindow::ChoiceWindow(int x_position,
 
 	// finish groups
 	scroll->end();
-	client_area.resizable(scroll.Get());
-	client_area.end();
+	resizable(scroll.Get());
+	end();
 
 	// crop window height if it's too big
 	const int variant_total_height = variant_height * variant_count;
-	const int height_diff = variant_total_height - client_area.h();
+	const int height_diff = variant_total_height - h();
 	if (height_diff < 0)
 	{
 		resize(x_position, y_position, width, height + height_diff);
 	}
+
+	// prevent horisontal resizing
+	size_range(w(), h()/2, w(), h());
 }
 
 // Returns the index of the selected variant or nothing if canceled.

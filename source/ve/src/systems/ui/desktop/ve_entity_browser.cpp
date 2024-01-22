@@ -37,10 +37,8 @@ const int EntityBrowser::skOffset = 5;
 
 // Height of the control groups in pixels.
 const ut::uint32 EntityBrowser::skEntityControlGroupHeight = 32;
+const ut::uint32 EntityBrowser::skEntityControlGroupMargin = 2;
 const ut::uint32 EntityBrowser::skPageControlGroupHeight = 32;
-
-// Height of the caption in pixels.
-const ut::uint32 EntityBrowser::skCapHeight = 24;
 
 // Periods of time (in seconds) between entity updates.
 const float EntityBrowser::skUpdatePeriod = 1.0f;
@@ -1070,32 +1068,28 @@ EntityBrowser::EntityBrowser(int x,
                              ut::uint32 h,
                              const Theme& theme) : Window(x, y, w, h,
                                                           "Entity Browser",
-                                                          1, skCapHeight,
-                                                          theme,
-                                                          Window::has_close_button)
+                                                          theme)
                                                  , immediate_update(true)
                                                  , active(true)
 {
-	Fl_Double_Window& client_area = GetClientWindow();
-	client_area.begin();
-
 	// control groups
 	InitializeEntityControls(theme);
 	InitializePageControls(theme);
 
 	// view area
-	const int view_area_height = client_area.h() - skEntityControlGroupHeight - skPageControlGroupHeight;
+	const int view_area_height = this->h() - skEntityControlGroupHeight - skPageControlGroupHeight;
 	view_area = ut::MakeUnique<Scroll>(0,
 	                                   skEntityControlGroupHeight,
-	                                   client_area.w(),
+	                                   this->w(),
 	                                   view_area_height);
 	view_area->type(Fl_Scroll::VERTICAL);
 	view_area->scrollbar_size(Fl::scrollbar_size());
 	view_area->resizable(view_area.Get());
 	view_area->end();
 
-	client_area.resizable(view_area.Get());
-	client_area.end();
+	resizable(view_area.Get());
+	size_range(320, 240);
+	end();
 }
 
 // Shows this window to user and forces the update
@@ -1158,24 +1152,22 @@ CmdArray EntityBrowser::UpdateEntities(ComponentAccessGroup& group_access)
 // Creates UI widgets to add/filter entities.
 void EntityBrowser::InitializeEntityControls(const Theme& theme)
 {
-	Fl_Double_Window& client_area = GetClientWindow();
-
 	entity_controls.group = ut::MakeUnique<Fl_Group>(EntityBrowser::skOffset,
 	                                                 0,
-	                                                 client_area.w() - EntityBrowser::skOffset * 2,
+	                                                 w() - EntityBrowser::skOffset,
 	                                                 skEntityControlGroupHeight);
 
 	entity_controls.filter_input = ut::MakeUnique<Fl_Input>(entity_controls.group->x(),
-	                                                        entity_controls.group->y(),
+	                                                        entity_controls.group->y() + skEntityControlGroupMargin,
 	                                                        entity_controls.group->w() - skEntityControlGroupHeight,
-	                                                        skEntityControlGroupHeight);
+	                                                        skEntityControlGroupHeight - skEntityControlGroupMargin * 2);
 	entity_controls.filter_input->when(FL_WHEN_CHANGED);
 	entity_controls.filter_input->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->UpdateFilterInput(); }, this);
 
 	entity_controls.add_entity_button = ut::MakeUnique<Button>(entity_controls.group->x() + entity_controls.filter_input->w(),
 	                                                           entity_controls.group->y(),
 	                                                           skEntityControlGroupHeight,
-	                                                           skEntityControlGroupHeight);
+	                                                           skEntityControlGroupHeight - skEntityControlGroupMargin);
 	entity_controls.add_entity_button->SetIcon(ut::MakeShared<Icon>(Icon::CreatePlus(entity_controls.add_entity_button->w(),
 	                                                                                 entity_controls.add_entity_button->h(),
 	                                                                                 ut::Color<4, ut::byte>(0, 200, 0, 255),
@@ -1212,10 +1204,9 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	input_height += input_offset;
 
 	// create the widget group
-	Fl_Double_Window& client_area = GetClientWindow();
 	page = ut::MakeUnique<PageControls>(EntityBrowser::skOffset,
-	                                    client_area.h() - skPageControlGroupHeight,
-	                                    client_area.w() - EntityBrowser::skOffset * 2,
+	                                    h() - skPageControlGroupHeight,
+	                                    w() - EntityBrowser::skOffset * 2,
 	                                    skPageControlGroupHeight);
 
     // set default page id
@@ -1527,8 +1518,7 @@ void EntityBrowser::UpdateSize()
 	
 	RepositionViews();
 
-	Fl_Double_Window& client_wnd = GetClientWindow();
-	client_wnd.redraw();
+	redraw();
 }
 
 // Returns an array of accumulated commands pending to be processed.
@@ -1598,8 +1588,7 @@ void EntityBrowser::AddEntityCallback(const CmdAddEntity::AddResult& add_result)
 // Scrolls view area right to the provided widget.
 void EntityBrowser::ScrollToWidget(Fl_Widget& widget)
 {
-	Fl_Double_Window& client_area = GetClientWindow();
-	const ut::Vector<2, int> widget_pos = GetFlAbsPosition(&widget, &client_area);
+	const ut::Vector<2, int> widget_pos = GetFlAbsPosition(&widget, this);
 	const int widget_start = widget_pos.Y();
 	const int widget_end = widget_start + widget.h();
 	const int cur_scroll = view_area->scrollbar.value();

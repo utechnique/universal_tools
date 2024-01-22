@@ -29,7 +29,7 @@ DesktopFrontend::MainWindow::MainWindow(int x, int y,
                                         int w, int h,
                                         const char* title,
                                         DesktopFrontend& desktop_frontend,
-                                        const Theme& theme) : Window(x, y, w, h, title, 2, 24, theme)
+                                        const Theme& theme) : Window(x, y, w, h, title, theme)
                                                             , frontend(desktop_frontend)
 {}
 
@@ -125,6 +125,15 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	Fl::set_color(51, theme.background_color.R(), theme.background_color.G(), theme.background_color.B());
 	Fl::set_color(54, theme.frame_color.R(), theme.frame_color.G(), theme.frame_color.B());
 
+	// independent modules
+	entity_browser = ut::MakeUnique<EntityBrowser>(cfg->window.offset.X(),
+	                                               cfg->window.offset.Y(),
+	                                               EntityBrowser::skDefaultWidth,
+	                                               EntityBrowser::skDefaultHeight,
+	                                               theme);
+	entity_browser->hide();
+	entity_browser->end();
+
 	// create main window
 	window = ut::MakeUnique<MainWindow>(cfg->window.offset.X(),
 	                                    cfg->window.offset.Y(),
@@ -136,35 +145,22 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	window->size_range(skMinWidth, skMinHeight);
 	window->callback(DesktopFrontend::OnCloseCallback, this);
 
-	// independent modules
-	entity_browser = ut::MakeUnique<EntityBrowser>(cfg->window.offset.X(),
-	                                               cfg->window.offset.Y(),
-	                                               EntityBrowser::skDefaultWidth,
-	                                               EntityBrowser::skDefaultHeight,
-	                                               theme);
-	entity_browser->hide();
-	entity_browser->set_non_modal();
-
-	// start main window
-	Fl_Double_Window& client_area = window->GetClientWindow();
-	client_area.begin();
-
 	// menu
-	menu = ut::MakeUnique<MenuBar>(cfg.Get(), 0, 0, client_area.w(), entity_browser.GetRef());
+	menu = ut::MakeUnique<MenuBar>(cfg.Get(), 0, 0, window->w(), entity_browser.GetRef());
 
 	// viewport container
 	viewport_area = ut::MakeUnique<ViewportArea>(cfg.Get(),
 	                                             0,
 	                                             menu->h(),
-	                                             client_area.w(),
-	                                             client_area.h() - menu->h());
+	                                             window->w(),
+	                                             window->h() - menu->h());
 	viewports = viewport_area->GetViewports();
 
 	// adjust main window
-	client_area.resizable(viewport_area.Get());
+	window->resizable(viewport_area.Get());
 
 	// finish main window
-	client_area.end();
+	window->end();
 
 	// show main window
 	window->show();
