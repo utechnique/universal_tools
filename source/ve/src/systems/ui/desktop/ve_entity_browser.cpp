@@ -1705,7 +1705,7 @@ ut::Optional<size_t> EntityBrowser::FilterEntities(ComponentAccess& access)
 	ut::Optional<size_t> filtered_scroll_index;
 	IterativeComponentSet::Iterator entity_it;
 	
-	// interate all entities
+	// iterate all entities
 	filter_cache.Reset();
 	for (entity_it = access.BeginEntities(); entity_it != access.EndEntities(); ++entity_it)
 	{
@@ -1739,8 +1739,19 @@ ut::Optional<size_t> EntityBrowser::FilterEntities(ComponentAccess& access)
 			continue;
 		}
 
+		// find the position to insert a new value
+		size_t insert_position = 0;
+		for (size_t i = filter_cache.Count(); i-- > 0;)
+		{
+			if (entity_id > filter_cache[i])
+			{
+				insert_position = i + 1;
+				break;
+			}
+		}
+
 		// add filtered value index to the cache
-		if (!filter_cache.Add(entity_id))
+		if (!filter_cache.Insert(insert_position, entity_id))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
