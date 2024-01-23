@@ -67,7 +67,12 @@ public:
 		static_assert(CompoundAccessContainer::size > 0, "ve::CompoundSystem must have at least one template argument.");
 
 		// Constructor initializes managed component accesses.
-		Access(ComponentAccessGroup& group_access) : CompoundAccessContainer(typename CompoundAccesses(group_access)...)
+		Access(ComponentAccessGroup& group_access) : CompoundAccessContainer(
+		// VS 2015 cannot recognize a constructor in the pack expansion here
+#if UT_WINDOWS
+			explicit
+#endif
+			CompoundAccesses(group_access)...)
 		{}
 	};
 
