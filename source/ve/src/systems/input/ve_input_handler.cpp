@@ -18,9 +18,9 @@ bool Handler::IsKeyDown(const ut::String& name)
 	for (size_t i = 0; i < device_count; i++)
 	{
 		ut::Optional<const Signal&> signal = cur_state[i].FindSignal(name);
-		if (signal)
+		if (signal && signal->GetDiscreteValue() != 0)
 		{
-			return signal->GetDiscreteValue() != 0 ? true : false;
+			return true;
 		}
 	}
 	return false;
@@ -36,7 +36,7 @@ Signal::Discrete Handler::GetDiscreteSignal(const ut::String& name)
 	for (size_t i = 0; i < device_count; i++)
 	{
 		ut::Optional<const Signal&> signal = cur_state[i].FindSignal(name);
-		if (signal)
+		if (signal && signal->GetDiscreteValue() != 0)
 		{
 			return signal->GetDiscreteValue();
 		}
@@ -54,7 +54,7 @@ Signal::Analog Handler::GetAnalogSignal(const ut::String& name)
 	for (size_t i = 0; i < device_count; i++)
 	{
 		ut::Optional<const Signal&> signal = cur_state[i].FindSignal(name);
-		if (signal)
+		if (signal && signal->GetAnalogValue() != 0)
 		{
 			return signal->GetAnalogValue();
 		}

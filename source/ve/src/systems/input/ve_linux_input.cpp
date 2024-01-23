@@ -232,26 +232,35 @@ LinuxInputHandler::LinuxInputHandler()
 // Updates input devices.
 void LinuxInputHandler::Update()
 {
-    UpdateKeyboard();
-    UpdateMouse();
+    const size_t keyboard_count = keyboards.Count();
+    for (size_t i = 0; i < keyboard_count; i++)
+    {
+        UpdateKeyboard(keyboards[i]);
+    }
+
+    const size_t mice_count = mice.Count();
+    for (size_t i = 0; i < mice_count; i++)
+    {
+        UpdateMouse(mice[i]);
+    }
 }
 
 //----------------------------------------------------------------------------->
 // Reads keyboard events from file that have occurred since the last frame.
-void LinuxInputHandler::UpdateKeyboard()
+void LinuxInputHandler::UpdateKeyboard(DeviceFile& keyboard)
 {
-    if(!keyboard || keyboard->file < 0)
+    if(keyboard.file < 0)
     {
         return;
     }
 
     // recover keyboard device if it was lost
-    if(keyboard->file == 0)
+    if(keyboard.file == 0)
     {
-        keyboard->file = open(keyboard->location.GetAddress(), O_RDONLY | O_NONBLOCK);
-        if (keyboard->file < 0)
+        keyboard.file = open(keyboard.location.GetAddress(), O_RDONLY | O_NONBLOCK);
+        if (keyboard.file < 0)
         {
-            keyboard->file = 0;
+            keyboard.file = 0;
             return;
         }
         else
@@ -260,21 +269,21 @@ void LinuxInputHandler::UpdateKeyboard()
         }
     }
 
-    Device& device = cur_state[keyboard->device_index];
+    Device& device = cur_state[keyboard.device_index];
 
     // maximum number of keyboard events per frame
     constexpr size_t max_events = 64;
 
     // read events that have occurred since the last call
     struct input_event events[max_events];
-    const int read_result = read(keyboard->file, events, sizeof(struct input_event) * max_events);
+    const int read_result = read(keyboard.file, events, sizeof(struct input_event) * max_events);
     if (read_result < static_cast<int>(sizeof(struct input_event)))
     {
         if (read_result < 0 && errno == ENODEV)
         {
             ut::log.Lock() << "Warning! Keyboard device lost. " << ut::cret;
-            close(keyboard->file);
-            keyboard->file = 0;
+            close(keyboard.file);
+            keyboard.file = 0;
         }
         else if (read_result < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
         {
@@ -313,20 +322,20 @@ void LinuxInputHandler::UpdateKeyboard()
 
 //----------------------------------------------------------------------------->
 // Reads mouse events from file that have occurred since the last frame.
-void LinuxInputHandler::UpdateMouse()
+void LinuxInputHandler::UpdateMouse(DeviceFile& mouse)
 {
-    if(!mouse || mouse->file < 0)
+    if(mouse.file < 0)
     {
         return;
     }
 
     // recover mouse device if it was lost
-    if(mouse->file == 0)
+    if(mouse.file == 0)
     {
-        mouse->file = open(mouse->location.GetAddress(), O_RDONLY | O_NONBLOCK);
-        if (mouse->file < 0)
+        mouse.file = open(mouse.location.GetAddress(), O_RDONLY | O_NONBLOCK);
+        if (mouse.file < 0)
         {
-            mouse->file = 0;
+            mouse.file = 0;
             return;
         }
         else
@@ -335,21 +344,21 @@ void LinuxInputHandler::UpdateMouse()
         }
     }
 
-    Device& device = cur_state[mouse->device_index];
+    Device& device = cur_state[mouse.device_index];
 
     // maximum number of mouse events per frame
     constexpr size_t max_events = 64;
 
     // read events that have occurred since the last call
     struct input_event events[max_events];
-    int read_result = read(mouse->file, events, sizeof(struct input_event) * max_events);
+    int read_result = read(mouse.file, events, sizeof(struct input_event) * max_events);
     if (read_result < static_cast<int>(sizeof(struct input_event)))
     {
         if(read_result < 0 && errno == ENODEV)
         {
             ut::log.Lock() << "Warning! Mouse device lost. " << ut::cret;
-            close(mouse->file);
-            mouse->file = 0;
+            close(mouse.file);
+            mouse.file = 0;
             return;
         }
         read_result = 0;
@@ -410,13 +419,13 @@ void LinuxInputHandler::InitInputDevices()
         return;
     }
 
-    ut::Optional<ut::Error> create_error = CreateKeyboard(file_map.Get());
+    ut::Optional<ut::Error> create_error = CreateKeyboards(file_map.Get());
     if(create_error)
     {
         ut::log.Lock() << "Failed to initialize keyboard." << ut::cret;
     }
 
-    create_error = CreateMouse(file_map.Get());
+    create_error = CreateMice(file_map.Get());
     if(create_error)
     {
         ut::log.Lock() << "Failed to initialize mouse." << ut::cret;
@@ -425,53 +434,63 @@ void LinuxInputHandler::InitInputDevices()
 
 //----------------------------------------------------------------------------->
 // Creates a keyboard interface using a file from the provided map.
-ut::Optional<ut::Error> LinuxInputHandler::CreateKeyboard(const DeviceFileMap& device_map)
+ut::Optional<ut::Error> LinuxInputHandler::CreateKeyboards(const DeviceFileMap& device_map)
 {
     // check if keyboard is present in the map
-    if(!device_map.keyboard)
+    if(device_map.keyboards.IsEmpty())
     {
         return ut::Error(ut::error::not_found);
     }
 
-    // open input file
-    const ut::String& file_path = device_map.keyboard.Get();
-    const int file = open(file_path.GetAddress(), O_RDONLY | O_NONBLOCK);
-    if (file < 0)
+    const size_t keyboard_count = device_map.keyboards.Count();
+    for (size_t i = 0; i < keyboard_count; i++)
     {
-        ut::log.Lock() << "Failed to open keyboard input file: " << file_path << ut::cret;
-        return ut::Error(ut::ConvertErrno(errno));
-    }
+        // open input file
+        const ut::String& file_path = device_map.keyboards[i];
+        const int file = open(file_path.GetAddress(), O_RDONLY | O_NONBLOCK);
+        if (file < 0)
+        {
+            ut::log.Lock() << "Failed to open keyboard input file: " << file_path << ut::cret;
+            return ut::Error(ut::ConvertErrno(errno));
+        }
 
-    // read physical path (it will be used as an id)
-    ut::byte physbits[1024];
-    if(ioctl(file, EVIOCGPHYS(sizeof(physbits)), physbits) < 0)
-    {
-        close(file);
-        return ut::Error(ut::ConvertErrno(errno));
-    }
+        // read physical path (it will be used as an id)
+        ut::byte physbits[1024];
+        if(ioctl(file, EVIOCGPHYS(sizeof(physbits)), physbits) < 0)
+        {
+            close(file);
+            return ut::Error(ut::ConvertErrno(errno));
+        }
 
-    // create device object with unique identifier
-    const ut::String phys_path(reinterpret_cast<const char*>(physbits));
-    const size_t id_length = phys_path.Length();
-	Device::Id keyboard_id(id_length);
-	ut::memory::Copy(keyboard_id.GetAddress(), phys_path.GetAddress(), id_length);
-	Device keyboard_device(ut::Move(keyboard_id));
+        // create device object with unique identifier
+        const ut::String phys_path(reinterpret_cast<const char*>(physbits));
+        const size_t id_length = phys_path.Length();
+        Device::Id keyboard_id(id_length);
+        ut::memory::Copy(keyboard_id.GetAddress(), phys_path.GetAddress(), id_length);
+        Device keyboard_device(ut::Move(keyboard_id));
 
-	// create keys
-	for (size_t i = 0; i < keyboard::button_count; i++)
-	{
-		ut::Optional<ut::Error> error = keyboard_device.AddSignal(Signal::CreateDiscrete(0),
-		                                                          keyboard::skKeyNames[i]);
-		if (error)
-		{
-		    close(file);
-			return error.Move();
-		}
+        // create keys
+        for (size_t i = 0; i < keyboard::button_count; i++)
+        {
+            ut::Optional<ut::Error> error = keyboard_device.AddSignal(Signal::CreateDiscrete(0),
+                                                                      keyboard::skKeyNames[i]);
+            if (error)
+            {
+                close(file);
+                return error.Move();
+            }
+        }
+
+        // add device
+        if (!cur_state.Add(ut::Move(keyboard_device)))
+        {
+            return ut::Error(ut::error::out_of_memory);
+        }
+        if (!keyboards.Add(DeviceFile(cur_state.Count() - 1, file, file_path)))
+        {
+            return ut::Error(ut::error::out_of_memory);
+        }
 	}
-
-    // add device
-	cur_state.Add(ut::Move(keyboard_device));
-	keyboard = DeviceFile(cur_state.Count() - 1, file, file_path);
 
 	// success
     return ut::Optional<ut::Error>();
@@ -479,65 +498,75 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateKeyboard(const DeviceFileMap& d
 
 //----------------------------------------------------------------------------->
 // Creates a mouse interface using a file from the provided map.
-ut::Optional<ut::Error> LinuxInputHandler::CreateMouse(const DeviceFileMap& device_map)
+ut::Optional<ut::Error> LinuxInputHandler::CreateMice(const DeviceFileMap& device_map)
 {
     // check if keyboard is present in the map
-    if(!device_map.mouse)
+    if(!device_map.mice.Count())
     {
         return ut::Error(ut::error::not_found);
     }
 
-    // open input file
-    const ut::String& file_path = device_map.mouse.Get();
-    const int file = open(file_path.GetAddress(), O_RDONLY | O_NONBLOCK);
-    if (file < 0)
+    const size_t mice_count = device_map.mice.Count();
+    for (size_t i = 0; i < mice_count; i++)
     {
-        ut::log.Lock() << "Failed to open keyboard input file: " << file_path << ut::cret;
-        return ut::Error(ut::ConvertErrno(errno));
-    }
+        // open input file
+        const ut::String& file_path = device_map.mice[i];
+        const int file = open(file_path.GetAddress(), O_RDONLY | O_NONBLOCK);
+        if (file < 0)
+        {
+            ut::log.Lock() << "Failed to open mouse input file: " << file_path << ut::cret;
+            return ut::Error(ut::ConvertErrno(errno));
+        }
 
-    // read physical path (it will be used as an id)
-    ut::byte physbits[1024];
-    if(ioctl(file, EVIOCGPHYS(sizeof(physbits)), physbits) < 0)
-    {
-        close(file);
-        return ut::Error(ut::ConvertErrno(errno));
-    }
+        // read physical path (it will be used as an id)
+        ut::byte physbits[1024];
+        if(ioctl(file, EVIOCGPHYS(sizeof(physbits)), physbits) < 0)
+        {
+            close(file);
+            return ut::Error(ut::ConvertErrno(errno));
+        }
 
-    // create device object with unique identifier
-    const ut::String phys_path(reinterpret_cast<const char*>(physbits));
-    const size_t id_length = phys_path.Length();
-	Device::Id mouse_id(id_length);
-	ut::memory::Copy(mouse_id.GetAddress(), phys_path.GetAddress(), id_length);
-	Device mouse_device(ut::Move(mouse_id));
+        // create device object with unique identifier
+        const ut::String phys_path(reinterpret_cast<const char*>(physbits));
+        const size_t id_length = phys_path.Length();
+        Device::Id mouse_id(id_length);
+        ut::memory::Copy(mouse_id.GetAddress(), phys_path.GetAddress(), id_length);
+        Device mouse_device(ut::Move(mouse_id));
 
-	// create buttons
-	for (size_t i = 0; i < mouse::button_count; i++)
-	{
-		ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateDiscrete(0),
-		                                                       mouse::skButtonNames[i]);
-		if (error)
-		{
-		    close(file);
-			return error.Move();
-		}
+        // create buttons
+        for (size_t i = 0; i < mouse::button_count; i++)
+        {
+            ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateDiscrete(0),
+                                                                   mouse::skButtonNames[i]);
+            if (error)
+            {
+                close(file);
+                return error.Move();
+            }
+        }
+
+        // XY movement and wheel
+        for (size_t i = 0; i < mouse::movement_count; i++)
+        {
+            ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateAnalog(0.0f),
+                                                                   mouse::skMovementNames[i]);
+            if (error)
+            {
+                close(file);
+                return error.Move();
+            }
+        }
+
+        // add device
+        if (!cur_state.Add(ut::Move(mouse_device)))
+        {
+            return ut::Error(ut::error::out_of_memory);
+        }
+        if (!mice.Add(DeviceFile(cur_state.Count() - 1, file, file_path)))
+        {
+            return ut::Error(ut::error::out_of_memory);
+        }
 	}
-
-	// XY movement and wheel
-	for (size_t i = 0; i < mouse::movement_count; i++)
-	{
-		ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateAnalog(0.0f),
-		                                                       mouse::skMovementNames[i]);
-		if (error)
-		{
-		    close(file);
-			return error.Move();
-		}
-	}
-
-	// add device
-	cur_state.Add(ut::Move(mouse_device));
-	mouse = DeviceFile(cur_state.Count() - 1, file, file_path);
 
 	// success
     return ut::Optional<ut::Error>();
@@ -586,22 +615,22 @@ ut::Result<LinuxInputHandler::DeviceFileMap, ut::Error> LinuxInputHandler::GetFi
 
         if (TestBit(evbits, EV_KEY) && TestBit(keybits, KEY_0))
         {
-            out.keyboard = file_path;
+            ut::log.Lock() << "Keyboard source #" << out.keyboards.Count()
+                           << " was set to: " << file_path << ut::cret;
+            if (!out.keyboards.Add(file_path))
+            {
+                return ut::MakeError(ut::error::out_of_memory);
+            }
         }
         else if (TestBit(evbits, EV_KEY) && TestBit(keybits, BTN_MOUSE))
         {
-            out.mouse = file_path;
+            ut::log.Lock() << "Mouse source #" << out.mice.Count()
+                           << " was set to: " << file_path << ut::cret;
+            if (!out.mice.Add(file_path))
+            {
+                return ut::MakeError(ut::error::out_of_memory);
+            }
         }
-    }
-
-    if (out.keyboard)
-    {
-        ut::log.Lock() << "Keyboard events source was set to: " << out.keyboard.Get() << ut::cret;
-    }
-
-    if (out.mouse)
-    {
-        ut::log.Lock() << "Mouse events source was set to: " << out.mouse.Get() << ut::cret;
     }
 
     closedir(dp);

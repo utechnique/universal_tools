@@ -53,24 +53,24 @@ private:
     // path to corresponding event file.
     struct DeviceFileMap
     {
-        ut::Optional<ut::String> keyboard;
-        ut::Optional<ut::String> mouse;
+        ut::Array<ut::String> keyboards;
+        ut::Array<ut::String> mice;
     };
 
     // Reads keyboard events from file that have occurred since the last frame.
-    void UpdateKeyboard();
+    void UpdateKeyboard(DeviceFile& keyboard);
 
     // Reads mouse events from file that have occurred since the last frame.
-    void UpdateMouse();
+    void UpdateMouse(DeviceFile& mouse);
 
     // Initializes input devices such as keyboard, mouse, etc.
     void InitInputDevices();
 
     // Creates a keyboard interface using a file from the provided map.
-    ut::Optional<ut::Error> CreateKeyboard(const DeviceFileMap& device_map);
+    ut::Optional<ut::Error> CreateKeyboards(const DeviceFileMap& device_map);
 
     // Creates a mouse interface using a file from the provided map.
-    ut::Optional<ut::Error> CreateMouse(const DeviceFileMap& device_map);
+    ut::Optional<ut::Error> CreateMice(const DeviceFileMap& device_map);
 
     // Collects info about the input devices present on the system and finds
     // appropriate input files for devices such as mouse, keyboard, etc.
@@ -80,8 +80,8 @@ private:
     static bool TestBit(const ut::byte* data, ut::uint32 bit_index);
 
     // Devices.
-    ut::Optional<DeviceFile> keyboard;
-    ut::Optional<DeviceFile> mouse;
+    ut::Array<DeviceFile> keyboards;
+    ut::Array<DeviceFile> mice;
 
     // Directory with the input events files (event0, event1 ...)
     static const char* skEventDir;
