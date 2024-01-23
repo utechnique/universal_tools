@@ -9,6 +9,8 @@
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
+#include "systems/ui/desktop/ve_logo.h"
+//----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(ui)
 //----------------------------------------------------------------------------//
@@ -34,7 +36,12 @@ Window::Window(ut::uint32 position_x,
                                       , theme(in_theme)
                                       , title_text(ut::MakeUnique<ut::String>(ut::Move(title)))
 {
-	this->label(title_text->GetAddress());
+	icon_img = ut::MakeUnique<Fl_RGB_Image>(g_ve_logo.pixel_data,
+	                                        g_ve_logo.width,
+	                                        g_ve_logo.height,
+	                                        g_ve_logo.bytes_per_pixel);
+	icon(icon_img.Get());
+	label(title_text->GetAddress());
 }
 
 // Returns a refernece to the ui theme of this window.

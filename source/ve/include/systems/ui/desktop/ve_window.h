@@ -54,6 +54,9 @@ private:
 
 	// Text of the title.
 	ut::UniquePtr<ut::String> title_text;
+
+	// Window Icon
+	ut::UniquePtr<Fl_RGB_Image> icon_img;
 };
 
 //----------------------------------------------------------------------------//

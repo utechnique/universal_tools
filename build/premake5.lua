@@ -43,15 +43,15 @@ NO_UI = _OPTIONS["no_ui"]
 -- helper library to load images
 utStaticLibProj
 {
-    projname = "stb", -- project name
-    targname = "stb", -- target name
-    projdir  = "stb", -- project folder
+	projname = "stb", -- project name
+	targname = "stb", -- target name
+	projdir  = "stb", -- project folder
 	bindfltk = false, -- using fltk library
-    srcfiles =        -- sources
-    {
-        "../contrib/stb/*.h",
+	srcfiles =        -- sources
+	{
+		"../contrib/stb/*.h",
 		"../contrib/stb/*.cpp",
-    },
+	},
 }
 
 -- include directories for projects using ve
@@ -74,18 +74,26 @@ VE_LIBS =
 	 INPUT_LIBS 
 }
 
+-- libraries with ve resources (icons etc.) for final binaries
+VERC_LIBS = {}
+VERC_LIBDIRS = {}
+if WINDOWS then
+    table.insert(VERC_LIBDIRS, "../build/")
+    table.insert(VERC_LIBS, "verc")
+end
+
 -- ve static lib
 utStaticLibProj
 {
-    projname = "ve",                    -- project name
-    targname = "ve",                    -- target name
-    projdir  = "ve",                    -- project folder
+	projname = "ve",                    -- project name
+	targname = "ve",                    -- target name
+	projdir  = "ve",                    -- project folder
 	bindfltk = NO_UI and false or true, -- using fltk library
-    srcfiles =                          -- sources
-    {
-        "../source/ve/**.h",
+	srcfiles =                          -- sources
+	{
+		"../source/ve/**.h",
 		"../source/ve/**.cpp",
-    },
+	},
 	incdir = VE_INCLUDE_DIRS,
 	dependencies =       -- dependencies
 	{
@@ -113,10 +121,10 @@ utApplication
 		VE_INCLUDE_DIRS,
 		"../source/ve_sandbox/include/",
 	},
-	libdir = { RENDER_LIB_DIRS }, --library directories
+	libdir = { RENDER_LIB_DIRS, VERC_LIBDIRS }, --library directories
 	libdir_32 = { RENDER_LIB_DIRS_32 }, --library directories (32 bits only)
 	libdir_64 = { RENDER_LIB_DIRS_64 }, --library directories (64 bits only)
-	libs = { VE_LIBS }, -- libraries (same names for 32 and 64 bit versions)
+	libs = { VE_LIBS, VERC_LIBS }, -- libraries (same names for 32 and 64 bit versions)
 	libs_release = { RENDER_LIBS_RELEASE }, -- libraries ('Release' only)
 	libs_dbg = { RENDER_LIBS_DBG }, -- libraries ('Debug' only)
 	dependencies = { "ve", "stb", "ut" }, -- dependencies
