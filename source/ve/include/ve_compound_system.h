@@ -67,7 +67,7 @@ public:
 		static_assert(CompoundAccessContainer::size > 0, "ve::CompoundSystem must have at least one template argument.");
 
 		// Constructor initializes managed component accesses.
-		Access(ComponentAccessGroup& group_access) : CompoundAccessContainer(CompoundAccesses(group_access)...)
+		Access(ComponentAccessGroup& group_access) : CompoundAccessContainer(typename CompoundAccesses(group_access)...)
 		{}
 	};
 
