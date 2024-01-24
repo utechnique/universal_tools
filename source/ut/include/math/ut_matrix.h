@@ -645,9 +645,25 @@ private:
 };
 
 //----------------------------------------------------------------------------//
+// Shorter matrix name versions.
+template<MatrixElementId rows,
+         MatrixElementId columns = rows,
+         typename Scalar = float,
+         typename Tag = MatrixGeneralTag>
+using Mat = Matrix<rows, columns, Scalar, Tag>;
+using Mat2 = Matrix<2, 2, float, MatrixGeneralTag>;
+using Mat3 = Matrix<3, 3, float, MatrixGeneralTag>;
+using Mat4 = Matrix<4, 4, float, MatrixGeneralTag>;
+
+//----------------------------------------------------------------------------//
 // Vector is defined as a matrix with only one row.
 template<MatrixElementId dim, typename Scalar = float>
 using Vector = Matrix<1, dim, Scalar, MatrixVectorTag>;
+template<MatrixElementId dim, typename Scalar = float>
+using Vec = Vector<dim, Scalar>;
+using Vec2 = Vec<2, float>;
+using Vec3 = Vec<3, float>;
+using Vec4 = Vec<4, float>;
 
 // Color is a vector too.
 template<MatrixElementId dim, typename Scalar = float>

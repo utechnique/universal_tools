@@ -39,7 +39,7 @@ void MatrixTask::Execute()
 	}
 
 	// copy constructor
-	ut::Matrix<3, 3> matrix3x3_1(matrix3x3_0);
+	ut::Mat3 matrix3x3_1(matrix3x3_0);
 	if (matrix3x3_1 != ut::Matrix<3, 3>(-1,  0,  0,
 	                                     0, -1,  0,
 	                                     0,  0, -1))
@@ -92,7 +92,7 @@ void MatrixTask::Execute()
 	}
 
 	// multiplication of vector and matrix
-	ut::Vector<3> vec3_0(11, 22, 33);
+	ut::Vec3 vec3_0(11, 22, 33);
 	vec3_0 = vec3_0 * matrix3x3_0;
 	if (vec3_0 != ut::Vector<3>(-132, 396, 396))
 	{
@@ -198,8 +198,8 @@ QuaternionTask::QuaternionTask() : TestTask("Quaternion")
 
 void QuaternionTask::Execute()
 {
-	ut::Quaternion<float> q_0 = ut::Quaternion<float>::MakeFromAngleAndAxis(45.0f, ut::Vector<3>(1, 0, 0));
-	ut::Quaternion<float> q_1 = ut::Quaternion<float>::MakeFromAngles(ut::Vector<3>(45, 30, 60));
+	ut::Quat q_0 = ut::Quat::MakeFromAngleAndAxis(45.0f, ut::Vector<3>(1, 0, 0));
+	ut::Quat q_1 = ut::Quat::MakeFromAngles(ut::Vector<3>(45, 30, 60));
 	q_0 *= q_1;
 	q_0 = q_0 * q_1;
 
@@ -209,17 +209,17 @@ void QuaternionTask::Execute()
 	
 	q_0 = q_0.Normalize();
 
-	ut::Vector<3> vec3(0, 1, 0);
+	ut::Vec3 vec3(0, 1, 0);
 	q_0 = q_0 * vec3;
 	vec3 = q_0.Rotate(vec3);
 
 	ut::Matrix<3, 3> m3x3 = q_0.ToTransform<3>();
-	ut::Matrix<4, 4> m4x4 = q_0.ToTransform<4>();
+	ut::Mat4 m4x4 = q_0.ToTransform<4>();
 
 	float angle = q_0.GetAngle();
 	vec3 = q_0.GetAxis();
 
-	ut::Quaternion<double> q_d = ut::Quaternion<double>::MakeFromAngles(ut::Vector<3, double>(45, 30, 60));
+	ut::Quaternion<double> q_d = ut::Quaternion<double>::MakeFromAngles(ut::Vec<3, double>(45, 30, 60));
 	q_d = q_d * q_d;
 
 	report += "Success";
