@@ -135,16 +135,6 @@ void MatrixTask::Execute()
 	vec3_0.Y() = 13.0f;
 	vec3_0.Z() = 15.0f;
 
-	// dot product
-	ut::Vector<3> vec3_1(1, 2, 3);
-	float dot_product = vec3_0.Dot(vec3_1);
-	if (!ut::Equal(dot_product, 82.0f))
-	{
-		report += ut::String("FAIL: Invalid dot product.");
-		failed_test_counter.Increment();
-		return;
-	}
-
 	// length
 	if (!ut::Equal(vec3_0.Length(), 22.6936114f))
 	{
@@ -153,9 +143,19 @@ void MatrixTask::Execute()
 		return;
 	}
 
+	// dot product
+	ut::Vec3 vec3_1(1, 2, 3);
+	float dot_product = vec3_0 | vec3_1;
+	if (!ut::Equal(dot_product, 82.0f))
+	{
+		report += ut::String("FAIL: Invalid dot product.");
+		failed_test_counter.Increment();
+		return;
+	}
+
 	// cross product
-	ut::Vector<3> vec3_2 = vec3_0.Cross(vec3_1);
-	if (vec3_2 != ut::Vector<3>(9,-18,9))
+	ut::Vec3 vec3_2 = vec3_0 ^ vec3_1;
+	if (vec3_2 != ut::Vec3(9,-18,9))
 	{
 		report += ut::String("FAIL: Invalid cross product.");
 		failed_test_counter.Increment();
@@ -198,8 +198,8 @@ QuaternionTask::QuaternionTask() : TestTask("Quaternion")
 
 void QuaternionTask::Execute()
 {
-	ut::Quat q_0 = ut::Quat::MakeFromAngleAndAxis(45.0f, ut::Vector<3>(1, 0, 0));
-	ut::Quat q_1 = ut::Quat::MakeFromAngles(ut::Vector<3>(45, 30, 60));
+	ut::Quat4f q_0 = ut::Quat4f::MakeFromAngleAndAxis(45.0f, ut::Vec3f(1, 0, 0));
+	ut::Quat q_1 = ut::Quat::MakeFromAngles(ut::Vec<3>(45, 30, 60));
 	q_0 *= q_1;
 	q_0 = q_0 * q_1;
 
@@ -213,13 +213,13 @@ void QuaternionTask::Execute()
 	q_0 = q_0 * vec3;
 	vec3 = q_0.Rotate(vec3);
 
-	ut::Matrix<3, 3> m3x3 = q_0.ToTransform<3>();
+	ut::Mat3f m3x3 = q_0.ToTransform<3>();
 	ut::Mat4 m4x4 = q_0.ToTransform<4>();
 
 	float angle = q_0.GetAngle();
 	vec3 = q_0.GetAxis();
 
-	ut::Quaternion<double> q_d = ut::Quaternion<double>::MakeFromAngles(ut::Vec<3, double>(45, 30, 60));
+	ut::Quat4d q_d = ut::Quat4d::MakeFromAngles(ut::Vec3d(45, 30, 60));
 	q_d = q_d * q_d;
 
 	report += "Success";

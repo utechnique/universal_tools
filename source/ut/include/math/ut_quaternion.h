@@ -369,8 +369,10 @@ struct Type< Quaternion<Scalar> >
 	static inline const char* Name() { return "quaternion"; }
 };
 
-// Shorter quaternion name version
+// Shorter quaternion name versions
 using Quat = Quaternion<float>;
+using Quat4f = Quaternion<float>;
+using Quat4d = Quaternion<double>;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

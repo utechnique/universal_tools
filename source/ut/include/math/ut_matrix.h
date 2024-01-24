@@ -287,6 +287,24 @@ public:
 		return Multiply<columns>(right);
 	}
 
+	// Cross product.
+	Matrix operator ^ (const Matrix& right) const
+	{
+		return Cross(right);
+	}
+
+	// Cross product.
+	Matrix operator % (const Matrix& right) const
+	{
+		return Cross(right);
+	}
+
+	// Dot product.
+	Scalar operator | (const Matrix& right) const
+	{
+		return Dot(right);
+	}
+
 	// Multiplies current matrix with the provided one. Number of columns in
 	// current matrix must be equel to number of rows in the provided matrix.
 	template<MatrixElementId right_columns>
@@ -651,9 +669,15 @@ template<MatrixElementId rows,
          typename Scalar = float,
          typename Tag = MatrixGeneralTag>
 using Mat = Matrix<rows, columns, Scalar, Tag>;
-using Mat2 = Matrix<2, 2, float, MatrixGeneralTag>;
-using Mat3 = Matrix<3, 3, float, MatrixGeneralTag>;
-using Mat4 = Matrix<4, 4, float, MatrixGeneralTag>;
+using Mat2 = Mat<2, 2, float, MatrixGeneralTag>;
+using Mat3 = Mat<3, 3, float, MatrixGeneralTag>;
+using Mat4 = Mat<4, 4, float, MatrixGeneralTag>;
+using Mat2f = Mat<2, 2, float, MatrixGeneralTag>;
+using Mat3f = Mat<3, 3, float, MatrixGeneralTag>;
+using Mat4f = Mat<4, 4, float, MatrixGeneralTag>;
+using Mat2d = Mat<2, 2, double, MatrixGeneralTag>;
+using Mat3d = Mat<3, 3, double, MatrixGeneralTag>;
+using Mat4d = Mat<4, 4, double, MatrixGeneralTag>;
 
 //----------------------------------------------------------------------------//
 // Vector is defined as a matrix with only one row.
@@ -664,6 +688,13 @@ using Vec = Vector<dim, Scalar>;
 using Vec2 = Vec<2, float>;
 using Vec3 = Vec<3, float>;
 using Vec4 = Vec<4, float>;
+using Vec2f = Vec<2, float>;
+using Vec3f = Vec<3, float>;
+using Vec4f = Vec<4, float>;
+using Vec2d = Vec<2, double>;
+using Vec3d = Vec<3, double>;
+using Vec4d = Vec<4, double>;
+
 
 // Color is a vector too.
 template<MatrixElementId dim, typename Scalar = float>
