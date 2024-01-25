@@ -52,6 +52,7 @@ public:
 	void DrawTransparentGeometry(Context& context,
 	                             ForwardShading::ViewData& data,
 	                             Buffer& view_uniform_buffer,
+	                             const ut::Vector<3>& view_position,
 	                             ModelBatcher& batcher,
 	                             Light::Sources& lights,
 	                             ut::Optional<Image&> ibl_cubemap,
@@ -267,6 +268,11 @@ private:
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();
 
+	// Performes Z-sotring for transparent objects and stores the result in
+	// @z_sorted_dc_indices array.
+	void SortTransparentDrawCalls(const ut::Vector<3>& view_position,
+	                              ut::Array<Model::DrawCall>& draw_list);
+
 	// Common rendering tools.
 	Toolset& tools;
 
@@ -280,6 +286,9 @@ private:
 
 	// Secondary command buffers to parallelize cpu work.
 	ut::Array< ut::Ref<CmdBuffer> > secondary_buffer_cache;
+
+	// Transparent draw calls cache sorted by the distance from viewer
+	ut::Array< ut::Pair<ut::uint32, float> > z_sorted_dc_indices;
 };
 
 //----------------------------------------------------------------------------//

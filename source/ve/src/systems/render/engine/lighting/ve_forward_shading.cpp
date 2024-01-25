@@ -152,23 +152,22 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 void ForwardShading::DrawTransparentGeometry(Context& context,
                                              ForwardShading::ViewData& data,
                                              Buffer& view_uniform_buffer,
+                                             const ut::Vector<3>& view_position,
                                              ModelBatcher& batcher,
                                              Light::Sources& lights,
                                              ut::Optional<Image&> ibl_cubemap,
                                              Image::Cube::Face cubeface)
 {
-	// TODO! Z-sorting
-
 	// get the number of available threads
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
 	UT_ASSERT(thread_count == lightpass_model_desc_set.Count());
 
-	// get the number of model drawcalls
-	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;
-	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.Count());
+	// perform z-sorting
+	SortTransparentDrawCalls(view_position, batcher.draw_calls);
+	const ut::uint32 sorted_dc_count = static_cast<ut::uint32>(z_sorted_dc_indices.Count());
 
 	// initialize secondary buffers for a parallel work
-	const ut::uint32 dc_per_thread = dc_count / thread_count; // drawcalls per thread
+	const ut::uint32 dc_per_thread = sorted_dc_count / thread_count; // drawcalls per thread
 	secondary_buffer_cache.Reset();
 	for (ut::uint32 i = 0; i < thread_count; i++)
 	{
@@ -186,7 +185,7 @@ void ForwardShading::DrawTransparentGeometry(Context& context,
 	ut::uint32 offset = 0; // offset from the first drawcall in the batcher
 	for (ut::uint32 thread_id = 0; thread_id < thread_count; thread_id++)
 	{
-		ut::uint32 count = dc_per_thread + (thread_id == 0 ? (dc_count % thread_count) : 0);
+		ut::uint32 count = dc_per_thread + (thread_id == 0 ? (sorted_dc_count % thread_count) : 0);
 		auto record_commands = [&, thread_id, offset, count](Context& deferred_context)
 		{
 			RenderTransparentModelJob(deferred_context,
@@ -241,7 +240,8 @@ void ForwardShading::RenderTransparentModelJob(Context& context,
 	for (ut::uint32 i = offset; i <= last_element; i++)
 	{
 		// skip opaque models
-		Model::DrawCall& dc = batcher.draw_calls[i];
+		const ut::uint32 sorted_id = z_sorted_dc_indices[i].first;
+		Model::DrawCall& dc = batcher.draw_calls[sorted_id];
 		Mesh::Subset& subset = dc.model.mesh->subsets[dc.subset_id];
 		Material& material = subset.material;
 		if (material.alpha != Material::alpha_transparent)
@@ -272,7 +272,7 @@ void ForwardShading::RenderTransparentModelJob(Context& context,
 				                          batcher,
 				                          ibl_cull_mode,
 				                          ibl_alpha_mode,
-				                          i,
+				                          sorted_id,
 				                          thread_id);
 				first_pass = false;
 			}
@@ -292,7 +292,7 @@ void ForwardShading::RenderTransparentModelJob(Context& context,
 			                             ibl_preset,
 			                             lightpass_cull_mode,
 			                             lightpass_alpha_mode,
-			                             i,
+			                             sorted_id,
 			                             thread_id);
 		}
 	}
@@ -802,6 +802,50 @@ void ForwardShading::ConnectDescriptors()
 	{
 		lightpass_model_desc_set[i].Connect(light_shader.GetFirst());
 		iblpass_model_desc_set[i].Connect(ibl_shader.GetFirst());
+	}
+}
+
+// Performes Z-sotring for transparent objects and stores the result in
+// @z_sorted_dc_indices array.
+void ForwardShading::SortTransparentDrawCalls(const ut::Vector<3>& view_position,
+                                              ut::Array<Model::DrawCall>& draw_list)
+{
+	z_sorted_dc_indices.Reset();
+	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.Count());
+	for (ut::uint32 dc_index = 0; dc_index < dc_count; dc_index++)
+	{
+		// skip opaque draw calls
+		const Model::DrawCall& dc = draw_list[dc_index];
+		const Mesh::Subset& subset = dc.model.mesh->subsets[dc.subset_id];
+		const Material& material = subset.material;
+		if (material.alpha != Material::alpha_transparent)
+		{
+			continue;
+		}
+
+		// calculate distance
+		const ut::Vector<3> direction = dc.model.world_transform.translation - view_position;
+		const float distance = direction.Length();
+		ut::Pair<ut::uint32, float> element_to_sort(dc_index, distance);
+
+		// insert the view using the 'bubble' principle to retain sorting
+		bool inserted = false;
+		const size_t sorted_dc_count = z_sorted_dc_indices.Count();
+		for (size_t sorted_dc_index = 0; sorted_dc_index < sorted_dc_count; sorted_dc_index++)
+		{
+			const ut::Pair<ut::uint32, float>& sorted_id = z_sorted_dc_indices[sorted_dc_index];
+			if (distance >= sorted_id.second)
+			{
+				z_sorted_dc_indices.Insert(sorted_dc_index, ut::Move(element_to_sort));
+				inserted = true;
+				break;
+			}
+		}
+
+		if (!inserted)
+		{
+			z_sorted_dc_indices.Add(ut::Move(element_to_sort));
+		}
 	}
 }
 
