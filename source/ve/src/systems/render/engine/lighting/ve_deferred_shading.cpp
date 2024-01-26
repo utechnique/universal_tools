@@ -305,6 +305,22 @@ void DeferredShading::Shade(Context& context,
 		context.Draw(6, 0);
 	}
 
+	// ambient lights
+	const size_t ambient_light_count = lights.ambient.Count();
+	if (ambient_light_count > 0)
+	{
+		const size_t pipeline_id = LightPass::Grid::GetId(ibl_preset, Light::source_ambient);
+		context.BindPipelineState(data.light_pipeline[pipeline_id]);
+		for (size_t i = 0; i < ambient_light_count; i++)
+		{
+			AmbientLight& light = lights.ambient[i];
+			AmbientLight::FrameData& light_data = light.data->frames[current_frame_id];
+			lightpass_desc_set.light_ub.BindUniformBuffer(light_data.uniform_buffer);
+			context.BindDescriptorSet(lightpass_desc_set);
+			context.Draw(6, 0);
+		}
+	}
+
 	// directional lights
 	const size_t directional_light_count = lights.directional.Count();
 	if (directional_light_count > 0)
@@ -722,6 +738,10 @@ Shader DeferredShading::CreateLightPassShader(Light::SourceType source_type,
 	case Light::source_spot:
 		light_type_str = "SPOT_LIGHT";
 		light_sufix = "spot";
+		break;
+	case Light::source_ambient:
+		light_type_str = "AMBIENT_LIGHT";
+		light_sufix = "ambient";
 		break;
 	default: throw ut::Error(ut::error::not_implemented);
 	}

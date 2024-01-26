@@ -11,6 +11,7 @@
 #include "systems/render/engine/units/ve_render_directional_light.h"
 #include "systems/render/engine/units/ve_render_point_light.h"
 #include "systems/render/engine/units/ve_render_spot_light.h"
+#include "systems/render/engine/units/ve_render_ambient_light.h"
 //----------------------------------------------------------------------------//
 class TestComponent : public ve::Component
 {
@@ -101,7 +102,7 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& p
 	box_model.local_trasform.translation.Y() = (rand() % 200) / 40.0f;
 	box_model.local_trasform.translation.Z() = (rand() % 200) / 40.0f;
 	box_model.mesh_path = ut::String(ve::render::engine_rc::skDir) + mesh_name;
-	box_model.diffuse_mul.R() = r1 / 1000.0f;
+	box_model.diffuse_mul.R() = r1 / 1050.0f;
 	box_model.diffuse_mul.G() = r2 / 1000.0f;
 	box_model.diffuse_mul.B() = r3 / 1000.0f;
 
@@ -140,6 +141,19 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateLight(ve::render::Light::SourceT
 	ut::UniquePtr<ve::render::Unit> light;
 	switch (type)
 	{
+		case ve::render::Light::source_ambient:
+		{
+			name = ut::GetPolymorphicName<ve::render::AmbientLight>();
+			const ut::Vector<3> light_direction = ut::Vector<3>(-1, -1, 1).Normalize();
+			transform.rotation = ut::Quaternion<float>::MakeShortestRotation(ve::render::DirectionalLight::skDirection,
+			                                                                 light_direction);
+			ve::render::AmbientLight light_unit;
+			light_unit.color = ut::Vector<3>(0.75f, 0.95f, 1.0f);
+			light_unit.intensity = 0.16f;
+			light_unit.attenuation_distance = 1.0e+10f;
+			light = ut::MakeUnique<ve::render::AmbientLight>(ut::Move(light_unit));
+		} break;
+
 		case ve::render::Light::source_directional:
 		{
 			name = ut::GetPolymorphicName<ve::render::DirectionalLight>();
@@ -195,8 +209,11 @@ ut::Array< ut::Array< ut::UniquePtr<ve::Component> > > CreateTestScene()
 
 	const float x_offset = 40.0f;
 	
-	// directional light
+	// ambient light
 	size_t dir_light_id = 0;
+	out.Add(CreateLight(ve::render::Light::source_ambient, ut::Vector<3>(0), dir_light_id++));
+
+	// directional light
 	out.Add(CreateLight(ve::render::Light::source_directional, ut::Vector<3>(0), dir_light_id++));
 
 	// point and spot lights

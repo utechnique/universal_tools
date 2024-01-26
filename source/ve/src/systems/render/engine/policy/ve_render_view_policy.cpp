@@ -95,7 +95,8 @@ void Policy<View>::RenderEnvironment(Context& context)
 	// extract light units
 	Light::Sources lights{ selector.Get<DirectionalLight>(),
 	                       selector.Get<PointLight>(),
-	                       selector.Get<SpotLight>() };
+	                       selector.Get<SpotLight>(),
+	                       selector.Get<AmbientLight>() };
 
 	// update lights
 	lighting_mgr.UpdateLightUniforms(context, lights);

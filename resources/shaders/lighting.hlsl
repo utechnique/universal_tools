@@ -181,6 +181,12 @@ float3 ComputeDirectLighting(SurfaceData surface, LightingData light)
 }
 
 //----------------------------------------------------------------------------//
+float3 ComputeAmbientLighting(SurfaceData surface, LightingData light)
+{
+	return surface.diffuse * light.color;
+}
+
+//----------------------------------------------------------------------------//
 // Caution! Use this function only if at least one of these macros is declared:
 // DIRECTIONAL_LIGHT, POINT_LIGHT, SPOT_LIGHT.
 // Also light_buffer.hlsl must be included because this function uses
@@ -189,7 +195,7 @@ float ComputeAttenuation(LightingData light)
 {
 #ifdef UB_ID_LIGHT // Existence of the UB_ID_LIGHT macro makes an assumption
                    // that g_ub_light buffer is available.
-#if POINT_LIGHT || SPOT_LIGHT
+#if POINT_LIGHT || SPOT_LIGHT || AMBIENT_LIGHT
 	const float attenuation_distance = g_light_attenuation.x;
 	float point_attenuation = saturate(attenuation_distance / light.ray_length);
 	point_attenuation *= point_attenuation;

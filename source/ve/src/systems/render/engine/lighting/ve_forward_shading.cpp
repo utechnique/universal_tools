@@ -325,6 +325,7 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 	                                                        LightPass::ModelRendering::alpha_test_off;
 
 	// accumulate light from all sources
+	const size_t ambient_count = lights.ambient.Count();
 	const size_t directional_count = lights.directional.Count();
 	const size_t point_count = lights.point.Count();
 	const size_t spot_count = lights.spot.Count();
@@ -332,27 +333,34 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 	for (size_t light_id = 0; light_id < light_count; light_id++)
 	{
 		// figure out source type
-		const Light::SourceType light_type = light_id < directional_count ? Light::source_directional :
-		                                     light_id < (directional_count + point_count) ?
+		const Light::SourceType light_type = light_id < ambient_count ? Light::source_ambient :
+		                                     light_id < (ambient_count + directional_count) ? Light::source_directional :
+		                                     light_id < (ambient_count + directional_count + point_count) ?
 		                                     Light::source_point : Light::source_spot;
 
 		// extract light data
 		ut::Optional<Buffer&> light_ub;
-		if (light_type == Light::source_directional)
+		if (light_type == Light::source_ambient)
 		{
-			DirectionalLight& light = lights.directional[light_id];
+			AmbientLight& light = lights.ambient[light_id];
+			AmbientLight::FrameData& light_data = light.data->frames[current_frame_id];
+			light_ub = light_data.uniform_buffer;
+		}
+		else if (light_type == Light::source_directional)
+		{
+			DirectionalLight& light = lights.directional[light_id - ambient_count];
 			DirectionalLight::FrameData& light_data = light.data->frames[current_frame_id];
 			light_ub = light_data.uniform_buffer;
 		}
 		else if (light_type == Light::source_point)
 		{
-			PointLight& light = lights.point[light_id - directional_count];
+			PointLight& light = lights.point[light_id - ambient_count - directional_count];
 			PointLight::FrameData& light_data = light.data->frames[current_frame_id];
 			light_ub = light_data.uniform_buffer;
 		}
 		else if (light_type == Light::source_spot)
 		{
-			SpotLight& light = lights.spot[light_id - directional_count - point_count];
+			SpotLight& light = lights.spot[light_id - ambient_count - directional_count - point_count];
 			SpotLight::FrameData& light_data = light.data->frames[current_frame_id];
 			light_ub = light_data.uniform_buffer;
 		}
@@ -543,6 +551,10 @@ ut::Array<BoundShader> ForwardShading::CreateModelLightPassShader()
 		case Light::source_spot:
 			light_type_str = "SPOT_LIGHT";
 			shader_name_suffix += "_spot";
+			break;
+		case Light::source_ambient:
+			light_type_str = "AMBIENT_LIGHT";
+			shader_name_suffix += "_ambient";
 			break;
 		default: throw ut::Error(ut::error::not_implemented);
 		}

@@ -76,6 +76,12 @@ float4 PS(PS_INPUT input) : SV_Target
 	                                            g_camera_position.xyz);
 #if IBL
 	CalculateMetallicDiffuseSpecular(surface);
+#elif AMBIENT_LIGHT
+	// prevent normal map from being optimized out
+	if (surface.diffuse.r < -1.0f)
+	{
+		surface.diffuse += surface.metallic * 0.001f;
+	}
 #endif
 
 #if LIGHT_PASS
@@ -95,7 +101,11 @@ float4 PS(PS_INPUT input) : SV_Target
 	light.is_radial = light.source_radius > 0.001f;
 
 	// calculate lighting
-	float3 light_amount = ComputeDirectLighting(surface, light);
+	#if AMBIENT_LIGHT
+		float3 light_amount = ComputeAmbientLighting(surface, light);
+	#else
+		float3 light_amount = ComputeDirectLighting(surface, light);
+	#endif
 	light_amount *= ComputeAttenuation(light);
 #elif IBL_PASS
 	float3 view_direction = -surface.look;

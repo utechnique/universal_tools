@@ -19,6 +19,7 @@ public:
 		source_directional,
 		source_point,
 		source_spot,
+		source_ambient,
 		source_type_count
 	};
 
@@ -40,6 +41,7 @@ public:
 		ut::Array< ut::Ref<class DirectionalLight> >& directional;
 		ut::Array< ut::Ref<class PointLight> >& point;
 		ut::Array< ut::Ref<class SpotLight> >& spot;
+		ut::Array< ut::Ref<class AmbientLight> >& ambient;
 	};
 
 	// Registers light source info into the reflection tree.

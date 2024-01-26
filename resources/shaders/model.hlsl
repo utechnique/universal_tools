@@ -316,8 +316,12 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 			light.source_length = g_light_color.w;
 			light.is_radial = light.source_radius > 0.001f;
 
-			// calculate lighting
-			float3 light_amount = ComputeDirectLighting(surface, light);
+				// calculate lighting
+			#if AMBIENT_LIGHT
+				float3 light_amount = ComputeAmbientLighting(surface, light);
+			#else
+				float3 light_amount = ComputeDirectLighting(surface, light);
+			#endif
 			light_amount *= ComputeAttenuation(light);
 		#elif IBL_PASS
 			float3 view_direction = -surface.look;

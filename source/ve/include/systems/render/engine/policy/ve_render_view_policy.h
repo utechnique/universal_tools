@@ -8,6 +8,7 @@
 #include "ve_render_directional_light_policy.h"
 #include "ve_render_point_light_policy.h"
 #include "ve_render_spot_light_policy.h"
+#include "ve_render_ambient_light_policy.h"
 
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_unit_mgr.h"

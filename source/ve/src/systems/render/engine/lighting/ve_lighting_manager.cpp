@@ -128,6 +128,22 @@ void Manager::UpdateLightUniforms(Context& context, Light::Sources& lights)
 		                    light.shape_radius,
 		                    light.shape_length);
 	}
+
+	// ambient lights
+	const size_t ambient_light_count = lights.ambient.Count();
+	for (size_t i = 0; i < ambient_light_count; i++)
+	{
+		AmbientLight& light = lights.ambient[i];
+		UpdateLightUniforms(context,
+		                    light.data->frames[current_frame_id].uniform_buffer,
+		                    light.world_transform.translation,
+		                    light.color,
+		                    Light::GetDirection(light.world_transform.rotation),
+		                    Light::GetTubeDirection(light.world_transform.rotation),
+		                    light.intensity,
+		                    light.attenuation_distance,
+		                    0.0f, 0.0f, 0.0f, 0.0f);
+	}
 }
 
 // Updates light source buffer with provided data.

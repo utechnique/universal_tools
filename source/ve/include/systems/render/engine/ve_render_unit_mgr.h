@@ -12,6 +12,7 @@
 #include "units/ve_render_directional_light.h"
 #include "units/ve_render_point_light.h"
 #include "units/ve_render_spot_light.h"
+#include "units/ve_render_ambient_light.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -24,7 +25,8 @@ using EngineUnits = ut::Container
 	Model,
 	DirectionalLight,
 	PointLight,
-	SpotLight
+	SpotLight,
+	AmbientLight
 >;
 
 //----------------------------------------------------------------------------//
