@@ -49,6 +49,7 @@
 #define NEEDS_MATERIAL_MAP (!HITMASK_PASS)
 #define NEEDS_MATERIAL_BUFFER (!HITMASK_PASS)
 #define NEEDS_TEXTURE_COORD (NEEDS_DIFFUSE_MAP || NEEDS_NORMAL_MAP || NEEDS_MATERIAL_MAP)
+#define ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT (LIGHT_PASS && AMBIENT_LIGHT)
 
 //----------------------------------------------------------------------------//
 #include "vertex.hlsl"
@@ -161,6 +162,17 @@ Texture2D g_tex2d_material : register(t8);
 
 #if IBL_PASS
 TextureCube g_ibl_cubemap : register(t9);
+#endif
+
+//----------------------------------------------------------------------------//
+// Dumb function to prevent aggresive optimizers from stripping out unused
+// shader resources.
+#if ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT
+float PreserveRcBindings(float2 texcoord)
+{
+	return g_tex2d_normal.Sample(g_sampler, texcoord).r +
+	       g_tex2d_material.Sample(g_sampler, texcoord).r;
+}
 #endif
 
 //----------------------------------------------------------------------------//
@@ -339,6 +351,14 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 		output.a = diffuse_sample.a;
 	#endif // !DEFERRED_PASS
 #endif // !HITMASK_PASS
+
+	// preserve shader resource bindings from being optimized out
+#if ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT
+		if (output.r < -1.0f)
+		{
+			output.r += PreserveRcBindings(texcoord);
+		}
+#endif
 
 	return output;
 }

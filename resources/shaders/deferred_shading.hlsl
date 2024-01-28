@@ -32,6 +32,8 @@
 #define IBL 0
 #endif
 
+#define ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT (LIGHT_PASS && AMBIENT_LIGHT)
+
 //----------------------------------------------------------------------------//
 #if LIGHT_PASS
 #include "light_buffer.hlsl"
@@ -59,6 +61,16 @@ TextureCube g_ibl_cubemap : register(t6);
 #endif
 
 //----------------------------------------------------------------------------//
+// Dumb function to prevent aggresive optimizers from stripping out unused
+// shader resources.
+#if ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT
+float PreserveRcBindings(float2 texcoord)
+{
+	return g_tex2d_normal.Sample(g_sampler, texcoord).r;
+}
+#endif
+
+//----------------------------------------------------------------------------//
 // Pixel shader entry point.
 float4 PS(PS_INPUT input) : SV_Target
 {
@@ -76,12 +88,6 @@ float4 PS(PS_INPUT input) : SV_Target
 	                                            g_camera_position.xyz);
 #if IBL
 	CalculateMetallicDiffuseSpecular(surface);
-#elif AMBIENT_LIGHT
-	// prevent normal map from being optimized out
-	if (surface.diffuse.r < -1.0f)
-	{
-		surface.diffuse += surface.metallic * 0.001f;
-	}
 #endif
 
 #if LIGHT_PASS
@@ -119,6 +125,15 @@ float4 PS(PS_INPUT input) : SV_Target
 	                                                      surface.specular,
 	                                                      IBL_MIP_COUNT);
 #endif
+
+	// preserve shader resource bindings from being optimized out
+#if ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT
+	if (light_amount.r < -1.0f)
+	{
+		light_amount.r += PreserveRcBindings(input.texcoord);
+	}
+#endif
+
 	return float4(light_amount.rgb, 0.0f);
 }
 

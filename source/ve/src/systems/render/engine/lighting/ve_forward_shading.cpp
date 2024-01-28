@@ -329,7 +329,7 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 	const size_t directional_count = lights.directional.Count();
 	const size_t point_count = lights.point.Count();
 	const size_t spot_count = lights.spot.Count();
-	const size_t light_count = directional_count + point_count + spot_count;
+	const size_t light_count = ambient_count + directional_count + point_count + spot_count;
 	for (size_t light_id = 0; light_id < light_count; light_id++)
 	{
 		// figure out source type
@@ -367,6 +367,12 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 		else
 		{
 			UT_ASSERT(false);
+		}
+
+		// blending mode is used only for the first pass
+		if (light_id > 0)
+		{
+			alpha_mode = LightPass::ModelRendering::alpha_add;
 		}
 
 		// calculate batch id
