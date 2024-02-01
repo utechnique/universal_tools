@@ -104,6 +104,11 @@ public:
 
 	// GPU resources.
 	RcRef<GpuData> data;
+
+	// Timer.
+	ut::time::Counter timer;
+	double frame_time_ms = 0.0f;
+	double total_time_ms = 0.0f;
 };
 
 //----------------------------------------------------------------------------//

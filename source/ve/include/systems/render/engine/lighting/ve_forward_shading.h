@@ -92,19 +92,28 @@ private:
 				cull_mode_count
 			};
 
+			enum StencilMode
+			{
+				stencil_none,
+				stencil_highlighted,
+				stencil_mode_count
+			};
+
 			static constexpr ut::uint32 vertex_format_column = 0;
 			static constexpr ut::uint32 ibl_column = 1;
 			static constexpr ut::uint32 light_type_column = 2;
 			static constexpr ut::uint32 alpha_test_column = 3;
 			static constexpr ut::uint32 alpha_mode_column = 4;
 			static constexpr ut::uint32 cull_mode_column = 5;
+			static constexpr ut::uint32 stencil_mode_column = 6;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 ibl_preset_count,
 			                 Light::source_type_count,
 			                 alpha_test_count,
 			                 alpha_mode_count,
-			                 cull_mode_count> PipelineGrid;
+			                 cull_mode_count,
+			                 stencil_mode_count> PipelineGrid;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 ibl_preset_count,
@@ -157,15 +166,24 @@ private:
 				cull_mode_count
 			};
 
+			enum StencilMode
+			{
+				stencil_none,
+				stencil_highlighted,
+				stencil_mode_count
+			};
+
 			static constexpr ut::uint32 vertex_format_column = 0;
 			static constexpr ut::uint32 alpha_test_column = 1;
 			static constexpr ut::uint32 alpha_mode_column = 2;
 			static constexpr ut::uint32 cull_mode_column = 3;
+			static constexpr ut::uint32 stencil_mode_column = 4;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 alpha_test_count,
 			                 alpha_mode_count,
-			                 cull_mode_count> PipelineGrid;
+			                 cull_mode_count,
+			                 stencil_mode_count> PipelineGrid;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 alpha_test_count> ShaderGrid;
@@ -254,7 +272,8 @@ private:
 	                                                                  LightPass::ModelRendering::AlphaMode alpha_mode,
 	                                                                  LightPass::ModelRendering::IblPreset ibl_preset,
 	                                                                  Light::SourceType source_type,
-	                                                                  LightPass::ModelRendering::CullMode cull_mode);
+	                                                                  LightPass::ModelRendering::CullMode cull_mode,
+	                                                                  LightPass::ModelRendering::StencilMode stencil_mode);
 
 	// Creates a pipeline state to apply ibl reflections.
 	ut::Result<PipelineState, ut::Error> CreateModelIblPassPipeline(RenderPass& light_pass,
@@ -263,7 +282,8 @@ private:
 	                                                                Mesh::VertexFormat vertex_format,
 	                                                                IblPass::ModelRendering::AlphaTest alpha_test,
 	                                                                IblPass::ModelRendering::AlphaMode alpha_mode,
-	                                                                IblPass::ModelRendering::CullMode cull_mode);
+	                                                                IblPass::ModelRendering::CullMode cull_mode,
+	                                                                IblPass::ModelRendering::StencilMode stencil_mode);
 
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();

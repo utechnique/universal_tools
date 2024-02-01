@@ -70,6 +70,7 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 		const size_t ibl_preset = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::ibl_column>(i);
 		const size_t source_type = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::light_type_column>(i);
 		const size_t cull_mode = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::cull_mode_column>(i);
+		const size_t stencil_mode = LightPass::ModelRendering::PipelineGrid::GetCoordinate<LightPass::ModelRendering::stencil_mode_column>(i);
 
 		ut::Result<PipelineState, ut::Error> pipeline = CreateModelLightPassPipeline(lightpass.Get(),
 		                                                                             width, height,
@@ -78,7 +79,8 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 		                                                                             static_cast<LightPass::ModelRendering::AlphaMode>(alpha_mode),
 		                                                                             static_cast<LightPass::ModelRendering::IblPreset>(ibl_preset),
 		                                                                             static_cast<Light::SourceType>(source_type),
-		                                                                             static_cast<LightPass::ModelRendering::CullMode>(cull_mode));
+		                                                                             static_cast<LightPass::ModelRendering::CullMode>(cull_mode),
+		                                                                             static_cast<LightPass::ModelRendering::StencilMode>(stencil_mode));
 		if (!pipeline)
 		{
 			return ut::MakeError(pipeline.MoveAlt());
@@ -99,13 +101,15 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 		const size_t alpha_test = IblPass::ModelRendering::PipelineGrid::GetCoordinate<IblPass::ModelRendering::alpha_test_column>(i);
 		const size_t alpha_mode = IblPass::ModelRendering::PipelineGrid::GetCoordinate<IblPass::ModelRendering::alpha_mode_column>(i);
 		const size_t cull_mode = IblPass::ModelRendering::PipelineGrid::GetCoordinate<IblPass::ModelRendering::cull_mode_column>(i);
+		const size_t stencil_mode = IblPass::ModelRendering::PipelineGrid::GetCoordinate<IblPass::ModelRendering::stencil_mode_column>(i);
 
 		ut::Result<PipelineState, ut::Error> pipeline = CreateModelIblPassPipeline(lightpass.Get(),
 		                                                                           width, height,
 		                                                                           static_cast<Mesh::VertexFormat>(vertex_format),
 		                                                                           static_cast<IblPass::ModelRendering::AlphaTest>(alpha_test),
 		                                                                           static_cast<IblPass::ModelRendering::AlphaMode>(alpha_mode),
-		                                                                           static_cast<IblPass::ModelRendering::CullMode>(cull_mode));
+		                                                                           static_cast<IblPass::ModelRendering::CullMode>(cull_mode),
+		                                                                           static_cast<IblPass::ModelRendering::StencilMode>(stencil_mode));
 		if (!pipeline)
 		{
 			return ut::MakeError(pipeline.MoveAlt());
@@ -324,6 +328,11 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 	                                                        LightPass::ModelRendering::alpha_test_on :
 	                                                        LightPass::ModelRendering::alpha_test_off;
 
+	// get stencil mode
+	const LightPass::ModelRendering::StencilMode stencil_mode = dc.model.highlighted ?
+	                                                            LightPass::ModelRendering::stencil_highlighted :
+	                                                            LightPass::ModelRendering::stencil_none;
+
 	// accumulate light from all sources
 	const size_t ambient_count = lights.ambient.Count();
 	const size_t directional_count = lights.directional.Count();
@@ -386,7 +395,8 @@ void ForwardShading::RenderTransparentModelLights(Context& context,
 		                                                                                light_type,
 		                                                                                alpha_test,
 		                                                                                alpha_mode,
-		                                                                                cull_mode);
+		                                                                                cull_mode,
+		                                                                                stencil_mode);
 
 		// bind uniforms
 		LightPass::ModelRendering::Descriptors& desc_set = lightpass_model_desc_set[thread_id];
@@ -436,6 +446,11 @@ void ForwardShading::RenderTransparentModelIbl(Context& context,
 	                                                      IblPass::ModelRendering::alpha_test_on :
 	                                                      IblPass::ModelRendering::alpha_test_off;
 
+	// get stencil mode
+	const IblPass::ModelRendering::StencilMode stencil_mode = dc.model.highlighted ?
+	                                                          IblPass::ModelRendering::stencil_highlighted :
+	                                                          IblPass::ModelRendering::stencil_none;
+
 	// calculate batch id
 	const ut::uint32 batch_id = drawcall_id / batch_size;
 	Model::Batch& batch = batches[batch_id];
@@ -445,7 +460,8 @@ void ForwardShading::RenderTransparentModelIbl(Context& context,
 	const size_t pipeline_state_id = IblPass::ModelRendering::PipelineGrid::GetId(vertex_format,
 	                                                                              alpha_test,
 	                                                                              alpha_mode,
-	                                                                              cull_mode);
+	                                                                              cull_mode,
+	                                                                              stencil_mode);
 
 	// bind uniforms
 	IblPass::ModelRendering::Descriptors& desc_set = iblpass_model_desc_set[thread_id];
@@ -671,7 +687,7 @@ ut::Array<BoundShader> ForwardShading::CreateModelIblShader(ut::uint32 ibl_mip_c
 ut::Result<RenderPass, ut::Error> ForwardShading::CreateLightPass(pixel::Format depth_stencil_format,
                                                                   pixel::Format light_buffer_format)
 {
-	RenderTargetSlot depth_slot(depth_stencil_format, RenderTargetSlot::load_extract, RenderTargetSlot::store_dont_care, false);
+	RenderTargetSlot depth_slot(depth_stencil_format, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
 	RenderTargetSlot color_slot(light_buffer_format, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
@@ -687,7 +703,8 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateModelLightPassPipelin
                                                                                   LightPass::ModelRendering::AlphaMode alpha_mode,
                                                                                   LightPass::ModelRendering::IblPreset ibl_preset,
                                                                                   Light::SourceType source_type,
-                                                                                  LightPass::ModelRendering::CullMode cull_mode)
+                                                                                  LightPass::ModelRendering::CullMode cull_mode,
+                                                                                  LightPass::ModelRendering::StencilMode stencil_mode)
 {
 	PipelineState::Info info;
 	const size_t shader_id = LightPass::ModelRendering::ShaderGrid::GetId(vertex_format,
@@ -696,6 +713,9 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateModelLightPassPipelin
 	                                                                      alpha_test);
 	UT_ASSERT(light_shader[shader_id].stages[Shader::vertex]);
 	UT_ASSERT(light_shader[shader_id].stages[Shader::pixel]);
+
+	const ut::uint32 stencil_mask = stencil_mode == LightPass::ModelRendering::stencil_highlighted ?
+	                                                stencilref_highlight : 0x0;
 
 	info.stages[Shader::vertex] = light_shader[shader_id].stages[Shader::vertex].Get();
 	info.stages[Shader::pixel] = light_shader[shader_id].stages[Shader::pixel].Get();
@@ -716,7 +736,7 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateModelLightPassPipelin
 	info.depth_stencil_state.back.compare_mask = 0xffffffff;
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0xffffffff;
-	info.depth_stencil_state.stencil_reference = 0x0;
+	info.depth_stencil_state.stencil_reference = stencil_mask;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = cull_mode == LightPass::ModelRendering::cull_back ?
 	                                                  RasterizationState::back_culling :
@@ -756,12 +776,16 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateModelIblPassPipeline(
                                                                                 Mesh::VertexFormat vertex_format,
                                                                                 IblPass::ModelRendering::AlphaTest alpha_test,
                                                                                 IblPass::ModelRendering::AlphaMode alpha_mode,
-                                                                                IblPass::ModelRendering::CullMode cull_mode)
+                                                                                IblPass::ModelRendering::CullMode cull_mode,
+                                                                                IblPass::ModelRendering::StencilMode stencil_mode)
 {
 	PipelineState::Info info;
 	const size_t shader_id = IblPass::ModelRendering::ShaderGrid::GetId(vertex_format, alpha_test);
 	UT_ASSERT(ibl_shader[shader_id].stages[Shader::vertex]);
 	UT_ASSERT(ibl_shader[shader_id].stages[Shader::pixel]);
+
+	const ut::uint32 stencil_mask = stencil_mode == LightPass::ModelRendering::stencil_highlighted ?
+	                                                stencilref_highlight : 0x0;
 
 	info.stages[Shader::vertex] = ibl_shader[shader_id].stages[Shader::vertex].Get();
 	info.stages[Shader::pixel] = ibl_shader[shader_id].stages[Shader::pixel].Get();
@@ -775,7 +799,17 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateModelIblPassPipeline(
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::less_or_equal;
-	info.depth_stencil_state.stencil_test_enable = false;
+	info.depth_stencil_state.depth_test_enable = true;
+	info.depth_stencil_state.depth_write_enable = false;
+	info.depth_stencil_state.depth_compare_op = compare::less_or_equal;
+	info.depth_stencil_state.stencil_test_enable = true;
+	info.depth_stencil_state.back.compare_op = compare::always;
+	info.depth_stencil_state.back.fail_op = StencilOpState::replace;
+	info.depth_stencil_state.back.pass_op = StencilOpState::replace;
+	info.depth_stencil_state.back.compare_mask = 0xffffffff;
+	info.depth_stencil_state.front = info.depth_stencil_state.back;
+	info.depth_stencil_state.stencil_write_mask = 0xffffffff;
+	info.depth_stencil_state.stencil_reference = stencil_mask;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = cull_mode == IblPass::ModelRendering::cull_back ?
 	                                                  RasterizationState::back_culling :

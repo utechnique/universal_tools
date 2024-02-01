@@ -53,7 +53,7 @@ ut::Result<lighting::ViewData, ut::Error> Manager::CreateViewData(Target& depth_
 	}
 
 	// forward shading
-	ut::Result<ForwardShading::ViewData, ut::Error> forward_sh_data = forward_shading.CreateViewData(def_sh_data->depth,
+	ut::Result<ForwardShading::ViewData, ut::Error> forward_sh_data = forward_shading.CreateViewData(depth_stencil,
 	                                                                                                 light_buffer.Get(),
 	                                                                                                 width, height,
 	                                                                                                 is_cube);

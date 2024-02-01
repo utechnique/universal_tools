@@ -28,7 +28,7 @@ Shader RgbToSrgb::LoadShader()
 }
 
 // Creates srgb converter (per-view) data.
-//    @param postprocess_pass - render pass that will be used for fxaa.
+//    @param postprocess_pass - render pass that will be used for tone mapping.
 //    @param width - width of the view in pixels.
 //    @param height - height of the view in pixels.
 //    @return - a new RgbToSrgb::ViewData object or error if failed.
@@ -69,20 +69,23 @@ ut::Result<RgbToSrgb::ViewData, ut::Error> RgbToSrgb::CreateViewData(RenderPass&
 }
 
 // Performs rgb to srgb conversion.
+//    @param swap_mgr - reference to the post-process swap manager.
 //    @param context - reference to the rendering context.
 //    @param data - reference to the RgbToSrgb::ViewData object containing
 //                  converter-specific resources.
-//    @param fb - reference to the framebuffer (with bound destination target).
 //    @param pass - reference to the render pass with one color attachment
 //                  and no depth.
 //    @param source - reference to the source image.
-void RgbToSrgb::Apply(Context& context,
-                      ViewData& data,
-                      Framebuffer& fb,
-                      RenderPass& pass,
-                      Image& source)
+//    @return - reference to the postprocess slot used for tone mapping.
+SwapSlot& RgbToSrgb::Apply(SwapManager& swap_mgr,
+                           Context& context,
+                           ViewData& data,
+                           RenderPass& pass,
+                           Image& source)
 {
-	const Framebuffer::Info& fb_info = fb.GetInfo();
+	ut::Optional<SwapSlot&> slot = swap_mgr.Swap();
+	UT_ASSERT(slot.HasValue());
+	const Framebuffer::Info& fb_info = slot->color_only_framebuffer.GetInfo();
 
 	// set shader resources
 	data.desc_set.sampler.BindSampler(tools.sampler_cache.linear_clamp);
@@ -90,12 +93,17 @@ void RgbToSrgb::Apply(Context& context,
 
 	// draw quad
 	const ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-	context.BeginRenderPass(pass, fb, render_area, ut::Color<4>(0), 1.0f);
+	context.BeginRenderPass(pass,
+	                        slot->color_only_framebuffer,
+	                        render_area,
+	                        ut::Color<4>(0), 1.0f);
 	context.BindPipelineState(data.pipeline_state);
 	context.BindDescriptorSet(data.desc_set);
 	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
 	context.EndRenderPass();
+
+	return slot.Get();
 }
 
 //----------------------------------------------------------------------------//
@@ -129,20 +137,21 @@ ut::Result<ToneMapper::ViewData, ut::Error> ToneMapper::CreateViewData(RenderPas
 }
 
 // Performs tone mapping.
+//    @param swap_mgr - reference to the post-process swap manager.
 //    @param context - reference to the rendering context.
 //    @param data - reference to the ToneMapper::ViewData object containing
 //                  tonemap-specific resources.
-//    @param fb - reference to the framebuffer (with bound destination target).
 //    @param pass - reference to the render pass with one color attachment
 //                  and no depth.
 //    @param source - reference to the source image.
-void ToneMapper::Apply(Context& context,
-                       ViewData& data,
-                       Framebuffer& fb,
-                       RenderPass& pass,
-                       Image& source)
+//    @return - reference to the postprocess slot used for tone mapping.
+SwapSlot& ToneMapper::Apply(SwapManager& swap_mgr,
+                            Context& context,
+                            ViewData& data,
+                            RenderPass& pass,
+                            Image& source)
 {
-	rgb_to_srgb.Apply(context, data.rgb_to_srgb, fb, pass, source);
+	return rgb_to_srgb.Apply(swap_mgr, context, data.rgb_to_srgb, pass, source);
 }
 
 //----------------------------------------------------------------------------//

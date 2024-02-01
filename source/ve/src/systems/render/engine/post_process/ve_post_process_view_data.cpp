@@ -9,26 +9,19 @@ START_NAMESPACE(postprocess)
 //----------------------------------------------------------------------------//
 // Constructor.
 ViewData::ViewData(ut::Array<SwapSlot> in_swap_slots,
-                   RenderPass in_pass,
+                   RenderPass in_color_only_pass,
+                   RenderPass in_color_and_ds_pass,
+                   RenderPass in_clear_color_and_ds_pass,
                    ToneMapper::ViewData in_tone_mapping,
-                   Fxaa::ViewData in_fxaa) : swap_slots(ut::Move(in_swap_slots))
-                                           , pass(ut::Move(in_pass))
+                   StencilHighlight::ViewData in_stencil_highlight,
+                   Fxaa::ViewData in_fxaa) : swap_mgr(ut::Move(in_swap_slots))
+                                           , color_only_pass(ut::Move(in_color_only_pass))
+                                           , color_and_ds_pass(ut::Move(in_color_and_ds_pass))
+                                           , clear_color_and_ds_pass(ut::Move(in_clear_color_and_ds_pass))
                                            , tone_mapping(ut::Move(in_tone_mapping))
+                                           , stencil_highlight(ut::Move(in_stencil_highlight))
                                            , fxaa(ut::Move(in_fxaa))
-{
-	UT_ASSERT(swap_slots.Count() == skSwapSlotCount);
-}
-
-// Returns a reference to the next intermediate buffer.
-ViewData::SwapSlot& ViewData::Swap()
-{
-	ViewData::SwapSlot& out = swap_slots[swap_slot_id];
-	if (++swap_slot_id >= skSwapSlotCount)
-	{
-		swap_slot_id = 0;
-	}
-	return out;
-}
+{}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(postprocess)

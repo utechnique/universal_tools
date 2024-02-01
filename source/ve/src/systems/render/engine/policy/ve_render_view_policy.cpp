@@ -60,7 +60,8 @@ void Policy<View>::Initialize(View& view)
 		}
 
 		// post-process
-		ut::Result<postprocess::ViewData, ut::Error> post_process_data = post_process_mgr.CreateViewData(view.width,
+		ut::Result<postprocess::ViewData, ut::Error> post_process_data = post_process_mgr.CreateViewData(scene_buffer->depth_stencil,
+		                                                                                                 view.width,
 		                                                                                                 view.height,
 		                                                                                                 view.format);
 		if (!post_process_data)
@@ -84,6 +85,7 @@ void Policy<View>::Initialize(View& view)
 	View::GpuData gpu_data;
 	gpu_data.frames = ut::Move(frames);
 	view.data = tools.rc_mgr.AddResource(ut::Move(gpu_data));
+	view.timer.Start();
 }
 
 //----------------------------------------------------------------------------->
@@ -105,6 +107,10 @@ void Policy<View>::RenderEnvironment(Context& context)
 	const size_t view_count = views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
+		View& view = views[i];
+		view.frame_time_ms = view.timer.GetTime<ut::time::milliseconds, double>();
+		view.total_time_ms += view.frame_time_ms;
+		view.timer.Start();
 		RenderView(context, views[i], lights);
 	}
 }
@@ -174,7 +180,8 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 	// postprocess
 	frame.final_img = post_process_mgr.ApplyEffects(context,
 	                                                frame.post_process,
-	                                                frame.scene.lighting.light_buffer.GetImage());
+	                                                frame.scene.lighting.light_buffer.GetImage(),
+	                                                view.total_time_ms);
 }
 
 //----------------------------------------------------------------------------->

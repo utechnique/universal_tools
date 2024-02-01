@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_toolset.h"
+#include "systems/render/engine/post_process/ve_post_process_slots.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -58,18 +59,19 @@ public:
 	                                               ut::uint32 height);
 
 	// Applies fxaa effect.
+	//    @param swap_mgr - reference to the post-process swap manager.
 	//    @param context - reference to the rendering context.
 	//    @param data - reference to the Fxaa::ViewData object containing
 	//                  fxaa-specific resources.
-	//    @param fb - reference to the framebuffer (with bound destination target).
 	//    @param pass - reference to the render pass with one color attachment
 	//                  and no depth.
 	//    @param source - reference to the source image.
-	void Apply(Context& context,
-	           ViewData& data,
-	           Framebuffer& fb,
-	           RenderPass& pass,
-	           Image& source);
+	//    @return - reference to the postprocess slot used for FXAA.
+	SwapSlot& Apply(SwapManager& swap_mgr,
+	                Context& context,
+	                ViewData& data,
+	                RenderPass& pass,
+	                Image& source);
 
 private:
 	// Returns compiled fxaa pixel shader.

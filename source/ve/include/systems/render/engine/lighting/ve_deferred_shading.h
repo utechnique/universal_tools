@@ -112,13 +112,22 @@ private:
 				alpha_mode_count
 			};
 
+			enum StencilMode
+			{
+				stencil_opaque,
+				stencil_opaque_and_highlighted,
+				stencil_mode_count
+			};
+
 			static constexpr ut::uint32 vertex_format_column = 0;
 			static constexpr ut::uint32 alpha_mode_column = 1;
 			static constexpr ut::uint32 cull_mode_column = 2;
+			static constexpr ut::uint32 stencil_mode_column = 3;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 GeometryPass::ModelRendering::alpha_mode_count,
-			                 GeometryPass::ModelRendering::cull_mode_count> PipelineGrid;
+			                 GeometryPass::ModelRendering::cull_mode_count,
+			                 GeometryPass::ModelRendering::stencil_mode_count> PipelineGrid;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 GeometryPass::ModelRendering::alpha_mode_count> ShaderGrid;
@@ -210,7 +219,8 @@ private:
 	                                                              ut::uint32 height,
 	                                                              Mesh::VertexFormat vertex_format,
 	                                                              GeometryPass::ModelRendering::AlphaMode alpha_mode,
-	                                                              GeometryPass::ModelRendering::CullMode cull_mode);
+	                                                              GeometryPass::ModelRendering::CullMode cull_mode,
+	                                                              GeometryPass::ModelRendering::StencilMode stencil_mode);
 
 	// Creates a pipeline state to apply lighting.
 	ut::Result<PipelineState, ut::Error> CreateLightPassPipeline(RenderPass& light_pass,

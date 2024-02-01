@@ -267,16 +267,6 @@ void HitMask::DrawModelsJob(Context& context,
 		const bool is_transparent = material.alpha == Material::alpha_transparent;
 		const bool alpha_test_on = material.alpha == Material::alpha_masked;
 
-		// skip transparent materials
-		if (is_transparent)
-		{
-			PerformModelDrawCall(context, prev_index_buffer,
-			                     prev_index_offset, prev_index_count,
-			                     instance_count, i - 1, batch_size);
-			instance_count = 0;
-			continue;
-		}
-
 		// calculate batch id
 		const ut::uint32 batch_id = i / batch_size;
 		Model::Batch& batch = batches[batch_id];

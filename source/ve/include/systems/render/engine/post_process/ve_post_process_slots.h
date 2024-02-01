@@ -1,33 +1,44 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/engine/units/ve_render_model.h"
+#pragma once
 //----------------------------------------------------------------------------//
-UT_REGISTER_TYPE(ve::render::Unit, ve::render::Model, "render_model")
+#include "systems/render/ve_render_api.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
+START_NAMESPACE(postprocess)
 //----------------------------------------------------------------------------//
-// Identify() method must be implemented for the polymorphic types.
-const ut::DynamicType& Model::Identify() const
+// Interchangeable post-process target.
+struct SwapSlot
 {
-	return ut::Identify(this);
-}
+	bool busy; // must be set to 'false' after using
+	Target color_target;
+	Framebuffer color_only_framebuffer;
+	Framebuffer color_and_ds_framebuffer;
+};
 
-// Registers this model unit into the reflection tree.
-//    @param snapshot - reference to the reflection tree.
-void Model::Reflect(ut::meta::Snapshot& snapshot)
+// Helps to swap post-process target buffers.
+class SwapManager
 {
-	Unit::Reflect(snapshot);
-	snapshot.Add(mesh_path, "mesh_path");
-	snapshot.Add(diffuse_add, "diffuse_add");
-	snapshot.Add(diffuse_mul, "diffuse_mul");
-	snapshot.Add(material_add, "material_add");
-	snapshot.Add(material_mul, "material_mul");
-	snapshot.Add(highlighted, "highlighted");
-}
+public:
+	static constexpr ut::uint32 skSlotCount = 3;
+
+	// Constructor accepts an array of slots.
+	SwapManager(ut::Array<SwapSlot> in_swap_slots);
+
+	// Returns a reference to the next intermediate buffer.
+	//    @return - optional reference to the post-process target. It has @busy
+	//              member set to 'true' which must be changed to 'false' after
+	//              using before the next Swap() call.
+	ut::Optional<SwapSlot&> Swap();
+
+private:
+	ut::Array<SwapSlot> slots;
+};
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(postprocess)
 END_NAMESPACE(render)
 END_NAMESPACE(ve)
 //----------------------------------------------------------------------------//

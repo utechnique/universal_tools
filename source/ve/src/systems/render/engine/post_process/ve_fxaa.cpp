@@ -77,20 +77,23 @@ ut::Result<Fxaa::ViewData, ut::Error> Fxaa::CreateViewData(RenderPass& postproce
 }
 
 // Applies fxaa effect.
+//    @param swap_mgr - reference to the post-process swap manager.
 //    @param context - reference to the rendering context.
 //    @param data - reference to the Fxaa::ViewData object containing
 //                  fxaa-specific resources.
-//    @param fb - reference to the framebuffer (with bound destination target).
 //    @param pass - reference to the render pass with one color attachment
 //                  and no depth.
 //    @param source - reference to the source image.
-void Fxaa::Apply(Context& context,
-                 Fxaa::ViewData& data,
-                 Framebuffer& fb,
-                 RenderPass& pass,
-                 Image& source)
+//    @return - reference to the postprocess slot used for FXAA.
+SwapSlot& Fxaa::Apply(SwapManager& swap_mgr,
+                      Context& context,
+                      ViewData& data,
+                      RenderPass& pass,
+                      Image& source)
 {
-	const Framebuffer::Info& fb_info = fb.GetInfo();
+	ut::Optional<SwapSlot&> slot = swap_mgr.Swap();
+	UT_ASSERT(slot.HasValue());
+	const Framebuffer::Info& fb_info = slot->color_only_framebuffer.GetInfo();
 
 	// update uniform buffer
 	ViewData::FxaaUB fxaa_ub;
@@ -110,12 +113,17 @@ void Fxaa::Apply(Context& context,
 
 	// draw quad
 	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-	context.BeginRenderPass(pass, fb, render_area, ut::Color<4>(0), 1.0f);
+	context.BeginRenderPass(pass,
+	                        slot->color_only_framebuffer,
+	                        render_area,
+	                        ut::Color<4>(0), 1.0f);
 	context.BindPipelineState(data.pipeline_state);
 	context.BindDescriptorSet(data.desc_set);
 	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
 	context.EndRenderPass();
+
+	return slot.Get();
 }
 
 // Returns compiled fxaa pixel shader.

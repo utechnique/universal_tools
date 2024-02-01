@@ -214,7 +214,7 @@ CmdArray ViewportSelectionSystem::DeselectAllEntities(VssSelectedEntitiesAccess&
 			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::Model>())
 			{
 				render::Model& model = static_cast<render::Model&>(unit.GetRef());
-				model.diffuse_add = ut::Color<3>(0);
+				model.highlighted = false;
 			}
 		}
 	}
@@ -257,7 +257,7 @@ CmdArray ViewportSelectionSystem::HighlightSelectedEntities(VssRenderableSelecte
 			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::Model>())
 			{
 				render::Model& model = static_cast<render::Model&>(unit.GetRef());
-				model.diffuse_add = ut::Color<3>(1, 0, 1);
+				model.highlighted = true;
 			}
 		}
 	}

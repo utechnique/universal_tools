@@ -80,6 +80,9 @@ public:
 	// Color that is multiplied with the material
 	// component of all mesh materials.
 	ut::Color<3> material_mul = ut::Color<3>(1);
+
+	// Determines if this model has separate stencil mask bit enabled.
+	bool highlighted = false;
 };
 
 //----------------------------------------------------------------------------//
