@@ -1225,7 +1225,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	ds_desc.DepthWriteMask = ds.depth_write_enable ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
 	ds_desc.DepthFunc = ConvertCompareOpToDX11(ds.depth_compare_op);
 	ds_desc.StencilEnable = ds.stencil_test_enable;
-	ds_desc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+	ds_desc.StencilReadMask = ds.front.compare_mask | ds.back.compare_mask;
 	ds_desc.StencilWriteMask = ds.stencil_write_mask;
 	ds_desc.FrontFace.StencilFunc = ConvertCompareOpToDX11(ds.front.compare_op);
 	ds_desc.FrontFace.StencilDepthFailOp = ConvertStencilOpToDX11(ds.front.depth_fail_op);
