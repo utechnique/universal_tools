@@ -5,6 +5,12 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
+// Exp specialization for 'double' type.
+template<> double Exp<double>(double a)
+{
+	return exp(a);
+}
+
 // Square root specialization for 'double' type.
 template<> double Sqrt<double>(double a)
 {

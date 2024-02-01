@@ -7,6 +7,17 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
+// Returns the value of e raised to the given power.
+template<typename T>
+T Exp(T a)
+{
+	return static_cast<T>(expf(static_cast<float>(a)));
+}
+
+// Exp specialization for 'double' type.
+template<> double Exp<double>(double);
+
+//----------------------------------------------------------------------------//
 // Computes the square root of the given value.
 template<typename T>
 T Sqrt(T a)
