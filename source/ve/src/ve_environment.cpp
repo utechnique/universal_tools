@@ -235,9 +235,14 @@ Environment::Environment(Pipeline in_pipeline) : CmdAccessibleEnvironment(ut::Mo
 //              working due to internal error.
 ut::Optional<ut::Error> Environment::Run()
 {
+	ut::time::Counter timer;
+
 	// main loop
 	while (!exit.Read())
 	{
+		System::Time prev_frame_time_ms = timer.GetTime<ut::time::milliseconds, System::Time>();
+		timer.Start();
+
 		// move pending commands to temporary buffer
 		CmdArray& locked_commands = commands.Lock();
 		CmdArray cmd_buffer(ut::Move(locked_commands));
@@ -254,7 +259,7 @@ ut::Optional<ut::Error> Environment::Run()
 		// we could measure and analyze performance
 		ut::Scheduler<System::Result, PipelineCombiner> scheduler = pool.CreateScheduler<PipelineCombiner>();
 		auto execute = ut::MemberFunction<Pipeline, Pipeline::TaskSignature>(&pipeline, &Pipeline::Execute);
-		scheduler.Enqueue(ut::MakeUnique<Pipeline::PoolTask>(execute, pool));
+		scheduler.Enqueue(ut::MakeUnique<Pipeline::PoolTask>(execute, prev_frame_time_ms, pool));
 
 		// get the result of execution
 		PipelineCombiner& combiner = scheduler.WaitForCompletion();

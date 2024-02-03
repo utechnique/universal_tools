@@ -67,7 +67,8 @@ void Engine::InitializeUnit(Unit& unit)
 
 // Renders the whole environment to the internal images and presents
 // the result to user.
-void Engine::ProcessNextFrame()
+//    @param time_step_ms - time step in milliseconds.
+void Engine::ProcessNextFrame(System::Time time_step_ms)
 {
 	// get current frame
 	Frame& frame = UpdateCurrentFrameInfo();
@@ -102,7 +103,9 @@ void Engine::ProcessNextFrame()
 	}
 
 	// record all commands for the current frame
-	device.Record(frame.cmd_buffer, [&](Context& context) { RecordFrameCommands(context, active_viewports); });
+	device.Record(frame.cmd_buffer, [&](Context& context) { RecordFrameCommands(context,
+	                                                                            active_viewports,
+	                                                                            time_step_ms); });
 
 	// submit commands and enqueue display presentation
 	device.Submit(frame.cmd_buffer, display_array);
@@ -145,7 +148,9 @@ Frame& Engine::UpdateCurrentFrameInfo()
 }
 
 // Function for recording all commands needed to draw current frame.
-void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports)
+void Engine::RecordFrameCommands(Context& context,
+                                 ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports,
+                                 System::Time time_step_ms)
 {
 	// generate global transform buffer for all model units
 	Policy<Model>& model_policy = unit_mgr.policies.Get<Model>();
@@ -153,7 +158,7 @@ void Engine::RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportMa
 
 	// render environment to view units
 	Policy<View>& view_policy = unit_mgr.policies.Get<View>();
-	view_policy.RenderEnvironment(context);
+	view_policy.RenderEnvironment(context, time_step_ms);
 
 	// display view units to user
 	DisplayToUser(context, active_viewports);

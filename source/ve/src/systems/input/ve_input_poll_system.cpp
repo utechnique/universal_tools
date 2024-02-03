@@ -12,11 +12,13 @@ PollSystem::PollSystem(ut::SharedPtr<input::Manager> input_mgr_ptr) : System("in
 {}
 
 // Updates system. This function is called once per tick.
+//    @param time_step_ms - time step for the current frame in milliseconds.
 //    @param access - reference to the object providing access to the
 //                    desired components.
 //    @return - array of commands to be executed by owning environment,
 //              or ut::Error if system encountered fatal error.
-System::Result PollSystem::Update(ComponentAccessGroup& access)
+System::Result PollSystem::Update(System::Time time_step_ms,
+                                  ComponentAccessGroup& access)
 {
 	UT_ASSERT(input_mgr);
 	input_mgr->Update();

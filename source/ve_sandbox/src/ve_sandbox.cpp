@@ -74,7 +74,7 @@ class TestSystem : public ve::ComponentSystem<TestComponent>
 {
 public:
 	TestSystem() : ve::ComponentSystem<TestComponent>("test_system") {}
-	ve::System::Result Update(Access& access) override { return ve::CmdArray(); }
+	ve::System::Result Update(System::Time, Access& access) override { return ve::CmdArray(); }
 };
 
 //----------------------------------------------------------------------------//

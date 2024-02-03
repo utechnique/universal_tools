@@ -43,17 +43,19 @@ RenderSystem::~RenderSystem()
 }
 
 // Draws all renderable components.
-	//    @param access - reference to the object providing access to the
-	//                    desired components.
-	//    @return - array of commands to be executed by owning environment,
-	//              or ut::Error if system encountered fatal error.
-System::Result RenderSystem::Update(Base::Access& access)
+//    @param time_step_ms - time step for the current frame in milliseconds.
+//    @param access - reference to the object providing access to the
+//                    desired components.
+//    @return - array of commands to be executed by owning environment,
+//              or ut::Error if system encountered fatal error.
+System::Result RenderSystem::Update(System::Time time_step_ms,
+                                    Base::Access& access)
 {
 	// update units and calculate world transform matrices
 	InitializeUnits(access);
 
 	// draw scene in render thread
-	render_thread->Enqueue([&](Device& device) { engine->ProcessNextFrame(); });
+	render_thread->Enqueue([&](Device& device) { engine->ProcessNextFrame(time_step_ms); });
 
 	return CmdArray();
 }
@@ -149,9 +151,9 @@ void RenderSystem::InitializeUnits(Base::Access& access)
 }
 
 // Unregisters the desired entity by its identifier.
-	//    @param id - identifier of the entity.
-	//    @param access - reference to the object providing access to
-	//                    components.
+//    @param id - identifier of the entity.
+//    @param access - reference to the object providing access to
+//                    components.
 void RenderSystem::UnregisterEntity(Entity::Id id, Base::Access& access)
 {
 	// reset cache

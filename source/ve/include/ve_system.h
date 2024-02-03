@@ -17,6 +17,8 @@ START_NAMESPACE(ve)
 class System
 {
 public:
+	typedef double Time;
+
 	// Return type of the ve::System::Update() call.
 	typedef ut::Result<ve::CmdArray, ut::Error> Result;
 
@@ -42,11 +44,12 @@ public:
 
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
+	//    @param time_step_ms - time step for the current frame in milliseconds.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	virtual Result Update(ComponentAccessGroup& access) = 0;
+	virtual Result Update(Time time_step_ms, ComponentAccessGroup& access) = 0;
 
 	// Creates component sets specific to the current system. Depending on
 	// the returned component types, the @Update method will receive a

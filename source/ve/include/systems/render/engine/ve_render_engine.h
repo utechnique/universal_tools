@@ -34,7 +34,8 @@ public:
 
 	// Renders the whole environment to the internal images and presents
 	// the result to user.
-	void ProcessNextFrame();
+	//    @param time_step_ms - time step in milliseconds.
+	void ProcessNextFrame(System::Time time_step_ms);
 	
 	// Returns a reference to the rendering thread pool, 
 	// use it to parallelize cpu work.
@@ -46,7 +47,9 @@ private:
 	Frame& UpdateCurrentFrameInfo();
 
 	// Function for recording all commands needed to draw current frame.
-	void RecordFrameCommands(Context& context, ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports);
+	void RecordFrameCommands(Context& context,
+	                         ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports,
+	                         System::Time time_step_ms);
 
 	// Renders view units to ui viewports.
 	void DisplayToUser(Context& context, ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports);

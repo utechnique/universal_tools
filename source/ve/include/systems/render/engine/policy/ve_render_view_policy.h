@@ -31,7 +31,9 @@ public:
 	void Initialize(View& view);
 
 	// Renders all render units to all render views.
-	void RenderEnvironment(Context& context);
+	//    @param context - reference to the render context.
+	//    @param time_step_ms - time step in milliseconds.
+	void RenderEnvironment(Context& context, System::Time time_step_ms);
 
 private:
 	// Renders the provided view.

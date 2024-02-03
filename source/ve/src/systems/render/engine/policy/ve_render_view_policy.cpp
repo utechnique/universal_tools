@@ -85,12 +85,14 @@ void Policy<View>::Initialize(View& view)
 	View::GpuData gpu_data;
 	gpu_data.frames = ut::Move(frames);
 	view.data = tools.rc_mgr.AddResource(ut::Move(gpu_data));
-	view.timer.Start();
 }
 
 //----------------------------------------------------------------------------->
 // Renders all render units to all render views.
-void Policy<View>::RenderEnvironment(Context& context)
+//    @param context - reference to the render context.
+//    @param time_step_ms - time step in milliseconds.
+void Policy<View>::RenderEnvironment(Context& context,
+                                     System::Time time_step_ms)
 {
 	ut::Array< ut::Ref<View> >& views = selector.Get<View>();
 
@@ -108,9 +110,8 @@ void Policy<View>::RenderEnvironment(Context& context)
 	for (size_t i = 0; i < view_count; i++)
 	{
 		View& view = views[i];
-		view.frame_time_ms = view.timer.GetTime<ut::time::milliseconds, double>();
+		view.frame_time_ms = time_step_ms;
 		view.total_time_ms += view.frame_time_ms;
-		view.timer.Start();
 		RenderView(context, views[i], lights);
 	}
 }

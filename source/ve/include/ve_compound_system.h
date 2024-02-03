@@ -83,9 +83,13 @@ public:
 
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
+	//    @param time_step_ms - time step for the current frame in milliseconds.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	virtual System::Result Update(Access& access) = 0;
+	virtual System::Result Update(System::Time time_step_ms,
+	                              Access& access) = 0;
 
 	// Registers provided entity.
 	//    @param id - identifier of the entity.
@@ -116,12 +120,16 @@ protected:
 
 	// Updates system. This function is called once per tick
 	// by ve::Environment.
+	//    @param time_step_ms - time step for the current frame in milliseconds.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	System::Result Update(ComponentAccessGroup& group_access) override
+	System::Result Update(System::Time time_step_ms,
+	                      ComponentAccessGroup& group_access) override
 	{
 		Access access(group_access);
-		return Update(access);
+		return Update(time_step_ms, access);
 	}
 
 	// Registers provided entity.

@@ -8,19 +8,20 @@ START_NAMESPACE(ve)
 // Constructor.
 FreeCameraControllerSystem::FreeCameraControllerSystem(ut::SharedPtr<input::Manager> input_mgr_ptr) :
 	Base("free_camera_controller"), input_mgr(ut::Move(input_mgr_ptr))
-{
-    timer.Start();
-}
+{}
 
 //----------------------------------------------------------------------------->
 // Updates transform component of the managed entities.
-	//    @param access - reference to the object providing access to the
-	//                    desired components.
-	//    @return - empty array of commands.
-System::Result FreeCameraControllerSystem::Update(Base::Access& access)
+//    @param time_step_ms - time step for the current frame in milliseconds.
+//    @param access - reference to the object providing access to the
+//                    desired components.
+//    @return - empty array of commands.
+System::Result FreeCameraControllerSystem::Update(System::Time time_step_ms,
+                                                  Base::Access& access)
 {
-	const float time_step = timer.GetTime<ut::time::seconds, float>();
-	timer.Start();
+	const System::Time seconds = ut::time::Convert<ut::time::milliseconds,
+	                                               ut::time::seconds,
+	                                               System::Time>(time_step_ms);
 
 	for (Base::Access::EntityIterator entity = access.BeginEntities(); entity != access.EndEntities(); ++entity)
 	{
@@ -28,7 +29,7 @@ System::Result FreeCameraControllerSystem::Update(Base::Access& access)
 		TransformComponent& transform = access.GetComponent<TransformComponent>(entity_id);
 		CameraComponent& camera = access.GetComponent<CameraComponent>(entity_id);
 		FreeCameraControllerComponent& controller = access.GetComponent<FreeCameraControllerComponent>(entity_id);
-		UpdateCamera(transform, camera, controller, time_step);
+		UpdateCamera(transform, camera, controller, static_cast<float>(seconds));
 	}
 
 	return CmdArray();

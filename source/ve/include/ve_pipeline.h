@@ -34,10 +34,10 @@ class Pipeline
 {
 public:
 	// Type of a task that is scheduled in a thread pool.
-	typedef ut::Task<System::Result(ut::ThreadPool<System::Result>&)> PoolTask;
+	typedef ut::Task<System::Result(System::Time, ut::ThreadPool<System::Result>&)> PoolTask;
 
 	// Function signature of a task that is scheduled in a thread pool.
-	typedef System::Result(TaskSignature)(ut::ThreadPool<System::Result>&);
+	typedef System::Result(TaskSignature)(System::Time, ut::ThreadPool<System::Result>&);
 
 	// Constructor, managed system remains empty.
 	Pipeline();
@@ -59,14 +59,16 @@ public:
 	ut::Optional<ut::Error> AddSerial(Pipeline pipeline);
 
 	// Updates systems in the following order:
-	//    @param pool - reference to the thread pool to
-	//                  process parallel children simultaneously.
 	// 1. Updates own system.
 	// 2. Updates systems in parallel children pipelines simultaneously in
 	//    different threads.
 	// 3. Updates systems in serial children pipelines sequentially one by one.
+	//    @param time_step_ms - time step for the current frame in milliseconds.
+	//    @param pool - reference to the thread pool to
+	//                  process parallel child pipelines simultaneously.
 	//    @return - array of commands to be executed by owning environment.
-	System::Result Execute(ut::ThreadPool<System::Result>& pool);
+	System::Result Execute(System::Time time_step_ms,
+	                       ut::ThreadPool<System::Result>& pool);
 
 	// Iterates all systems and registers a provided entity.
 	//    @param id - id of the provided entity.

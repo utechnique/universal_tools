@@ -37,11 +37,14 @@ public:
 	ViewportSelectionSystem(ut::SharedPtr<ui::Frontend::Thread> ui_frontend_thread,
 	                        ut::SharedPtr<input::Manager> input_mgr_ptr);
 
-	// Updates transform component of the managed entities.
+	// Performs entity seletion.
+	//    @param time_step_ms - time step for the current frame in milliseconds.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
-	//    @return - array of commands.
-	System::Result Update(Base::Access& access) override;
+	//    @return - array of commands to be executed by owning environment,
+	//              or ut::Error if system encountered fatal error.
+	System::Result Update(System::Time time_step_ms,
+	                      Base::Access& access) override;
 
 private:
 	// Processes entity selection in the desired viewport.

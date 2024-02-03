@@ -75,14 +75,16 @@ ut::Optional<ut::Error> Pipeline::AddSerial(Pipeline pipeline)
 }
 
 // Updates systems in the following order:
-//    @param pool - reference to the thread pool to
-//                  process parallel children simultaneously.
 // 1. Updates own system.
 // 2. Updates systems in parallel children pipelines simultaneously in
 //    different threads.
 // 3. Updates systems in serial children pipelines sequentially one by one.
+//    @param time_step_ms - time step for the current frame in milliseconds.
+//    @param pool - reference to the thread pool to
+//                  process parallel child pipelines simultaneously.
 //    @return - array of commands to be executed by owning environment.
-System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
+System::Result Pipeline::Execute(System::Time time_step_ms,
+                                 ut::ThreadPool<System::Result>& pool)
 {
 	// array of commands to be returned in the end of the function
 	CmdArray commands;
@@ -90,7 +92,8 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 	// update system
 	if (system)
 	{
-		System::Result update_result(system->Update(component_access));
+		System::Result update_result(system->Update(time_step_ms,
+		                                            component_access));
 		if (!update_result)
 		{
 			return update_result;
@@ -104,7 +107,7 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 	for (size_t i = 0; i < parallel_count; i++)
 	{
 		auto execute = ut::MemberFunction<Pipeline, TaskSignature>(&parallel[i], &Pipeline::Execute);
-		scheduler.Enqueue(ut::MakeUnique<PoolTask>(execute, pool));
+		scheduler.Enqueue(ut::MakeUnique<PoolTask>(execute, time_step_ms, pool));
 	}
 
 	// wait for all tasks to finish and combine all commands in a single array
@@ -120,7 +123,7 @@ System::Result Pipeline::Execute(ut::ThreadPool<System::Result>& pool)
 	const size_t serial_count = series.Count();
 	for (size_t i = 0; i < serial_count; i++)
 	{
-		System::Result execute_result = series[i].Execute(pool);
+		System::Result execute_result = series[i].Execute(time_step_ms, pool);
 		if (!execute_result)
 		{
 			return execute_result;

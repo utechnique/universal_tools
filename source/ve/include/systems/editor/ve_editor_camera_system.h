@@ -34,16 +34,24 @@ public:
 	                     ut::SharedPtr<input::Manager> input_mgr_ptr);
 
 	// Updates transform component of the managed entities.
+	//    @param time_step_ms - time step for the current frame in milliseconds.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
-	//    @return - array of commands.
-	System::Result Update(Base::Access& access) override;
+	//    @return - array of commands to be executed by owning environment,
+	//              or ut::Error if system encountered fatal error.
+	System::Result Update(System::Time time_step_ms,
+	                      Base::Access& access) override;
 
 private:
 	// Processes camera that is associated with the provided viewport.
 	// If such camera doesn't exist - a new camera entity will be created.
+	//    @param access - reference to the object providing access to the
+	//                    desired components.
+	//    @param viewport - reference to the viewport to be processed.
+	//    @param time_step - time elapsed from the previous frame (in seconds).
 	CmdArray ProcessViewport(Base::Access& access,
-	                         ui::Viewport& viewport);
+	                         ui::Viewport& viewport,
+	                         float time_step);
 
 	// Updates camera according to the associated viewport.
 	//    @param transform - reference to the transform component.
@@ -92,7 +100,6 @@ private:
 	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
 	ut::SharedPtr<input::Manager> input_mgr;
 	ut::Array< ut::Ref<ui::Viewport> > viewports;
-	ut::time::Counter timer;
 };
 
 //----------------------------------------------------------------------------//

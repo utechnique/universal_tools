@@ -12,36 +12,42 @@ ViewportCameraSystem::ViewportCameraSystem(ut::SharedPtr<ui::Frontend::Thread> u
                                            ut::SharedPtr<input::Manager> input_mgr_ptr) :
 	Base("editor_viewport_cameras"), input_mgr(ut::Move(input_mgr_ptr)), ui_thread(ut::Move(ui_frontend_thread))
 {
-
 	ui_thread->Enqueue([&](ui::Frontend& frontend) { InitializeViewports(frontend); });
-	timer.Start();
 }
 
 //----------------------------------------------------------------------------->
 // Updates transform component of the managed entities.
+//    @param time_step_ms - time step for the current frame in milliseconds.
 //    @param access - reference to the object providing access to the
 //                    desired components.
 //    @return - array of commands.
-System::Result ViewportCameraSystem::Update(Base::Access& access)
+System::Result ViewportCameraSystem::Update(System::Time time_step_ms,
+                                            Base::Access& access)
 {
 	CmdArray out_commands;
 
 	const size_t viewport_count = viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
-		out_commands += ProcessViewport(access, viewports[i]);
+		const System::Time seconds = ut::time::Convert<ut::time::milliseconds,
+		                                               ut::time::seconds,
+		                                               System::Time>(time_step_ms);
+		out_commands += ProcessViewport(access, viewports[i], static_cast<float>(seconds));
 	}
-
-	timer.Start();
 
 	return out_commands;
 }
 
 //----------------------------------------------------------------------------->
-// Processes camra that is associated with the provided viewport.
+// Processes camera that is associated with the provided viewport.
 // If such camera doesn't exist - a new camera entity will be created.
+//    @param access - reference to the object providing access to the
+//                    desired components.
+//    @param viewport - reference to the viewport to be processed.
+//    @param time_step - time elapsed from the previous frame (in seconds).
 CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
-                                               ui::Viewport& viewport)
+                                               ui::Viewport& viewport,
+                                               float time_step)
 {
 	CmdArray commands;
 
@@ -116,7 +122,6 @@ CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
 	// update camera position and direction
 	ut::Optional< ut::Vector<2> > cursor_position = viewport.GetCursorPosition();
 	const bool observation_allowed = observation_mode && cursor_position;
-	const float time_step = timer.GetTime<ut::time::seconds, float>();
 	if (camera.projection == CameraComponent::perspective_projection)
 	{
 		ProcessPerspectiveCameraInput(transform,

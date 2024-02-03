@@ -19,11 +19,13 @@ ViewportSelectionSystem::ViewportSelectionSystem(ut::SharedPtr<ui::Frontend::Thr
 }
 
 //----------------------------------------------------------------------------->
-// Updates transform component of the managed entities.
+// Performs entity selection.
+//    @param time_step_ms - time step for the current frame in milliseconds.
 //    @param access - reference to the object providing access to the
 //                    desired components.
 //    @return - array of commands.
-System::Result ViewportSelectionSystem::Update(Base::Access& access)
+System::Result ViewportSelectionSystem::Update(System::Time time_step_ms,
+                                               Base::Access& access)
 {
 	CmdArray out_commands;
 

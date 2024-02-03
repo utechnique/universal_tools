@@ -25,10 +25,13 @@ public:
 	FreeCameraControllerSystem(ut::SharedPtr<input::Manager> input_mgr_ptr);
 
 	// Updates transform component of the managed entities.
+	//    @param time_step_ms - time step for the current frame in milliseconds.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
-	//    @return - empty array of commands.
-	System::Result Update(Base::Access& access) override;
+	//    @return - array of commands to be executed by owning environment,
+	//              or ut::Error if system encountered fatal error.
+	System::Result Update(System::Time time_step_ms,
+	                      Base::Access& access) override;
 
 private:
 	// Updates transform component using camera and controller components.
@@ -42,7 +45,6 @@ private:
 	                  float time_step);
 
 	ut::SharedPtr<input::Manager> input_mgr;
-	ut::time::Counter timer;
 };
 
 //----------------------------------------------------------------------------//

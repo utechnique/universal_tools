@@ -27,11 +27,13 @@ public:
 	~RenderSystem();
 
 	// Draws all renderable components.
+	//    @param time_step_ms - time step for the current frame in milliseconds.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
 	//    @return - array of commands to be executed by owning environment,
 	//              or ut::Error if system encountered fatal error.
-	System::Result Update(Base::Access& access) override;
+	System::Result Update(System::Time time_step_ms,
+	                      Base::Access& access) override;
 
 private:
 	// Initializes a portion of units.

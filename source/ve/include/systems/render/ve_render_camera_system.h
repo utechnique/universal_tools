@@ -24,10 +24,12 @@ public:
 
 	// Updates view unit of all entities having transform,
 	// render and camera component.
+	//    @param time_step_ms - time step for the current frame in milliseconds.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
 	//    @return - empty array of commands.
-	System::Result Update(Access& access) override;
+	System::Result Update(System::Time time_step_ms,
+	                      Access& access) override;
 
 private:
 	// Updates view matrix of the render view.
