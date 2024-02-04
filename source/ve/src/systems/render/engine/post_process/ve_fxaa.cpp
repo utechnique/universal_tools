@@ -84,13 +84,22 @@ ut::Result<Fxaa::ViewData, ut::Error> Fxaa::CreateViewData(RenderPass& postproce
 //    @param pass - reference to the render pass with one color attachment
 //                  and no depth.
 //    @param source - reference to the source image.
+// 	  @param parameters - reference to the Fxaa::Parameters object
+//                        containing parameters for the FXAA effect.
 //    @return - reference to the postprocess slot used for FXAA.
-SwapSlot& Fxaa::Apply(SwapManager& swap_mgr,
-                      Context& context,
-                      ViewData& data,
-                      RenderPass& pass,
-                      Image& source)
+ut::Optional<SwapSlot&> Fxaa::Apply(SwapManager& swap_mgr,
+                                    Context& context,
+                                    ViewData& data,
+                                    RenderPass& pass,
+                                    Image& source,
+                                    const Parameters& parameters)
 {
+	if (!parameters.enabled)
+	{
+		return ut::Optional<SwapSlot&>();
+	}
+
+	// get post-process render target
 	ut::Optional<SwapSlot&> slot = swap_mgr.Swap();
 	UT_ASSERT(slot.HasValue());
 	const Framebuffer::Info& fb_info = slot->color_only_framebuffer.GetInfo();
@@ -123,7 +132,7 @@ SwapSlot& Fxaa::Apply(SwapManager& swap_mgr,
 	context.Draw(6, 0);
 	context.EndRenderPass();
 
-	return slot.Get();
+	return slot;
 }
 
 // Returns compiled fxaa pixel shader.

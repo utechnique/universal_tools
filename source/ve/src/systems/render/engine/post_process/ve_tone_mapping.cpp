@@ -144,13 +144,22 @@ ut::Result<ToneMapper::ViewData, ut::Error> ToneMapper::CreateViewData(RenderPas
 //    @param pass - reference to the render pass with one color attachment
 //                  and no depth.
 //    @param source - reference to the source image.
-//    @return - reference to the postprocess slot used for tone mapping.
-SwapSlot& ToneMapper::Apply(SwapManager& swap_mgr,
-                            Context& context,
-                            ViewData& data,
-                            RenderPass& pass,
-                            Image& source)
+//    @param parameters - reference to the ToneMapper::Parameters object
+//                        containing parameters for the tone mapping effect.
+//    @return - optional reference to the postprocess slot used for tone
+//              mapping.
+ut::Optional<SwapSlot&> ToneMapper::Apply(SwapManager& swap_mgr,
+                                          Context& context,
+                                          ViewData& data,
+                                          RenderPass& pass,
+                                          Image& source,
+                                          const Parameters& parameters)
 {
+	if (!parameters.enabled)
+	{
+		return ut::Optional<SwapSlot&>();
+	}
+
 	return rgb_to_srgb.Apply(swap_mgr, context, data.rgb_to_srgb, pass, source);
 }
 

@@ -225,19 +225,26 @@ ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewDa
 //                                     color and one depth-stencil attachment,
 //                                     color attachment is set to be cleared.
 //    @param source - reference to the source image.
+// 	  @param parameters - reference to the StencilHighlight::Parameters object
+//                        containing parameters for the highlighting effect.
 //    @param time_ms - total accumulated time in milliseconds.
-//    @param highlight_color - border color of the highlighted objects.
-//    @return - reference to the postprocess slot used for highlighting.
-SwapSlot& StencilHighlight::Apply(SwapManager& swap_mgr,
-                                  Context& context,
-                                  ViewData& data,
-                                  RenderPass& color_only_pass,
-                                  RenderPass& color_and_ds_pass,
-                                  RenderPass& clear_color_and_ds_pass,
-                                  Image& source,
-                                  float time_ms,
-                                  const ut::Vector<4>& highlight_color)
+//    @return - optional reference to the postprocess slot used for highlighting.
+ut::Optional<SwapSlot&> StencilHighlight::Apply(SwapManager& swap_mgr,
+                                                Context& context,
+                                                ViewData& data,
+                                                RenderPass& color_only_pass,
+                                                RenderPass& color_and_ds_pass,
+                                                RenderPass& clear_color_and_ds_pass,
+                                                Image& source,
+                                                const Parameters& parameters,
+                                                float time_ms)
 {
+	if (!parameters.enabled)
+	{
+		return ut::Optional<SwapSlot&>();
+	}
+
+	// get post-process render target
 	ut::Optional<SwapSlot&> fill_slot = swap_mgr.Swap();
 	UT_ASSERT(fill_slot.HasValue());
 	const Framebuffer::Info& fb_info = fill_slot->color_and_ds_framebuffer.GetInfo();
@@ -280,8 +287,8 @@ SwapSlot& StencilHighlight::Apply(SwapManager& swap_mgr,
 	// update line buffer
 	ut::Vector<4> lines_data(fb_info.width,
 	                         fb_info.height,
-	                         CalculateLineVisibility(time_ms),
-	                         CalculateLineOffset(time_ms));
+	                         CalculateLineVisibility(parameters, time_ms),
+	                         CalculateLineOffset(parameters, time_ms));
 	ut::Optional<ut::Error> update_ub_error = tools.rc_mgr.UpdateBuffer(context,
 	                                                                    data.lines_color_buffer,
 	                                                                    lines_data.GetData());
@@ -306,7 +313,7 @@ SwapSlot& StencilHighlight::Apply(SwapManager& swap_mgr,
 	// update blend color buffer
 	update_ub_error = tools.rc_mgr.UpdateBuffer(context,
 	                                            data.blend_color_buffer,
-	                                            highlight_color.GetData());
+	                                            parameters.highlight_color.GetData());
 	if (update_ub_error)
 	{
 		throw update_ub_error.Move();
@@ -330,16 +337,17 @@ SwapSlot& StencilHighlight::Apply(SwapManager& swap_mgr,
 	context.EndRenderPass();
 	vblur_slot->busy = false;
 
-	return blend_slot.Get();
+	return blend_slot;
 }
 
 // Calculates visibility factor for lines animation.
-float StencilHighlight::CalculateLineVisibility(float time_ms)
+float StencilHighlight::CalculateLineVisibility(const Parameters& parameters,
+                                                float time_ms)
 {
-	const int visibility_period = static_cast<int>(time_ms / skLineVisibilityAnimationSpeedMs);
+	const int visibility_period = static_cast<int>(time_ms / parameters.line_visibility_anim_speed_ms);
 	float line_visibility = time_ms - static_cast<float>(visibility_period) *
-	                        skLineVisibilityAnimationSpeedMs;
-	line_visibility /= skLineVisibilityAnimationSpeedMs;
+	                        parameters.line_visibility_anim_speed_ms;
+	line_visibility /= parameters.line_visibility_anim_speed_ms;
 
 	if (line_visibility < 0.5f)
 	{
@@ -363,13 +371,15 @@ float StencilHighlight::CalculateLineVisibility(float time_ms)
 		line_visibility = 0.5f + line_visibility / 2.0f;
 	}
 
-	return skLineMinVisibility + line_visibility * (skLineMaxVisibility - skLineMinVisibility);
+	return parameters.line_min_visibility + line_visibility *
+		(parameters.line_max_visibility - parameters.line_min_visibility);
 }
 
 // Calculates pixel offset for lines animation.
-float StencilHighlight::CalculateLineOffset(float time_ms)
+float StencilHighlight::CalculateLineOffset(const Parameters& parameters,
+                                            float time_ms)
 {
-	return time_ms / skLineMovementAnimationSpeedMs;
+	return time_ms / parameters.line_movement_anim_speed_ms;
 }
 
 //----------------------------------------------------------------------------//

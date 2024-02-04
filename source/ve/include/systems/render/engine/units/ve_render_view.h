@@ -6,6 +6,7 @@
 #include "systems/render/engine/ve_render_unit.h"
 #include "systems/render/engine/ve_render_resource.h"
 #include "systems/render/engine/post_process/ve_post_process_view_data.h"
+#include "systems/render/engine/post_process/ve_post_process_parameters.h"
 #include "systems/render/engine/lighting/ve_lighting_view_data.h"
 #include "systems/render/engine/ve_render_hitmask.h"
 //----------------------------------------------------------------------------//
@@ -18,12 +19,12 @@ START_NAMESPACE(render)
 class View : public Unit
 {
 public:
-	// Available modes.
-	enum Mode
+	// Available light pass modes.
+	enum LightPassMode
 	{
-		mode_complete,
-		mode_diffuse,
-		mode_normal,
+		light_pass_complete,
+		light_pass_deferred_diffuse,
+		light_pass_deferred_normal,
 	};
 
 	// Per-view uniform buffer representation.
@@ -69,7 +70,7 @@ public:
 	void Reflect(ut::meta::Snapshot& snapshot);
 
 	// Current mode.
-	Mode mode = mode_complete;
+	LightPassMode light_pass_mode = light_pass_complete;
 
 	// View matrices.
 	ut::Matrix<4, 4, float> view_matrix;
@@ -92,12 +93,15 @@ public:
 	// The identifier of the UI widget associated with this view.
 	ui::Viewport::Id viewport_id = 0;
 
+	// Indicates if this viewport will be processed by the render engine.
+	bool is_active = true;
+
 	// Indicates if the hitmak pass must be performed for this view on the next
 	// frame.
 	bool draw_hitmask = false;
 
-	// Indicates if this viewport will be processed by the render engine.
-	bool is_active = true;
+	// Post-processing parameters.
+	postprocess::Parameters post_process;
 
 	// Hitmask pixel data.
 	ut::Array<ve::Entity::Id> hitmask;

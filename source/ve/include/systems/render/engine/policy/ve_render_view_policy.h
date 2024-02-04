@@ -46,15 +46,15 @@ private:
 	                                                           ut::uint32 light_buffer_mip_count = 1);
 
 	// Renders environment.
-	ut::Optional<Image&> RenderLightPass(Context& context,
-	                                     View::SceneBuffer& scene,
-	                                     Light::Sources& lights,
-	                                     const ut::Matrix<4>& view_matrix,
-	                                     const ut::Matrix<4>& proj_matrix,
-	                                     const ut::Vector<3>& view_position,
-	                                     View::Mode mode,
-	                                     ut::Optional<Image&> ibl_cubemap = ut::Optional<Image&>(),
-	                                     Image::Cube::Face face = Image::Cube::positive_x);
+	Image& RenderLightPass(Context& context,
+	                       View::SceneBuffer& scene,
+	                       Light::Sources& lights,
+	                       const ut::Matrix<4>& view_matrix,
+	                       const ut::Matrix<4>& proj_matrix,
+	                       const ut::Vector<3>& view_position,
+	                       View::LightPassMode light_pass_mode,
+	                       ut::Optional<Image&> ibl_cubemap = ut::Optional<Image&>(),
+	                       Image::Cube::Face face = Image::Cube::positive_x);
 
 	// Renders IBL cubemap.
 	void RenderIblCubemap(Context& context,

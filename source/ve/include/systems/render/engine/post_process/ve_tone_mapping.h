@@ -29,6 +29,12 @@ public:
 		PipelineState pipeline_state;
 	};
 
+	// Customisable parameters.
+	struct Parameters
+	{
+		bool enabled = true;
+	};
+
 	// Constructor.
 	RgbToSrgb(Toolset& toolset);
 
@@ -79,6 +85,12 @@ public:
 		RgbToSrgb::ViewData rgb_to_srgb;
 	};
 
+	// Customisable parameters.
+	struct Parameters
+	{
+		bool enabled = true;
+	};
+
 	// Constructor.
 	ToneMapper(Toolset& toolset);
 
@@ -99,12 +111,16 @@ public:
 	//    @param pass - reference to the render pass with one color attachment
 	//                  and no depth.
 	//    @param source - reference to the source image.
-	//    @return - reference to the postprocess slot used for tone mapping.
-	SwapSlot& Apply(SwapManager& swap_mgr,
-	                Context& context,
-	                ViewData& data,
-	                RenderPass& pass,
-	                Image& source);
+	//    @param parameters - reference to the ToneMapper::Parameters object
+	//                        containing parameters for the tone mapping effect.
+	//    @return - optional reference to the postprocess slot used for tone
+	//              mapping.
+	ut::Optional<SwapSlot&> Apply(SwapManager& swap_mgr,
+	                              Context& context,
+	                              ViewData& data,
+	                              RenderPass& pass,
+	                              Image& source,
+	                              const Parameters& parameters);
 
 private:
 	// Common rendering tools.

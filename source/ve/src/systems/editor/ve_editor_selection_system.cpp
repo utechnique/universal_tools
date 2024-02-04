@@ -138,6 +138,9 @@ CmdArray ViewportSelectionSystem::ProcessViewportSelection(Base::Access& access,
 		commands.Add(ut::Move(add_select_component_cmd));
 	}
 
+	// enable highlighting effects if at least one entity is selected
+	render_view->post_process.stencil_highlight.enabled = renderable_selected_entities.CountEntities() > 0;
+
 	// success
 	return commands;
 }

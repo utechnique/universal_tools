@@ -15,10 +15,6 @@ class StencilHighlight
 {
 	static constexpr ut::uint32 skHighlightRadius = 3;
 	static constexpr float skHighlightSigma = skHighlightRadius / 0.2f;
-	static constexpr float skLineMovementAnimationSpeedMs = 55.0f;
-	static constexpr float skLineVisibilityAnimationSpeedMs = 2000.0f;
-	static constexpr float skLineMinVisibility = 0.075f;
-	static constexpr float skLineMaxVisibility = 0.5f;
 	static constexpr ut::uint32 skLineDistance = 16;
 	static constexpr ut::uint32 skLineWidth = 8;
 
@@ -67,6 +63,18 @@ public:
 		GaussianBlur::ViewData vertical_blur;
 	};
 
+	// Customisable effect parameters.
+	struct Parameters
+	{
+		bool enabled = true;
+		ut::Color<4> highlight_color = ut::Vector<4>(1.0f, 0.65f, 0.0f, 1.0f);
+		bool draw_lines = true;
+		float line_movement_anim_speed_ms = 55.0f;
+		float line_visibility_anim_speed_ms = 2000.0f;
+		float line_min_visibility = 0.075f;
+		float line_max_visibility = 0.5f;
+	};
+
 	// Constructor.
 	StencilHighlight(Toolset& toolset,
 	                 GaussianBlur& gaussian_blur);
@@ -100,18 +108,19 @@ public:
 	//                                     color and one depth-stencil attachment,
 	//                                     color attachment is set to be cleared.
 	//    @param source - reference to the source image.
+	// 	  @param parameters - reference to the StencilHighlight::Parameters object
+	//                        containing parameters for the highlighting effect.
 	//    @param time_ms - total accumulated time in milliseconds.
-	//    @param highlight_color - border color of the highlighted objects.
-	//    @return - reference to the postprocess slot used for highlighting.
-	SwapSlot& Apply(SwapManager& swap_mgr,
-	                Context& context,
-	                ViewData& data,
-	                RenderPass& color_only_pass,
-	                RenderPass& color_and_ds_pass,
-	                RenderPass& clear_color_and_ds_pass,
-	                Image& source,
-	                float time_ms,
-	                const ut::Vector<4>& highlight_color = ut::Vector<4>(1.0f, 0.75f, 0.0f, 1.0f));
+	//    @return - optional reference to the postprocess slot used for highlighting.
+	ut::Optional<SwapSlot&> Apply(SwapManager& swap_mgr,
+	                              Context& context,
+	                              ViewData& data,
+	                              RenderPass& color_only_pass,
+	                              RenderPass& color_and_ds_pass,
+	                              RenderPass& clear_color_and_ds_pass,
+	                              Image& source,
+	                              const Parameters& parameters,
+	                              float time_ms);
 
 private:
 	// Returns compiled pixel shader filling a surface with solid color.
@@ -125,10 +134,12 @@ private:
 	Shader LoadBlendShader();
 
 	// Calculates visibility factor for lines animation.
-	static float CalculateLineVisibility(float time_ms);
+	static float CalculateLineVisibility(const Parameters& parameters,
+	                                     float time_ms);
 
 	// Calculates pixel offset for lines animation.
-	static float CalculateLineOffset(float time_ms);
+	static float CalculateLineOffset(const Parameters& parameters,
+	                                 float time_ms);
 
 	// Common rendering tools.
 	Toolset& tools;

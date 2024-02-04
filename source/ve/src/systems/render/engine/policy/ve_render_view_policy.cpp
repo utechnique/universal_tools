@@ -158,30 +158,27 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 
 	// image based lighting
 	ut::Optional<Image&> ibl_cubemap;
-	if (tools.config.ibl_enabled && view.mode == View::mode_complete)
+	if (tools.config.ibl_enabled && view.light_pass_mode == View::light_pass_complete)
 	{
 		RenderIblCubemap(context, view, lights);
 		ibl_cubemap = frame.ibl.filtered_cubemap.GetImage();
 	}
 
 	// render the scene to the final buffer
-	frame.final_img = RenderLightPass(context,
-	                                  frame.scene,
-	                                  lights,
-	                                  view.view_matrix,
-	                                  view.proj_matrix,
-	                                  view.camera_position,
-	                                  view.mode,
-	                                  ibl_cubemap);
-	if (view.mode != View::mode_complete)
-	{
-		return;
-	}
+	Image& light_pass_img = RenderLightPass(context,
+	                                        frame.scene,
+	                                        lights,
+	                                        view.view_matrix,
+	                                        view.proj_matrix,
+	                                        view.camera_position,
+	                                        view.light_pass_mode,
+	                                        ibl_cubemap);
 
 	// postprocess
 	frame.final_img = post_process_mgr.ApplyEffects(context,
 	                                                frame.post_process,
-	                                                frame.scene.lighting.light_buffer.GetImage(),
+	                                                light_pass_img,
+	                                                view.post_process,
 	                                                view.total_time_ms);
 }
 
@@ -258,15 +255,15 @@ ut::Result<View::SceneBuffer, ut::Error> Policy<View>::CreateSceneBuffer(ut::uin
 
 //----------------------------------------------------------------------------->
 // Renders environment.
-ut::Optional<Image&> Policy<View>::RenderLightPass(Context& context,
-                                                   View::SceneBuffer& scene,
-                                                   Light::Sources& lights,
-                                                   const ut::Matrix<4>& view_matrix,
-                                                   const ut::Matrix<4>& proj_matrix,
-                                                   const ut::Vector<3>& view_position,
-                                                   View::Mode mode,
-                                                   ut::Optional<Image&> ibl_cubemap,
-                                                   Image::Cube::Face face)
+Image& Policy<View>::RenderLightPass(Context& context,
+                                     View::SceneBuffer& scene,
+                                     Light::Sources& lights,
+                                     const ut::Matrix<4>& view_matrix,
+                                     const ut::Matrix<4>& proj_matrix,
+                                     const ut::Vector<3>& view_position,
+                                     View::LightPassMode light_pass_mode,
+                                     ut::Optional<Image&> ibl_cubemap,
+                                     Image::Cube::Face face)
 {
 	Policy<Model>& model_policy = policies.Get<Model>();
 
@@ -282,13 +279,13 @@ ut::Optional<Image&> Policy<View>::RenderLightPass(Context& context,
 	                                                 face);
 
 	// exit if the view mode is set to show one of the g-buffer targets
-	if (mode == View::mode_diffuse)
+	if (light_pass_mode == View::light_pass_deferred_diffuse)
 	{
 		context.SetTargetState(scene.lighting.deferred_shading.diffuse,
 		                       Target::Info::state_resource);
 		return scene.lighting.deferred_shading.diffuse.GetImage(); // exit
 	}
-	else if (mode == View::mode_normal)
+	else if (light_pass_mode == View::light_pass_deferred_normal)
 	{
 		context.SetTargetState(scene.lighting.deferred_shading.normal,
 		                       Target::Info::state_resource);
@@ -344,7 +341,7 @@ void Policy<View>::RenderIblCubemap(Context& context,
 		                lighting_mgr.ibl.CreateFaceViewMatrix(static_cast<Image::Cube::Face>(i), view.camera_position),
 		                lighting_mgr.ibl.CreateFaceProjectionMatrix(view.znear, view.zfar),
 		                view.camera_position,
-		                View::mode_complete,
+		                View::light_pass_complete,
 		                frame.ibl.filtered_cubemap.GetImage(),
 		                static_cast<Image::Cube::Face>(i));
 	}

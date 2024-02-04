@@ -46,6 +46,12 @@ public:
 		Buffer uniform_buffer;
 	};
 
+	// Customisable effect parameters.
+	struct Parameters
+	{
+		bool enabled = true;
+	};
+
 	// Constructor.
 	Fxaa(Toolset& toolset);
 
@@ -66,12 +72,15 @@ public:
 	//    @param pass - reference to the render pass with one color attachment
 	//                  and no depth.
 	//    @param source - reference to the source image.
-	//    @return - reference to the postprocess slot used for FXAA.
-	SwapSlot& Apply(SwapManager& swap_mgr,
-	                Context& context,
-	                ViewData& data,
-	                RenderPass& pass,
-	                Image& source);
+	// 	  @param parameters - reference to the Fxaa::Parameters object
+	//                        containing parameters for the FXAA effect.
+	//    @return - optional reference to the postprocess slot used for FXAA.
+	ut::Optional<SwapSlot&> Apply(SwapManager& swap_mgr,
+	                              Context& context,
+	                              ViewData& data,
+	                              RenderPass& pass,
+	                              Image& source,
+	                              const Parameters& parameters);
 
 private:
 	// Returns compiled fxaa pixel shader.

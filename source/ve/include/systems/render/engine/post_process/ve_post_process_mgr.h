@@ -5,10 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_toolset.h"
 #include "systems/render/engine/units/ve_render_view.h"
-#include "ve_post_process_view_data.h"
-#include "ve_gaussian_blur.h"
-#include "ve_tone_mapping.h"
-#include "ve_fxaa.h"
+#include "systems/render/engine/post_process/ve_post_process_parameters.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -40,13 +37,33 @@ public:
 	//                  postprocess-specific resources.
 	//    @param source - reference to the source image.
 	//    @param time_ms - total accumulated time in milliseconds.
+	//    @param parameters - reference to the postprocess::Parameter object
+	//                        containing parameters for all post-processing
+	//                        effects.
 	//    @return - optional reference to the final image.
 	ut::Optional<Image&> ApplyEffects(Context& context,
 	                                  ViewData& data,
 	                                  Image& source,
+	                                  const Parameters& parameters,
 	                                  double time_ms);
 
 private:
+	// All post-processing effect types.
+	enum EffectType
+	{
+		effect_tone_mapping,
+		effect_stencil_highlighting,
+		effect_fxaa
+	};
+
+	// Applies desired post-processing effect.
+	ut::Optional<SwapSlot&> ApplyEffect(EffectType effect_type,
+	                                    Image& source,
+	                                    Context& context,
+	                                    ViewData& data,
+	                                    const Parameters& parameters,
+	                                    double time_ms);
+
 	Toolset& tools;
 	GaussianBlur gaussian_blur;
 	ToneMapper tone_mapper;

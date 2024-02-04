@@ -163,9 +163,9 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 	// update mode
 	switch (mode.render_mode)
 	{
-		case ui::Viewport::render_mode_complete: render_view.mode = render::View::mode_complete; break;
-		case ui::Viewport::render_mode_diffuse: render_view.mode = render::View::mode_diffuse; break;
-		case ui::Viewport::render_mode_normal: render_view.mode = render::View::mode_normal; break;
+		case ui::Viewport::render_mode_complete: render_view.light_pass_mode = render::View::light_pass_complete; break;
+		case ui::Viewport::render_mode_diffuse: render_view.light_pass_mode = render::View::light_pass_deferred_diffuse; break;
+		case ui::Viewport::render_mode_normal: render_view.light_pass_mode = render::View::light_pass_deferred_normal; break;
 	}
 
 	// update resolution
