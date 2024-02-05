@@ -16,14 +16,13 @@ BacktraceTask::BacktraceTask() : TestTask("Backtrace") {}
 void BacktraceTask::Execute()
 {
 	report += "testing errors and backtrace behaviour (YOU WILL SEE ERROR, IT'S OK!):\n";
-	ut::Result<ut::String, ut::Error> result = GetStrDbgError(0);
-	if (result.HasResult())
+	try
 	{
-		report += result.Get();;
+		ut::Result<ut::String, ut::Error> result = GetStrDbgError(0);
 	}
-	else
+	catch (const ut::Error& error)
 	{
-		report += result.GetAlt().GetDesc();
+		report += error.GetDesc();
 	}
 }
 
@@ -33,6 +32,7 @@ ut::Result<ut::String, ut::Error> GetStrDbgError(int a)
 {
 	if (a == 0)
 	{
+		ut::ThrowError(ut::error::not_supported);
 		return ut::MakeError(ut::error::not_supported);
 	}
 	else

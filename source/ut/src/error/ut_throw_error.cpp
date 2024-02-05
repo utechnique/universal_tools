@@ -10,7 +10,7 @@ START_NAMESPACE(ut)
 //    @param error_code - error code, see ut::error::Code enumeration
 void ThrowError(error::Code code)
 {
-	throw Error(code);
+	throw Error(code, true);
 }
 
 //----------------------------------------------------------------------------//
