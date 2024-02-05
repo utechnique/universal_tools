@@ -189,6 +189,88 @@ void ArrayOpsTask::Execute()
 		report += " FAIL. ";
 		failed_test_counter.Increment();
 	}
+
+	// find element
+	report += ". Find array element:";
+	ut::Array<int> icarr;
+	icarr.Add(5);
+	icarr.Add(4);
+	icarr.Add(3);
+	icarr.Add(2);
+	icarr.Add(1);
+	icarr.Add(0);
+	auto find_result = ut::Find(icarr.Begin(), icarr.End(), 3);
+	if (find_result)
+	{
+		if (*find_result.Get() == 3)
+		{
+			report += " success.";
+		}
+		else
+		{
+			report += " FAIL. ";
+			failed_test_counter.Increment();
+		}
+	}
+	else
+	{
+		report += " FAIL. ";
+		failed_test_counter.Increment();
+	}
+
+	// find element (predicate)
+	report += ". Find array element (predicate):";
+	struct FindTest
+	{
+		int value = 0;
+	};
+	ut::Array<FindTest> tarr;
+	tarr.Add(FindTest{ 0 });
+	tarr.Add(FindTest{ 1 });
+	tarr.Add(FindTest{ 2 });
+	tarr.Add(FindTest{ 3 });
+	tarr.Add(FindTest{ 4 });
+	tarr.Add(FindTest{ 5 });
+	auto find_result_if = ut::FindIf(tarr.Begin(), tarr.End(), [](const FindTest& t) { return t.value == 4; });
+	if (find_result_if)
+	{
+		if (find_result_if.Get()->value == 4)
+		{
+			report += " success.";
+		}
+		else
+		{
+			report += " FAIL. ";
+			failed_test_counter.Increment();
+		}
+	}
+	else
+	{
+		report += " FAIL. ";
+		failed_test_counter.Increment();
+	}
+
+	// find element (predicate not)
+	report += ". Find array element (predicate not):";
+	find_result_if = ut::FindIfNot(tarr.Begin(), tarr.End(), [](const FindTest& t) { return t.value == 0; });
+	if (find_result_if)
+	{
+		if (find_result_if.Get()->value == 1)
+		{
+			report += " success.";
+		}
+		else
+		{
+			report += " FAIL. ";
+			failed_test_counter.Increment();
+		}
+	}
+	else
+	{
+		report += " FAIL. ";
+		failed_test_counter.Increment();
+	}
+
 }
 
 //----------------------------------------------------------------------------//

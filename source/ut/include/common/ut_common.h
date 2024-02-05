@@ -24,6 +24,7 @@
 #include "templates/ut_optional.h"
 #include "templates/ut_result.h"
 #include "templates/ut_count.h"
+#include "templates/ut_find.h"
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
