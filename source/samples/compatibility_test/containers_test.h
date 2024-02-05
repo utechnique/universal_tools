@@ -54,10 +54,10 @@ public:
 };
 
 //----------------------------------------------------------------------------//
-class ContainerTask : public TestTask
+class TupleTask : public TestTask
 {
 public:
-	ContainerTask();
+	TupleTask();
 	void Execute();
 };
 

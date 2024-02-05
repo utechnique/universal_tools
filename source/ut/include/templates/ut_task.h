@@ -3,9 +3,9 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut_container.h"
+#include "ut_tuple.h"
 #include "ut_function.h"
-#include "templates/ut_int_sequence.h"
+#include "ut_int_sequence.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
@@ -32,8 +32,8 @@ class Task<R(Arguments...)> : public BaseTask<R>
 	// Type of the managed function.
 	typedef Function<R(Arguments...)> FunctionType;
 
-	// Type of the container for the function arguments.
-	typedef Container<Arguments...> ContainerType;
+	// Type of the tuple for the function arguments.
+	typedef Tuple<Arguments...> TupleType;
 
 public:
 	// Constructor.
@@ -58,14 +58,14 @@ private:
 	template<int ...S>
 	inline R Call(IntSequence<S...>)
 	{
-		return function(Forward<typename ContainerType::template Item<S>::Type>(arg_list.template Get<S>())...);
+		return function(Forward<typename TupleType::template Item<S>::Type>(arg_list.template Get<S>())...);
 	}
 
 	// managed function
 	FunctionType function;
 
 	// container for the function arguments
-	ContainerType arg_list;
+	TupleType arg_list;
 };
 
 //----------------------------------------------------------------------------//

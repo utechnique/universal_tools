@@ -11,7 +11,7 @@ ContainersTestUnit::ContainersTestUnit() : TestUnit("CONTAINERS")
 	tasks.Add(ut::MakeUnique<AVLTreeTask>());
 	tasks.Add(ut::MakeUnique<HashmapTask>());
 	tasks.Add(ut::MakeUnique<SharedPtrTask>());
-	tasks.Add(ut::MakeUnique<ContainerTask>());
+	tasks.Add(ut::MakeUnique<TupleTask>());
 	tasks.Add(ut::MakeUnique<OptionalTask>());
 	tasks.Add(ut::MakeUnique<ResultTask>());
 	tasks.Add(ut::MakeUnique<PairTask>());
@@ -1124,12 +1124,12 @@ void SharedPtrTask::Execute()
 }
 
 //----------------------------------------------------------------------------//
-typedef ut::Container<int, char&, ut::UniquePtr<int>, ut::SharedPtr<ut::uint>, ut::Array<ut::byte> > TestContainer;
+typedef ut::Tuple<int, char&, ut::UniquePtr<int>, ut::SharedPtr<ut::uint>, ut::Array<ut::byte> > TestTuple;
 
-ContainerTask::ContainerTask() : TestTask("Container template")
+TupleTask::TupleTask() : TestTask("Tuple template")
 { }
 
-void ContainerTask::Execute()
+void TupleTask::Execute()
 {
 	char b = 3;
 	ut::Array<ut::byte> arr;
@@ -1140,11 +1140,11 @@ void ContainerTask::Execute()
 	ut::UniquePtr<int> uniq_ptr(ut::MakeUnique<int>(10));
 	ut::SharedPtr<ut::uint> sh_ptr(ut::MakeShared<ut::uint>(12));
 
-	TestContainer c(0, b, Move(uniq_ptr), sh_ptr, Move(arr));
+	TestTuple c(0, b, Move(uniq_ptr), sh_ptr, Move(arr));
 
-	TestContainer::Item<2>::Type test_unique_ptr(ut::MakeUnique<int>(1));
+	TestTuple::Item<2>::Type test_unique_ptr(ut::MakeUnique<int>(1));
 
-	const int n = TestContainer::size;
+	const int n = TestTuple::size;
 	if (n != 5)
 	{
 		report += "Fail(count)";
@@ -1194,7 +1194,7 @@ void ContainerTask::Execute()
 	c.Get< ut::Array<ut::byte> >() = ut::Array<ut::byte>();
 	char& c_test = c.Get<char&>();
 	c_test = c.Get<1>();
-	const TestContainer& rc = c;
+	const TestTuple& rc = c;
 	int i_test = rc.Get<0>();
 	const char& cc_test = rc.Get<1>();
 	const int& ri_test = rc.Get<int>();
