@@ -99,7 +99,7 @@ public:
 	template<class DerivedType>
 	inline Array< Ref<DerivedType> >& Get()
 	{
-		return BaseContainer::template Get< Array< Ref<DerivedType> > >();
+		return BaseTuple::template Get< Array< Ref<DerivedType> > >();
 	}
 };
 
