@@ -3,23 +3,17 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-//  This file is a set of all UT header files
+//  This file is a set of all header files for multithreading techniques.
 //----------------------------------------------------------------------------//
-#include "common/ut_common.h"
-#include "containers/ut_containers.h"
-#include "pointers/ut_pointers.h"
-#include "text/ut_text.h"
-#include "streams/ut_streams.h"
-#include "error/ut_error.h"
-#include "dbg/ut_dbg.h"
-#include "system/ut_system.h"
-#include "thread/ut_multithreading.h"
-#include "math/ut_math.h"
-#include "hash/ut_hash.h"
-#include "encryption/ut_encryption.h"
-#include "meta/ut_meta.h"
-#include "events/ut_events.h"
-#include "net/ut_net.h"
+#include "thread/ut_interlocked.h"
+#include "thread/ut_atomic.h"
+#include "thread/ut_mutex.h"
+#include "thread/ut_condition_variable.h"
+#include "thread/ut_lock.h"
+#include "thread/ut_sync.h"
+#include "thread/ut_thread.h"
+#include "thread/ut_thread_pool.h"
+#include "thread/ut_atomic_thread_pool.h"
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

@@ -5,8 +5,8 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "pointers/ut_unique_ptr.h"
-#include "system/ut_thread.h"
-#include "system/ut_sync.h"
+#include "thread/ut_thread.h"
+#include "thread/ut_sync.h"
 #include "net/ut_host_address.h"
 #include "net/ut_socket.h"
 #include "net/ut_net_action.h"

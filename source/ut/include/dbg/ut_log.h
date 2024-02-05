@@ -8,7 +8,7 @@
 #include "templates/ut_singleton.h"
 #include "streams/ut_output_stream.h"
 #include "streams/ut_file.h"
-#include "system/ut_mutex.h"
+#include "thread/ut_mutex.h"
 #include "system/ut_time.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)

@@ -6,8 +6,8 @@
 #include "common/ut_common.h"
 #include "error/ut_error.h"
 #include "streams/ut_base_stream.h"
-#include "system/ut_mutex.h"
 #include "system/ut_time.h"
+#include "thread/ut_mutex.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

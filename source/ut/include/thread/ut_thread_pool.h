@@ -3,12 +3,12 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "system/ut_thread.h"
+#include "thread/ut_thread.h"
+#include "thread/ut_condition_variable.h"
 #include "containers/ut_array.h"
 #include "pointers/ut_unique_ptr.h"
 #include "templates/ut_task.h"
 #include "templates/ut_default_combiner.h"
-#include "system/ut_condition_variable.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

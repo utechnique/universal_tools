@@ -14,7 +14,7 @@
 #include "containers/ut_hashmap.h"
 #include "pointers/ut_unique_ptr.h"
 #include "pointers/ut_shared_ptr.h"
-#include "system/ut_lock.h"
+#include "thread/ut_lock.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
