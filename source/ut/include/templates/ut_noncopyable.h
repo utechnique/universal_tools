@@ -3,13 +3,23 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut_def.h"
+#include "preprocessor/ut_def.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// UT_ASSERT macro is a wrapper for libc "assert" macro.
-// It is expected to be redefinable in future.
-#define UT_ASSERT(__expression) assert(__expression)
+// ut::NonCopyable is a class to prevent derived types from copying.
+// Private copy constructor and copy assignment ensure classes derived from
+// class ut::NonCopyable cannot be copied.
+class NonCopyable
+{
+protected:
+	NonCopyable() {}
+	~NonCopyable() {}
+
+private:
+	NonCopyable(const NonCopyable&) = delete;
+	NonCopyable& operator=(const NonCopyable&) = delete;
+};
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

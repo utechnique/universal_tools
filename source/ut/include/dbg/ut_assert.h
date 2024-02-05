@@ -3,21 +3,13 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "common/ut_def.h"
-//----------------------------------------------------------------------------//
-// This file is a set of common informative enumerations.
+#include "preprocessor/ut_def.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-
-namespace thread_safety
-{
-	enum Mode
-	{
-		off = 0,
-		on = 1
-	};
-}
+// UT_ASSERT macro is a wrapper for libc "assert" macro.
+// It is expected to be redefinable in future.
+#define UT_ASSERT(__expression) assert(__expression)
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

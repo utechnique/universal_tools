@@ -3,23 +3,21 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut_def.h"
+#include "preprocessor/ut_def.h"
+//----------------------------------------------------------------------------//
+// This file is a set of common informative enumerations.
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// ut::NonCopyable is a class to prevent derived types from copying.
-// Private copy constructor and copy assignment ensure classes derived from
-// class ut::NonCopyable cannot be copied.
-class NonCopyable
-{
-protected:
-	NonCopyable() {}
-	~NonCopyable() {}
 
-private:
-	NonCopyable(const NonCopyable&) = delete;
-	NonCopyable& operator=(const NonCopyable&) = delete;
-};
+namespace thread_safety
+{
+	enum Mode
+	{
+		off = 0,
+		on = 1
+	};
+}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

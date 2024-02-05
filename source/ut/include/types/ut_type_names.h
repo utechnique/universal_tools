@@ -3,10 +3,10 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "ut_def.h"
-#include "ut_platform.h"
-#include "ut_numeric_types.h"
-#include "ut_char_traits.h"
+#include "preprocessor/ut_def.h"
+#include "platforms/ut_platform.h"
+#include "types/ut_numeric_types.h"
+#include "text/ut_char_traits.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
