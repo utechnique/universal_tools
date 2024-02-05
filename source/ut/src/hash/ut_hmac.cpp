@@ -1,8 +1,8 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "encryption/ut_hmac.h"
 #include "encryption/ut_xor.h"
+#include "hash/ut_hmac.h"
 #include "hash/ut_sha2.h"
 #include "containers/ut_array.h"
 #include "system/ut_memory.h"

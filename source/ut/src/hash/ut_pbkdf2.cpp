@@ -1,8 +1,8 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  U  T  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "encryption/ut_pbkdf2.h"
-#include "encryption/ut_hmac.h"
+#include "hash/ut_pbkdf2.h"
+#include "hash/ut_hmac.h"
 #include "encryption/ut_xor.h"
 #include "containers/ut_array.h"
 #include "system/ut_memory.h"
