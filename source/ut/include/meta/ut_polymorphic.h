@@ -4,17 +4,18 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
-#include "containers/ut_array.h"
-#include "containers/ut_ref.h"
-#include "containers/ut_hashmap.h"
-#include "containers/ut_pair.h"
-#include "containers/ut_singleton.h"
-#include "pointers/ut_unique_ptr.h"
-#include "pointers/ut_shared_ptr.h"
-#include "system/ut_lock.h"
+#include "templates/ut_ref.h"
+#include "templates/ut_pair.h"
+#include "templates/ut_singleton.h"
 #include "templates/ut_enable_if.h"
 #include "templates/ut_is_default_constructible.h"
 #include "templates/ut_is_copy_constructible.h"
+#include "containers/ut_array.h"
+#include "containers/ut_hashmap.h"
+#include "pointers/ut_unique_ptr.h"
+#include "pointers/ut_shared_ptr.h"
+#include "system/ut_lock.h"
+
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//

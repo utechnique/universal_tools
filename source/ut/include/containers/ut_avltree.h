@@ -5,8 +5,8 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "containers/ut_allocator.h"
-#include "containers/ut_ref.h"
-#include "containers/ut_pair.h"
+#include "templates/ut_pair.h"
+#include "templates/ut_ref.h"
 #include "error/ut_error.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
