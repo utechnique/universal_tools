@@ -1015,6 +1015,33 @@ private:
 };
 
 //----------------------------------------------------------------------------//
+// Range-based 'for' loop support.
+template <typename Key, typename Value, template<typename> class Allocator>
+inline typename AVLTree<Key, Value, Allocator>::Iterator begin(
+	AVLTree<Key, Value, Allocator>& tree)
+{
+	return tree.Begin();
+}
+template <typename Key, typename Value, template<typename> class Allocator>
+inline typename AVLTree<Key, Value, Allocator>::Iterator end(
+	AVLTree<Key, Value, Allocator>& tree)
+{
+	return tree.End();
+}
+template <typename Key, typename Value, template<typename> class Allocator>
+inline typename AVLTree<Key, Value, Allocator>::ConstIterator begin(
+	const AVLTree<Key, Value, Allocator>& tree)
+{
+	return tree.Begin();
+}
+template <typename Key, typename Value, template<typename> class Allocator>
+inline typename AVLTree<Key, Value, Allocator>::ConstIterator end(
+	const AVLTree<Key, Value, Allocator>& tree)
+{
+	return tree.End();
+}
+
+//----------------------------------------------------------------------------//
 // Specialize type name function for avltree
 template<typename Key, typename Value> struct Type< AVLTree<Key, Value> >
 {

@@ -945,6 +945,33 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+// Range-based 'for' loop support.
+template<typename ElementType, class Allocator, class Preallocator>
+inline typename Array<ElementType, Allocator, Preallocator>::Iterator begin(
+	Array<ElementType, Allocator, Preallocator>& arr)
+{
+	return arr.Begin();
+}
+template<typename ElementType, class Allocator, class Preallocator>
+inline typename Array<ElementType, Allocator, Preallocator>::Iterator end(
+	Array<ElementType, Allocator, Preallocator>& arr)
+{
+	return arr.End();
+}
+template<typename ElementType, class Allocator, class Preallocator>
+inline typename Array<ElementType, Allocator, Preallocator>::ConstIterator begin(
+	const Array<ElementType, Allocator, Preallocator>& arr)
+{
+	return arr.Begin();
+}
+template<typename ElementType, class Allocator, class Preallocator>
+inline typename Array<ElementType, Allocator, Preallocator>::ConstIterator end(
+	const Array<ElementType, Allocator, Preallocator>& arr)
+{
+	return arr.End();
+}
+
+//----------------------------------------------------------------------------//
 // Specialize type name function for arrays
 template <typename T> struct Type< Array<T> >
 {

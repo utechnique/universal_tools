@@ -222,15 +222,16 @@ void ArrayOpsTask::Execute()
 	report += ". Find array element (predicate):";
 	struct FindTest
 	{
+        FindTest(int v) : value(v) {}
 		int value = 0;
 	};
 	ut::Array<FindTest> tarr;
-	tarr.Add(FindTest{ 0 });
-	tarr.Add(FindTest{ 1 });
-	tarr.Add(FindTest{ 2 });
-	tarr.Add(FindTest{ 3 });
-	tarr.Add(FindTest{ 4 });
-	tarr.Add(FindTest{ 5 });
+	tarr.Add(FindTest(0));
+	tarr.Add(FindTest(1));
+	tarr.Add(FindTest(2));
+	tarr.Add(FindTest(3));
+	tarr.Add(FindTest(4));
+	tarr.Add(FindTest(5));
 	auto find_result_if = ut::FindIf(tarr.Begin(), tarr.End(), [](const FindTest& t) { return t.value == 4; });
 	if (find_result_if)
 	{
@@ -271,6 +272,28 @@ void ArrayOpsTask::Execute()
 		failed_test_counter.Increment();
 	}
 
+	// range based for loop
+	report += ". Range based for loop:";
+	int sum = 0;
+	const ut::Array<FindTest>& ctarrref = tarr;
+	for (const FindTest& e : ctarrref)
+	{
+		sum += e.value;
+	}
+	for (FindTest& e : tarr)
+	{
+		sum += e.value;
+		e.value++;
+	}
+	if (sum == 30)
+	{
+		report += " success.";
+	}
+	else
+	{
+		report += " FAIL. ";
+		failed_test_counter.Increment();
+	}
 }
 
 //----------------------------------------------------------------------------//
@@ -453,22 +476,6 @@ void AVLTreeTask::Execute()
 		return;
 	}
 
-	// check if deleted nodes were deleted
-	/*
-	report += "check deleted nodes: ";
-	find_result = tree.Find(32);
-	if (find_result)
-	{
-		report += ut::String("Error! node wasn't deleted properly");
-		failed_test_counter.Increment();
-		return;
-	}
-	else
-	{
-		report += "Success";
-	}
-	*/
-
 	// iterate avl container forward
 	report += ut::CRet() + "iterating forward: ";
 	ut::AVLTree<int, ut::String>::ConstIterator riterator;
@@ -499,6 +506,23 @@ void AVLTreeTask::Execute()
 
 		int key = node.GetFirst();
 		if (previous_key < key)
+		{
+			report += ut::String(" Error, invalid order!\n");
+			failed_test_counter.Increment();
+			return;
+		}
+		previous_key = key;
+	}
+
+	// range based for loop
+	report += ut::CRet() + ". Range based for loop:";
+	previous_key = 0;
+	for (auto inode : tree)
+	{
+		report += inode.second;
+
+		int key = inode.GetFirst();
+		if (previous_key > key)
 		{
 			report += ut::String(" Error, invalid order!\n");
 			failed_test_counter.Increment();
@@ -1134,6 +1158,13 @@ ut::String HashMapTest()
 	}
 	report += ut::String("(ok).\n");
 
+	report += ut::String("Iteration (range-based for loop): ");
+	const IntHashMapType& cmapref = map;
+	for (const ut::Pair<const int, MapValue>& e : cmapref)
+	{
+		report += ut::Print(e.GetSecond().ival) + " ";
+	}
+
 	// success
 	return report;
 }
@@ -1418,7 +1449,7 @@ void PairTask::Execute()
 	}
 
 	ut::Pair<int, const ut::String&> const_pair(24, test_const_str);
-	
+
 	ut::String test_str = "test";
 	ut::Pair<ut::String&, const ut::String&> ref_pair(test_str, test_const_str);
 
