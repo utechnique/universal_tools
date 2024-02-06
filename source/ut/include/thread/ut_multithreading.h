@@ -3,22 +3,18 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "preprocessor/ut_def.h"
+//  This file is a set of all header files for multithreading techniques.
 //----------------------------------------------------------------------------//
-START_NAMESPACE(ut)
-//----------------------------------------------------------------------------//
-// Types ut::compile_time::yes and ut::compile_time::no are used to define
-// different type traits at compile time. The only requirement for these types
-// is that they must have different size.
-namespace compile_time
-{
-	struct char2 { char a[2]; };
-	typedef char yes;
-	typedef char2 no;
-}
+#include "thread/ut_interlocked.h"
+#include "thread/ut_atomic.h"
+#include "thread/ut_mutex.h"
+#include "thread/ut_condition_variable.h"
+#include "thread/ut_lock.h"
+#include "thread/ut_sync.h"
+#include "thread/ut_thread.h"
+#include "thread/ut_thread_pool.h"
+#include "thread/ut_atomic_thread_pool.h"
 
-//----------------------------------------------------------------------------//
-END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

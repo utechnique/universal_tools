@@ -8,36 +8,36 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// Contains the actual value for one item in the container. The  template
+// Contains the actual value for one item in the tuple. The  template
 // parameter `leaf_id` allows the `Get` function to find the value in O(1) time
 template<int leaf_id, typename Item>
-class ContainerLeaf
+class TupleLeaf
 {
 public:
-	ContainerLeaf() {}
-	ContainerLeaf(Item&& item) : value(Forward<Item>(item)) {}
+	TupleLeaf() {}
+	TupleLeaf(Item&& item) : value(Forward<Item>(item)) {}
 	Item value;
 };
 
-// ContainerImpl is a proxy for the final class that has an extra 
+// TupleImpl is a proxy for the final class that has an extra 
 // template parameter `leaf_id`.
-template<int leaf_id, typename... Items> class ContainerImpl;
+template<int leaf_id, typename... Items> class TupleImpl;
 
-// Base case: empty container
-template<int leaf_id> class ContainerImpl<leaf_id> {};
+// Base case: empty tuple
+template<int leaf_id> class TupleImpl<leaf_id> {};
 
-// Obtains a reference to i-th item in a container
+// Obtains a reference to i-th item in a tuple
 template<int leaf_id, typename HeadItem, typename... TailItems>
-inline HeadItem& Get(ContainerImpl<leaf_id, HeadItem, TailItems...>& container)
+inline HeadItem& Get(TupleImpl<leaf_id, HeadItem, TailItems...>& tuple)
 {
 	// Fully qualified name for the member, to find the right one 
 	// (they are all called `value`).
-	return container.ContainerLeaf<leaf_id, HeadItem>::value;
+	return tuple.TupleLeaf<leaf_id, HeadItem>::value;
 }
 
-// Helper structures to get a type or id of the value inside a container
+// Helper structures to get a type or id of the value inside a tuple
 // knowing it's index `leaf_id` or type `Desired`
-namespace container_helper
+namespace tuple_helper
 {
 	template<int leaf_id, typename HeadItem, typename... TailItems>
 	struct TypeExtractor
@@ -76,23 +76,23 @@ namespace container_helper
 	};
 }
 
-// Recursive specialization for the container template
+// Recursive specialization for the tuple template
 template<int i, typename HeadItem, typename... TailItems>
-class ContainerImpl<i, HeadItem, TailItems...> : public ContainerLeaf<i, HeadItem>,
-	public ContainerImpl<i + 1, TailItems...>
+class TupleImpl<i, HeadItem, TailItems...> : public TupleLeaf<i, HeadItem>,
+	public TupleImpl<i + 1, TailItems...>
 {
 private:
 	// Helper alias template to conveniently get type
 	// of the value in a specified leaf
 	template<int leaf_id>
-	using LeafType = typename container_helper::TypeExtractor<leaf_id, HeadItem, TailItems...>::Type;
+	using LeafType = typename tuple_helper::TypeExtractor<leaf_id, HeadItem, TailItems...>::Type;
 
 	// Helper function to get id of the value with the specified type
 	// at compile time
 	template<typename ValueType>
 	static constexpr int GetLeafId()
 	{
-		return container_helper::IdExtractor<0, ValueType, HeadItem, TailItems...>::id;
+		return tuple_helper::IdExtractor<0, ValueType, HeadItem, TailItems...>::id;
 	}
 
 public:
@@ -104,27 +104,27 @@ public:
 	};
 
 	// Default constructor
-	ContainerImpl()
+	TupleImpl()
 	{ }
 
 	// Constructor, all items must be passed here
-	ContainerImpl(HeadItem head,
-		TailItems... tail) : ContainerLeaf<i, HeadItem>(Forward<HeadItem>(head))
-		, ContainerImpl<i + 1, TailItems...>(Forward<TailItems>(tail) ...)
+	TupleImpl(HeadItem head,
+		TailItems... tail) : TupleLeaf<i, HeadItem>(Forward<HeadItem>(head))
+		, TupleImpl<i + 1, TailItems...>(Forward<TailItems>(tail) ...)
 	{ }
 
 	// Returns reference to the value inside a leaf
 	template<int value_id>
 	LeafType<value_id>& Get()
 	{
-		return this->ContainerLeaf<value_id, LeafType<value_id> >::value;
+		return this->TupleLeaf<value_id, LeafType<value_id> >::value;
 	}
 
 	// Returns const reference to the value inside a leaf, that is specified by `value_id`
 	template<int value_id>
 	const LeafType<value_id>& Get() const
 	{
-		return this->ContainerLeaf<value_id, LeafType<value_id> >::value;
+		return this->TupleLeaf<value_id, LeafType<value_id> >::value;
 	}
 
 	// Returns reference to the first occurence of the `ValueType` item
@@ -141,13 +141,13 @@ public:
 		return Get<GetLeafId<ValueType>()>();
 	}
 
-	// Count of items inside a container
-	enum { size = container_helper::Counter<0, HeadItem, TailItems...>::count };
+	// Count of items inside a tuple
+	enum { size = tuple_helper::Counter<0, HeadItem, TailItems...>::count };
 };
 
 // Templated alias to avoid having to specify `leaf_id = 0`
 template<typename... Items>
-using Container = ContainerImpl<0, Items...>;
+using Tuple = TupleImpl<0, Items...>;
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

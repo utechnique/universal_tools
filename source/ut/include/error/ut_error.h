@@ -23,12 +23,14 @@ class Error
 public:
 	// Constructor
 	//    @param error_code - error code, see ut::error::Code enumeration
-	Error(error::Code error_code);
+	//    @param backtrace - indicates if a callstack must be built.
+	Error(error::Code error_code, bool backtrace = false);
 
 	// Constructor
 	//    @param error_code - error code, see ut::error::Code enumeration
 	//    @param error_desc - custom (user-defined) error description
-	Error(error::Code error_code, String error_desc);
+	//    @param backtrace - indicates if a callstack must be built.
+	Error(error::Code error_code, String error_desc, bool backtrace = false);
 
 	// Returns error code
 	//    @return - error code, see ut::error::Code enumeration

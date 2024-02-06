@@ -10,8 +10,9 @@
 #include "hash/ut_sha2.h"
 #include "hash/ut_murmur2.h"
 #include "hash/ut_murmur3.h"
+#include "hash/ut_hmac.h"
+#include "hash/ut_pbkdf2.h"
 #include "hash/ut_default_hash.h"
-
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

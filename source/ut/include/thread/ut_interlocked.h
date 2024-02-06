@@ -3,9 +3,8 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "common/ut_platform.h"
-#include "common/ut_def.h"
-#include "common/ut_numeric_types.h"
+#include "platforms/ut_platform.h"
+#include "types/ut_numeric_types.h"
 //----------------------------------------------------------------------------//
 #if UT_WINDOWS
 #include <intrin.h>

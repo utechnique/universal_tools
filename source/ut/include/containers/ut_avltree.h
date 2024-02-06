@@ -5,8 +5,8 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "containers/ut_allocator.h"
-#include "containers/ut_ref.h"
-#include "containers/ut_pair.h"
+#include "templates/ut_pair.h"
+#include "templates/ut_ref.h"
 #include "error/ut_error.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
@@ -1013,6 +1013,33 @@ private:
 	// allocator
 	Allocator<Node> allocator;
 };
+
+//----------------------------------------------------------------------------//
+// Range-based 'for' loop support.
+template <typename Key, typename Value, template<typename> class Allocator>
+inline typename AVLTree<Key, Value, Allocator>::Iterator begin(
+	AVLTree<Key, Value, Allocator>& tree)
+{
+	return tree.Begin();
+}
+template <typename Key, typename Value, template<typename> class Allocator>
+inline typename AVLTree<Key, Value, Allocator>::Iterator end(
+	AVLTree<Key, Value, Allocator>& tree)
+{
+	return tree.End();
+}
+template <typename Key, typename Value, template<typename> class Allocator>
+inline typename AVLTree<Key, Value, Allocator>::ConstIterator begin(
+	const AVLTree<Key, Value, Allocator>& tree)
+{
+	return tree.Begin();
+}
+template <typename Key, typename Value, template<typename> class Allocator>
+inline typename AVLTree<Key, Value, Allocator>::ConstIterator end(
+	const AVLTree<Key, Value, Allocator>& tree)
+{
+	return tree.End();
+}
 
 //----------------------------------------------------------------------------//
 // Specialize type name function for avltree

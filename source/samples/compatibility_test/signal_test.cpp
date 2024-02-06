@@ -119,7 +119,7 @@ void Slot2Task::Execute()
 		return;
 	}
 
-	ut::Container<int, int> c(0, 1);
+	ut::Tuple<int, int> c(0, 1);
 	c.Get<0>() = 2;
 	c.Get<1>() = 3;
 

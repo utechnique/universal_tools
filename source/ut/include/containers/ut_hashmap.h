@@ -3,8 +3,8 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
+#include "templates/ut_pair.h"
 #include "containers/ut_array.h"
-#include "containers/ut_pair.h"
 #include "hash/ut_default_hash.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
@@ -1065,6 +1065,57 @@ private:
 	// The grater this value is - the less collisions occur -> faster search.
 	static constexpr size_t capacity_multiplier = 4;
 };
+
+//----------------------------------------------------------------------------//
+// Range-based 'for' loop support.
+template<typename K, typename V, class H, class E, class A>
+inline typename DenseHashMap<K, V, H, E, A>::Iterator begin(
+	DenseHashMap<K, V, H, E, A>& map)
+{
+	return map.Begin();
+}
+template<typename K, typename V, class H, class E, class A>
+inline typename SparseHashMap<K, V, H, E, A>::Iterator begin(
+	SparseHashMap<K, V, H, E, A>& map)
+{
+	return map.Begin();
+}
+template<typename K, typename V, class H, class E, class A>
+inline typename DenseHashMap<K, V, H, E, A>::Iterator end(
+	DenseHashMap<K, V, H, E, A>& map)
+{
+	return map.End();
+}
+template<typename K, typename V, class H, class E, class A>
+inline typename SparseHashMap<K, V, H, E, A>::Iterator end(
+	SparseHashMap<K, V, H, E, A>& map)
+{
+	return map.End();
+}
+template<typename K, typename V, class H, class E, class A>
+inline typename DenseHashMap<K, V, H, E, A>::ConstIterator begin(
+	const DenseHashMap<K, V, H, E, A>& map)
+{
+	return map.Begin();
+}
+template<typename K, typename V, class H, class E, class A>
+inline typename SparseHashMap<K, V, H, E, A>::ConstIterator begin(
+	const SparseHashMap<K, V, H, E, A>& map)
+{
+	return map.Begin();
+}
+template<typename K, typename V, class H, class E, class A>
+inline typename DenseHashMap<K, V, H, E, A>::ConstIterator end(
+	const DenseHashMap<K, V, H, E, A>& map)
+{
+	return map.End();
+}
+template<typename K, typename V, class H, class E, class A>
+inline typename SparseHashMap<K, V, H, E, A>::ConstIterator end(
+	const SparseHashMap<K, V, H, E, A>& map)
+{
+	return map.End();
+}
 
 //----------------------------------------------------------------------------//
 // ut::DenseHashMap is the default hashmap type.

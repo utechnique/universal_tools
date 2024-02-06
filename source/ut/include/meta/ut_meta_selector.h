@@ -5,7 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "meta/ut_polymorphic.h"
-#include "templates/ut_container.h"
+#include "templates/ut_tuple.h"
 #include "containers/ut_array.h"
 #include "pointers/ut_unique_ptr.h"
 //----------------------------------------------------------------------------//
@@ -65,9 +65,9 @@ struct SelectorHelper<SelectorType, Last>
 // selector contains arrays of references to objects of predefined derived
 // types, so there is no need to allocate memory for every new selection.
 template<class BaseType, class... Derived>
-class Selector : public Container<Array< Ref<Derived> >... >
+class Selector : public Tuple<Array< Ref<Derived> >... >
 {
-	typedef Container<Array< Ref<Derived> >... > BaseContainer;
+	typedef Tuple<Array< Ref<Derived> >... > BaseTuple;
 public:
 	// Type that is base for all managed @Derived types.
 	typedef BaseType Base;
@@ -99,7 +99,7 @@ public:
 	template<class DerivedType>
 	inline Array< Ref<DerivedType> >& Get()
 	{
-		return BaseContainer::template Get< Array< Ref<DerivedType> > >();
+		return BaseTuple::template Get< Array< Ref<DerivedType> > >();
 	}
 };
 

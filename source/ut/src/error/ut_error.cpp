@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "error/ut_error.h"
 #include "dbg/ut_backtrace.h"
-#include "system/ut_mutex.h"
+#include "thread/ut_mutex.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
@@ -15,23 +15,35 @@ Mutex g_backtrace_mutex;
 //----------------------------------------------------------------------------//
 // Constructor
 //    @param error_code - error code, see ut::error::Code enumeration
-Error::Error(error::Code error_code) : code(error_code)
+//    @param backtrace - indicates if a callstack must be built.
+Error::Error(error::Code error_code,
+             bool backtrace) : code(error_code)
 {
-	GetCallstack();
+#if UT_ERROR_BACKTRACE
+	if (backtrace)
+	{
+		GetCallstack();
+	}
+#endif
 }
 
 //----------------------------------------------------------------------------->
 // Constructor
 //    @param error_code - error code, see ut::error::Code enumeration
 //    @param error_desc - custom (user-defined) error description
+//    @param backtrace - indicates if a callstack must be built.
 Error::Error(error::Code error_code,
-             String error_desc) : code(error_code)
+             String error_desc,
+             bool backtrace) : code(error_code)
 #if UT_ERROR_DESCRIPTION
                                 , description(Move(error_desc))
 #endif
 {
 #if UT_ERROR_BACKTRACE
-	GetCallstack();
+	if (backtrace)
+	{
+		GetCallstack();
+	}
 #endif
 }
 

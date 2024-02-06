@@ -4,10 +4,10 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
-#include "system/ut_mutex.h"
-#include "system/ut_lock.h"
-#include "system/ut_condition_variable.h"
-#include "system/ut_thread.h"
+#include "thread/ut_mutex.h"
+#include "thread/ut_lock.h"
+#include "thread/ut_condition_variable.h"
+#include "thread/ut_thread.h"
 #include "pointers/ut_shared_ptr.h"
 #include "pointers/ut_weak_ptr.h"
 //----------------------------------------------------------------------------//

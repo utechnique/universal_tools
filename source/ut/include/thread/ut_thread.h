@@ -6,11 +6,11 @@
 #include "common/ut_common.h"
 #include "containers/ut_array.h"
 #include "pointers/ut_unique_ptr.h"
-#include "system/ut_mutex.h"
-#include "system/ut_lock.h"
-#include "system/ut_atomic.h"
 #include "system/ut_time.h"
 #include "templates/ut_task.h"
+#include "thread/ut_mutex.h"
+#include "thread/ut_lock.h"
+#include "thread/ut_atomic.h"
 //----------------------------------------------------------------------------//
 #if UT_WINDOWS
 // 'Yield()' macro of WinBase.h spoils ut::this_thread::Yield() function's name.
