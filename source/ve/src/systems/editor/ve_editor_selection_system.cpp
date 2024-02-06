@@ -29,14 +29,12 @@ System::Result ViewportSelectionSystem::Update(System::Time time_step_ms,
 {
 	CmdArray out_commands;
 
-	const size_t viewport_count = viewports.Count();
-	for (size_t i = 0; i < viewport_count; i++)
+	for (ui::Viewport& viewport : viewports)
 	{
-		ui::Viewport& viewport = viewports[i];
 		const ui::Viewport::Mode mode = viewport.GetMode();
 		if (mode.is_active && mode.has_input_focus)
 		{
-			out_commands += ProcessViewportSelection(access, viewports[i]);
+			out_commands += ProcessViewportSelection(access, viewport);
 			break;
 		}
 	}
@@ -63,9 +61,9 @@ CmdArray ViewportSelectionSystem::ProcessViewportSelection(Base::Access& access,
 
 	// search for a camera with desired name
 	ut::Optional<Entity::Id> entity_id;
-	for (Base::Access::EntityIterator entity = cameras.BeginEntities(); entity != cameras.EndEntities(); ++entity)
+	for (const auto& camera : cameras)
 	{
-		const Entity::Id id = entity->GetFirst();
+		const Entity::Id id = camera.GetFirst();
 
 		// check name
 		const ut::String& name = cameras.GetComponent<NameComponent>(id).name;
@@ -87,10 +85,8 @@ CmdArray ViewportSelectionSystem::ProcessViewportSelection(Base::Access& access,
 
 	// find render view
 	ut::Optional<render::View&> render_view;
-	const size_t unit_count = camera_render.units.Count();
-	for (size_t i = 0; i < unit_count; i++)
+	for (ut::UniquePtr<render::Unit>& unit : camera_render.units)
 	{
-		ut::UniquePtr<render::Unit>& unit = camera_render.units[i];
 		if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::View>())
 		{
 			render_view = static_cast<render::View&>(unit.GetRef());
@@ -185,7 +181,9 @@ void ViewportSelectionSystem::InitializeViewports(ui::Frontend& ui_frontend)
 	viewports.Reset();
 	ut::Array< ut::Ref<ui::Viewport> >::Iterator start = ui_frontend.BeginViewports();
 	ut::Array< ut::Ref<ui::Viewport> >::Iterator end = ui_frontend.EndViewports();
-	for (ut::Array< ut::Ref<ui::Viewport> >::Iterator iterator = start; iterator != end; iterator++)
+	for (ut::Array< ut::Ref<ui::Viewport> >::Iterator iterator = start;
+	     iterator != end;
+	     iterator++)
 	{
 		viewports.Add(*iterator);
 	}
@@ -205,17 +203,13 @@ CmdArray ViewportSelectionSystem::DeselectAllEntities(VssSelectedEntitiesAccess&
 	CmdArray commands;
 
 	// discard color change for all previously selected entities
-	for (Access::EntityIterator renderable_entity_iterator = renderable_selected_entities.BeginEntities();
-	     renderable_entity_iterator != renderable_selected_entities.EndEntities();
-	     ++renderable_entity_iterator)
+	for (const auto& renderable_entity : renderable_selected_entities)
 	{
-		const Entity::Id id = renderable_entity_iterator->GetFirst();
+		const Entity::Id id = renderable_entity.GetFirst();
 		RenderComponent& selected_render = renderable_selected_entities.GetComponent<RenderComponent>(id);
 
-		const size_t unit_count = selected_render.units.Count();
-		for (size_t i = 0; i < unit_count; i++)
+		for (ut::UniquePtr<render::Unit>& unit : selected_render.units)
 		{
-			ut::UniquePtr<render::Unit>& unit = selected_render.units[i];
 			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::Model>())
 			{
 				render::Model& model = static_cast<render::Model&>(unit.GetRef());
@@ -226,11 +220,9 @@ CmdArray ViewportSelectionSystem::DeselectAllEntities(VssSelectedEntitiesAccess&
 
 	// remove all selection components
 	const ut::DynamicType::Handle sel_comp_type_handle = ut::GetPolymorphicHandle<SelectedInEditorComponent>();
-	for (Access::EntityIterator selected_entity_iterator = all_selected_entities.BeginEntities();
-	     selected_entity_iterator != all_selected_entities.EndEntities();
-	     ++selected_entity_iterator)
+	for (const auto& selected_entity : all_selected_entities)
 	{
-		const Entity::Id id = selected_entity_iterator->GetFirst();
+		const Entity::Id id = selected_entity.GetFirst();
 		commands.Add(ut::MakeUnique<CmdDeleteComponent>(id, sel_comp_type_handle));
 	}
 
@@ -248,17 +240,13 @@ CmdArray ViewportSelectionSystem::HighlightSelectedEntities(VssRenderableSelecte
 	CmdArray commands;
 
 	// change color for all selected entities
-	for (Access::EntityIterator renderable_entity_iterator = renderable_selected_entities.BeginEntities();
-	     renderable_entity_iterator != renderable_selected_entities.EndEntities();
-	     ++renderable_entity_iterator)
+	for (const auto& renderable_entity : renderable_selected_entities)
 	{
-		const Entity::Id id = renderable_entity_iterator->GetFirst();
+		const Entity::Id id = renderable_entity.GetFirst();
 		RenderComponent& selected_render = renderable_selected_entities.GetComponent<RenderComponent>(id);
 
-		const size_t unit_count = selected_render.units.Count();
-		for (size_t i = 0; i < unit_count; i++)
+		for (ut::UniquePtr<render::Unit>& unit : selected_render.units)
 		{
-			ut::UniquePtr<render::Unit>& unit = selected_render.units[i];
 			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::Model>())
 			{
 				render::Model& model = static_cast<render::Model&>(unit.GetRef());

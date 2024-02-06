@@ -8,6 +8,13 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 START_NAMESPACE(postprocess)
 //----------------------------------------------------------------------------//
+// Static variables:
+const ut::uint32 StencilHighlight::skHighlightRadius = 3;
+const float StencilHighlight::skHighlightSigma = skHighlightRadius / 0.2f;
+const ut::uint32 StencilHighlight::skLineDistance = 16;
+const ut::uint32 StencilHighlight::skLineWidth = 8;
+
+//----------------------------------------------------------------------------//
 // Stencil highlighting (per-view) data constructor.
 StencilHighlight::ViewData::ViewData(PipelineState in_fill_pass_pipeline,
                                      PipelineState in_lines_pass_pipeline,

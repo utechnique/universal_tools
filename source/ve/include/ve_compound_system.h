@@ -10,23 +10,23 @@ START_NAMESPACE(ve)
 // ve::CompoundAccessStaticIterator is a helper template class to iterate
 // compound access objects in order to form a fast access interface to the
 // desired component sets.
-template<int id, int depth, typename CompoundAccessContainer>
+template<int id, int depth, typename CompoundAccessTuple>
 struct CompoundAccessStaticIterator
 {
 	static void GenerateComponentSets(ut::Array< ComponentSet<ut::access_full> >& component_sets)
 	{
-		CompoundAccessStaticIterator<id, id, CompoundAccessContainer>::GenerateComponentSets(component_sets);
-		CompoundAccessStaticIterator<id + 1, depth, CompoundAccessContainer>::GenerateComponentSets(component_sets);
+		CompoundAccessStaticIterator<id, id, CompoundAccessTuple>::GenerateComponentSets(component_sets);
+		CompoundAccessStaticIterator<id + 1, depth, CompoundAccessTuple>::GenerateComponentSets(component_sets);
 	}
 };
 
 // Specialization of the ve::CompoundAccessStaticIterator for the last item.
-template<int id, typename CompoundAccessContainer>
-struct CompoundAccessStaticIterator<id, id, CompoundAccessContainer>
+template<int id, typename CompoundAccessTuple>
+struct CompoundAccessStaticIterator<id, id, CompoundAccessTuple>
 {
 	static void GenerateComponentSets(ut::Array< ComponentSet<ut::access_full> >& component_sets)
 	{
-        typedef typename CompoundAccessContainer::template Item<id>::Type AccessType;
+        typedef typename CompoundAccessTuple::template Item<id>::Type AccessType;
 
 		component_sets.Add(ComponentSet<ut::access_full>());
 		ComponentMapStaticIterator<0, AccessType::size - 1,
@@ -53,21 +53,21 @@ using CompoundAccess = typename ComponentSystem<Components...>::Access;
 template<typename... CompoundAccesses>
 class CompoundSystem : public System
 {
-	typedef ut::Container<CompoundAccesses...> CompoundAccessContainer;
+	typedef ut::Tuple<CompoundAccesses...> CompoundAccessTuple;
 public:
 
 	// Represents a tuple with access to all registered groups of entities.
-	class Access : public CompoundAccessContainer
+	class Access : public CompoundAccessTuple
 	{
 	public:
 		// Use this type to iterate registered entities.
 		typedef IterativeComponentSet::Iterator EntityIterator;
 
 		// Template argument list can't be empty.
-		static_assert(CompoundAccessContainer::size > 0, "ve::CompoundSystem must have at least one template argument.");
+		static_assert(CompoundAccessTuple::size > 0, "ve::CompoundSystem must have at least one template argument.");
 
 		// Constructor initializes managed component accesses.
-		Access(ComponentAccessGroup& group_access) : CompoundAccessContainer(
+		Access(ComponentAccessGroup& group_access) : CompoundAccessTuple(
 		// VS 2015 cannot recognize a constructor in the pack expansion here
 #if UT_WINDOWS
 			explicit
@@ -113,8 +113,8 @@ protected:
 	virtual ut::Array< ComponentSet<ut::access_full> > DefineComponentSets() const override
 	{
 		ut::Array< ComponentSet<ut::access_full> > sets;
-		CompoundAccessStaticIterator<0, CompoundAccessContainer::size - 1,
-		                             CompoundAccessContainer>::GenerateComponentSets(sets);
+		CompoundAccessStaticIterator<0, CompoundAccessTuple::size - 1,
+		                             CompoundAccessTuple>::GenerateComponentSets(sets);
 		return sets;
 	}
 

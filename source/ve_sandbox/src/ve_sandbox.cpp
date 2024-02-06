@@ -83,9 +83,9 @@ public:
 ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& position, size_t id)
 {
 	// random values
-	const float r1 = static_cast<float>(200 + rand() % 800);
-	const float r2 = static_cast<float>(200 + rand() % 800);
-	const float r3 = static_cast<float>(200 + rand() % 800);
+	const float r1 = static_cast<float>(300 + rand() % 800);
+	const float r2 = static_cast<float>(300 + rand() % 800);
+	const float r3 = static_cast<float>(300 + rand() % 800);
 	const bool is_sphere = rand() % 3 == 0;
 
 	// transform
@@ -107,7 +107,7 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& p
 	box_model.diffuse_mul.B() = r3 / 1000.0f;
 
 	const bool is_metallic = rand() % 10 == 0;
-	float roughness = static_cast<float>(rand() % 255) / 255.0f;
+	float roughness = static_cast<float>((rand() % 250) + 5) / 255.0f;
 
 	box_model.material_mul.X() = roughness;
 	box_model.material_add.Y() = is_metallic ? 1.0f : 0.0f;
@@ -149,8 +149,8 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateLight(ve::render::Light::SourceT
 			                                                                 light_direction);
 			ve::render::AmbientLight light_unit;
 			light_unit.color = ut::Vector<3>(0.75f, 0.95f, 1.0f);
-			light_unit.intensity = 0.16f;
-			light_unit.attenuation_distance = 1.0e+10f;
+			light_unit.intensity = 0.25f;
+			light_unit.attenuation_distance = 50.0f;
 			light = ut::MakeUnique<ve::render::AmbientLight>(ut::Move(light_unit));
 		} break;
 
@@ -162,7 +162,7 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateLight(ve::render::Light::SourceT
 			                                                                 light_direction);
 			ve::render::DirectionalLight light_unit;
 			light_unit.color = ut::Vector<3>(1, 1, 1);
-			light_unit.intensity = 0.8f;
+			light_unit.intensity = 0.45f;
 			light = ut::MakeUnique<ve::render::DirectionalLight>(ut::Move(light_unit));
 		} break;
 
@@ -208,12 +208,13 @@ ut::Array< ut::Array< ut::UniquePtr<ve::Component> > > CreateTestScene()
 	ut::Array< ut::Array< ut::UniquePtr<ve::Component> > > out;
 
 	const float x_offset = 40.0f;
-	
+
 	// ambient light
-	size_t dir_light_id = 0;
-	out.Add(CreateLight(ve::render::Light::source_ambient, ut::Vector<3>(0), dir_light_id++));
+    size_t ambient_light_id = 0;
+	out.Add(CreateLight(ve::render::Light::source_ambient, ut::Vector<3>(x_offset, 0, 0), ambient_light_id++));
 
 	// directional light
+	size_t dir_light_id = 0;
 	out.Add(CreateLight(ve::render::Light::source_directional, ut::Vector<3>(0), dir_light_id++));
 
 	// point and spot lights

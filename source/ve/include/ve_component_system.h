@@ -10,34 +10,34 @@ START_NAMESPACE(ve)
 // ve::ComponentMapStaticIterator is a helper template class to iterate
 // component maps in order to form a fast component access interface for the
 // desired component system.
-template<int id, int depth, typename PtrContainer>
+template<int id, int depth, typename PtrTuple>
 struct ComponentMapStaticIterator
 {
-	static void Initialize(ComponentAccess& access, PtrContainer& container)
+	static void Initialize(ComponentAccess& access, PtrTuple& tuple)
 	{
-		ComponentMapStaticIterator<id, id, PtrContainer>::Initialize(access, container);
-		ComponentMapStaticIterator<id + 1, depth, PtrContainer>::Initialize(access, container);
+		ComponentMapStaticIterator<id, id, PtrTuple>::Initialize(access, tuple);
+		ComponentMapStaticIterator<id + 1, depth, PtrTuple>::Initialize(access, tuple);
 	}
 
 	static void GenerateComponentMaps(ComponentMapCollection<ut::access_full>& component_maps)
 	{
-		ComponentMapStaticIterator<id, id, PtrContainer>::GenerateComponentMaps(component_maps);
-		ComponentMapStaticIterator<id + 1, depth, PtrContainer>::GenerateComponentMaps(component_maps);
+		ComponentMapStaticIterator<id, id, PtrTuple>::GenerateComponentMaps(component_maps);
+		ComponentMapStaticIterator<id + 1, depth, PtrTuple>::GenerateComponentMaps(component_maps);
 	}
 };
 
 // Specialization of the ve::ComponentMapStaticIterator for the last item.
-template<int id, typename PtrContainer>
-struct ComponentMapStaticIterator<id, id, PtrContainer>
+template<int id, typename PtrTuple>
+struct ComponentMapStaticIterator<id, id, PtrTuple>
 {
-	typedef typename PtrContainer::template Item<id>::Type MapPtrType;
+	typedef typename PtrTuple::template Item<id>::Type MapPtrType;
 	typedef typename ut::RemovePointer<MapPtrType>::Type MapType;
 	typedef typename MapType::ComponentType ComponentType;
 	static_assert(ut::IsBaseOf<Component, ComponentType>::value,
 		"ve::ComponentSystem can only operate with template argument types "
 		"inherited from the ve::Component class.");
 
-	static void Initialize(ComponentAccess& access, PtrContainer& container)
+	static void Initialize(ComponentAccess& access, PtrTuple& tuple)
 	{
 		ut::Optional<ComponentMap&> map = access.GetMap<ComponentType>();
 		if (!map)
@@ -45,7 +45,7 @@ struct ComponentMapStaticIterator<id, id, PtrContainer>
 			throw ut::Error(ut::error::not_supported);
 		}
 
-		container.template Get<id>() = static_cast<ComponentMapImpl<ComponentType>*>(&map.Get());
+		tuple.template Get<id>() = static_cast<ComponentMapImpl<ComponentType>*>(&map.Get());
 	}
 
 	static void GenerateComponentMaps(ComponentMapCollection<ut::access_full>& component_maps)
@@ -65,12 +65,12 @@ struct ComponentMapStaticIterator<id, id, PtrContainer>
 template<typename... Components>
 class ComponentSystem : public System
 {
-	typedef ut::Container<ComponentMapImpl<Components>*...> ComponentContainer;
+	typedef ut::Tuple<ComponentMapImpl<Components>*...> ComponentTuple;
 public:
 
 	// ve::ComponentSystem::Access is a wrapper class around the
 	// ve::ComponentAccess object.
-	class Access : private ComponentContainer
+	class Access : private ComponentTuple
 	{
         template <int, int, typename> friend struct ComponentMapStaticIterator;
 		template <int, int, typename> friend struct CompoundAccessStaticIterator;
@@ -89,18 +89,18 @@ public:
 		typedef IterativeComponentSet::Iterator EntityIterator;
 
 		// Template argument list can't be empty.
-		static_assert(ComponentContainer::size > 0, "ve::ComponentSystem must have at least one template argument.");
+		static_assert(ComponentTuple::size > 0, "ve::ComponentSystem must have at least one template argument.");
 
 		// Constructor initializes managed component access.
 		Access(ComponentAccessGroup& group_access) : access(GetComponentAccessFromGroup(group_access))
 		{
-			ComponentMapStaticIterator<0, ComponentContainer::size - 1, ComponentContainer>::Initialize(access, *this);
+			ComponentMapStaticIterator<0, ComponentTuple::size - 1, ComponentTuple>::Initialize(access, *this);
 		}
 
 		template<typename ComponentType>
 		inline ComponentType& GetComponent(Entity::Id entity_id)
 		{
-			ut::Optional<Component&> component = ComponentContainer::template Get<ComponentMapImpl<ComponentType>*>()->Find(entity_id);
+			ut::Optional<Component&> component = ComponentTuple::template Get<ComponentMapImpl<ComponentType>*>()->Find(entity_id);
 			UT_ASSERT(component.HasValue());
 			return static_cast<ComponentType&>(component.Get());
 		}
@@ -116,6 +116,10 @@ public:
 		{
 			return access.EndEntities();
 		}
+
+		// Range-based 'for' loop support
+		inline auto begin() const -> decltype(BeginEntities()) { return BeginEntities(); }
+		inline auto end() const -> decltype(EndEntities()) { return EndEntities(); }
 
 		// Returns the number of accessible entities.
 		inline size_t CountEntities() const
@@ -176,7 +180,7 @@ protected:
 	{
 		ut::Array< ComponentSet<ut::access_full> > sets(1);
 		sets.GetFirst().operation = Component::op_intersection;
-		ComponentMapStaticIterator<0, ComponentContainer::size - 1, ComponentContainer>::GenerateComponentMaps(sets.GetFirst().component_maps);
+		ComponentMapStaticIterator<0, ComponentTuple::size - 1, ComponentTuple>::GenerateComponentMaps(sets.GetFirst().component_maps);
 		return sets;
 	}
 

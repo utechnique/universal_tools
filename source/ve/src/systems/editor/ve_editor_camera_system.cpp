@@ -26,13 +26,12 @@ System::Result ViewportCameraSystem::Update(System::Time time_step_ms,
 {
 	CmdArray out_commands;
 
-	const size_t viewport_count = viewports.Count();
-	for (size_t i = 0; i < viewport_count; i++)
+	for (ui::Viewport& viewport : viewports)
 	{
 		const System::Time seconds = ut::time::Convert<ut::time::milliseconds,
 		                                               ut::time::seconds,
 		                                               System::Time>(time_step_ms);
-		out_commands += ProcessViewport(access, viewports[i], static_cast<float>(seconds));
+		out_commands += ProcessViewport(access, viewport, static_cast<float>(seconds));
 	}
 
 	return out_commands;
@@ -62,9 +61,9 @@ CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
 
 	// search for a camera with desired name
 	ut::Optional<Entity::Id> entity_id;
-	for (Base::Access::EntityIterator entity = access.BeginEntities(); entity != access.EndEntities(); ++entity)
+	for (const auto& entity : access)
 	{
-		const Entity::Id id = entity->GetFirst();
+		const Entity::Id id = entity.GetFirst();
 
 		// check name
 		const ut::String& name = access.GetComponent<NameComponent>(id).name;
@@ -90,10 +89,8 @@ CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
 
 	// find render view
 	ut::Optional<render::View&> render_view;
-	const size_t unit_count = render.units.Count();
-	for (size_t i = 0; i < unit_count; i++)
+	for (ut::UniquePtr<render::Unit>& unit : render.units)
 	{
-		ut::UniquePtr<render::Unit>& unit = render.units[i];
 		if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::View>())
 		{
 			render_view = static_cast<render::View&>(unit.GetRef());
@@ -416,7 +413,9 @@ void ViewportCameraSystem::InitializeViewports(ui::Frontend& ui_frontend)
 	viewports.Reset();
 	ut::Array< ut::Ref<ui::Viewport> >::Iterator start = ui_frontend.BeginViewports();
 	ut::Array< ut::Ref<ui::Viewport> >::Iterator end = ui_frontend.EndViewports();
-	for (ut::Array< ut::Ref<ui::Viewport> >::Iterator iterator = start; iterator != end; iterator++)
+	for (ut::Array< ut::Ref<ui::Viewport> >::Iterator iterator = start;
+	     iterator != end;
+	     iterator++)
 	{
 		viewports.Add(*iterator);
 	}

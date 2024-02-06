@@ -157,7 +157,7 @@ struct Vertex
 	};
 
 	// collection of all traits
-	typedef ut::Container<
+	typedef ut::Tuple<
 		VectorTrait<vertex_traits::position, PositionType, position_dim>,
 		VectorTrait<vertex_traits::texcoord, TexcoordType, texcoord_dim>,
 		VectorTrait<vertex_traits::normal, NormalType, normal_dim>,

@@ -22,19 +22,17 @@ CameraSystem::CameraSystem() : ComponentSystem<TransformComponent,
 System::Result CameraSystem::Update(System::Time time_step_ms,
                                     Access& access)
 {
-	for (Access::EntityIterator entity = access.BeginEntities(); entity != access.EndEntities(); ++entity)
+	for (const auto& entity : access)
 	{
-		const Entity::Id entity_id = entity->GetFirst();
+		const Entity::Id entity_id = entity.GetFirst();
 
 		TransformComponent& transform = access.GetComponent<TransformComponent>(entity_id);
 		CameraComponent& camera = access.GetComponent<CameraComponent>(entity_id);
 		RenderComponent& render = access.GetComponent<RenderComponent>(entity_id);
 
 		// search for the view unit
-		const size_t unit_count = render.units.Count();
-		for (size_t j = 0; j < unit_count; j++)
+		for (ut::UniquePtr<Unit>& unit : render.units)
 		{
-			ut::UniquePtr<Unit>& unit = render.units[j];
 			if (unit->Identify().GetHandle() != ut::GetPolymorphicHandle<ve::render::View>())
 			{
 				continue;

@@ -13,10 +13,10 @@ START_NAMESPACE(postprocess)
 // Highlights an area of viewport marked with stencilref_highlight stencil bit.
 class StencilHighlight
 {
-	static constexpr ut::uint32 skHighlightRadius = 3;
-	static constexpr float skHighlightSigma = skHighlightRadius / 0.2f;
-	static constexpr ut::uint32 skLineDistance = 16;
-	static constexpr ut::uint32 skLineWidth = 8;
+	static const ut::uint32 skHighlightRadius;
+	static const float skHighlightSigma;
+	static const ut::uint32 skLineDistance;
+	static const ut::uint32 skLineWidth;
 
 public:
 	class ViewData
