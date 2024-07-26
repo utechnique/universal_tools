@@ -28,7 +28,7 @@ CONSOLE_APP_KIND = "ConsoleApp"
 WINDOWED_APP_KIND = "WindowedApp"
 
 -- cpp dialect
-CPP_STANDARD = 2011
+CPP_STANDARD = 2017
 
 -- intermediate directory
 INTERMEDIATE = "../intermediate/%{cfg.buildcfg}/" ..BUILD_TARGET.. "/%{cfg.architecture}"
