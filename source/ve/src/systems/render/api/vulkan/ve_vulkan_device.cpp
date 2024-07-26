@@ -3025,11 +3025,7 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 //    @param display - reference to the display.
 void Device::AcquireNextDisplayBuffer(Display& display)
 {
-	ut::uint32 next_buffer_id = display.current_buffer_id + 1;
-	if (next_buffer_id >= display.targets.Count())
-	{
-		next_buffer_id = 0;
-	}
+	ut::uint32 next_buffer_id = display.AcquireNextBuffer();
 
 	// finish command buffer working with the next display buffer
 	ut::Optional<CmdBuffer&>& pending_cmd_buffer = display.pending_buffers[next_buffer_id];
@@ -3040,7 +3036,7 @@ void Device::AcquireNextDisplayBuffer(Display& display)
 	}
 
 	// acquire next buffer
-	display.current_buffer_id = display.AcquireNextBuffer();
+	display.current_buffer_id = next_buffer_id;
 }
 
 // Call this function to wait on the host for the completion of all
