@@ -69,9 +69,6 @@ public:
 		// Constructor initializes managed component accesses.
 		Access(ComponentAccessGroup& group_access) : CompoundAccessTuple(
 		// VS 2015 cannot recognize a constructor in the pack expansion here
-#if UT_WINDOWS
-			explicit
-#endif
 			CompoundAccesses(group_access)...)
 		{}
 	};
