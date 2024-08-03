@@ -175,7 +175,7 @@ Optional<Error> RemoveFolder(const String& folder, bool delete_subdirectories)
 		DWORD dwError = ::GetLastError();
 		if (dwError != ERROR_NO_MORE_FILES)
 		{
-			return error::fail;
+			return Error(error::fail);
 		}
 		else
 		{

@@ -165,7 +165,7 @@ Optional<Error> Socket::Bind() const
 #if UT_WINDOWS
 	if (bind(socket, (sockaddr*)(&sock_addr_in), sizeof(sock_addr_in)) != 0)
 	{
-		return error::fail;
+		return Error(error::fail);
 	}
 #elif UT_UNIX
 	// should set SO_REUSEADDR option to prevent timeout after closing a socket
@@ -191,7 +191,7 @@ Optional<Error> Socket::Listen() const
 #if UT_WINDOWS
 	if (listen(socket, UT_LISTEN_QUEUE) != 0)
 	{
-		return error::fail;
+		return Error(error::fail);
 	}
 #elif UT_UNIX
 	if (listen(socket, UT_LISTEN_QUEUE) != 0)
@@ -246,7 +246,7 @@ Optional<Error> Socket::Poll(uint32 timeout_ms) const
 	fds.events = POLLRDBAND | POLLRDNORM;
 	if (WSAPoll(&fds, 1, timeout_ms) == 0)
 	{
-		return error::fail;
+		return Error(error::fail);
 	}
 #elif UT_UNIX
 	pollfd fds;
@@ -270,7 +270,7 @@ Optional<Error> Socket::ShutDown() const
 #if UT_WINDOWS
 	if (shutdown(socket, SD_SEND))
 	{
-		return error::fail;
+		return Error(error::fail);
 	}
 #elif UT_UNIX
 	if (shutdown(socket, SHUT_RDWR))
@@ -291,7 +291,7 @@ Optional<Error> Socket::Connect() const
 #if UT_WINDOWS
 	if (connect(socket, (sockaddr*)(&sock_addr_in), sizeof(sock_addr_in)) != 0)
 	{
-		return error::fail;
+		return Error(error::fail);
 	}
 #elif UT_UNIX
 	if (connect(socket, (sockaddr*)(&sock_addr_in), sizeof(sock_addr_in)) != 0)
@@ -390,13 +390,13 @@ Optional<Error> Socket::Create()
 	socket = UT_INVALID_SOCKET;
 	if ((socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == UT_INVALID_SOCKET)
 	{
-		return error::fail;
+		return Error(error::fail);
 	}
 	// set recv timeout
 	uint32 timeout = UT_SOCKET_RECV_TIMEOUT_SEC* 1000;
 	if (setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout)) != 0)
 	{
-		return error::fail;
+		return Error(error::fail);
 	}
 #elif UT_UNIX
 	// create socket

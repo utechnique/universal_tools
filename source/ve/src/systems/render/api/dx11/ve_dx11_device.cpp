@@ -1328,7 +1328,7 @@ void Device::Record(CmdBuffer& cmd_buffer,
 		                        1.0f, 0, false);
 	}
 
-	function(ut::Move(context));
+	function(context);
 
 	if (is_secondary_buffer)
 	{

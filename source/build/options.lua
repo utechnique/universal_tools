@@ -55,6 +55,36 @@ newoption
 
 newoption
 {
+    trigger = "cpp23",
+    description = "Using C++23 standard."	
+}
+
+newoption
+{
+    trigger = "cpp20",
+    description = "Using C++20 standard."	
+}
+
+newoption
+{
+    trigger = "cpp17",
+    description = "Using C++17 standard."	
+}
+
+newoption
+{
+    trigger = "cpp14",
+    description = "Using C++14 standard."	
+}
+
+newoption
+{
+    trigger = "cpp11",
+    description = "Using C++11 standard."	
+}
+
+newoption
+{
     trigger = "opengl",
     description = "Uses opengl to render graphics."	
 }

@@ -16,6 +16,14 @@ START_NAMESPACE(lighting)
 // buffers, pipelines and other resources needed to apply lighting techniques.
 struct ViewData
 {
+	// Constructor, all necessary resources must be provided.
+	ViewData(Target lightbuf_target,
+	         DeferredShading::ViewData deferred_shading_data,
+	         ForwardShading::ViewData forward_shading_data) : light_buffer(ut::Move(lightbuf_target))
+	                                                        , deferred_shading(ut::Move(deferred_shading_data))
+	                                                        , forward_shading(ut::Move(forward_shading_data))
+	{}
+
 	// Move constructor and operator.
 	ViewData(ViewData&&) = default;
 	ViewData& operator =(ViewData&&) = default;

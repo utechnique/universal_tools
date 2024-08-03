@@ -1,1 +1,0 @@
-rm -rf codeblocks && ./premake5_linux --build_all --linux --gcc --opengl codeblocks
