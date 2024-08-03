@@ -24,7 +24,11 @@ function utGenerateWorkspace()
     flags { "MultiProcessorCompile" }
     
     -- cpp standard
-	if CPP_STANDARD >= 2017 then
+	if CPP_STANDARD >= 2023 then
+		cppdialect "C++23"
+	elseif CPP_STANDARD >= 2020 then
+		cppdialect "C++20"
+	elseif CPP_STANDARD >= 2017 then
 		cppdialect "C++17"
 	elseif CPP_STANDARD >= 2014 then
 		cppdialect "C++14"
