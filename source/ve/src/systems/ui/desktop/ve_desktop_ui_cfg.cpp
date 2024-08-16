@@ -60,6 +60,7 @@ void Theme::Reflect(ut::meta::Snapshot& snapshot)
 //----------------------------------------------------------------------------//
 // Constructor, default values are set here.
 Settings::Settings() : window(0, 0, 640, 480)
+                     , maximized(false)
                      , viewport_frame_size(4)
                      , layout_id(0)
 {
@@ -80,6 +81,7 @@ void Settings::Reflect(ut::meta::Snapshot& snapshot)
 {
 	// main window
 	snapshot.Add(window, "window");
+	snapshot.Add(maximized, "maximized");
 
 	// viewports
 	snapshot.Add(viewport_frame_size, "viewport_frame");

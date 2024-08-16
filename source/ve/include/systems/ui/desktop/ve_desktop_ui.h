@@ -35,13 +35,25 @@ class DesktopFrontend : public Frontend
 		// method receives focus event message.
 		int handle(int event) override;
 
+		// Show current window.
+		void show() override;
+
 		// Hides this window and deactivates viewports.
 		void hide() override;
+
+		// Returns true if this window is in maximized state.
+		// Currently only Windows is supported.
+		bool IsMaximized() const;
+
+		// Maximizes current window.
+		// Currently only Windows is supported.
+		void InitializeMaximized();
 
 		// Virtual destructor for the polymorphic type.
 		virtual ~MainWindow() override = default;
 	private:
 		class DesktopFrontend& frontend;
+		bool hidden_maximized = false;
 	};
 
 	friend MainWindow;

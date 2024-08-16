@@ -41,8 +41,17 @@ int DesktopFrontend::MainWindow::handle(int event)
 }
 
 // Hides this window and deactivates viewports.
+void DesktopFrontend::MainWindow::show()
+{
+	hidden_maximized = false;
+	Window::show();
+}
+
+// Hides this window and deactivates viewports.
 void DesktopFrontend::MainWindow::hide()
 {
+	hidden_maximized = IsMaximized();
+
 	const size_t viewport_count = frontend.viewports.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
@@ -53,6 +62,53 @@ void DesktopFrontend::MainWindow::hide()
 
 	frontend.HideChildWindows();
 	Window::hide();
+}
+
+// Returns true if this window is in maximized state.
+bool DesktopFrontend::MainWindow::IsMaximized() const
+{
+	if (hidden_maximized)
+	{
+		return true;
+	}
+
+#if UT_WINDOWS
+	CONST HWND hwnd = fl_xid(this);
+
+	WINDOWPLACEMENT placement;
+	placement.length = sizeof(WINDOWPLACEMENT);
+
+	if (!GetWindowPlacement(hwnd, &placement))
+	{
+		return false;
+	}
+
+	return placement.showCmd == SW_MAXIMIZE;
+#else
+	return false;
+#endif
+}
+
+// Maximizes current window.
+void DesktopFrontend::MainWindow::InitializeMaximized()
+{
+#if UT_WINDOWS
+	CONST HWND hwnd = fl_xid(this);
+
+	ShowWindow(hwnd, SW_SHOWMAXIMIZED);
+
+	WINDOWPLACEMENT placement;
+	placement.length = sizeof(WINDOWPLACEMENT);
+	if (GetWindowPlacement(hwnd, &placement))
+	{
+		placement.rcNormalPosition.left = Fl::w() / 4;
+		placement.rcNormalPosition.top = Fl::h() / 4;
+		placement.rcNormalPosition.right = placement.rcNormalPosition.left + Fl::w() / 2;
+		placement.rcNormalPosition.bottom = placement.rcNormalPosition.top + Fl::h() / 2;
+
+		SetWindowPlacement(hwnd, &placement);
+	}
+#endif
 }
 
 //----------------------------------------------------------------------------//
@@ -174,6 +230,12 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	viewport_area->SetViewportProjections(cfg->projections);
 	viewport_area->SetViewportRenderModes(cfg->render_modes);
 
+	// maximize the main window if needed
+	if (cfg->maximized)
+	{
+		window->InitializeMaximized();
+	}
+
 	// success
 	return ut::Optional<ut::Error>();
 }
@@ -263,6 +325,7 @@ void DesktopFrontend::SaveCfg()
 	cfg.window.offset.Y() = window->y();
 	cfg.window.extent.X() = window->w();
 	cfg.window.extent.Y() = window->h();
+	cfg.maximized = window->IsMaximized();
 
 	// viewport parameters
 	cfg.layout_id = viewport_area->GetCurrentLayoutId();

@@ -62,6 +62,7 @@ public:
 
 	// main window
 	ut::Rect<ut::uint32> window;
+	bool maximized;
 
 	// size of the frame between viewports in pixels
 	ut::uint32 viewport_frame_size;
