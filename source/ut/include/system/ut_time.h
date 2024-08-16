@@ -23,6 +23,13 @@ enum Units
 	days         = 6,
 };
 
+// Epoch dates.
+enum Epoch
+{
+	epoch_unix = 0, // January 1, 1970 UTC
+	epoch_windows = 1 // January 1, 1601 UTC
+};
+
 // ut::time::Multiplier describes the relationship
 // between different time units.
 template<Units units> struct Multiplier;
@@ -32,7 +39,7 @@ template<> struct Multiplier<seconds>      { static constexpr ut::uint32 value =
 template<> struct Multiplier<minutes>      { static constexpr ut::uint32 value = 60; };
 template<> struct Multiplier<hours>        { static constexpr ut::uint32 value = 60; };
 template<> struct Multiplier<days>         { static constexpr ut::uint32 value = 24; };
-	
+
 // ut::time::UnitIterator helps transform time units.
 template<Units start_units, ut::int32 walk>
 struct UnitIterator
@@ -118,6 +125,7 @@ public:
 	void Stop();
 
 	// Returns time passed from the last time::Counter::Start function call.
+	// Resolution: 1 nanosecond.
 	template<time::Units time_units = time::milliseconds, typename ValueType = double>
 	ValueType GetTime() const // nanosec
 	{
@@ -190,6 +198,41 @@ private:
 	int iterator;
 	ut::uint64 iterations[iteration_count];
 };
+
+// Returns the time since the desired epoch.
+// Resolution: 1 microsecond.
+template<time::Units time_units = time::milliseconds, Epoch epoch = epoch_unix>
+ut::uint64 GetTime()
+{
+#if UT_WINDOWS
+	FILETIME ft;
+	GetSystemTimeAsFileTime(&ft);
+
+	LONGLONG ll_time = (LONGLONG)ft.dwLowDateTime + ((LONGLONG)(ft.dwHighDateTime) << 32LL);
+	ll_time /= 10;
+
+	if (epoch == epoch_unix)
+	{
+		ll_time -= 116444736000000000LL;
+	}
+
+	return Convert<microseconds, time_units, ut::uint64>(static_cast<ut::uint64>(ll_time));
+#elif UT_UNIX
+	struct timeval tm;
+	gettimeofday(&tm, NULL);
+
+	ut::uint64 tm_microsec = static_cast<ut::uint64>(tm.tv_sec * 1000000 + tm.tv_usec);
+
+	if (epoch == epoch_windows)
+	{
+		tm_microsec += 116444736000000000LL;
+	}
+
+	return Convert<microseconds, time_units, ut::uint64>(static_cast<ut::uint64>(tm_microsec));
+#else
+#error ut::time::GetTime() is not implemented
+#endif
+}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(time)
