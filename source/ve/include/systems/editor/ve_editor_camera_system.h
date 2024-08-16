@@ -100,6 +100,8 @@ private:
 	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
 	ut::SharedPtr<input::Manager> input_mgr;
 	ut::Array< ut::Ref<ui::Viewport> > viewports;
+
+	static constexpr ut::uint64 skResolutionUpdateIntervalMs = 500;
 };
 
 //----------------------------------------------------------------------------//

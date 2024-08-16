@@ -34,7 +34,9 @@ public:
 		resolution_auto, // the same as viewport
 		resolution_4k,
 		resolution_full_hd,
-		resolution_hd
+		resolution_hd,
+		resolution_480p,
+		resolution_320p,
 	};
 
 	// Rendering mode.
@@ -68,6 +70,9 @@ public:
 		// Rendering mode affects what parts of the rendering
 		// pipeline will be displayed to user.
 		ut::uint32 render_mode = render_mode_complete;
+
+		// Milliseconds from the last update (0 means never)
+		ut::uint64 update_time_ms = 0;
 	};
 
 	// Constructor.

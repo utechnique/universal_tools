@@ -74,8 +74,8 @@ void DesktopViewport::ResizeCanvas()
 		                  resize_task->offset.Y(),
 		                  resize_task->extent.X(),
 		                  resize_task->extent.Y());
-		resize_task = ut::Optional< ut::Rect<int> >();
 		UpdateSize(resize_task->extent.X(), resize_task->extent.Y());
+		resize_task = ut::Optional< ut::Rect<int> >();
 	}
 }
 
@@ -85,6 +85,7 @@ void DesktopViewport::UpdateSize(int w, int h)
 	Viewport::Mode new_mode = mode.Get();
 	new_mode.width = static_cast<ut::uint32>(w);
 	new_mode.height = static_cast<ut::uint32>(h);
+	new_mode.update_time_ms = ut::time::GetTime<>();
 	mode.Set(new_mode);
 }
 
@@ -105,7 +106,10 @@ void DesktopViewport::resize(int x, int y, int w, int h)
 
 	// call resize signal, note that some slots can call
 	// ResizeCanvas() function internally
-	resize_signal(id, w, h);
+	if (w != Fl_Window::w() || h != Fl_Window::h())
+	{
+		resize_signal(id, w, h);
+	}
 
 	// resize ui area
 	ResizeCanvas();

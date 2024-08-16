@@ -40,13 +40,15 @@ static const char* skProjectionTypeNames[skProjectionTypeCount] =
 };
 
 // Resolution variants.
-static const ut::uint32 skResolutionTypeCount = 4;
+static const ut::uint32 skResolutionTypeCount = 6;
 static const char* skResolutionTypeNames[skResolutionTypeCount] =
 {
 	"Auto",
 	"4K",
 	"1080p",
 	"720p",
+	"480p",
+	"320p",
 };
 
 // Render mode variants.

@@ -166,11 +166,30 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 	}
 
 	// update resolution
-	ut::uint32 desired_width = mode.width;
-	ut::uint32 desired_height = mode.height;
-
+	ut::uint32 desired_width, desired_height;
 	switch (mode.resolution)
 	{
+	case ui::Viewport::resolution_auto:
+		{
+			// do not update resolution immediately due to performance reasons
+			// (very low fps because of framebuffer recreation)
+			const bool resolution_changed = render_view.width != mode.width ||
+			                                render_view.height != mode.height;
+			const bool update_time_set = mode.update_time_ms != 0;
+			const bool elapsed_enough_time = ut::time::GetTime() - mode.update_time_ms >=
+			                                 skResolutionUpdateIntervalMs;
+			if (resolution_changed && update_time_set && elapsed_enough_time)
+			{
+				desired_width = mode.width;
+				desired_height = mode.height;
+			}
+			else
+			{
+				desired_width = render_view.width;
+				desired_height = render_view.height;
+			}
+		}
+		break;
 	case ui::Viewport::resolution_4k:
 		desired_width = 3840;
 		desired_height = 2160;
@@ -183,6 +202,17 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 		desired_width = 1280;
 		desired_height = 720;
 		break;
+	case ui::Viewport::resolution_480p:
+		desired_width = 854;
+		desired_height = 480;
+		break;
+	case ui::Viewport::resolution_320p:
+		desired_width = 568;
+		desired_height = 320;
+		break;
+	default:
+		desired_width = mode.width;
+		desired_height = mode.height;
 	}
 
 	if (render_view.width != desired_width || render_view.height != desired_height)
