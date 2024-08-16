@@ -11,6 +11,7 @@
 #include <sys/sendfile.h>
 #include <sys/wait.h>
 #include <sys/select.h>
+#include <sys/time.h>
 #include <stdarg.h>
 #include <dirent.h>
 #include <unistd.h>
