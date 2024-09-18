@@ -45,7 +45,7 @@ public:
 	float aspect_ratio = 2.0f;
 
 	// projection-specific properties
-	float field_of_view = 90.0f; // for perspective projection
+	float field_of_view = 60.0f; // for perspective projection
 	float width = 10.0f; // for orthographic projection
 
 	// basis
