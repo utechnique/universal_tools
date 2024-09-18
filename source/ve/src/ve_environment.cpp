@@ -162,6 +162,9 @@ ut::Optional<ut::Error> CmdAccessibleEnvironment::DeleteComponent(Entity::Id ent
 		return ut::Error(ut::error::not_found);
 	}
 
+	// unregister the entity before deleting the component
+	pipeline.UnregisterEntity(entity_id);
+
 	// remove the component
 	ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = components.Find(component_type);
 	UT_ASSERT(component_map.HasValue());
@@ -170,7 +173,6 @@ ut::Optional<ut::Error> CmdAccessibleEnvironment::DeleteComponent(Entity::Id ent
 	entity.RemoveComponent(component_type);
 
 	// re-register the entity
-	pipeline.UnregisterEntity(entity_id);
 	pipeline.RegisterEntity(entity_id, entity);
 
 	// exit
