@@ -416,6 +416,7 @@ private:
 		ut::UniquePtr<Fl_Group> group;
 		ut::UniquePtr<Fl_Input> filter_input;
 		ut::UniquePtr<Button> add_entity_button;
+		ut::UniquePtr<Button> clear_filter_button;
 		ut::Synchronized<ut::String> filter;
 	};
 
@@ -477,7 +478,8 @@ private:
 	ut::Optional<EntityView&> FindView(Entity::Id entity_id);
 
 	// Creates a new entity view from the provided proxy.
-	void AddEntityView(EntityView::Proxy& proxy);
+	//    @return - a reference to the new view.
+	EntityView& AddEntityView(EntityView::Proxy& proxy);
 
 	// Marks all enitity views as 'invalid'.
 	void InvalidateAllViews();
@@ -514,12 +516,8 @@ private:
 	// Updates entity browser content after an entity was added.
 	void AddEntityCallback(const CmdAddEntity::AddResult&);
 
-	// Scrolls view area right to the provided widget.
-	void ScrollToWidget(Fl_Widget& widget);
-
-	// Scrolls to the entity view and applies special effects if the
-	// user added a new entity.
-	void ProcessNewEntity(EntityView& entity_view);
+	// Clears entity filter input field.
+	void ClearFilter();
 
 	// Updates @entity_controls.filter string with
 	// the value of the input widget.
@@ -535,17 +533,12 @@ private:
 	// indices to the @filter_cache.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
-	//    @return - optional index of the filtered value that needs
-	//              to be scrolled to.
-	ut::Optional<size_t> FilterEntities(ComponentAccess& access);
+	void FilterEntities(ComponentAccess& access);
 
 	// Calculates the first index of the filtered entities and the number of
 	// entities to be shown on the current page.
-	//    @param filtered_scroll_index - optional index of the filtered value
-	//                                   from the @filter_cache array, that must
-	//                                   be scrolled to.
 	//    @return - the EntityBrowser::PageView structure value.
-	PageView PreparePage(const ut::Optional<size_t>& filtered_scroll_index);
+	PageView PreparePage();
 
 	// Contains all entity views located vertically.
 	ut::UniquePtr<Scroll> view_area;

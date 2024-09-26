@@ -1162,7 +1162,7 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 
 	entity_controls.filter_input = ut::MakeUnique<Fl_Input>(entity_controls.group->x(),
 	                                                        entity_controls.group->y() + skEntityControlGroupMargin,
-	                                                        entity_controls.group->w() - skEntityControlGroupHeight,
+	                                                        entity_controls.group->w() - skEntityControlGroupHeight * 2,
 	                                                        skEntityControlGroupHeight - skEntityControlGroupMargin * 2);
 	entity_controls.filter_input->when(FL_WHEN_CHANGED);
 	entity_controls.filter_input->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->UpdateFilterInput(); }, this);
@@ -1181,8 +1181,25 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 	                                                      ConvertToFlColor(theme.button_hover_color));
 	entity_controls.add_entity_button->SetBackgroundColor(Button::state_push,
 	                                                      ConvertToFlColor(theme.button_push_color));
-
 	entity_controls.add_entity_button->SetCallback([&] { AddEntity(); });
+
+	entity_controls.clear_filter_button = ut::MakeUnique<Button>(entity_controls.group->x() +
+	                                                             entity_controls.filter_input->w() +
+	                                                             skEntityControlGroupHeight,
+	                                                             entity_controls.group->y(),
+	                                                             skEntityControlGroupHeight,
+	                                                             skEntityControlGroupHeight);
+	entity_controls.clear_filter_button->SetIcon(ut::MakeShared<Icon>(Icon::CreateCross(entity_controls.clear_filter_button->w(),
+	                                                                                    entity_controls.clear_filter_button->h(),
+	                                                                                    ut::Color<4, ut::byte>(230, 230, 230, 200),
+	                                                                                    6)));
+	entity_controls.clear_filter_button->SetBackgroundColor(Button::state_release,
+	                                                        ConvertToFlColor(theme.background_color));
+	entity_controls.clear_filter_button->SetBackgroundColor(Button::state_hover,
+	                                                        ConvertToFlColor(theme.button_hover_color));
+	entity_controls.clear_filter_button->SetBackgroundColor(Button::state_push,
+	                                                        ConvertToFlColor(theme.button_push_color));
+	entity_controls.clear_filter_button->SetCallback([&] { ClearFilter(); });
 	
 	entity_controls.group->resizable(entity_controls.filter_input.Get());
 	entity_controls.group->end();
@@ -1302,11 +1319,11 @@ void EntityBrowser::MapEntitiesToUiProxies(ComponentAccessGroup& group_access)
 
 	// filter entities
 	ComponentAccess access = group_access.GetAccess(0);
-	ut::Optional<size_t> filtered_scroll_index = FilterEntities(access);
+	FilterEntities(access);
 	const size_t filtered_entity_count = filter_cache.Count();
 
 	// initialize page data
-	const PageView page_view = PreparePage(filtered_scroll_index);
+	const PageView page_view = PreparePage();
 
 	// allocate new entity views
 	pending_views.Resize(page_view.entity_count);
@@ -1387,7 +1404,8 @@ ut::Optional<EntityView&> EntityBrowser::FindView(Entity::Id entity_id)
 }
 
 // Creates a new entity view from the provided proxy.
-void EntityBrowser::AddEntityView(EntityView::Proxy& proxy)
+//    @return - a reference to the new view.
+EntityView& EntityBrowser::AddEntityView(EntityView::Proxy& proxy)
 {
 	// initialize component view callbacks
 	ComponentView::Callbacks component_callbacks;
@@ -1397,9 +1415,9 @@ void EntityBrowser::AddEntityView(EntityView::Proxy& proxy)
 	// create a new view widget
 	view_area->begin();
 	ut::UniquePtr<EntityView> new_view = ut::MakeUnique<EntityView>(proxy,
-	                                                                CalculateEntityViewWidth(),
-	                                                                GetTheme(),
-	                                                                ut::Move(component_callbacks));
+		CalculateEntityViewWidth(),
+		GetTheme(),
+		ut::Move(component_callbacks));
 	view_area->end();
 
 	// add to the parent window
@@ -1407,22 +1425,18 @@ void EntityBrowser::AddEntityView(EntityView::Proxy& proxy)
 	new_view->show();
 
 	// insert the view using the 'bubble' principle to retain sorting
-	bool inserted = false;
 	for (size_t i = 0; i < entity_views.Count(); i++)
 	{
 		if (new_view->GetEntityId() < entity_views[i]->GetEntityId())
 		{
 			entity_views.Insert(i, ut::Move(new_view));
-			inserted = true;
-			break;
+			return entity_views[i].GetRef();
 		}
 	}
 
 	// push back if no holes were find in the list of entities
-	if (!inserted)
-	{
-		entity_views.Add(ut::Move(new_view));
-	}
+	entity_views.Add(ut::Move(new_view));
+	return entity_views.GetLast().GetRef();
 }
 
 // Marks all enitity views as 'invalid'.
@@ -1438,10 +1452,14 @@ void EntityBrowser::InvalidateAllViews()
 // Updates entity views with @pending_views proxy array.
 void EntityBrowser::UpdateViews()
 {
+	ut::Optional<Entity::Id> entity_to_highlight = new_entity_id.Get();
+
 	const ut::uint32 pending_entity_count = static_cast<ut::uint32>(pending_views.Count());
 	for (ut::uint32 i = 0; i < pending_entity_count; i++)
 	{
 		EntityView::Proxy& pending_view = pending_views[i];
+		const bool highlight = entity_to_highlight && entity_to_highlight.Get() == pending_view.id;
+
 		ut::Optional<EntityView&> existing_view = FindView(pending_view.id);
 		if (existing_view)
 		{
@@ -1450,9 +1468,13 @@ void EntityBrowser::UpdateViews()
 		}
 		else
 		{
-			AddEntityView(pending_view);
+			EntityView& new_view = AddEntityView(pending_view);
+			new_view.MarkNew(highlight);
 		}
 	}
+
+	// reset new entity id
+	new_entity_id.Set(ut::Optional<Entity::Id>());
 }
 
 // Removes all entity views having 'invalid' flag set.
@@ -1480,20 +1502,12 @@ void EntityBrowser::RemoveInvalidViews()
 // Updates y-position of all entity view.
 void EntityBrowser::RepositionViews()
 {
-	ut::Optional<Entity::Id> entity_to_scroll = new_entity_id.Get();
-
 	int y_position = 0;
 	const size_t view_count = entity_views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
 		EntityView& view = entity_views[i].GetRef();
 		view.position(0, y_position);
-
-		// scroll to entity if it was just added via the browser
-		if (entity_to_scroll && entity_to_scroll.Get() == view.GetEntityId())
-		{
-			ProcessNewEntity(view);
-		}
 
 		y_position += view.h();
 	}
@@ -1505,9 +1519,6 @@ void EntityBrowser::RepositionViews()
 		const int new_scroll_position = ut::Max<int>(0, y_position - view_area->h());
 		view_area->scroll_position = ut::Vector<2, int>(0, new_scroll_position);
 	}
-
-	// reset new entity id
-	new_entity_id.Set(ut::Optional<Entity::Id>());
 }
 
 // Updates size/position of all internal widgets. This function is supposed
@@ -1591,51 +1602,17 @@ void EntityBrowser::AddEntityCallback(const CmdAddEntity::AddResult& add_result)
 
 	if (add_result)
 	{
-		entity_controls.filter.Set(ut::String());
-		new_entity_id.Set(add_result.Get());
+		const Entity::Id id = add_result.Get();
+		entity_controls.filter.Set(ut::String("#") + ut::Print(id));
+		new_entity_id.Set(id);
 	}
 }
 
-// Scrolls view area right to the provided widget.
-void EntityBrowser::ScrollToWidget(Fl_Widget& widget)
+// Clears entity filter input field.
+void EntityBrowser::ClearFilter()
 {
-	const ut::Vector<2, int> widget_pos = GetFlAbsPosition(&widget, this);
-	const int widget_start = widget_pos.Y();
-	const int widget_end = widget_start + widget.h();
-	const int cur_scroll = view_area->scrollbar.value();
-
-	// check if provided entity is already visible
-	if (cur_scroll < widget_start && (cur_scroll + view_area->h() > widget_end))
-	{
-		return;
-	}
-
-	// add exessive height to scroll, because scrolling is performed before the entity
-	// is actuallymapped to the UI
-	const int scroll_y = ut::Max<int>(0, widget_end - view_area->h());
-	view_area->scroll_to(0, scroll_y);
-	view_area->scroll_position = ut::Vector<2, int>(0, scroll_y);
-}
-
-// Scrolls to the entity view and applies special effects if the
-// user added a new entity.
-void EntityBrowser::ProcessNewEntity(EntityView& entity_view)
-{
-	// all 'new' entities becomes 'old'
-	const size_t view_count = entity_views.Count();
-	for (size_t i = 0; i < view_count; i++)
-	{
-		EntityView& view = entity_views[i].GetRef();
-		if (&view == &entity_view)
-		{
-			continue;
-		}
-		view.MarkNew(false);
-	}
-
-	// apply color and perform scrolling
-	entity_view.MarkNew(true);
-	ScrollToWidget(entity_view);
+	ImmediateUpdate();
+	entity_controls.filter.Set(ut::String());
 }
 
 // Updates @entity_controls.filter string with
@@ -1694,13 +1671,11 @@ void EntityBrowser::UpdateControls()
 // indices to the @filter_cache.
 //    @param access - reference to the object providing access to the
 //                    desired components.
-//    @return - optional index of the filtered value that needs
-//              to be scrolled to.
-ut::Optional<size_t> EntityBrowser::FilterEntities(ComponentAccess& access)
+void EntityBrowser::FilterEntities(ComponentAccess& access)
 {
-	const ut::Optional<Entity::Id> entity_id_awaiting_scroll = new_entity_id.Get();
 	const ut::String filter = entity_controls.filter.Get();
 	const bool filter_is_not_empty = filter.Length() != 0;
+	const bool exact_id_request = filter_is_not_empty && filter[0] == '#';
 
 	ut::Optional<size_t> filtered_scroll_index;
 	IterativeComponentSet::Iterator entity_it;
@@ -1732,9 +1707,14 @@ ut::Optional<size_t> EntityBrowser::FilterEntities(ComponentAccess& access)
 
 		// check if the id of the entity fully matches the filter query
 		const bool id_match = ut::Print(entity_id) == filter;
+		const bool exact_id_match = (ut::String("#") + ut::Print(entity_id)) == filter;
 
 		// weed out filtered values
-		if (filter_is_not_empty && !id_match && !name_match)
+		if (exact_id_request && !exact_id_match)
+		{
+			continue;
+		}
+		else if (!exact_id_request && filter_is_not_empty && !id_match && !name_match)
 		{
 			continue;
 		}
@@ -1755,46 +1735,27 @@ ut::Optional<size_t> EntityBrowser::FilterEntities(ComponentAccess& access)
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
-
-		// check if this entity is awaiting to be scrolled to
-		if (entity_id_awaiting_scroll.HasValue() && entity_id_awaiting_scroll.Get() == entity_id)
-		{
-			filtered_scroll_index = entity_id;
-		}
 	}
-
-	return filtered_scroll_index;
 }
 
 // Calculates the first index of the filtered entities and the number of
 // entities to be shown on the current page.
-//    @param filtered_scroll_index - optional index of the filtered value
-//                                   from the @filter_cache array, that must
-//                                   be scrolled to.
 //    @return - the EntityBrowser::PageView structure value.
-EntityBrowser::PageView EntityBrowser::PreparePage(const ut::Optional<size_t>& filtered_scroll_index)
+EntityBrowser::PageView EntityBrowser::PreparePage()
 {
 	const size_t filtered_entity_count = filter_cache.Count();
 	const ut::uint32 page_count = static_cast<ut::uint32>(filtered_entity_count / page->capacity + 1);
 
 	// find the current page index
 	ut::uint32 current_page_id = page->page_id.Read();
-	if (filtered_scroll_index)
-	{
-		current_page_id = static_cast<ut::uint32>(filtered_scroll_index.Get() / page->capacity + 1);
-	}
-	else
-	{
-		if (current_page_id == 0)
-		{
-			current_page_id = 1;
-		}
-		else if (current_page_id * page->capacity > filtered_entity_count)
-		{
-			current_page_id = page_count;
-		}
 
-		new_entity_id.Set(ut::Optional<Entity::Id>());
+	if (current_page_id == 0)
+	{
+		current_page_id = 1;
+	}
+	else if (current_page_id * page->capacity > filtered_entity_count)
+	{
+		current_page_id = page_count;
 	}
 
 	// update @page controls
