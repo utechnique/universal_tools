@@ -597,7 +597,7 @@ EntityView::EntityView(EntityView::Proxy& proxy,
 }
 
 // Returns the id of the managed entity.
-Entity::Id EntityView::GetId() const
+Entity::Id EntityView::GetEntityId() const
 {
 	return id;
 }
@@ -1069,8 +1069,9 @@ EntityBrowser::EntityBrowser(int x,
                              const Theme& theme) : Window(x, y, w, h,
                                                           "Entity Browser",
                                                           theme)
-                                                 , immediate_update(true)
                                                  , active(true)
+                                                 , immediate_update(true)
+                                                 , requires_ui_update(false)
 {
 	// control groups
 	InitializeEntityControls(theme);
@@ -1117,9 +1118,9 @@ void EntityBrowser::resize(int x, int y, int w, int h)
 }
 
 // Updates UI reflection of the provided entities.
-	//    @param access - reference to the object providing access to the
-	//                    desired components.
-	//    @return - array of accumulated commands pending to be processed.
+//    @param access - reference to the object providing access to the
+//                    desired components.
+//    @return - array of accumulated commands pending to be processed.
 CmdArray EntityBrowser::UpdateEntities(ComponentAccessGroup& group_access)
 {
 	// reset immediate update flag
@@ -1139,7 +1140,9 @@ CmdArray EntityBrowser::UpdateEntities(ComponentAccessGroup& group_access)
 	// update all components with new data
 	if (cmd.IsEmpty())
 	{
-		PrepareEntityProxies(group_access);
+		MapEntitiesToUiProxies(group_access);
+
+		requires_ui_update.Set(true);
 		Fl::awake([](void* ptr) { static_cast<EntityBrowser*>(ptr)->UpdateUi(); }, this);
 	}
 
@@ -1287,10 +1290,10 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 }
 
 // Creates an array of EntityView::Proxy from the provided entity map that
-	// will be used to update UI component views on the next UI tick.
-	//    @param access - reference to the object providing access to the
-	//                    desired components.
-void EntityBrowser::PrepareEntityProxies(ComponentAccessGroup& group_access)
+// will be used to update UI component views on the next UI tick.
+//    @param access - reference to the object providing access to the
+//                    desired components.
+void EntityBrowser::MapEntitiesToUiProxies(ComponentAccessGroup& group_access)
 {
 	ut::ScopeLock lock(mutex);
 
@@ -1339,18 +1342,26 @@ void EntityBrowser::PrepareEntityProxies(ComponentAccessGroup& group_access)
 // Updates UI representation of all entities.
 void EntityBrowser::UpdateUi()
 {
-	ut::ScopeLock lock(mutex);
+	// UI proxies must be updated in asynchronous UpdateUi() call
+	// only once after every UpdateEntities call. But Fl::awake() can produce
+	// multiple calls so they are guarded with @requires_ui_update lock.
+	bool& needs_update = requires_ui_update.Lock();
+	const bool skip = !needs_update || !this->visible();
+	needs_update = false;
+	requires_ui_update.Unlock();
 
-	if (!this->visible())
+	if (skip)
 	{
 		return;
 	}
 
+	ut::ScopeLock lock(mutex);
+
 	FixScrollPosition();
 	InvalidateAllViews();
 	UpdateViews();
-	RepositionViews();
 	RemoveInvalidViews();
+	RepositionViews();
 	UpdateControls();
 	view_area->redraw();
 	pending_views.Reset();
@@ -1366,7 +1377,7 @@ ut::Optional<EntityView&> EntityBrowser::FindView(Entity::Id entity_id)
 	for (size_t i = 0; i < view_count; i++)
 	{
 		ut::UniquePtr<EntityView>& view = entity_views[i];
-		if (entity_id == view->GetId())
+		if (entity_id == view->GetEntityId())
 		{
 			return view.GetRef();
 		}
@@ -1399,7 +1410,7 @@ void EntityBrowser::AddEntityView(EntityView::Proxy& proxy)
 	bool inserted = false;
 	for (size_t i = 0; i < entity_views.Count(); i++)
 	{
-		if (new_view->GetId() < entity_views[i]->GetId())
+		if (new_view->GetEntityId() < entity_views[i]->GetEntityId())
 		{
 			entity_views.Insert(i, ut::Move(new_view));
 			inserted = true;
@@ -1479,7 +1490,7 @@ void EntityBrowser::RepositionViews()
 		view.position(0, y_position);
 
 		// scroll to entity if it was just added via the browser
-		if (entity_to_scroll && entity_to_scroll.Get() == view.GetId())
+		if (entity_to_scroll && entity_to_scroll.Get() == view.GetEntityId())
 		{
 			ProcessNewEntity(view);
 		}
@@ -1748,7 +1759,7 @@ ut::Optional<size_t> EntityBrowser::FilterEntities(ComponentAccess& access)
 		// check if this entity is awaiting to be scrolled to
 		if (entity_id_awaiting_scroll.HasValue() && entity_id_awaiting_scroll.Get() == entity_id)
 		{
-			filtered_scroll_index = filter_cache.Count() - 1;
+			filtered_scroll_index = entity_id;
 		}
 	}
 

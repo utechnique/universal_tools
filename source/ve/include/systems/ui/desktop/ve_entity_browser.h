@@ -236,7 +236,7 @@ public:
 	           ComponentView::Callbacks component_cb = ComponentView::Callbacks());
 
 	// Returns the id of the managed entity.
-	Entity::Id GetId() const;
+	Entity::Id GetEntityId() const;
 
 	// Updates UI representation of the managed entity with the new data.
 	//    @param proxy - reference to the new representation of the entity.
@@ -465,7 +465,7 @@ private:
 	// will be used to update UI component views on the next UI tick.
 	//    @param access - reference to the object providing access to the
 	//                    desired components.
-	void PrepareEntityProxies(ComponentAccessGroup& access);
+	void MapEntitiesToUiProxies(ComponentAccessGroup& access);
 
 	// Updates UI representation of all entities.
 	void UpdateUi();
@@ -579,6 +579,11 @@ private:
 	// Indicates if all entity views must be updated on the
 	// next UpdateEntities() call.
 	ut::Synchronized<bool> immediate_update;
+
+	// Indicates that UI proxies have been captured and now must
+	// be drawn in UI. Guards UpdateUi() function from excessive
+	// calls by fl::awake().
+	ut::Synchronized<bool> requires_ui_update;
 
 	// Commands waiting to be processed on the next UpdateEntities() call.
 	ut::Synchronized<CmdArray> pending_commands;
