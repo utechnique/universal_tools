@@ -58,15 +58,26 @@ private:
 	// Initializes @viewports array.
 	void InitializeViewports(ui::Frontend& ui_frontend);
 
-	// Deselects all entities that were selected before.
+	// Deselects all entities that were selected before, or only one of them.
 	//    @param all_selected_entities - reference to the access to all
 	//                                   previously selected entities.
 	//    @param renderable_selected_entities - reference to the access to
 	//                                          previously selected
 	//                                          renderable entities.
+	// 	  @param entity_id - optional id of the entity to be deselected, if
+	// 	                     this parameter is empty, all entities will be
+	//                       deselected.
 	//    @return - array of commands to be executed by environment.
-	static CmdArray DeselectAllEntities(VssSelectedEntitiesAccess& all_selected_entities,
-	                                    VssRenderableSelectedEntitiesAccess& renderable_selected_entities);
+	static CmdArray Deselect(VssSelectedEntitiesAccess& all_selected_entities,
+	                         VssRenderableSelectedEntitiesAccess& renderable_selected_entities,
+	                         ut::Optional<Entity::Id> entity_id = ut::Optional<Entity::Id>());
+
+	// Checks if the provided entity is already selected.
+	// 	  @param entity_id - id of the entity to check.
+	//    @return - returns true if the entity identified by
+	//              @entity_id is already selected.
+	static bool IsEntitySelected(Entity::Id entity_id,
+	                             VssSelectedEntitiesAccess& all_selected_entities);
 
 	// Highlights selected entities.
 	//    @param renderable_selected_entities - reference to the access to

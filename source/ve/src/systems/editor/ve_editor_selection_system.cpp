@@ -102,6 +102,9 @@ CmdArray ViewportSelectionSystem::ProcessViewportSelection(Base::Access& access,
 		return commands;
 	}
 
+	// enable highlighting effects if at least one entity is selected
+	render_view->post_process.stencil_highlight.enabled = renderable_selected_entities.CountEntities() > 0;
+
 	// process input
 	ut::Optional< ut::Vector<2> > cursor_position = viewport.GetCursorPosition();
 	const input::Bindings& bindings = input_mgr->config.bindings;
@@ -116,26 +119,32 @@ CmdArray ViewportSelectionSystem::ProcessViewportSelection(Base::Access& access,
 	// deselect previous entities or apply highlight effect for the current ones
 	if (select_cursor_position && !multiple_selection_key_down)
 	{
-		commands += DeselectAllEntities(all_selected_entities, renderable_selected_entities);
+		commands += Deselect(all_selected_entities, renderable_selected_entities);
 	}
 	else
 	{
 		commands += HighlightSelectedEntities(renderable_selected_entities);
 	}
 
-	// select entities
+	// get the entity id under the cursor
 	const ut::Optional<Entity::Id> selected_entity = SelectEntity(render_view.Get());
-	if (selected_entity)
+	if (!selected_entity)
 	{
-		// this command adds editor component to the desired entity
-		ut::UniquePtr<Cmd> add_select_component_cmd = ut::MakeUnique<CmdAddComponent>(selected_entity.Get(),
-		                                                                              ut::MakeUnique<SelectedInEditorComponent>(),
-		                                                                              false);
-		commands.Add(ut::Move(add_select_component_cmd));
+		return commands;
 	}
 
-	// enable highlighting effects if at least one entity is selected
-	render_view->post_process.stencil_highlight.enabled = renderable_selected_entities.CountEntities() > 0;
+	// select or deselect an entity under the sursor
+	if (multiple_selection_key_down && IsEntitySelected(selected_entity.Get(), all_selected_entities))
+	{
+		commands += Deselect(all_selected_entities, renderable_selected_entities, selected_entity);
+	}
+	else
+	{
+		ut::UniquePtr<Cmd> add_select_component_cmd = ut::MakeUnique<CmdAddComponent>(selected_entity.Get(),
+			                                                                          ut::MakeUnique<SelectedInEditorComponent>(),
+			                                                                          false);
+		commands.Add(ut::Move(add_select_component_cmd));
+	}
 
 	// success
 	return commands;
@@ -190,15 +199,19 @@ void ViewportSelectionSystem::InitializeViewports(ui::Frontend& ui_frontend)
 }
 
 //----------------------------------------------------------------------------->
-// Deselects all entities that were selected before.
-//    @param all_selected_entities - reference to the access to all
-//                                   previously selected entities.
-//    @param renderable_selected_entities - reference to the access to
-//                                          previously selected
-//                                          renderable entities.
-//    @return - array of commands.
-CmdArray ViewportSelectionSystem::DeselectAllEntities(VssSelectedEntitiesAccess& all_selected_entities,
-                                                      VssRenderableSelectedEntitiesAccess& renderable_selected_entities)
+// Deselects all entities that were selected before, or only one of them.
+	//    @param all_selected_entities - reference to the access to all
+	//                                   previously selected entities.
+	//    @param renderable_selected_entities - reference to the access to
+	//                                          previously selected
+	//                                          renderable entities.
+	// 	  @param entity_id - optional id of the entity to be deselected, if
+	// 	                     this parameter is empty, all entities will be
+	//                       deselected.
+	//    @return - array of commands to be executed by environment.
+CmdArray ViewportSelectionSystem::Deselect(VssSelectedEntitiesAccess& all_selected_entities,
+                                           VssRenderableSelectedEntitiesAccess& renderable_selected_entities,
+                                           ut::Optional<Entity::Id> entity_id)
 {
 	CmdArray commands;
 
@@ -208,6 +221,11 @@ CmdArray ViewportSelectionSystem::DeselectAllEntities(VssSelectedEntitiesAccess&
 		const Entity::Id id = renderable_entity.GetFirst();
 		RenderComponent& selected_render = renderable_selected_entities.GetComponent<RenderComponent>(id);
 
+		if (entity_id && entity_id.Get() != id)
+		{
+			continue;
+		}
+
 		for (ut::UniquePtr<render::Unit>& unit : selected_render.units)
 		{
 			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::Model>())
@@ -216,6 +234,11 @@ CmdArray ViewportSelectionSystem::DeselectAllEntities(VssSelectedEntitiesAccess&
 				model.highlighted = false;
 			}
 		}
+
+		if (entity_id)
+		{
+			break;
+		}
 	}
 
 	// remove all selection components
@@ -223,10 +246,40 @@ CmdArray ViewportSelectionSystem::DeselectAllEntities(VssSelectedEntitiesAccess&
 	for (const auto& selected_entity : all_selected_entities)
 	{
 		const Entity::Id id = selected_entity.GetFirst();
+
+		if (entity_id && entity_id.Get() != id)
+		{
+			continue;
+		}
+
 		commands.Add(ut::MakeUnique<CmdDeleteComponent>(id, sel_comp_type_handle));
+
+		if (entity_id)
+		{
+			break;
+		}
 	}
 
 	return commands;
+}
+
+//----------------------------------------------------------------------------->
+// Checks if the provided entity is already selected.
+// 	  @param entity_id - id of the entity to check.
+//    @return - returns true if the entity identified by
+//              @entity_id is already selected.
+bool ViewportSelectionSystem::IsEntitySelected(Entity::Id entity_id,
+                                               VssSelectedEntitiesAccess& all_selected_entities)
+{
+	for (const auto& selected_entity : all_selected_entities)
+	{
+		if (selected_entity.GetFirst() == entity_id)
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 //----------------------------------------------------------------------------->
