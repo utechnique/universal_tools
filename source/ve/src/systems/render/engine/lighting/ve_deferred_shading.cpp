@@ -853,11 +853,11 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateModelGPassPipeline(R
 	info.depth_stencil_state.depth_compare_op = compare::less;
 	info.depth_stencil_state.stencil_test_enable = true;
 	info.depth_stencil_state.back.compare_op = compare::always;
-	info.depth_stencil_state.back.fail_op = StencilOpState::replace;
+	info.depth_stencil_state.back.fail_op = StencilOpState::keep;
 	info.depth_stencil_state.back.pass_op = StencilOpState::replace;
 	info.depth_stencil_state.back.compare_mask = stencil_mask;
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
-	info.depth_stencil_state.stencil_write_mask = stencil_mask;
+	info.depth_stencil_state.stencil_write_mask = 0xff;
 	info.depth_stencil_state.stencil_reference = stencil_mask;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = cull_mode == GeometryPass::ModelRendering::cull_back ?
