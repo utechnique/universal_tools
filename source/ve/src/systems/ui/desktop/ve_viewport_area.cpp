@@ -114,7 +114,7 @@ DesktopViewport& ViewportBox::GetViewport()
 void ViewportBox::UpdateFrameColor()
 {
 	const Viewport::Mode mode = viewport->GetMode();
-	if (mode.has_input_focus)
+	if (has_input_focus)
 	{
 		background->color(focus_color);
 	}
@@ -182,7 +182,7 @@ int ViewportBox::handle(int event)
 	case FL_MOVE:
 	case FL_DRAG:
 		viewport->SetMousePosition(CalculateMousePosition());
-		if (!mode.has_input_focus)
+		if (!has_input_focus)
 		{
 			background->color(hover_color);
 		}
@@ -191,7 +191,7 @@ int ViewportBox::handle(int event)
 		break;
 	case FL_LEAVE:
 		viewport->SetMousePosition(ut::Optional< ut::Vector<2> >());
-		if (!mode.has_input_focus)
+		if (!has_input_focus)
 		{
 			background->color(bg_color);
 		}
@@ -290,17 +290,18 @@ ViewportTab::ViewportTab(ViewportArea& in_viewport_area,
 // Changes viewport projection type.
 void ViewportTab::ChangeViewportProjection(Viewport::Projection projection)
 {
-	ut::Array< ut::Ref<Viewport> > viewports = viewport_area.GetViewports();
-	const size_t viewport_count = viewports.Count();
+	ut::Array< ut::Ref<ViewportBox> > viewport_boxes = viewport_area.GetViewportBoxes();
+	const size_t viewport_count = viewport_boxes.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
-		Viewport& viewport = viewports[i];
-		Viewport::Mode mode = viewport.GetMode();
-		if (!mode.has_input_focus)
+		ViewportBox& box = viewport_boxes[i];
+		if (!box.has_input_focus)
 		{
 			continue;
 		}
 
+		Viewport& viewport = box.GetViewport();
+		Viewport::Mode mode = viewport.GetMode();
 		mode.projection = projection;
 		viewport.SetMode(mode);
 	}
@@ -309,17 +310,18 @@ void ViewportTab::ChangeViewportProjection(Viewport::Projection projection)
 // Changes viewport resolution type.
 void ViewportTab::ChangeViewportResolution(Viewport::Resolution resolution)
 {
-	ut::Array< ut::Ref<Viewport> > viewports = viewport_area.GetViewports();
-	const size_t viewport_count = viewports.Count();
+	ut::Array< ut::Ref<ViewportBox> > viewport_boxes = viewport_area.GetViewportBoxes();
+	const size_t viewport_count = viewport_boxes.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
-		Viewport& viewport = viewports[i];
-		Viewport::Mode mode = viewport.GetMode();
-		if (!mode.has_input_focus)
+		ViewportBox& box = viewport_boxes[i];
+		if (!box.has_input_focus)
 		{
 			continue;
 		}
 
+		Viewport& viewport = box.GetViewport();
+		Viewport::Mode mode = viewport.GetMode();
 		mode.resolution = resolution;
 		viewport.SetMode(mode);
 	}
@@ -328,17 +330,18 @@ void ViewportTab::ChangeViewportResolution(Viewport::Resolution resolution)
 // Changes viewport rendering mode.
 void ViewportTab::ChangeViewportRenderMode(Viewport::RenderMode render_mode)
 {
-	ut::Array< ut::Ref<Viewport> > viewports = viewport_area.GetViewports();
-	const size_t viewport_count = viewports.Count();
+	ut::Array< ut::Ref<ViewportBox> > viewport_boxes = viewport_area.GetViewportBoxes();
+	const size_t viewport_count = viewport_boxes.Count();
 	for (size_t i = 0; i < viewport_count; i++)
 	{
-		Viewport& viewport = viewports[i];
-		Viewport::Mode mode = viewport.GetMode();
-		if (!mode.has_input_focus)
+		ViewportBox& box = viewport_boxes[i];
+		if (!box.has_input_focus)
 		{
 			continue;
 		}
 
+		Viewport& viewport = box.GetViewport();
+		Viewport::Mode mode = viewport.GetMode();
 		mode.render_mode = render_mode;
 		viewport.SetMode(mode);
 	}
@@ -615,6 +618,17 @@ ut::Array< ut::Ref<Viewport> > ViewportArea::GetViewports()
 	return out;
 }
 
+// Generates and returns an array of references to the viewport boxes.
+ut::Array< ut::Ref<ViewportBox> > ViewportArea::GetViewportBoxes()
+{
+	ut::Array< ut::Ref<ViewportBox> > out;
+	for (ut::uint32 i = 0; i < skMaxViewports; i++)
+	{
+		out.Add(viewport_boxes[i].GetRef());
+	}
+	return out;
+}
+
 // Returns an array of viewport rectangles.
 ut::Array< ut::Rect<ut::uint32> > ViewportArea::GetViewportRects() const
 {
@@ -673,7 +687,7 @@ ut::Optional<ut::Error> ViewportArea::ResizeViewports(const ut::Array< ut::Rect<
 	for (size_t i = 0; i < skMaxViewports; i++)
 	{
 		ViewportBox& box = viewport_boxes[i].GetRef();
-		Viewport& viewport = viewport_boxes[i]->GetViewport();
+		Viewport& viewport = box.GetViewport();
 		const ut::Rect<ut::uint32>& rect = viewport_rects[i];
 
 		// viewport must be shifted beyond the parent widget
@@ -695,12 +709,13 @@ void ViewportArea::SetViewportProjections(const ut::Array<ut::uint32>& projectio
 	const size_t proj_count = ut::Min<size_t>(projections.Count(), skMaxViewports);
 	for (size_t i = 0; i < proj_count; i++)
 	{
-		Viewport& viewport = viewport_boxes[i]->GetViewport();
+		ViewportBox& viewport_box = viewport_boxes[i].GetRef();
+		Viewport& viewport = viewport_box.GetViewport();
 		ui::Viewport::Mode mode = viewport.GetMode();
 		mode.projection = static_cast<Viewport::Projection>(projections[i]);
 		viewport.SetMode(mode);
 
-		if (mode.has_input_focus)
+		if (viewport_box.has_input_focus)
 		{
 			tab->proj_choice->value(static_cast<int>(mode.projection));
 		}
@@ -713,12 +728,13 @@ void ViewportArea::SetViewportRenderModes(const ut::Array<ut::uint32>& render_mo
 	const size_t proj_count = ut::Min<size_t>(render_modes.Count(), skMaxViewports);
 	for (size_t i = 0; i < proj_count; i++)
 	{
-		Viewport& viewport = viewport_boxes[i]->GetViewport();
+		ViewportBox& viewport_box = viewport_boxes[i].GetRef();
+		Viewport& viewport = viewport_box.GetViewport();
 		ui::Viewport::Mode mode = viewport.GetMode();
 		mode.render_mode = static_cast<Viewport::RenderMode>(render_modes[i]);
 		viewport.SetMode(mode);
 
-		if (mode.has_input_focus)
+		if (viewport_box.has_input_focus)
 		{
 			tab->render_mode_choice->value(static_cast<int>(mode.render_mode));
 		}
@@ -748,6 +764,10 @@ void ViewportArea::ChangeLayout(size_t layout_id)
 		DesktopViewport& viewport = box.GetViewport();
 		Viewport::Mode mode = viewport.GetMode();
 
+		// remove input focus from all viewports
+		box.has_input_focus = false;
+		mode.is_interactive = false;
+
 		// hide inactive viewports
 		if (i >= active_vp_count)
 		{
@@ -760,7 +780,6 @@ void ViewportArea::ChangeLayout(size_t layout_id)
 
 			// deactivate viewport
 			mode.is_active = false;
-			mode.has_input_focus = false;
 			viewport.SetMode(mode);
 
 			continue;
@@ -809,6 +828,37 @@ void ViewportArea::ChangeLayout(size_t layout_id)
 ut::uint32 ViewportArea::GetCurrentLayoutId() const
 {
 	return static_cast<ut::uint32>(tab->layout_choice->value());
+}
+
+int ViewportArea::handle(int e)
+{
+	const bool got_focus = e == FL_FOCUS;
+	const bool lost_focus = e == FL_UNFOCUS;
+
+	if (!got_focus && !lost_focus)
+	{
+		return Fl_Group::handle(e);
+	}
+
+	for (size_t i = 0; i < skMaxViewports; i++)
+	{
+		ViewportBox& box = viewport_boxes[i].GetRef();
+		DesktopViewport& viewport = box.GetViewport();
+		Viewport::Mode mode = viewport.GetMode();
+
+		if (got_focus && box.has_input_focus)
+		{
+			mode.is_interactive = true;
+		}
+		else
+		{
+			mode.is_interactive = false;
+		}
+
+		viewport.SetMode(mode);
+	}
+
+	return Fl_Group::handle(e);
 }
 
 // Generates array of different layouts.
@@ -960,17 +1010,18 @@ void ViewportArea::SetViewportFocus(Viewport::Id id)
 		DesktopViewport& viewport = box.GetViewport();
 		Viewport::Mode mode = viewport.GetMode();
 		
-		mode.has_input_focus = viewport.GetId() == id;
-		viewport.SetMode(mode);
-
+		box.has_input_focus = viewport.GetId() == id;
 		box.UpdateFrameColor();
 
-		if (mode.has_input_focus)
+		if (box.has_input_focus)
 		{
 			tab->proj_choice->value(static_cast<int>(mode.projection));
 			tab->resolution_choice->value(static_cast<int>(mode.resolution));
 			tab->render_mode_choice->value(static_cast<int>(mode.render_mode));
 		}
+
+		mode.is_interactive = box.has_input_focus;
+		viewport.SetMode(mode);
 
 		box.redraw();
 	}

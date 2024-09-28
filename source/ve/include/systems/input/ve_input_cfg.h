@@ -26,6 +26,7 @@ public:
 	           observation_source_y = "MouseY";
 	ut::String zoom_source = "MouseWheel";
 	ut::String multiplication_modifier = "LCtrl";
+	ut::String delete_entity = "Delete";
 };
 
 //----------------------------------------------------------------------------//

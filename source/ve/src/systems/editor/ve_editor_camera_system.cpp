@@ -111,7 +111,7 @@ CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
 	UpdateCamera(transform, camera, render_view.Get(), mode, viewport_id);
 
 	// check if input is allowed
-	if (!mode.has_input_focus)
+	if (!mode.is_interactive)
 	{
 		return commands; // e x i t
 	}

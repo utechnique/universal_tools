@@ -3,6 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/editor/ve_editor_selection_system.h"
 #include "commands/ve_cmd_add_entity.h"
+#include "commands/ve_cmd_delete_entity.h"
 #include "commands/ve_cmd_add_component.h"
 #include "commands/ve_cmd_delete_component.h"
 //----------------------------------------------------------------------------//
@@ -32,11 +33,12 @@ System::Result ViewportSelectionSystem::Update(System::Time time_step_ms,
 	for (ui::Viewport& viewport : viewports)
 	{
 		const ui::Viewport::Mode mode = viewport.GetMode();
-		if (mode.is_active && mode.has_input_focus)
+		if (!mode.is_active)
 		{
-			out_commands += ProcessViewportSelection(access, viewport);
-			break;
+			continue;
 		}
+
+		out_commands += ProcessViewportSelection(access, viewport);
 	}
 
 	return out_commands;
@@ -60,7 +62,7 @@ CmdArray ViewportSelectionSystem::ProcessViewportSelection(Base::Access& access,
 	const ui::Viewport::Mode mode = viewport.GetMode();
 
 	// search for a camera with desired name
-	ut::Optional<Entity::Id> entity_id;
+	ut::Optional<Entity::Id> camera_entity_id;
 	for (const auto& camera : cameras)
 	{
 		const Entity::Id id = camera.GetFirst();
@@ -69,19 +71,19 @@ CmdArray ViewportSelectionSystem::ProcessViewportSelection(Base::Access& access,
 		const ut::String& name = cameras.GetComponent<NameComponent>(id).name;
 		if (name == desired_name)
 		{
-			entity_id = id;
+			camera_entity_id = id;
 			break;
 		}
 	}
 
 	// exit if no camera was found
-	if (!entity_id)
+	if (!camera_entity_id)
 	{
 		return commands;
 	}
 
 	// get components
-	RenderComponent& camera_render = cameras.GetComponent<RenderComponent>(entity_id.Get());
+	RenderComponent& camera_render = cameras.GetComponent<RenderComponent>(camera_entity_id.Get());
 
 	// find render view
 	ut::Optional<render::View&> render_view;
@@ -105,9 +107,26 @@ CmdArray ViewportSelectionSystem::ProcessViewportSelection(Base::Access& access,
 	// enable highlighting effects if at least one entity is selected
 	render_view->post_process.stencil_highlight.enabled = renderable_selected_entities.CountEntities() > 0;
 
+	// now the selection itself is performed below,
+	// exit if current viewport is not available for input
+	if (!mode.is_interactive)
+	{
+		return commands;
+	}
+
+	// process delete entities operation
+	const input::Bindings& bindings = input_mgr->config.bindings;
+	if (input_mgr->IsKeyDown(bindings.delete_entity))
+	{
+		for (const auto& selected_entity : all_selected_entities)
+		{
+			const Entity::Id id = selected_entity.GetFirst();
+			commands.Add(ut::MakeUnique<CmdDeleteEntity>(id));
+		}
+	}
+
 	// process input
 	ut::Optional< ut::Vector<2> > cursor_position = viewport.GetCursorPosition();
-	const input::Bindings& bindings = input_mgr->config.bindings;
 	const bool select_key_down = input_mgr->IsKeyDown(bindings.select_entity);
 	const bool multiple_selection_key_down = input_mgr->IsKeyDown(bindings.multiplication_modifier);
 	if (cursor_position && select_key_down && !prev_frame_select_key_down)

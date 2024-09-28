@@ -60,8 +60,8 @@ public:
 		// Viewport resolution.
 		Resolution resolution = resolution_auto;
 
-		// Indicates if this viewport accepts input form user.
-		bool has_input_focus = false;
+		// Indicates if this viewport is accessible for interactions.
+		bool is_interactive = false;
 
 		// Width and height of the viewport in pixels.
 		ut::uint32 width = 0;

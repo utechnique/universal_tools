@@ -37,11 +37,15 @@ public:
 	// Assigns correct color to the viewport frame.
 	void UpdateFrameColor();
 
-	// boundary for viewport resizing
+	// boundary for viewport resizing.
 	static const ut::uint32 skResizeBorder;
 
 	// Overriden virtual function of the base class (Fl_Group).
 	void resize(int x, int y, int w, int h) override;
+
+	// Indicates if the managed viewport has exclusive ability to
+	// take input form a user.
+	bool has_input_focus = false;
 
 private:
 	// Returns relative (to the viewport) cursor position.
@@ -214,6 +218,9 @@ public:
 	// Generates and returns an array of references to the viewports.
 	ut::Array< ut::Ref<Viewport> > GetViewports();
 
+	// Generates and returns an array of references to the viewport boxes.
+	ut::Array< ut::Ref<ViewportBox> > GetViewportBoxes();
+
 	// Returns an array of viewport rectangles.
 	ut::Array< ut::Rect<ut::uint32> > GetViewportRects() const;
 
@@ -238,6 +245,10 @@ public:
 
 	// Returns an id of the current layout.
 	ut::uint32 GetCurrentLayoutId() const;
+
+	// Overriden virtual function of the base class (Fl_Group).
+	// Catches mouse events.
+	int handle(int) override;
 
 private:
 	// Generates array of different layouts.
