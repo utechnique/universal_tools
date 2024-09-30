@@ -36,9 +36,13 @@ const ut::uint32 EntityBrowser::skDefaultHeight = 720;
 const int EntityBrowser::skOffset = 5;
 
 // Height of the control groups in pixels.
-const ut::uint32 EntityBrowser::skEntityControlGroupHeight = 32;
-const ut::uint32 EntityBrowser::skEntityControlGroupMargin = 2;
-const ut::uint32 EntityBrowser::skPageControlGroupHeight = 32;
+const ut::uint32 EntityBrowser::EntityControls::skFilterInputHeight = 32;
+const ut::uint32 EntityBrowser::EntityControls::skMargin = 4;
+const ut::uint32 EntityBrowser::EntityControls::skDelimiterHeight = 20;
+const ut::uint32 EntityBrowser::EntityControls::ComponentFilter::skCollapseButtonHeight = 16;
+const ut::uint32 EntityBrowser::EntityControls::ComponentFilter::skFilterCheckBoxHeight = 16;
+const ut::uint32 EntityBrowser::PageControls::skFontSize = 14;
+const ut::uint32 EntityBrowser::PageControls::skHeight = 32;
 
 // Periods of time (in seconds) between entity updates.
 const float EntityBrowser::skUpdatePeriod = 1.0f;
@@ -66,7 +70,7 @@ ComponentView::ComponentView(ComponentView::Proxy& proxy,
 
 	// initialize start position for the child widgets
 	x_position += skHorizontalOffset;
-	int y_position = skVerticalOffset;
+	int y_position = skVerticalOffset / 2;
 
 	// create caption group
 	CreateCaption(theme,
@@ -247,7 +251,7 @@ void ComponentView::CreateCaption(const Theme& theme,
 int ComponentView::CalculateHeight() const
 {
 	int reflector_height = expand_button->IsOn() ? (reflector->h() + skVerticalOffset) : 0;
-	return caption->h() + reflector_height + skVerticalOffset * 2;
+	return caption->h() + reflector_height + skVerticalOffset;
 }
 
 // Removes all child widgets from the group.
@@ -578,10 +582,7 @@ EntityView::EntityView(EntityView::Proxy& proxy,
 	end();
 
 	// create caption box
-	CreateCaption(theme,
-	              EntityBrowser::skOffset,
-	              EntityBrowser::skOffset,
-	              width);
+	CreateCaption(theme, width);
 	UpdateCaption(proxy);
 	
 	// initialize widgets for all components
@@ -703,13 +704,11 @@ void EntityView::MarkNew(bool status)
 
 // Creates internal child fltk widget for the caption.
 void EntityView::CreateCaption(const Theme& theme,
-                               ut::int32 x,
-                               ut::int32 y,
                                ut::uint32 width)
 {
 	// create group
 	caption = ut::MakeUnique<Fl_Group>(EntityBrowser::skOffset,
-	                                   EntityBrowser::skOffset,
+	                                   0,
 	                                   width - EntityBrowser::skOffset * 2,
 	                                   skCapHeight);
 
@@ -743,7 +742,7 @@ void EntityView::CreateCaption(const Theme& theme,
 
 	// create the background with the text
 	caption_box = ut::MakeUnique<Fl_Box>(caption->x() + caption->h(),
-	                                     EntityBrowser::skOffset,
+	                                     caption->y(),
 	                                     caption->w() - caption->h() - skCapHeight * 2,
 	                                     skCapHeight);
 	caption_box->box(FL_FLAT_BOX);
@@ -882,7 +881,7 @@ void EntityView::RepositionComponents()
 
 	// update vertical position of all components
 	const ut::uint32 component_width = CalculateComponentViewWidth();
-	int height = y() + caption_box->h() + EntityBrowser::skOffset * 2;
+	int height = y() + caption_box->h() + EntityBrowser::skOffset / 2;
 	const size_t component_count = components.Count();
 	for (size_t i = 0; i < component_count; i++)
 	{
@@ -898,6 +897,9 @@ void EntityView::RepositionComponents()
 			component.position(w() * 2, height);
 		}
 	}
+
+	// add offset from the next entity view
+	height += EntityBrowser::skOffset / 2;
 
 	// resize group widget so that it could fit all components
 	size(w(), height - y());
@@ -1078,9 +1080,10 @@ EntityBrowser::EntityBrowser(int x,
 	InitializePageControls(theme);
 
 	// view area
-	const int view_area_height = this->h() - skEntityControlGroupHeight - skPageControlGroupHeight;
+	const int view_area_vertical_offset = entity_controls.group->h();
+	const int view_area_height = this->h() - view_area_vertical_offset - page->h();
 	view_area = ut::MakeUnique<Scroll>(0,
-	                                   skEntityControlGroupHeight,
+	                                   view_area_vertical_offset,
 	                                   this->w(),
 	                                   view_area_height);
 	view_area->type(Fl_Scroll::VERTICAL);
@@ -1152,25 +1155,95 @@ CmdArray EntityBrowser::UpdateEntities(ComponentAccessGroup& group_access)
 	return cmd;
 }
 
+// Adds or removes the provided component type from filtering.
+void EntityBrowser::UpdateComponentFilter(const ut::String& component_name, bool status)
+{
+	const ut::Result<const ut::DynamicType&, ut::Error> component_type_result = ut::Factory<Component>::GetType(component_name);
+	if (!component_type_result)
+	{
+		return;
+	}
+
+	const ut::DynamicType& component_type = component_type_result.Get();
+
+	ut::Array<ut::DynamicType::Handle>& filter = component_type_filter.Lock();
+
+	typedef ut::Array<ut::DynamicType::Handle>::Iterator ComponentFilterIterator;
+	const ut::Optional<ComponentFilterIterator> find_result = ut::Find(filter.Begin(),
+	                                                                   filter.End(),
+	                                                                   component_type.GetHandle());
+	if (status && !find_result)
+	{
+		filter.Add(component_type.GetHandle());
+	}
+	else if (!status && find_result)
+	{
+		filter.Remove(find_result.Get());
+	}
+
+	const size_t filtered_component_count = filter.Count();
+
+	component_type_filter.Unlock();
+
+	ImmediateUpdate();
+}
+
+// Removes all component types from filtering.
+void EntityBrowser::ResetComponentFilter()
+{
+	component_type_filter.Set(ut::Array<ut::DynamicType::Handle>());
+	ImmediateUpdate();
+}
+
+// Clears entity-id filter.
+void EntityBrowser::ResetIdFilter()
+{
+	entity_id_filter.Set(ut::String(""));
+	ImmediateUpdate();
+}
+
 // Creates UI widgets to add/filter entities.
 void EntityBrowser::InitializeEntityControls(const Theme& theme)
 {
+	// group
+	const int total_height_collapsed = EntityControls::skFilterInputHeight +
+	                                   EntityControls::ComponentFilter::skCollapseButtonHeight +
+	                                   EntityControls::skDelimiterHeight * 2 +
+	                                   EntityControls::skMargin * 5;
 	entity_controls.group = ut::MakeUnique<Fl_Group>(EntityBrowser::skOffset,
 	                                                 0,
 	                                                 w() - EntityBrowser::skOffset,
-	                                                 skEntityControlGroupHeight);
+	                                                 total_height_collapsed);
 
+	// delimiter top
+	const ut::Color<3, ut::byte> delimiter_bkg_color(theme.primary_tab_color);
+	const ut::Color<3, ut::byte> delimiter_label_color(theme.foreground_color);
+	entity_controls.delimiter_top_box = ut::MakeUnique<Fl_Box>(0,
+	                                                           entity_controls.group->y() + EntityControls::skMargin,
+	                                                           w(),
+	                                                           EntityControls::skDelimiterHeight);
+	entity_controls.delimiter_top_box->box(FL_BORDER_FRAME);
+	entity_controls.delimiter_top_box->color(ConvertToFlColor(delimiter_bkg_color));
+	entity_controls.delimiter_top_box->labelcolor(ConvertToFlColor(delimiter_label_color));
+	entity_controls.delimiter_top_box->label("Filter");
+	entity_controls.delimiter_top_box->show();
+
+	// filter input
 	entity_controls.filter_input = ut::MakeUnique<Fl_Input>(entity_controls.group->x(),
-	                                                        entity_controls.group->y() + skEntityControlGroupMargin,
-	                                                        entity_controls.group->w() - skEntityControlGroupHeight * 2,
-	                                                        skEntityControlGroupHeight - skEntityControlGroupMargin * 2);
+	                                                        entity_controls.delimiter_top_box->y() +
+	                                                        entity_controls.delimiter_top_box->h() +
+	                                                        EntityControls::skMargin,
+	                                                        entity_controls.group->w() - EntityControls::skFilterInputHeight * 2,
+	                                                        EntityControls::skFilterInputHeight);
 	entity_controls.filter_input->when(FL_WHEN_CHANGED);
 	entity_controls.filter_input->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->UpdateFilterInput(); }, this);
+	entity_controls.filter_input->color(ConvertToFlColor(theme.background_color.ElementWise() / 2 + theme.background_color.ElementWise() / 4));
 
+	// add entity button
 	entity_controls.add_entity_button = ut::MakeUnique<Button>(entity_controls.group->x() + entity_controls.filter_input->w(),
-	                                                           entity_controls.group->y(),
-	                                                           skEntityControlGroupHeight,
-	                                                           skEntityControlGroupHeight - skEntityControlGroupMargin);
+	                                                           entity_controls.filter_input->y(),
+	                                                           EntityControls::skFilterInputHeight,
+	                                                           EntityControls::skFilterInputHeight);
 	entity_controls.add_entity_button->SetIcon(ut::MakeShared<Icon>(Icon::CreatePlus(entity_controls.add_entity_button->w(),
 	                                                                                 entity_controls.add_entity_button->h(),
 	                                                                                 ut::Color<4, ut::byte>(0, 200, 0, 255),
@@ -1183,12 +1256,13 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 	                                                      ConvertToFlColor(theme.button_push_color));
 	entity_controls.add_entity_button->SetCallback([&] { AddEntity(); });
 
+	// clear filter button
 	entity_controls.clear_filter_button = ut::MakeUnique<Button>(entity_controls.group->x() +
 	                                                             entity_controls.filter_input->w() +
-	                                                             skEntityControlGroupHeight,
-	                                                             entity_controls.group->y(),
-	                                                             skEntityControlGroupHeight,
-	                                                             skEntityControlGroupHeight);
+	                                                             EntityControls::skFilterInputHeight,
+	                                                             entity_controls.filter_input->y(),
+	                                                             EntityControls::skFilterInputHeight,
+	                                                             EntityControls::skFilterInputHeight);
 	entity_controls.clear_filter_button->SetIcon(ut::MakeShared<Icon>(Icon::CreateCross(entity_controls.clear_filter_button->w(),
 	                                                                                    entity_controls.clear_filter_button->h(),
 	                                                                                    ut::Color<4, ut::byte>(230, 230, 230, 200),
@@ -1201,7 +1275,95 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 	                                                        ConvertToFlColor(theme.button_push_color));
 	entity_controls.clear_filter_button->SetCallback([&] { ClearFilter(); });
 	
-	entity_controls.group->resizable(entity_controls.filter_input.Get());
+	// component filter expand
+	const ut::Color<4, ut::byte> icon_color(theme.foreground_color.R(),
+	                                        theme.foreground_color.G(),
+	                                        theme.foreground_color.B(),
+	                                        255);
+	entity_controls.components.expand_button = ut::MakeUnique<BinaryButton>(entity_controls.group->x(),
+	                                                                        entity_controls.filter_input->y() +
+	                                                                        entity_controls.filter_input->h() +
+	                                                                        EntityControls::skMargin,
+	                                                                        w() - EntityBrowser::skOffset * 2,
+	                                                                        EntityControls::ComponentFilter::skCollapseButtonHeight);
+	entity_controls.components.expand_button->SetOnCallback([&] { UpdateSize(); Fl::focus(entity_controls.filter_input.Get()); });
+	entity_controls.components.expand_button->SetOffCallback([&] { UpdateSize(); Fl::focus(entity_controls.filter_input.Get()); });
+	entity_controls.components.expand_button->SetOnIcon(ut::MakeShared<Icon>(Icon::CreateCollapse(entity_controls.components.expand_button->h(),
+	                                                                                              entity_controls.components.expand_button->h(),
+	                                                                                              icon_color,
+	                                                                                              true)));
+	entity_controls.components.expand_button->SetOffIcon(ut::MakeShared<Icon>(Icon::CreateCollapse(entity_controls.components.expand_button->h(),
+	                                                                                               entity_controls.components.expand_button->h(),
+	                                                                                               icon_color,
+	                                                                                               false)));
+	entity_controls.components.expand_empty_bkg_color = theme.secondary_tab_color;
+	entity_controls.components.expand_bkg_color = entity_controls.components.expand_empty_bkg_color + ut::Color<3, ut::byte>(0, 20, 0);
+	entity_controls.components.expand_bkg_color.R() -= 20;
+	entity_controls.components.expand_bkg_color.B() -= 20;
+	entity_controls.components.expand_button->SetBackgroundColor(Button::state_release,
+	                                                             ConvertToFlColor(entity_controls.components.expand_empty_bkg_color));
+	entity_controls.components.expand_button->SetBackgroundColor(Button::state_hover,
+	                                                             ConvertToFlColor(entity_controls.components.expand_empty_bkg_color));
+	entity_controls.components.expand_button->SetBackgroundColor(Button::state_push,
+	                                                             ConvertToFlColor(theme.button_push_color));
+
+	// component filter description
+	entity_controls.components.counter_box = ut::MakeUnique<Fl_Box>(entity_controls.components.expand_button->x(),
+	                                                               entity_controls.components.expand_button->y(),
+	                                                               entity_controls.components.expand_button->w(),
+	                                                               entity_controls.components.expand_button->h());
+	entity_controls.components.counter_box->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+	entity_controls.components.counter_box->labelcolor(ConvertToFlColor(theme.caption_icon_color));
+
+	// component checkboxes
+	const int component_count = static_cast<int>(ut::Factory<Component>::CountTypes());
+	const int component_height = EntityControls::ComponentFilter::skFilterCheckBoxHeight;
+	const int component_group_height = component_height * component_count;
+	entity_controls.components.group = ut::MakeUnique<Fl_Group>(entity_controls.group->x(),
+	                                                            entity_controls.components.expand_button->y() +
+	                                                            entity_controls.components.expand_button->h() +
+	                                                            EntityControls::skMargin,
+	                                                            entity_controls.group->w(),
+	                                                            component_group_height);
+
+	for (int component_iterator = 0; component_iterator < component_count; component_iterator++)
+	{
+		ut::UniquePtr<Fl_Check_Button> component_checkbox = ut::MakeUnique<Fl_Check_Button>(entity_controls.components.group->x(),
+		                                                                                    entity_controls.components.group->y() + component_iterator * component_height,
+		                                                                                    entity_controls.components.group->w(),
+		                                                                                    component_height);
+
+		const ut::DynamicType& dynamic_type = ut::Factory<Component>::GetTypeByIndex(component_iterator);
+		component_checkbox->label(dynamic_type.GetName().GetAddress());
+		component_checkbox->when(FL_WHEN_CHANGED);
+		component_checkbox->callback([](Fl_Widget* w, void* p) { EntityBrowser* b = static_cast<EntityBrowser*>(p);
+		                                                         Fl_Check_Button* cb = static_cast<Fl_Check_Button*>(w);
+		                                                         b->UpdateComponentFilter(ut::String(cb->label()), cb->value() ? true : false);
+		                                                         Fl::focus(b->entity_controls.filter_input.Get());
+		                                                         b->ImmediateUpdate(); },
+		                             this);
+
+		entity_controls.components.checkboxes.Add(ut::Move(component_checkbox));
+	}
+
+	entity_controls.components.group->end();
+	entity_controls.components.group->hide();
+
+	// delimiter bottom
+	entity_controls.delimiter_bottom_box = ut::MakeUnique<Fl_Box>(0,
+	                                                              entity_controls.components.expand_button->y() +
+	                                                              entity_controls.components.expand_button->h() +
+	                                                              EntityControls::skMargin,
+	                                                              w(),
+	                                                              EntityControls::skDelimiterHeight);
+	entity_controls.delimiter_bottom_box->box(FL_BORDER_FRAME);
+	entity_controls.delimiter_bottom_box->color(ConvertToFlColor(delimiter_bkg_color));
+	entity_controls.delimiter_bottom_box->color2(ConvertToFlColor(delimiter_bkg_color));
+	entity_controls.delimiter_bottom_box->labelcolor(ConvertToFlColor(delimiter_label_color));
+	entity_controls.delimiter_bottom_box->label("Entities");
+	entity_controls.delimiter_bottom_box->show();
+
+	entity_controls.group->resizable(nullptr);
 	entity_controls.group->end();
 }
 
@@ -1218,16 +1380,16 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 
 	// calculate metrics of the central input widget
 	Fl_Font input_font = 0;
-	fl_font(input_font, PageControls::font_size);
+	fl_font(input_font, PageControls::skFontSize);
 	fl_measure("0000", input_width, input_height);
 	input_width += input_offset;
 	input_height += input_offset;
 
 	// create the widget group
 	page = ut::MakeUnique<PageControls>(EntityBrowser::skOffset,
-	                                    h() - skPageControlGroupHeight,
+	                                    h() - PageControls::skHeight,
 	                                    w() - EntityBrowser::skOffset * 2,
-	                                    skPageControlGroupHeight);
+	                                    PageControls::skHeight);
 
     // set default page id
     page->page_id.Store(1);
@@ -1240,7 +1402,7 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	                                                           input_width,
 	                                                           input_height);
 	page->input->labelfont(input_font);
-	page->input->labelsize(PageControls::font_size);
+	page->input->labelsize(PageControls::skFontSize);
 	page->input->align(FL_ALIGN_CENTER);
 	page->input->input()->when(FL_WHEN_CHANGED);
 	page->input->input()->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->UpdatePageId(); }, this);
@@ -1290,7 +1452,7 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	page->page_count_box = ut::MakeUnique<Fl_Box>(page->x(),
 	                                              page->y(),
 	                                              page->first_button->x() - page->x(),
-	                                              skPageControlGroupHeight);
+	                                              PageControls::skHeight);
 	page->page_count_box->box(FL_NO_BOX);
 	page->page_count_box->align(FL_ALIGN_INSIDE | FL_ALIGN_CENTER);
 
@@ -1298,7 +1460,7 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	page->entity_count_box = ut::MakeUnique<Fl_Box>(page->last_button->x() + page->last_button->w(),
 	                                                page->y(),
 	                                                page->x() + page->w() - page->last_button->x() - page->last_button->w(),
-	                                                skPageControlGroupHeight);
+	                                                PageControls::skHeight);
 	page->page_count_box->box(FL_NO_BOX);
 	page->entity_count_box->align(FL_ALIGN_INSIDE | FL_ALIGN_CENTER);
 
@@ -1379,7 +1541,8 @@ void EntityBrowser::UpdateUi()
 	UpdateViews();
 	RemoveInvalidViews();
 	RepositionViews();
-	UpdateControls();
+	UpdateComponentFilterUi();
+	UpdatePageControls();
 	view_area->redraw();
 	pending_views.Reset();
 }
@@ -1415,9 +1578,9 @@ EntityView& EntityBrowser::AddEntityView(EntityView::Proxy& proxy)
 	// create a new view widget
 	view_area->begin();
 	ut::UniquePtr<EntityView> new_view = ut::MakeUnique<EntityView>(proxy,
-		CalculateEntityViewWidth(),
-		GetTheme(),
-		ut::Move(component_callbacks));
+	                                                                CalculateEntityViewWidth(),
+	                                                                GetTheme(),
+	                                                                ut::Move(component_callbacks));
 	view_area->end();
 
 	// add to the parent window
@@ -1526,10 +1689,14 @@ void EntityBrowser::RepositionViews()
 // must be shifted up or down.
 void EntityBrowser::UpdateSize()
 {
+	UpdateFilterSize();
+
+	view_area->resize(0, entity_controls.group->h(), this->w(),
+	                  this->h() - entity_controls.group->h() - page->h());
+
 	FixScrollPosition();
 
 	const int view_width = CalculateEntityViewWidth();
-	
 	const size_t view_count = entity_views.Count();
 	for (size_t i = 0; i < view_count; i++)
 	{
@@ -1541,6 +1708,84 @@ void EntityBrowser::UpdateSize()
 	RepositionViews();
 
 	redraw();
+}
+
+// Updates all filter widgets with correct position and size.
+void EntityBrowser::UpdateFilterSize()
+{
+	const bool component_filter_expanded = entity_controls.components.expand_button->IsOn();
+	const int component_filter_height = component_filter_expanded ?
+	                                    entity_controls.components.group->h() : 0;
+	const int filter_group_height = EntityControls::skFilterInputHeight +
+	                                EntityControls::ComponentFilter::skCollapseButtonHeight +
+	                                component_filter_height +
+	                                EntityControls::skDelimiterHeight * 2 +
+	                                EntityControls::skMargin * 5;
+
+	entity_controls.group->resize(EntityBrowser::skOffset,
+	                              0,
+	                              w() - EntityBrowser::skOffset,
+	                              filter_group_height);
+
+	// delimiter top box
+	entity_controls.delimiter_top_box->resize(0,
+	                                          entity_controls.group->y() + EntityControls::skMargin,
+	                                          w(),
+	                                          EntityControls::skDelimiterHeight);
+
+	// filter input
+	entity_controls.filter_input->resize(entity_controls.group->x(),
+	                                     entity_controls.delimiter_top_box->y() +
+	                                     entity_controls.delimiter_top_box->h() +
+	                                     EntityControls::skMargin,
+	                                     entity_controls.group->w() - EntityControls::skFilterInputHeight * 2,
+	                                     EntityControls::skFilterInputHeight);
+
+	// add entity button
+	entity_controls.add_entity_button->resize(entity_controls.group->x() + entity_controls.filter_input->w(),
+	                                          entity_controls.filter_input->y(),
+	                                          EntityControls::skFilterInputHeight,
+	                                          EntityControls::skFilterInputHeight);
+
+	// clear filter button
+	entity_controls.clear_filter_button->resize(entity_controls.group->x() +
+	                                            entity_controls.filter_input->w() +
+	                                            EntityControls::skFilterInputHeight,
+	                                            entity_controls.filter_input->y(),
+	                                            EntityControls::skFilterInputHeight,
+	                                            EntityControls::skFilterInputHeight);
+
+	// filter expand
+	entity_controls.components.expand_button->resize(entity_controls.group->x(),
+	                                                 entity_controls.filter_input->y() +
+	                                                 entity_controls.filter_input->h() +
+	                                                 EntityControls::skMargin,
+	                                                 w() - EntityBrowser::skOffset * 2,
+	                                                 EntityControls::ComponentFilter::skCollapseButtonHeight);
+
+	// components
+	entity_controls.components.group->resize(entity_controls.group->x(),
+	                                         entity_controls.components.group->y(),
+	                                         entity_controls.group->w(),
+	                                         entity_controls.components.group->h());
+
+	// delimiter bottom box
+	entity_controls.delimiter_bottom_box->resize(0,
+	                                             entity_controls.group->y() +
+	                                             entity_controls.group->h() -
+	                                             EntityControls::skDelimiterHeight -
+	                                             EntityControls::skMargin,
+	                                             w(),
+	                                             EntityControls::skDelimiterHeight);
+
+	if (component_filter_expanded)
+	{
+		entity_controls.components.group->show();
+	}
+	else
+	{
+		entity_controls.components.group->hide();
+	}
 }
 
 // Returns an array of accumulated commands pending to be processed.
@@ -1603,16 +1848,17 @@ void EntityBrowser::AddEntityCallback(const CmdAddEntity::AddResult& add_result)
 	if (add_result)
 	{
 		const Entity::Id id = add_result.Get();
-		entity_controls.filter.Set(ut::String("#") + ut::Print(id));
+		entity_id_filter.Set(ut::String("#") + ut::Print(id));
 		new_entity_id.Set(id);
+		ResetComponentFilter();
 	}
 }
 
 // Clears entity filter input field.
 void EntityBrowser::ClearFilter()
 {
-	ImmediateUpdate();
-	entity_controls.filter.Set(ut::String());
+	entity_id_filter.Set(ut::String());
+	ResetComponentFilter();
 }
 
 // Updates @entity_controls.filter string with
@@ -1620,9 +1866,54 @@ void EntityBrowser::ClearFilter()
 void EntityBrowser::UpdateFilterInput()
 {
 	ut::String filter_text(entity_controls.filter_input->value());
-	entity_controls.filter.Set(ut::Move(filter_text));
+	entity_id_filter.Set(ut::Move(filter_text));
 	page->page_id.Store(1);
 	ImmediateUpdate();
+}
+
+// Updates all UI checkboxes according to the @entity_controls.components value,
+// also updates component filter expand button description and color.
+void EntityBrowser::UpdateComponentFilterUi()
+{
+	const ut::Array<ut::DynamicType::Handle> component_filter = component_type_filter.Get();
+
+	// update all checkboxes
+	for (ut::UniquePtr<Fl_Check_Button>& checkbox : entity_controls.components.checkboxes)
+	{
+		ut::Result<const ut::DynamicType&, ut::Error> component_type_result =
+			ut::Factory<Component>::GetType(ut::String(checkbox->label()));
+		if (!component_type_result)
+		{
+			continue;
+		}
+
+		const ut::DynamicType& component_type = component_type_result.Get();
+
+		typedef ut::Array<ut::DynamicType::Handle>::ConstIterator ComponentFilterIterator;
+		const ut::Optional<ComponentFilterIterator> find_result = ut::Find(component_filter.Begin(),
+		                                                                   component_filter.End(),
+		                                                                   component_type.GetHandle());
+		if (find_result)
+		{
+			checkbox->value(1);
+		}
+		else
+		{
+			checkbox->value(0);
+		}
+	}
+
+	// update expand button description and color
+	const ut::Color<3, ut::byte> expand_button_color = component_filter.IsEmpty() ?
+	                                                   entity_controls.components.expand_empty_bkg_color :
+	                                                   entity_controls.components.expand_bkg_color;
+	entity_controls.components.counter_text = component_filter.IsEmpty() ? ut::String("") :
+	                                          (ut::String("Filtered components: ") + ut::Print(component_filter.Count()));
+	entity_controls.components.counter_box->label(entity_controls.components.counter_text.GetAddress());
+	entity_controls.components.expand_button->SetBackgroundColor(Button::state_release,
+	                                                             ConvertToFlColor(expand_button_color));
+	entity_controls.components.expand_button->SetBackgroundColor(Button::state_hover,
+	                                                             ConvertToFlColor(expand_button_color));
 }
 
 // Updates page id from the input field.
@@ -1643,7 +1934,7 @@ void EntityBrowser::UpdatePageId()
 }
 
 // Updates all page controls.
-void EntityBrowser::UpdateControls()
+void EntityBrowser::UpdatePageControls()
 {
 	if (Fl::focus() != page->input->input() ||
 	    ut::StrLen<char>(page->input->value()) != 0)
@@ -1652,12 +1943,11 @@ void EntityBrowser::UpdateControls()
 		page->input->value(page_id_str.GetAddress());
 	}
 
-	const ut::String filter = entity_controls.filter.Get();
+	const ut::String filter = entity_id_filter.Get();
 	if (filter != entity_controls.filter_input->value())
 	{
 		entity_controls.filter_input->value(filter.GetAddress());
 	}
-
 
 	ut::String page_count_str = ut::String("Pages: ") + ut::Print(page->page_count.Read());
 	ut::String entity_count_str = ut::String("Entities: ") + ut::Print(page->entity_count.Read());
@@ -1673,19 +1963,38 @@ void EntityBrowser::UpdateControls()
 //                    desired components.
 void EntityBrowser::FilterEntities(ComponentAccess& access)
 {
-	const ut::String filter = entity_controls.filter.Get();
+	const ut::String filter = entity_id_filter.Get();
 	const bool filter_is_not_empty = filter.Length() != 0;
 	const bool exact_id_request = filter_is_not_empty && filter[0] == '#';
 
 	ut::Optional<size_t> filtered_scroll_index;
 	IterativeComponentSet::Iterator entity_it;
 	
+	// get component type filter
+	const ut::Array<ut::DynamicType::Handle> component_filter = component_type_filter.Get();
+
 	// iterate all entities
 	filter_cache.Reset();
 	for (entity_it = access.BeginEntities(); entity_it != access.EndEntities(); ++entity_it)
 	{
 		const Entity::Id entity_id = entity_it->GetFirst();
 		const Entity& entity = entity_it->GetSecond();
+
+		// filter by component type
+		bool has_absent_components = false;
+		for (ut::DynamicType::Handle component_type : component_filter)
+		{
+			if (!entity.HasComponent(component_type))
+			{
+				has_absent_components = true;
+				break;
+			}
+		}
+
+		if (!component_filter.IsEmpty() && has_absent_components)
+		{
+			continue;
+		}
 
 		// find the name component
 		ut::Optional<const NameComponent&> name_component;

@@ -58,6 +58,18 @@ void Theme::Reflect(ut::meta::Snapshot& snapshot)
 }
 
 //----------------------------------------------------------------------------//
+// Constructor, initializes hotkey bindings.
+HotkeyBindings::HotkeyBindings() : show_properties("p")
+{}
+
+// Registers data into reflection tree.
+//    @param snapshot - reference to the reflection tree
+void HotkeyBindings::Reflect(ut::meta::Snapshot& snapshot)
+{
+	snapshot.Add(show_properties, "show_properties");
+}
+
+//----------------------------------------------------------------------------//
 // Constructor, default values are set here.
 Settings::Settings() : window(0, 0, 640, 480)
                      , maximized(false)
@@ -79,6 +91,9 @@ Settings::Settings() : window(0, 0, 640, 480)
 //    @param snapshot - reference to the reflection tree
 void Settings::Reflect(ut::meta::Snapshot& snapshot)
 {
+	// hot keys
+	snapshot.Add(hotkeys, "hotkeys");
+
 	// main window
 	snapshot.Add(window, "window");
 	snapshot.Add(maximized, "maximized");

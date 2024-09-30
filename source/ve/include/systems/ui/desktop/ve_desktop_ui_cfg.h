@@ -45,6 +45,22 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+// Hotkey bindings.
+class HotkeyBindings : public ut::meta::Reflective
+{
+public:
+	// Constructor, initializes hotkey bindings.
+	HotkeyBindings();
+
+	// Registers data into reflection tree.
+	//    @param snapshot - reference to the reflection tree
+	void Reflect(ut::meta::Snapshot& snapshot);
+
+	// bindings
+	ut::String show_properties;
+};
+
+//----------------------------------------------------------------------------//
 // ve::ui::Settings is a class containing options and
 // preferences for the desktop ui widgets.
 class Settings : public ut::meta::Reflective
@@ -59,6 +75,9 @@ public:
 
 	// color theme
 	Config<Theme> theme;
+
+	// hot keys bindings
+	HotkeyBindings hotkeys;
 
 	// main window
 	ut::Rect<ut::uint32> window;

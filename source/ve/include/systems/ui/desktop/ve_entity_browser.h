@@ -271,8 +271,6 @@ private:
 
 	// Creates internal child fltk widget for the caption.
 	void CreateCaption(const Theme& theme,
-	                   ut::int32 x,
-	                   ut::int32 y,
 	                   ut::uint32 width);
 
 	// Creates UI widgets for entity controls (like add component< delete the entity, etc.).
@@ -402,6 +400,15 @@ public:
 	//    @return - array of accumulated commands pending to be processed.
 	CmdArray UpdateEntities(ComponentAccessGroup& access);
 
+	// Adds or removes the provided component type from filtering.
+	void UpdateComponentFilter(const ut::String& component_name, bool status);
+
+	// Removes all component types from filtering.
+	void ResetComponentFilter();
+
+	// Clears entity-id filter.
+	void ResetIdFilter();
+
 	// Default metrics of this window in pixels.
 	static const ut::uint32 skDefaultWidth;
 	static const ut::uint32 skDefaultHeight;
@@ -413,11 +420,32 @@ private:
 	// The group of controls to add/filter entities
 	struct EntityControls
 	{
+		struct ComponentFilter
+		{
+			ut::UniquePtr<Fl_Group> group;
+			ut::UniquePtr<BinaryButton> expand_button;
+			ut::UniquePtr<Fl_Box> counter_box;
+			ut::Array< ut::UniquePtr<Fl_Check_Button> > checkboxes;
+
+			ut::String counter_text;
+			ut::Color<3, ut::byte> expand_empty_bkg_color;
+			ut::Color<3, ut::byte> expand_bkg_color;
+
+			static const ut::uint32 skCollapseButtonHeight;
+			static const ut::uint32 skFilterCheckBoxHeight;
+		};
+
 		ut::UniquePtr<Fl_Group> group;
 		ut::UniquePtr<Fl_Input> filter_input;
 		ut::UniquePtr<Button> add_entity_button;
 		ut::UniquePtr<Button> clear_filter_button;
-		ut::Synchronized<ut::String> filter;
+		ut::UniquePtr<Fl_Box> delimiter_top_box;
+		ut::UniquePtr<Fl_Box> delimiter_bottom_box;
+		ComponentFilter components;
+
+		static const ut::uint32 skFilterInputHeight;
+		static const ut::uint32 skMargin;
+		static const ut::uint32 skDelimiterHeight;
 	};
 
 	// Intermediate structure containg an information about the
@@ -453,7 +481,9 @@ private:
 		ut::UniquePtr<ut::String> entity_count_buffer;
 		ut::Atomic<ut::uint32> page_id;
 		ut::uint32 capacity = 50;
-		static constexpr ut::uint32 font_size = 14;
+
+		static const ut::uint32 skFontSize;
+		static const ut::uint32 skHeight;
 	};
 
 	// Creates UI widgets to add/filter entities.
@@ -498,6 +528,9 @@ private:
 	// must be shifted up or down.
 	void UpdateSize();
 
+	// Updates all filter widgets with correct position and size.
+	void UpdateFilterSize();
+
 	// Returns an array of accumulated commands pending to be processed.
 	CmdArray FlushCommands();
 
@@ -523,11 +556,15 @@ private:
 	// the value of the input widget.
 	void UpdateFilterInput();
 
+	// Updates all UI checkboxes according to the @entity_controls.components value,
+	// also updates component filter expand button description and color.
+	void UpdateComponentFilterUi();
+
 	// Updates page id from the input field.
 	void UpdatePageId();
 
 	// Updates all page controls.
-	void UpdateControls();
+	void UpdatePageControls();
 
 	// Filters provided entities and stores filtered
 	// indices to the @filter_cache.
@@ -581,14 +618,16 @@ private:
 	// Commands waiting to be processed on the next UpdateEntities() call.
 	ut::Synchronized<CmdArray> pending_commands;
 
+	// This string is used to filter entities by name and ID.
+	ut::Synchronized<ut::String> entity_id_filter;
+
+	// Entity browser shows all entities if this array is empty or
+	// only entities with all components from this array otherwise.
+	ut::Synchronized< ut::Array<ut::DynamicType::Handle> > component_type_filter;
+
 	// Id of the newly created (via the browser) entity. This value is used
 	// to properly scroll view area right to this entity view.
 	ut::Synchronized< ut::Optional<Entity::Id> > new_entity_id;
-
-	// Height of the control groups in pixels.
-	static const ut::uint32 skEntityControlGroupHeight;
-	static const ut::uint32 skEntityControlGroupMargin;
-	static const ut::uint32 skPageControlGroupHeight;
 
 	// Periods of time (in seconds) between entity updates.
 	static const float skUpdatePeriod;

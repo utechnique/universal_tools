@@ -49,11 +49,16 @@ class DesktopFrontend : public Frontend
 		// Currently only Windows is supported.
 		void InitializeMaximized();
 
+		// Binds provided callback to the desired keyboard key.
+		void BindKeyboardHotkeyCallback(const ut::String& key,
+		                                ut::Function<void()> callback);
+
 		// Virtual destructor for the polymorphic type.
 		virtual ~MainWindow() override = default;
 	private:
 		class DesktopFrontend& frontend;
 		bool hidden_maximized = false;
+		ut::DenseHashMap<ut::String, ut::Function<void()> > keyboard_callbacks;
 	};
 
 	friend MainWindow;
@@ -105,6 +110,10 @@ private:
 
 	// Destroys internal resources before closing.
 	void Close();
+
+	// Shows selected entities in the entity browser.
+	// Must be called only from the UI thread.
+	void ShowSelectedEntitiesInEntityBrowser();
 
 	// Synchronization variable to detect when widgets
 	// are initialized in fltk thread. It's triggered only when

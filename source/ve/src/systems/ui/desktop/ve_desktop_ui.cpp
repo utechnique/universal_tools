@@ -4,6 +4,7 @@
 #include "systems/ui/desktop/ve_desktop_ui.h"
 #include "systems/ui/desktop/ve_desktop_ui_cfg.h"
 #include "commands/ve_cmd_exit.h"
+#include "components/ve_selected_in_editor_component.h"
 //----------------------------------------------------------------------------//
 #if VE_DESKTOP
 //----------------------------------------------------------------------------//
@@ -37,6 +38,18 @@ DesktopFrontend::MainWindow::MainWindow(int x, int y,
 int DesktopFrontend::MainWindow::handle(int event)
 {
 	frontend.window_ready.Store(true);
+
+	if (event == FL_KEYBOARD)
+	{
+		const ut::String key(Fl::event_text());
+		ut::Optional<ut::Function<void()>&> find_result = keyboard_callbacks.Find(key);
+		if (find_result)
+		{
+			ut::Function<void()>& callback = find_result.Get();
+			callback();
+		}
+	}
+
     return Window::handle(event);
 }
 
@@ -109,6 +122,13 @@ void DesktopFrontend::MainWindow::InitializeMaximized()
 		SetWindowPlacement(hwnd, &placement);
 	}
 #endif
+}
+
+// Binds provided callback to the desired keyboard key.
+void DesktopFrontend::MainWindow::BindKeyboardHotkeyCallback(const ut::String& key,
+                                                             ut::Function<void()> callback)
+{
+	keyboard_callbacks.Insert(key, ut::Move(callback));
 }
 
 //----------------------------------------------------------------------------//
@@ -200,6 +220,7 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	                                    cfg->theme);
 	window->size_range(skMinWidth, skMinHeight);
 	window->callback(DesktopFrontend::OnCloseCallback, this);
+	window->BindKeyboardHotkeyCallback(cfg->hotkeys.show_properties, [&]() { ShowSelectedEntitiesInEntityBrowser(); });
 
 	// menu
 	menu = ut::MakeUnique<MenuBar>(cfg.Get(), 0, 0, window->w(), entity_browser.GetRef());
@@ -408,6 +429,17 @@ void DesktopFrontend::Close()
 		viewport.CloseSignal();
 		viewport.ResetSignals();
 	}
+}
+
+//----------------------------------------------------------------------------->
+// Shows selected entities in the entity browser.
+// Must be called only from the UI thread.
+void DesktopFrontend::ShowSelectedEntitiesInEntityBrowser()
+{
+	entity_browser->ResetIdFilter();
+	entity_browser->ResetComponentFilter();
+	entity_browser->UpdateComponentFilter(ut::GetPolymorphicName<SelectedInEditorComponent>(), true);
+	entity_browser->show();
 }
 
 //----------------------------------------------------------------------------//
