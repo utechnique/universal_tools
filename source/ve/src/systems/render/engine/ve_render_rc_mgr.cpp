@@ -734,7 +734,7 @@ ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
 	sphere = mesh.Move();
 
 	// torus
-	mesh = CreateTorus(ut::Vector<3>(0), 1.0f, 0.5f, 32, 32, engine_rc_dir + engine_rc::skTorus);
+	mesh = CreateTorus(ut::Vector<3>(0), 1.0f, 0.5f, 24, 16, engine_rc_dir + engine_rc::skTorus);
 	if (!mesh)
 	{
 		return mesh.MoveAlt();
