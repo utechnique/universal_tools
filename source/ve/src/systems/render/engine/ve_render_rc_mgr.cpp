@@ -389,6 +389,139 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateSphere(const ut::Vecto
 	return AddResource<Mesh>(ut::Move(mesh), ut::Move(name));
 }
 
+// Creates a mesh representing a torus.
+ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateTorus(const ut::Vector<3>& position,
+                                                                float radius,
+                                                                float tube_radius,
+                                                                ut::uint32 radial_segment_count,
+                                                                ut::uint32 tubular_segment_count,
+                                                                ut::Optional<ut::String> name)
+{
+	constexpr Mesh::VertexFormat vertex_format = Mesh::vertex_pos3_texcoord2_normal3_tangent3_float;
+	typedef MeshVertex<vertex_format>::Type TorusVertex;
+
+	const ut::uint32 vertex_count = (radial_segment_count + 1) * (tubular_segment_count + 1);
+	const ut::uint32 face_count = radial_segment_count * tubular_segment_count * 2;
+
+	// vertex buffer info
+	Buffer::Info vertex_buffer_info;
+	vertex_buffer_info.type = Buffer::vertex;
+	vertex_buffer_info.usage = render::memory::gpu_immutable;
+	vertex_buffer_info.size = TorusVertex::size * vertex_count;
+	vertex_buffer_info.stride = TorusVertex::size;
+	vertex_buffer_info.data.Resize(vertex_buffer_info.size);
+	TorusVertex::Type* v = reinterpret_cast<TorusVertex::Type*>(vertex_buffer_info.data.GetAddress());
+
+	// index buffer info
+	Buffer::Info index_buffer_info;
+	index_buffer_info.type = Buffer::index;
+	index_buffer_info.usage = render::memory::gpu_immutable;
+	index_buffer_info.size = sizeof(ut::uint32) * face_count * Mesh::skPolygonVertices;
+	index_buffer_info.stride = sizeof(ut::uint32);
+	index_buffer_info.data.Resize(index_buffer_info.size);
+	ut::uint32* indices = reinterpret_cast<ut::uint32*>(index_buffer_info.data.GetAddress());
+
+	// initialize vertices
+	const float radialStep = 2.0f * ut::Precision<float>::pi / static_cast<float>(radial_segment_count);
+	const float tubularStep = 2.0f * ut::Precision<float>::pi / static_cast<float>(tubular_segment_count);
+	for (ut::uint32 i = 0; i <= radial_segment_count; ++i)
+	{
+		const float u = static_cast<float>(i) * radialStep;
+		const float cosU = ut::Cos(u);
+		const float sinU = ut::Sin(u);
+
+		for (ut::uint32 j = 0; j <= tubular_segment_count; ++j)
+		{
+			const float vrad = static_cast<float>(j) * tubularStep;
+			const float cosV = ut::Cos(vrad);
+			const float sinV = ut::Sin(vrad);
+
+			TorusVertex::Type& vertex = v[i * (tubular_segment_count + 1) + j];
+
+			vertex.position.X() = (radius + tube_radius * cosV) * cosU;
+			vertex.position.Y() = (radius + tube_radius * cosV) * sinU;
+			vertex.position.Z() = tube_radius * sinV;
+
+			vertex.normal.X() = cosV * cosU;
+			vertex.normal.Y() = cosV * sinU;
+			vertex.normal.Z() = sinV;
+
+			vertex.texcoord.X() = static_cast<float>(i) / static_cast<float>(radial_segment_count);
+			vertex.texcoord.Y() = static_cast<float>(j) / static_cast<float>(tubular_segment_count);
+
+			// Add indices for a quad (two triangles)
+			if (i < radial_segment_count && j < tubular_segment_count)
+			{
+				ut::uint32 a = i * (tubular_segment_count + 1) + j;
+				ut::uint32 b = (i + 1) * (tubular_segment_count + 1) + j;
+				ut::uint32 c = (i + 1) * (tubular_segment_count + 1) + (j + 1);
+				ut::uint32 d = i * (tubular_segment_count + 1) + (j + 1);
+
+				indices[0] = a;
+				indices[1] = b;
+				indices[2] = c;
+
+				indices[3] = a;
+				indices[4] = c;
+				indices[5] = d;
+
+				indices += 6;
+			}
+		}
+	}
+
+	// get back initial index address
+	indices = reinterpret_cast<ut::uint32*>(index_buffer_info.data.GetAddress());
+
+	// apply vertex offset
+	for (ut::uint32 i = 0; i < vertex_count; i++)
+	{
+		v[i].position += position;
+	}
+
+	// tangents
+	ComputeTangents<TorusVertex::Type>(v, indices, vertex_count, face_count * Mesh::skPolygonVertices);
+
+	// create vertex buffer
+	ut::Result<Buffer, ut::Error> vertex_buffer = device.CreateBuffer(ut::Move(vertex_buffer_info));
+	if (!vertex_buffer)
+	{
+		return ut::MakeError(vertex_buffer.MoveAlt());
+	}
+
+	// create index buffer
+	ut::Result<Buffer, ut::Error> index_buffer = device.CreateBuffer(ut::Move(index_buffer_info));
+	if (!index_buffer)
+	{
+		return ut::MakeError(index_buffer.MoveAlt());
+	}
+
+	// create material
+	ut::Result<Material, ut::Error> default_material = CreateDefaultMaterial();
+	if (!default_material)
+	{
+		return ut::MakeError(default_material.MoveAlt());
+	}
+
+	// initialize subsets
+	ut::Array<Mesh::Subset> subsets;
+	Mesh::Subset subset;
+	subset.index_offset = 0;
+	subset.index_count = face_count * Mesh::skPolygonVertices;
+	subset.material = default_material.Move();
+	subsets.Add(ut::Move(subset));
+
+	// create mesh
+	Mesh mesh(face_count, vertex_count,
+	          vertex_buffer.Move(),
+	          index_buffer.Move(),
+	          index_type_uint32,
+	          vertex_format,
+	          ut::Move(subsets));
+
+	return AddResource<Mesh>(ut::Move(mesh), ut::Move(name));
+}
+
 //----------------------------------------------------------------------------->
 // Creates an image filled with solid color.
 ut::Result<RcRef<Map>, ut::Error> ResourceManager::CreateImage(ut::uint32 width,
@@ -599,6 +732,14 @@ ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
 		return mesh.MoveAlt();
 	}
 	sphere = mesh.Move();
+
+	// torus
+	mesh = CreateTorus(ut::Vector<3>(0), 1.0f, 0.5f, 32, 32, engine_rc_dir + engine_rc::skTorus);
+	if (!mesh)
+	{
+		return mesh.MoveAlt();
+	}
+	tor = mesh.Move();
 
 	// success
 	return ut::Optional<ut::Error>();

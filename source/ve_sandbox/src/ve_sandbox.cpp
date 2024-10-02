@@ -82,11 +82,28 @@ public:
 // Creates a box with random color and scale.
 ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& position, size_t id)
 {
+	enum PrimitiveType
+	{
+		primitive_box,
+		primitive_sphere,
+		primitive_torus,
+	};
+
 	// random values
 	const float r1 = static_cast<float>(300 + rand() % 800);
 	const float r2 = static_cast<float>(300 + rand() % 800);
 	const float r3 = static_cast<float>(300 + rand() % 800);
-	const bool is_sphere = rand() % 3 == 0;
+
+	PrimitiveType primitive_type = primitive_box;
+
+	if (rand() % 4 == 0)
+	{
+		primitive_type = primitive_torus;
+	}
+	else if (rand() % 3 == 0)
+	{
+		primitive_type = primitive_sphere;
+	}
 
 	// transform
 	ve::TransformComponent transform_component;
@@ -95,9 +112,19 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& p
 	                                                                           ut::Vector<3>(0, 1, 0));
 	transform_component.scale = ut::Vector<3>(r1 / 500.0f, r2 / 500.0f, r3 / 500.0f);
 
+	// mesh resource name
+	ut::String mesh_name = ve::render::engine_rc::skBox;
+	if (primitive_type == primitive_sphere)
+	{
+		mesh_name = ve::render::engine_rc::skSphere;
+	}
+	else if (primitive_type == primitive_torus)
+	{
+		mesh_name = ve::render::engine_rc::skTorus;
+	}
+
 	// model unit
 	ve::render::Model box_model;
-	const ut::String mesh_name = is_sphere ? ve::render::engine_rc::skSphere : ve::render::engine_rc::skBox;
 	box_model.local_trasform.translation.X() = (rand() % 200) / 40.0f;
 	box_model.local_trasform.translation.Y() = (rand() % 200) / 40.0f;
 	box_model.local_trasform.translation.Z() = (rand() % 200) / 40.0f;

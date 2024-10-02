@@ -48,6 +48,14 @@ public:
 	                                                ut::uint32 segment_count,
 	                                                ut::Optional<ut::String> name);
 
+	// Creates a mesh representing a torus.
+	ut::Result<RcRef<Mesh>, ut::Error> CreateTorus(const ut::Vector<3>& position,
+	                                               float radius,
+	                                               float tube_radius,
+	                                               ut::uint32 radial_segment_count,
+	                                               ut::uint32 tubular_segment_count,
+	                                               ut::Optional<ut::String> name);
+
 	// Creates an image filled with solid color.
 	ut::Result<RcRef<Map>, ut::Error> CreateImage(ut::uint32 width,
 	                                              ut::uint32 height,
@@ -129,6 +137,7 @@ public:
 	// primitives
 	RcRef<Mesh> cube;
 	RcRef<Mesh> sphere;
+	RcRef<Mesh> tor;
 
 	// images
 	RcRef<Map> img_black;
