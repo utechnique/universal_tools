@@ -133,7 +133,7 @@ CmdArray ViewportSelectionSystem::ProcessViewportSelection(Base::Access& access,
 	{
 		select_cursor_position = cursor_position;
 	}
-	prev_frame_select_key_down = select_key_down;
+	prev_frame_select_key_down = select_key_down && cursor_position;
 
 	// deselect previous entities or apply highlight effect for the current ones
 	if (select_cursor_position && !multiple_selection_key_down)
