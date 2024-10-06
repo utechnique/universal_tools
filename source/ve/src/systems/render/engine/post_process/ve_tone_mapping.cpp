@@ -9,32 +9,32 @@ START_NAMESPACE(postprocess)
 
 //----------------------------------------------------------------------------//
 // SRGB converter (per-view) data constructor.
-RgbToSrgb::ViewData::ViewData(PipelineState in_pipeline) : pipeline_state(ut::Move(in_pipeline))
+ClampToneMapper::ViewData::ViewData(PipelineState in_pipeline) : pipeline_state(ut::Move(in_pipeline))
 {}
 
 // SRGB converter constructor.
-RgbToSrgb::RgbToSrgb(Toolset& toolset) : tools(toolset)
-                                       , pixel_shader(LoadShader())
+ClampToneMapper::ClampToneMapper(Toolset& toolset) : tools(toolset)
+                                                     , pixel_shader(LoadShader())
 {}
 
-// Returns compiled rgb to srgb converter pixel shader.
-Shader RgbToSrgb::LoadShader()
+// Returns compiled mapping pixel shader.
+Shader ClampToneMapper::LoadShader()
 {
 	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::pixel,
-	                                                                "rgb_to_srgb_ps",
-	                                                                "RgbToSrgbPS",
+	                                                                "tone_map_linear",
+	                                                                "ToneMapClamp",
 	                                                                "tone_mapping.hlsl");
 	return shader.MoveOrThrow();
 }
 
-// Creates srgb converter (per-view) data.
-//    @param postprocess_pass - render pass that will be used for tone mapping.
+// Creates per-view data.
+//    @param postprocess_pass - render pass that will be used for mapping.
 //    @param width - width of the view in pixels.
 //    @param height - height of the view in pixels.
-//    @return - a new RgbToSrgb::ViewData object or error if failed.
-ut::Result<RgbToSrgb::ViewData, ut::Error> RgbToSrgb::CreateViewData(RenderPass& postprocess_pass,
-                                                                     ut::uint32 width,
-                                                                     ut::uint32 height)
+//    @return - a new LinearToneMapper::ViewData object or error if failed.
+ut::Result<ClampToneMapper::ViewData, ut::Error> ClampToneMapper::CreateViewData(RenderPass& postprocess_pass,
+                                                                                   ut::uint32 width,
+                                                                                   ut::uint32 height)
 {
 	PipelineState::Info info;
 	info.stages[Shader::vertex] = tools.shaders.quad_vs;
@@ -59,7 +59,7 @@ ut::Result<RgbToSrgb::ViewData, ut::Error> RgbToSrgb::CreateViewData(RenderPass&
 	}
 
 	// create final data object
-	RgbToSrgb::ViewData data(pipeline_state.Move());
+	ClampToneMapper::ViewData data(pipeline_state.Move());
 
 	// connect descriptors
 	data.desc_set.Connect(pixel_shader);
@@ -68,20 +68,20 @@ ut::Result<RgbToSrgb::ViewData, ut::Error> RgbToSrgb::CreateViewData(RenderPass&
 	return data;
 }
 
-// Performs rgb to srgb conversion.
+// Performs hdr to ldr conversion.
 //    @param swap_mgr - reference to the post-process swap manager.
 //    @param context - reference to the rendering context.
-//    @param data - reference to the RgbToSrgb::ViewData object containing
+//    @param data - reference to the LinearToneMapper::ViewData object containing
 //                  converter-specific resources.
 //    @param pass - reference to the render pass with one color attachment
 //                  and no depth.
 //    @param source - reference to the source image.
 //    @return - reference to the postprocess slot used for tone mapping.
-SwapSlot& RgbToSrgb::Apply(SwapManager& swap_mgr,
-                           Context& context,
-                           ViewData& data,
-                           RenderPass& pass,
-                           Image& source)
+SwapSlot& ClampToneMapper::Apply(SwapManager& swap_mgr,
+                                 Context& context,
+                                 ViewData& data,
+                                 RenderPass& pass,
+                                 Image& source)
 {
 	ut::Optional<SwapSlot&> slot = swap_mgr.Swap();
 	UT_ASSERT(slot.HasValue());
@@ -108,12 +108,12 @@ SwapSlot& RgbToSrgb::Apply(SwapManager& swap_mgr,
 
 //----------------------------------------------------------------------------//
 // Tone mapper (per-view) data constructor.
-ToneMapper::ViewData::ViewData(RgbToSrgb::ViewData rgb_to_srgb_data) : rgb_to_srgb(ut::Move(rgb_to_srgb_data))
+ToneMapper::ViewData::ViewData(ClampToneMapper::ViewData data) : clamp_mapper_data(ut::Move(data))
 {}
 
 // Tone mapper constructor.
 ToneMapper::ToneMapper(Toolset& toolset) : tools(toolset)
-                                         , rgb_to_srgb(toolset)
+                                         , clamp_mapper(toolset)
 {}
 
 // Creates tone mapping (per-view) data.
@@ -126,8 +126,8 @@ ut::Result<ToneMapper::ViewData, ut::Error> ToneMapper::CreateViewData(RenderPas
                                                                        ut::uint32 height)
 {
 	// rgb to srgb converter
-	ut::Result<RgbToSrgb::ViewData, ut::Error> rgb_to_srgb_data = rgb_to_srgb.CreateViewData(postprocess_pass,
-	                                                                                         width, height);
+	ut::Result<ClampToneMapper::ViewData, ut::Error> rgb_to_srgb_data = clamp_mapper.CreateViewData(postprocess_pass,
+	                                                                                                width, height);
 	if (!rgb_to_srgb_data)
 	{
 		return ut::MakeError(rgb_to_srgb_data.MoveAlt());
@@ -160,7 +160,7 @@ ut::Optional<SwapSlot&> ToneMapper::Apply(SwapManager& swap_mgr,
 		return ut::Optional<SwapSlot&>();
 	}
 
-	return rgb_to_srgb.Apply(swap_mgr, context, data.rgb_to_srgb, pass, source);
+	return clamp_mapper.Apply(swap_mgr, context, data.clamp_mapper_data, pass, source);
 }
 
 //----------------------------------------------------------------------------//

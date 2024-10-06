@@ -63,7 +63,7 @@ void Policy<View>::Initialize(View& view)
 		ut::Result<postprocess::ViewData, ut::Error> post_process_data = post_process_mgr.CreateViewData(scene_buffer->depth_stencil,
 		                                                                                                 view.width,
 		                                                                                                 view.height,
-		                                                                                                 view.format);
+		                                                                                                 pixel::r8g8b8a8_unorm);
 		if (!post_process_data)
 		{
 			throw ut::Error(post_process_data.MoveAlt());
@@ -126,6 +126,9 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 	// get current frame
 	View::FrameData& frame = view.data->frames[current_frame_id];
 
+	// get view uniform buffer containing view projection for the main view
+	Buffer& view_uniform_buffer = frame.scene.view_ub[0];
+
 	// reset final image
 	frame.final_img = ut::Optional<Image&>();
 
@@ -152,7 +155,7 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 		hitmask.Draw(context,
 		             frame.scene.depth_stencil,
 		             frame.hitmask,
-		             frame.scene.view_ub[0],
+		             view_uniform_buffer,
 		             model_policy.batcher);
 	}
 
@@ -174,12 +177,28 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 	                                        view.light_pass_mode,
 	                                        ibl_cubemap);
 
+	// apply tone mapping
+	ut::Optional<postprocess::SwapSlot&> color_buffer =
+		post_process_mgr.ApplyEffect<postprocess::Effect::tone_mapping>(context,
+		                                                                frame.post_process,
+		                                                                light_pass_img,
+		                                                                view.post_process,
+		                                                                view.total_time_ms);
+	UT_ASSERT(color_buffer);
+
+	// here unlit objects can be rendered
+
+	// make color buffer accessible as a resource
+	context.SetTargetState(color_buffer->color_target, Target::Info::state_resource);
+
 	// postprocess
-	frame.final_img = post_process_mgr.ApplyEffects(context,
-	                                                frame.post_process,
-	                                                light_pass_img,
-	                                                view.post_process,
-	                                                view.total_time_ms);
+	frame.final_img = post_process_mgr.ApplyEffects
+	                  <postprocess::Effect::stencil_highlighting,
+	                   postprocess::Effect::fxaa>(context,
+	                                              frame.post_process,
+	                                              color_buffer,
+	                                              view.post_process,
+	                                              view.total_time_ms);
 }
 
 //----------------------------------------------------------------------------->

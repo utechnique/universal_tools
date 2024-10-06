@@ -10,8 +10,8 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 START_NAMESPACE(postprocess)
 //----------------------------------------------------------------------------//
-// Converts rgb image to srgb format.
-class RgbToSrgb
+// Just clamps the hdr image to fit ldr.
+class ClampToneMapper
 {
 public:
 	class ViewData
@@ -19,9 +19,9 @@ public:
 	public:
 		ViewData(PipelineState converter_pipeline_state);
 
-		struct RgbToSrgbDescriptorSet : public DescriptorSet
+		struct ClampToneMapperDescriptorSet : public DescriptorSet
 		{
-			RgbToSrgbDescriptorSet() : DescriptorSet(tex2d, sampler) {}
+			ClampToneMapperDescriptorSet() : DescriptorSet(tex2d, sampler) {}
 			Descriptor tex2d = "g_tex2d";
 			Descriptor sampler = "g_sampler";
 		} desc_set;
@@ -36,21 +36,21 @@ public:
 	};
 
 	// Constructor.
-	RgbToSrgb(Toolset& toolset);
+	ClampToneMapper(Toolset& toolset);
 
-	// Creates srgb converter (per-view) data.
+	// Creates per-view data.
 	//    @param postprocess_pass - render pass that will be used for mapping.
 	//    @param width - width of the view in pixels.
 	//    @param height - height of the view in pixels.
-	//    @return - a new RgbToSrgb::ViewData object or error if failed.
+	//    @return - a new ClampToneMapper::ViewData object or error if failed.
 	ut::Result<ViewData, ut::Error> CreateViewData(RenderPass& postprocess_pass,
 	                                               ut::uint32 width,
 	                                               ut::uint32 height);
 
-	// Performs rgb to srgb conversion.
+	// Performs hdr to ldr conversion.
 	//    @param swap_mgr - reference to the post-process swap manager.
 	//    @param context - reference to the rendering context.
-	//    @param data - reference to the RgbToSrgb::ViewData object containing
+	//    @param data - reference to the ClampToneMapper::ViewData object containing
 	//                  converter-specific resources.
 	//    @param pass - reference to the render pass with one color attachment
 	//                  and no depth.
@@ -63,7 +63,7 @@ public:
 	                Image& source);
 
 private:
-	// Returns compiled rgb to srgb converter pixel shader.
+	// Returns compiled mapping pixel shader.
 	Shader LoadShader();
 
 	// Common rendering tools.
@@ -80,9 +80,9 @@ public:
 	class ViewData
 	{
 	public:
-		ViewData(RgbToSrgb::ViewData rgb_to_srgb_data);
+		ViewData(ClampToneMapper::ViewData clamp_mapper_data);
 
-		RgbToSrgb::ViewData rgb_to_srgb;
+		ClampToneMapper::ViewData clamp_mapper_data;
 	};
 
 	// Customisable parameters.
@@ -126,8 +126,8 @@ private:
 	// Common rendering tools.
 	Toolset& tools;
 
-	// Converts rgb images to srgb.
-	RgbToSrgb rgb_to_srgb;
+	// A tone-mapper to be used for hdr->ldr convertion.
+	ClampToneMapper clamp_mapper;
 };
 
 //----------------------------------------------------------------------------//

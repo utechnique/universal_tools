@@ -151,103 +151,55 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 	                fxaa_data.Move());
 }
 
-// Applies all post-process effects to the provided view.
-//    @param context - reference to the rendering context.
-//    @param data - reference to the postprocess::ViewData object containing
-//                  postprocess-specific resources.
-//    @param source - reference to the source image.
-//    @param time_ms - total accumulated time in milliseconds.
-//    @param parameters - reference to the postprocess::Parameter object
-//                        containing parameters for all post-processing
-//                        effects.
-//    @return - optional reference to the final image.
-ut::Optional<Image&> Manager::ApplyEffects(Context& context,
-                                           ViewData& data,
-                                           Image& source,
-                                           const Parameters& parameters,
-                                           double time_ms)
+// Applies tone mapping effect.
+template<>
+ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::tone_mapping>(Context& context,
+                                                                   ViewData& data,
+                                                                   Image& source,
+                                                                   const Parameters& parameters,
+                                                                   double time_ms)
 {
-	// define effect order
-	const EffectType effect_list[] = { effect_tone_mapping,
-	                                   effect_stencil_highlighting,
-	                                   effect_fxaa };
-	const size_t effect_count = sizeof(effect_list) / sizeof(effect_list[0]);
-
-	// apply all effects
-	ut::Optional<SwapSlot&> effect;
-	for (size_t i = 0; i < effect_count; i++)
-	{
-		Image& effect_src_image = effect ?
-		                          effect->color_target.GetImage() :
-		                          source;
-		ut::Optional<SwapSlot&> new_effect = ApplyEffect(effect_list[i],
-		                                                 effect_src_image,
-		                                                 context,
-		                                                 data,
-		                                                 parameters,
-		                                                 time_ms);
-
-		if (new_effect)
-		{
-			context.SetTargetState(new_effect->color_target, Target::Info::state_resource);
-			if (effect)
-			{
-				effect->busy = false;
-			}
-			effect = new_effect;
-		}
-	}
-
-	// return the final result
-	if (effect)
-	{
-		context.SetTargetState(effect->color_target, Target::Info::state_resource);
-		effect->busy = false;
-		return effect->color_target.GetImage();
-	}
-
-	return source;
+	return tone_mapper.Apply(data.swap_mgr,
+	                         context,
+	                         data.tone_mapping,
+	                         data.color_only_pass,
+	                         source,
+	                         parameters.tone_mapping);
 }
 
-// Applies desired post-processing effect.
-ut::Optional<SwapSlot&> Manager::ApplyEffect(EffectType effect_type,
-                                             Image& source,
-                                             Context& context,
-                                             ViewData& data,
-                                             const Parameters& parameters,
-                                             double time_ms)
+// Applies stencil highlighting effect.
+template<>
+ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::stencil_highlighting>(Context& context,
+                                                                           ViewData& data,
+                                                                           Image& source,
+                                                                           const Parameters& parameters,
+                                                                           double time_ms)
 {
-	switch (effect_type)
-	{
-	case effect_tone_mapping:
-		return tone_mapper.Apply(data.swap_mgr,
-		                         context,
-		                         data.tone_mapping,
-		                         data.color_only_pass,
-		                         source,
-		                         parameters.tone_mapping);
+	return stencil_highlight.Apply(data.swap_mgr,
+	                               context,
+	                               data.stencil_highlight,
+	                               data.color_only_pass,
+	                               data.color_and_ds_pass,
+	                               data.clear_color_and_ds_pass,
+	                               source,
+	                               parameters.stencil_highlight,
+	                               static_cast<float>(time_ms));
+}
 
-	case effect_stencil_highlighting:
-		return stencil_highlight.Apply(data.swap_mgr,
-		                               context,
-		                               data.stencil_highlight,
-		                               data.color_only_pass,
-		                               data.color_and_ds_pass,
-		                               data.clear_color_and_ds_pass,
-		                               source,
-		                               parameters.stencil_highlight,
-		                               static_cast<float>(time_ms));
-
-	case effect_fxaa:
-		return fxaa.Apply(data.swap_mgr,
-		                  context,
-		                  data.fxaa,
-		                  data.color_only_pass,
-		                  source,
-		                  parameters.fxaa);
-	}
-
-	return ut::Optional<SwapSlot&>();
+// Applies FXAA effect.
+template<>
+ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::fxaa>(Context& context,
+                                                           ViewData& data,
+                                                           Image& source,
+                                                           const Parameters& parameters,
+                                                           double time_ms)
+{
+	return fxaa.Apply(data.swap_mgr,
+	                  context,
+	                  data.fxaa,
+	                  data.color_only_pass,
+	                  source,
+	                  parameters.fxaa);
 }
 
 //----------------------------------------------------------------------------//

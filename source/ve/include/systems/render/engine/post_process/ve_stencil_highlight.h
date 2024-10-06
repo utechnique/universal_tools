@@ -67,12 +67,12 @@ public:
 	struct Parameters
 	{
 		bool enabled = true;
-		ut::Color<4> highlight_color = ut::Vector<4>(1.0f, 0.65f, 0.0f, 1.0f);
+		ut::Color<4> highlight_color = ut::Vector<4>(1.0f, 0.80f, 0.0f, 1.0f);
 		bool draw_lines = true;
 		float line_movement_anim_speed_ms = 55.0f;
 		float line_visibility_anim_speed_ms = 2000.0f;
-		float line_min_visibility = 0.075f;
-		float line_max_visibility = 0.5f;
+		float line_min_visibility = 0.0f;
+		float line_max_visibility = 0.3f;
 	};
 
 	// Constructor.

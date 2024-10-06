@@ -17,9 +17,9 @@ struct PS_INPUT
 
 //----------------------------------------------------------------------------//
 
-float4 RgbToSrgbPS(PS_INPUT input) : SV_Target
+float4 ToneMapClamp(PS_INPUT input) : SV_Target
 {
-	return pow(g_tex2d.Sample(g_sampler, input.texcoord), 2.2f);
+	return clamp(g_tex2d.Sample(g_sampler, input.texcoord), 0, 1);
 }
 
 //----------------------------------------------------------------------------//

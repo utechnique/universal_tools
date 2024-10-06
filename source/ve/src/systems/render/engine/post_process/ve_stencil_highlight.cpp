@@ -368,13 +368,13 @@ float StencilHighlight::CalculateLineVisibility(const Parameters& parameters,
 	if (line_visibility < 0.5f)
 	{
 		line_visibility = line_visibility * 2.0f;
-		line_visibility = 1.0f - ut::Pow(1.0f - line_visibility, 1.4f);
+		line_visibility = 1.0f - ut::Pow(1.0f - line_visibility, 0.5f);
 		line_visibility /= 2.0f;
 	}
 	else
 	{
 		line_visibility = (line_visibility - 0.5f) * 2.0f;
-		line_visibility = 1.0f - ut::Pow(1.0f - line_visibility, 1.4f);
+		line_visibility = 1.0f - ut::Pow(1.0f - line_visibility, 1.5f);
 		line_visibility = 0.5f + line_visibility / 2.0f;
 	}
 

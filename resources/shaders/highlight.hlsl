@@ -55,7 +55,7 @@ float4 DrawLinesPS(PS_INPUT input) : SV_Target
     float line_id = (pos.x + pos.y + movement_offset) / LINE_DISTANCE;
     float dist = abs(frac(line_id) - 0.5f) * LINE_DISTANCE;
     float bline = dist < LINE_HALF_WIDTH ? 1.0f : 0.0f;
-    return bline > 0 ? line_visibility : 0.0f;
+    return float4(1.0f, 1.0f, 1.0f, bline > 0 ? line_visibility : 0.0f);
 }
 
 // Blends scene with highlighting mask.
