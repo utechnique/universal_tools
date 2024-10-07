@@ -7,7 +7,7 @@
 #include "components/ve_transform_component.h"
 #include "components/ve_name_component.h"
 #include "ve_component_system.h"
-#include "systems/render/engine/units/ve_render_model.h"
+#include "systems/render/engine/units/ve_render_mesh_instance.h"
 #include "systems/render/engine/units/ve_render_directional_light.h"
 #include "systems/render/engine/units/ve_render_point_light.h"
 #include "systems/render/engine/units/ve_render_spot_light.h"
@@ -123,25 +123,25 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& p
 		mesh_name = ve::render::engine_rc::skTorus;
 	}
 
-	// model unit
-	ve::render::Model box_model;
-	box_model.local_trasform.translation.X() = (rand() % 200) / 40.0f;
-	box_model.local_trasform.translation.Y() = (rand() % 200) / 40.0f;
-	box_model.local_trasform.translation.Z() = (rand() % 200) / 40.0f;
-	box_model.mesh_path = ut::String(ve::render::engine_rc::skDir) + mesh_name;
-	box_model.diffuse_mul.R() = r1 / 1050.0f;
-	box_model.diffuse_mul.G() = r2 / 1000.0f;
-	box_model.diffuse_mul.B() = r3 / 1000.0f;
+	// mesh unit
+	ve::render::MeshInstance mesh_instance;
+	mesh_instance.local_trasform.translation.X() = (rand() % 200) / 40.0f;
+	mesh_instance.local_trasform.translation.Y() = (rand() % 200) / 40.0f;
+	mesh_instance.local_trasform.translation.Z() = (rand() % 200) / 40.0f;
+	mesh_instance.mesh_path = ut::String(ve::render::engine_rc::skDir) + mesh_name;
+	mesh_instance.diffuse_mul.R() = r1 / 1050.0f;
+	mesh_instance.diffuse_mul.G() = r2 / 1000.0f;
+	mesh_instance.diffuse_mul.B() = r3 / 1000.0f;
 
 	const bool is_metallic = rand() % 10 == 0;
 	float roughness = static_cast<float>((rand() % 250) + 5) / 255.0f;
 
-	box_model.material_mul.X() = roughness;
-	box_model.material_add.Y() = is_metallic ? 1.0f : 0.0f;
+	mesh_instance.material_mul.X() = roughness;
+	mesh_instance.material_add.Y() = is_metallic ? 1.0f : 0.0f;
 
 	// render component
 	ve::RenderComponent render_component;
-	render_component.units.Add(ut::MakeUnique<ve::render::Model>(ut::Move(box_model)));
+	render_component.units.Add(ut::MakeUnique<ve::render::MeshInstance>(ut::Move(mesh_instance)));
 
 	// entity
 	ut::Array< ut::UniquePtr<ve::Component> > box;

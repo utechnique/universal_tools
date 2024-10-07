@@ -4,26 +4,26 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "ve_render_toolset.h"
-#include "units/ve_render_model.h"
+#include "units/ve_render_mesh_instance.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// ve::render::ModelBatcher class is used to minimize the number of models'
+// ve::render::Batcher class is used to minimize the number of
 // draw calls and cpu->gpu data transfer time.
-class ModelBatcher
+class Batcher
 {
 public:
 	// Per-frame gpu resources.
 	struct FrameData
 	{
-		ut::Array<Model::Batch> batches;
+		ut::Array<MeshInstance::Batch> batches;
 	};
 
 	// Constructor.
-	ModelBatcher(Toolset &toolset_ref);
+	Batcher(Toolset &toolset_ref);
 
-	// Registers provided model unit.
+	// Registers provided mesh instance unit.
 	void Register(Entity::Id entity_id, ut::Array< ut::UniquePtr<Unit> >& units);
 
 	// Unregisters all units with the provided entity identifier..
@@ -31,7 +31,7 @@ public:
 
 	// Updates a batch (material and transform buffer) with specified units.
 	void UpdateBatch(Context& context,
-	                 Model::Batch& batch,
+	                 MeshInstance::Batch& batch,
 	                 size_t first_element_id,
 	                 size_t element_count);
 
@@ -54,7 +54,7 @@ public:
 	Buffer instance_buffer;
 
 	// 'drawcall' here means indivisible part of a mesh
-	ut::Array<Model::DrawCall> draw_calls;
+	ut::Array<MeshInstance::DrawCall> draw_calls;
 
 private:
 	// Creates a vertex buffer with instance id for the batch.

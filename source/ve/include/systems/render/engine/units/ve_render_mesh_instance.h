@@ -9,8 +9,9 @@
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// ve::render::Model is a compact general-purpose unit.
-class Model : public Unit
+// ve::render::MeshInstance is a compact general-purpose render unit to draw
+// vertex mesh.
+class MeshInstance : public Unit
 {
 public:
 	// It makes sense to store shader uniforms in one big buffer instead of
@@ -22,11 +23,11 @@ public:
 		Buffer entity_id;
 	};
 
-	// Engine divides a model unit into pieces that can be rendered 
+	// Engine divides a mesh instance unit into pieces that can be rendered 
 	// using only one drawcall.
 	struct DrawCall
 	{
-		Model& model;
+		MeshInstance& instance;
 		Entity::Id entity_id;
 		ut::uint32 subset_id;
 	};
@@ -56,7 +57,7 @@ public:
 	// Identify() method must be implemented for the polymorphic types.
 	const ut::DynamicType& Identify() const;
 
-	// Registers this model unit into the reflection tree.
+	// Registers this mesh instance unit into the reflection tree.
 	//    @param snapshot - reference to the reflection tree.
 	void Reflect(ut::meta::Snapshot& snapshot);
 
@@ -81,7 +82,7 @@ public:
 	// component of all mesh materials.
 	ut::Color<3> material_mul = ut::Color<3>(1);
 
-	// Determines if this model has separate stencil mask bit enabled.
+	// Determines if this mesh instance has separate stencil mask bit enabled.
 	bool highlighted = false;
 };
 

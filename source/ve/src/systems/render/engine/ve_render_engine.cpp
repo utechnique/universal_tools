@@ -41,9 +41,9 @@ void Engine::RegisterEntity(Entity::Id id,
 {
 	unit_mgr.selector.Select(id, units);
 
-	// model units must be registered separately
-	Policy<Model>& model_policy = unit_mgr.policies.Get<Model>();
-	model_policy.batcher.Register(id, units);
+	// mesh instance units must be registered separately
+	Policy<MeshInstance>& mesh_instance_policy = unit_mgr.policies.Get<MeshInstance>();
+	mesh_instance_policy.batcher.Register(id, units);
 }
 
 // Excludes units of the specified entity from the rendering scene.
@@ -51,9 +51,9 @@ void Engine::UnregisterEntity(Entity::Id id)
 {
 	unit_mgr.selector.Remove(id);
 
-	// model units must be unregistered separately
-	Policy<Model>& model_policy = unit_mgr.policies.Get<Model>();
-	model_policy.batcher.Unregister(id);
+	// mesh instance units must be unregistered separately
+	Policy<MeshInstance>& mesh_instance_policy = unit_mgr.policies.Get<MeshInstance>();
+	mesh_instance_policy.batcher.Unregister(id);
 }
 
 // Initializes a unit with the correct policy.
@@ -152,9 +152,9 @@ void Engine::RecordFrameCommands(Context& context,
                                  ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports,
                                  System::Time time_step_ms)
 {
-	// generate global transform buffer for all model units
-	Policy<Model>& model_policy = unit_mgr.policies.Get<Model>();
-	model_policy.batcher.UpdateBuffers(context);
+	// generate global transform buffer for all mesh instance units
+	Policy<MeshInstance>& mesh_instance_policy = unit_mgr.policies.Get<MeshInstance>();
+	mesh_instance_policy.batcher.UpdateBuffers(context);
 
 	// render environment to view units
 	Policy<View>& view_policy = unit_mgr.policies.Get<View>();

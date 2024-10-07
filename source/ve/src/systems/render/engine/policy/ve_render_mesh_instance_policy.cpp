@@ -1,39 +1,30 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#pragma once
-//----------------------------------------------------------------------------//
-#include "systems/render/engine/ve_render_unit_mgr.h"
-#include "systems/render/engine/ve_render_model_batcher.h"
-
+#include "systems/render/engine/policy/ve_render_mesh_instance_policy.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-// Model Policy.
-template<> class Policy<Model>
+// Constructor.
+Policy<MeshInstance>::Policy(Toolset &toolset,
+                      UnitSelector& unit_selector,
+                      Policies& engine_policies) : tools(toolset)
+                                                 , batcher(toolset)
+{}
+
+
+// Initializes a provided mesh instance unit.
+void Policy<MeshInstance>::Initialize(MeshInstance& instance)
 {
-public:
-	// Per-frame gpu resources.
-	struct FrameData
+	// load mesh resource
+	ut::Result<RcRef<Mesh>, ut::Error> mesh = tools.rc_mgr.Find<Mesh>(instance.mesh_path);
+	if (!mesh)
 	{
-		ut::Array<Model::Batch> batches;
-	};
-
-	// Constructor.
-	Policy(Toolset &toolset_ref,
-	       UnitSelector& unit_selector,
-	       Policies& policy_mgr);
-
-	// Initializes a provided model unit.
-	void Initialize(Model& model);
-
-	// batcher gathers model units into batches
-	ModelBatcher batcher;
-
-private:
-	Toolset &tools;
-};
+		throw ut::Error(ut::error::not_found);
+	}
+	instance.mesh = mesh.Move();
+}
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

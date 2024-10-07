@@ -2,7 +2,10 @@
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/lighting/ve_lighting_manager.h"
-#include "systems/render/engine/policy/ve_render_model_policy.h"
+#include "systems/render/engine/policy/ve_render_ambient_light_policy.h"
+#include "systems/render/engine/policy/ve_render_directional_light_policy.h"
+#include "systems/render/engine/policy/ve_render_point_light_policy.h"
+#include "systems/render/engine/policy/ve_render_spot_light_policy.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)

@@ -247,10 +247,10 @@ CmdArray ViewportSelectionSystem::Deselect(VssSelectedEntitiesAccess& all_select
 
 		for (ut::UniquePtr<render::Unit>& unit : selected_render.units)
 		{
-			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::Model>())
+			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::MeshInstance>())
 			{
-				render::Model& model = static_cast<render::Model&>(unit.GetRef());
-				model.highlighted = false;
+				render::MeshInstance& mesh_instance = static_cast<render::MeshInstance&>(unit.GetRef());
+				mesh_instance.highlighted = false;
 			}
 		}
 
@@ -319,10 +319,10 @@ CmdArray ViewportSelectionSystem::HighlightSelectedEntities(VssRenderableSelecte
 
 		for (ut::UniquePtr<render::Unit>& unit : selected_render.units)
 		{
-			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::Model>())
+			if (unit->Identify().GetHandle() == ut::GetPolymorphicHandle<ve::render::MeshInstance>())
 			{
-				render::Model& model = static_cast<render::Model&>(unit.GetRef());
-				model.highlighted = true;
+				render::MeshInstance& mesh_instance = static_cast<render::MeshInstance&>(unit.GetRef());
+				mesh_instance.highlighted = true;
 			}
 		}
 	}

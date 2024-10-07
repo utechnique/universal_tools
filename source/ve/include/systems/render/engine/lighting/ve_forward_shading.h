@@ -4,7 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_toolset.h"
-#include "systems/render/engine/ve_render_model_batcher.h"
+#include "systems/render/engine/ve_render_batcher.h"
 #include "systems/render/engine/units/ve_render_directional_light.h"
 #include "systems/render/engine/units/ve_render_point_light.h"
 #include "systems/render/engine/units/ve_render_spot_light.h"
@@ -15,7 +15,7 @@ START_NAMESPACE(render)
 START_NAMESPACE(lighting)
 //----------------------------------------------------------------------------//
 // Encapsulates forward shading techniques. Forward renderer draws objects that
-// can't be rendered via deferred rendering (such as transparent models).
+// can't be rendered via deferred rendering (such as transparent mesh instances).
 class ForwardShading
 {
 public:
@@ -53,7 +53,7 @@ public:
 	                             ForwardShading::ViewData& data,
 	                             Buffer& view_uniform_buffer,
 	                             const ut::Vector<3>& view_position,
-	                             ModelBatcher& batcher,
+	                             Batcher& batcher,
 	                             Light::Sources& lights,
 	                             ut::Optional<Image&> ibl_cubemap,
 	                             Image::Cube::Face cubeface = Image::Cube::positive_x);
@@ -62,7 +62,7 @@ private:
 	// Light pass pipeline permutations.
 	struct LightPass
 	{
-		struct ModelRendering
+		struct MeshInstRendering
 		{
 			enum AlphaTest
 			{
@@ -143,7 +143,7 @@ private:
 	// IBL pass pipeline permutations.
 	struct IblPass
 	{
-		struct ModelRendering
+		struct MeshInstRendering
 		{
 			enum AlphaTest
 			{
@@ -209,39 +209,39 @@ private:
 		};
 	};
 
-	// Renders specified range of models.
-	void RenderTransparentModelJob(Context& context,
-	                               ForwardShading::ViewData& data,
-	                               Light::Sources& lights,
-	                               Buffer& view_uniform_buffer,
-	                               ModelBatcher& batcher,
-	                               ut::Optional<Image&> ibl_cubemap,
-	                               ut::uint32 thread_id,
-	                               ut::uint32 offset,
-	                               ut::uint32 count);
+	// Renders specified range of mesh instances.
+	void RenderTransparentMeshInstancesJob(Context& context,
+	                                       ForwardShading::ViewData& data,
+	                                       Light::Sources& lights,
+	                                       Buffer& view_uniform_buffer,
+	                                       Batcher& batcher,
+	                                       ut::Optional<Image&> ibl_cubemap,
+	                                       ut::uint32 thread_id,
+	                                       ut::uint32 offset,
+	                                       ut::uint32 count);
 
-	// Applies direct lighting to the specified model.
-	void RenderTransparentModelLights(Context& context,
-	                                  ForwardShading::ViewData& data,
-	                                  Light::Sources& lights,
-	                                  Buffer& view_uniform_buffer,
-	                                  ModelBatcher& batcher,
-	                                  LightPass::ModelRendering::IblPreset ibl_preset,
-	                                  LightPass::ModelRendering::CullMode cull_mode,
-	                                  LightPass::ModelRendering::AlphaMode alpha_mode,
-	                                  ut::uint32 drawcall_id,
-	                                  ut::uint32 thread_id);
+	// Applies direct lighting to the specified mesh instance.
+	void RenderTransparentMeshInstanceLights(Context& context,
+	                                         ForwardShading::ViewData& data,
+	                                         Light::Sources& lights,
+	                                         Buffer& view_uniform_buffer,
+	                                         Batcher& batcher,
+	                                         LightPass::MeshInstRendering::IblPreset ibl_preset,
+	                                         LightPass::MeshInstRendering::CullMode cull_mode,
+	                                         LightPass::MeshInstRendering::AlphaMode alpha_mode,
+	                                         ut::uint32 drawcall_id,
+	                                         ut::uint32 thread_id);
 
-	// Applies direct lighting to the specified model.
-	void RenderTransparentModelIbl(Context& context,
-	                               ForwardShading::ViewData& data,
-	                               Image& ibl_cubemap,
-	                               Buffer& view_uniform_buffer,
-	                               ModelBatcher& batcher,
-	                               IblPass::ModelRendering::CullMode cull_mode,
-	                               IblPass::ModelRendering::AlphaMode alpha_mode,
-	                               ut::uint32 drawcall_id,
-	                               ut::uint32 thread_id);
+	// Applies direct lighting to the specified mesh instance.
+	void RenderTransparentMeshInstanceIbl(Context& context,
+	                                      ForwardShading::ViewData& data,
+	                                      Image& ibl_cubemap,
+	                                      Buffer& view_uniform_buffer,
+	                                      Batcher& batcher,
+	                                      IblPass::MeshInstRendering::CullMode cull_mode,
+	                                      IblPass::MeshInstRendering::AlphaMode alpha_mode,
+	                                      ut::uint32 drawcall_id,
+	                                      ut::uint32 thread_id);
 
 	// Renders provided mesh.
 	static void DrawMesh(Context& context,
@@ -254,36 +254,36 @@ private:
 	                     ut::uint32 instance_offset);
 
 	// Creates a shader for the lighting pass.
-	ut::Array<BoundShader> CreateModelLightPassShader();
+	ut::Array<BoundShader> CreateMeshInstLightPassShader();
 
 	// Creates a shader for the ibl pass.
-	ut::Array<BoundShader> CreateModelIblShader(ut::uint32 ibl_mip_count);
+	ut::Array<BoundShader> CreateMeshInstIblShader(ut::uint32 ibl_mip_count);
 
 	// Creates a render pass for the shading techniques.
 	ut::Result<RenderPass, ut::Error> CreateLightPass(pixel::Format depth_stencil_format,
 	                                                  pixel::Format light_buffer_format);
 
 	// Creates a pipeline state to apply lighting.
-	ut::Result<PipelineState, ut::Error> CreateModelLightPassPipeline(RenderPass& light_pass,
-	                                                                  ut::uint32 width,
-	                                                                  ut::uint32 height,
-	                                                                  Mesh::VertexFormat vertex_format,
-	                                                                  LightPass::ModelRendering::AlphaTest alpha_test,
-	                                                                  LightPass::ModelRendering::AlphaMode alpha_mode,
-	                                                                  LightPass::ModelRendering::IblPreset ibl_preset,
-	                                                                  Light::SourceType source_type,
-	                                                                  LightPass::ModelRendering::CullMode cull_mode,
-	                                                                  LightPass::ModelRendering::StencilMode stencil_mode);
+	ut::Result<PipelineState, ut::Error> CreateMeshInstLightPassPipeline(RenderPass& light_pass,
+	                                                                     ut::uint32 width,
+	                                                                     ut::uint32 height,
+	                                                                     Mesh::VertexFormat vertex_format,
+	                                                                     LightPass::MeshInstRendering::AlphaTest alpha_test,
+	                                                                     LightPass::MeshInstRendering::AlphaMode alpha_mode,
+	                                                                     LightPass::MeshInstRendering::IblPreset ibl_preset,
+	                                                                     Light::SourceType source_type,
+	                                                                     LightPass::MeshInstRendering::CullMode cull_mode,
+	                                                                     LightPass::MeshInstRendering::StencilMode stencil_mode);
 
 	// Creates a pipeline state to apply ibl reflections.
-	ut::Result<PipelineState, ut::Error> CreateModelIblPassPipeline(RenderPass& light_pass,
-	                                                                ut::uint32 width,
-	                                                                ut::uint32 height,
-	                                                                Mesh::VertexFormat vertex_format,
-	                                                                IblPass::ModelRendering::AlphaTest alpha_test,
-	                                                                IblPass::ModelRendering::AlphaMode alpha_mode,
-	                                                                IblPass::ModelRendering::CullMode cull_mode,
-	                                                                IblPass::ModelRendering::StencilMode stencil_mode);
+	ut::Result<PipelineState, ut::Error> CreateMeshInstIblPassPipeline(RenderPass& light_pass,
+	                                                                   ut::uint32 width,
+	                                                                   ut::uint32 height,
+	                                                                   Mesh::VertexFormat vertex_format,
+	                                                                   IblPass::MeshInstRendering::AlphaTest alpha_test,
+	                                                                   IblPass::MeshInstRendering::AlphaMode alpha_mode,
+	                                                                   IblPass::MeshInstRendering::CullMode cull_mode,
+	                                                                   IblPass::MeshInstRendering::StencilMode stencil_mode);
 
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();
@@ -291,7 +291,7 @@ private:
 	// Performes Z-sotring for transparent objects and stores the result in
 	// @z_sorted_dc_indices array.
 	void SortTransparentDrawCalls(const ut::Vector<3>& view_position,
-	                              ut::Array<Model::DrawCall>& draw_list);
+	                              ut::Array<MeshInstance::DrawCall>& draw_list);
 
 	// Common rendering tools.
 	Toolset& tools;
@@ -301,8 +301,8 @@ private:
 	ut::Array<BoundShader> ibl_shader;
 
 	// Descriptors.
-	ut::Array<LightPass::ModelRendering::Descriptors> lightpass_model_desc_set;
-	ut::Array<IblPass::ModelRendering::Descriptors> iblpass_model_desc_set;
+	ut::Array<LightPass::MeshInstRendering::Descriptors> lightpass_mesh_inst_desc_set;
+	ut::Array<IblPass::MeshInstRendering::Descriptors> iblpass_mesh_inst_desc_set;
 
 	// Secondary command buffers to parallelize cpu work.
 	ut::Array< ut::Ref<CmdBuffer> > secondary_buffer_cache;

@@ -121,7 +121,7 @@ void Policy<View>::RenderEnvironment(Context& context,
 void Policy<View>::RenderView(Context& context, View& view, Light::Sources& lights)
 {
 	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
-	Policy<Model>& model_policy = policies.Get<Model>();
+	Policy<MeshInstance>& mesh_instance_policy = policies.Get<MeshInstance>();
 
 	// get current frame
 	View::FrameData& frame = view.data->frames[current_frame_id];
@@ -156,7 +156,7 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 		             frame.scene.depth_stencil,
 		             frame.hitmask,
 		             view_uniform_buffer,
-		             model_policy.batcher);
+		             mesh_instance_policy.batcher);
 	}
 
 	// image based lighting
@@ -284,7 +284,7 @@ Image& Policy<View>::RenderLightPass(Context& context,
                                      ut::Optional<Image&> ibl_cubemap,
                                      Image::Cube::Face face)
 {
-	Policy<Model>& model_policy = policies.Get<Model>();
+	Policy<MeshInstance>& mesh_instance_policy = policies.Get<MeshInstance>();
 
 	// update view uniform buffer
 	UpdateViewUniforms(context, scene, view_matrix, proj_matrix, view_position, face);
@@ -294,7 +294,7 @@ Image& Policy<View>::RenderLightPass(Context& context,
 	                                                 scene.depth_stencil,
 	                                                 scene.lighting.deferred_shading,
 	                                                 scene.view_ub[face],
-	                                                 model_policy.batcher,
+	                                                 mesh_instance_policy.batcher,
 	                                                 face);
 
 	// exit if the view mode is set to show one of the g-buffer targets
@@ -325,7 +325,7 @@ Image& Policy<View>::RenderLightPass(Context& context,
 	                                                     scene.lighting.forward_shading,
 	                                                     scene.view_ub[face],
 	                                                     view_position,
-	                                                     model_policy.batcher,
+	                                                     mesh_instance_policy.batcher,
 	                                                     lights,
 	                                                     ibl_cubemap,
 	                                                     face);

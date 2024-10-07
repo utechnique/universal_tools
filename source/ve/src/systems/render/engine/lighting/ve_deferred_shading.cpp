@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/units/ve_render_view.h"
 #include "systems/render/engine/lighting/ve_deferred_shading.h"
-#include "systems/render/engine/policy/ve_render_model_policy.h"
+#include "systems/render/engine/policy/ve_render_mesh_instance_policy.h"
 #include "systems/render/engine/ve_render_stencil_ref.h"
 
 //----------------------------------------------------------------------------//
@@ -14,7 +14,7 @@ START_NAMESPACE(lighting)
 // Constructor.
 DeferredShading::DeferredShading(Toolset& toolset,
                                  ut::uint32 ibl_mip_count) : tools(toolset)
-                                                           , model_gpass_shader(CreateModelGPassShader())
+                                                           , mesh_inst_gpass_shader(CreateMeshInstGPassShader())
                                                            , ibl_shader(CreateIblShader(ibl_mip_count))
 {
 	constexpr size_t light_permutation_count = LightPass::Grid::size;
@@ -79,7 +79,7 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 	}
 
 	// render pass
-	ut::Result<RenderPass, ut::Error> geometry_pass = CreateModelGeometryPass(depth_stencil_format);
+	ut::Result<RenderPass, ut::Error> geometry_pass = CreateMeshInstGeometryPass(depth_stencil_format);
 	if (!geometry_pass)
 	{
 		return ut::MakeError(geometry_pass.MoveAlt());
@@ -126,28 +126,28 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 		light_framebuffer.Add(framebuffer.Move());
 	}
 
-	// model gpass pipeline state
-	constexpr ut::uint32 model_pipeline_count = static_cast<ut::uint32>(GeometryPass::ModelRendering::PipelineGrid::size);
-	ut::Array<PipelineState> model_gpass_pipeline;
-	for (ut::uint32 i = 0; i < model_pipeline_count; i++)
+	// mesh instance gpass pipeline state
+	constexpr ut::uint32 mesh_inst_pipeline_count = static_cast<ut::uint32>(GeometryPass::MeshInstRendering::PipelineGrid::size);
+	ut::Array<PipelineState> mesh_inst_gpass_pipeline;
+	for (ut::uint32 i = 0; i < mesh_inst_pipeline_count; i++)
 	{
-		const size_t vertex_format = GeometryPass::ModelRendering::PipelineGrid::GetCoordinate<GeometryPass::ModelRendering::vertex_format_column>(i);
-		const size_t alpha_mode = GeometryPass::ModelRendering::PipelineGrid::GetCoordinate<GeometryPass::ModelRendering::alpha_mode_column>(i);
-		const size_t cull_mode = GeometryPass::ModelRendering::PipelineGrid::GetCoordinate<GeometryPass::ModelRendering::cull_mode_column>(i);
-		const size_t stencil_mode = GeometryPass::ModelRendering::PipelineGrid::GetCoordinate<GeometryPass::ModelRendering::stencil_mode_column>(i);
+		const size_t vertex_format = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::vertex_format_column>(i);
+		const size_t alpha_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::alpha_mode_column>(i);
+		const size_t cull_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::cull_mode_column>(i);
+		const size_t stencil_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::stencil_mode_column>(i);
 
-		ut::Result<PipelineState, ut::Error> pipeline = CreateModelGPassPipeline(geometry_pass.Get(),
-		                                                                         width, height,
-		                                                                         static_cast<Mesh::VertexFormat>(vertex_format),
-		                                                                         static_cast<GeometryPass::ModelRendering::AlphaMode>(alpha_mode),
-		                                                                         static_cast<GeometryPass::ModelRendering::CullMode>(cull_mode),
-		                                                                         static_cast<GeometryPass::ModelRendering::StencilMode>(stencil_mode));
+		ut::Result<PipelineState, ut::Error> pipeline = CreateMeshInstGPassPipeline(geometry_pass.Get(),
+		                                                                            width, height,
+		                                                                            static_cast<Mesh::VertexFormat>(vertex_format),
+		                                                                            static_cast<GeometryPass::MeshInstRendering::AlphaMode>(alpha_mode),
+		                                                                            static_cast<GeometryPass::MeshInstRendering::CullMode>(cull_mode),
+		                                                                            static_cast<GeometryPass::MeshInstRendering::StencilMode>(stencil_mode));
 		if (!pipeline)
 		{
 			return ut::MakeError(pipeline.MoveAlt());
 		}
 
-		if (!model_gpass_pipeline.Add(pipeline.Move()))
+		if (!mesh_inst_gpass_pipeline.Add(pipeline.Move()))
 		{
 			return ut::MakeError(ut::error::out_of_memory);
 		}
@@ -211,7 +211,7 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 		light_pass.Move(),
 		ut::Move(gpass_framebuffer),
 		ut::Move(light_framebuffer),
-		ut::Move(model_gpass_pipeline),
+		ut::Move(mesh_inst_gpass_pipeline),
 		ut::Move(lightpass_pipeline),
 		ibl_pipeline.Move(),
 		ut::Move(gpass_cmd),
@@ -225,10 +225,10 @@ void DeferredShading::BakeOpaqueGeometry(Context& context,
                                          Target& depth_stencil,
                                          DeferredShading::ViewData& data,
                                          Buffer& view_uniform_buffer,
-                                         ModelBatcher& batcher,
+                                         Batcher& batcher,
                                          Image::Cube::Face cubeface)
 {
-	BakeOpaqueModels(context, data, view_uniform_buffer, batcher, cubeface);
+	BakeOpaqueMeshInstances(context, data, view_uniform_buffer, batcher, cubeface);
 
 	// copy depth to the intermediate buffer
 	context.SetTargetState(depth_stencil, Target::Info::state_transfer_src);
@@ -374,19 +374,19 @@ void DeferredShading::Shade(Context& context,
 	context.EndRenderPass();
 }
 
-// Renders model units to the g-buffer.
-void DeferredShading::BakeOpaqueModels(Context& context,
-                                       DeferredShading::ViewData& data,
-                                       Buffer& view_uniform_buffer,
-                                       ModelBatcher& batcher,
-                                       Image::Cube::Face cubeface)
+// Renders mesh instance units to the g-buffer.
+void DeferredShading::BakeOpaqueMeshInstances(Context& context,
+                                              DeferredShading::ViewData& data,
+                                              Buffer& view_uniform_buffer,
+                                              Batcher& batcher,
+                                              Image::Cube::Face cubeface)
 {
 	// get the number of available threads
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
-	UT_ASSERT(thread_count == gpass_model_desc_set.Count());
+	UT_ASSERT(thread_count == gpass_mesh_inst_desc_set.Count());
 
-	// get the number of model drawcalls
-	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;
+	// get the number of drawcalls
+	ut::Array<MeshInstance::DrawCall>& draw_list = batcher.draw_calls;
 	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.Count());
 
 	// initialize secondary buffers for a parallel work
@@ -412,13 +412,13 @@ void DeferredShading::BakeOpaqueModels(Context& context,
 
 		auto record_commands = [&, thread_id, offset, count](Context& deferred_context)
 		{
-			BakeOpaqueModelsJob(deferred_context,
-			                    data,
-			                    view_uniform_buffer,
-			                    batcher,
-			                    thread_id,
-			                    offset,
-			                    count);
+			BakeOpaqueMeshInstancesJob(deferred_context,
+			                           data,
+			                           view_uniform_buffer,
+			                           batcher,
+			                           thread_id,
+			                           offset,
+			                           count);
 		};
 
 		auto job = [&, thread_id, record_commands]()
@@ -440,14 +440,14 @@ void DeferredShading::BakeOpaqueModels(Context& context,
 	context.EndRenderPass();
 }
 
-// Helper function to draw a model's subset.
-inline void PerformModelDrawCall(Context& context,
-                                 Buffer* index_buffer,
-                                 ut::uint32 index_offset,
-                                 ut::uint32 index_count,
-                                 ut::uint32 instance_count,
-                                 ut::uint32 call_id,
-                                 ut::uint32 batch_size)
+// Helper function to draw a mesh subset.
+inline void PerformMeshInstDrawCall(Context& context,
+                                    Buffer* index_buffer,
+                                    ut::uint32 index_offset,
+                                    ut::uint32 index_count,
+                                    ut::uint32 instance_count,
+                                    ut::uint32 call_id,
+                                    ut::uint32 batch_size)
 {
 	if (instance_count == 0)
 	{
@@ -472,37 +472,37 @@ inline void PerformModelDrawCall(Context& context,
 	}
 }
 
-// Renders specified range of models.
-void DeferredShading::BakeOpaqueModelsJob(Context& context,
-                                          DeferredShading::ViewData& data,
-                                          Buffer& view_uniform_buffer,
-                                          ModelBatcher& batcher,
-                                          ut::uint32 thread_id,
-                                          ut::uint32 offset,
-                                          ut::uint32 count)
+// Renders specified range of mesh instances.
+void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
+                                                 DeferredShading::ViewData& data,
+                                                 Buffer& view_uniform_buffer,
+                                                 Batcher& batcher,
+                                                 ut::uint32 thread_id,
+                                                 ut::uint32 offset,
+                                                 ut::uint32 count)
 {
 	if (count == 0)
 	{
 		return;
 	}
 
-	// extract model policy data
+	// get batcher data
 	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
-	ut::Array<Model::DrawCall>& draw_list = batcher.draw_calls;
+	ut::Array<MeshInstance::DrawCall>& draw_list = batcher.draw_calls;
 	Buffer& instance_buffer = batcher.instance_buffer;
-	ut::Array<Model::Batch>& batches = batcher.frame_data[current_frame_id].batches;
+	ut::Array<MeshInstance::Batch>& batches = batcher.frame_data[current_frame_id].batches;
 	const ut::uint32 batch_size = batcher.GetBatchSize();
 
 	// set common uniforms
-	GeometryPass::ModelRendering::Descriptors& desc_set = gpass_model_desc_set[thread_id];
+	GeometryPass::MeshInstRendering::Descriptors& desc_set = gpass_mesh_inst_desc_set[thread_id];
 	desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
 	desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
 
 	// variables tracking if something changes between iterations
 	Mesh::VertexFormat prev_vertex_format = Mesh::vertex_format_count;
-	GeometryPass::ModelRendering::AlphaMode prev_alpha_mode = GeometryPass::ModelRendering::alpha_mode_count;
-	GeometryPass::ModelRendering::CullMode prev_cull_mode = GeometryPass::ModelRendering::cull_mode_count;
-	GeometryPass::ModelRendering::StencilMode prev_stencil_mode = GeometryPass::ModelRendering::stencil_mode_count;
+	GeometryPass::MeshInstRendering::AlphaMode prev_alpha_mode = GeometryPass::MeshInstRendering::alpha_mode_count;
+	GeometryPass::MeshInstRendering::CullMode prev_cull_mode = GeometryPass::MeshInstRendering::cull_mode_count;
+	GeometryPass::MeshInstRendering::StencilMode prev_stencil_mode = GeometryPass::MeshInstRendering::stencil_mode_count;
 	Map* prev_diffuse_ptr = nullptr;
 	Map* prev_normal_ptr = nullptr;
 	Map* prev_material_ptr = nullptr;
@@ -521,8 +521,8 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
 	for (ut::uint32 i = offset; i <= last_element; i++)
 	{
 		// extract material
-		Model::DrawCall& dc = draw_list[i];
-		Mesh& mesh = dc.model.mesh.Get();
+		MeshInstance::DrawCall& dc = draw_list[i];
+		Mesh& mesh = dc.instance.mesh.Get();
 		Mesh::Subset& subset = mesh.subsets[dc.subset_id];
 		Material& material = subset.material;
 		const bool is_transparent = material.alpha == Material::alpha_transparent;
@@ -530,16 +530,16 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
 		// skip transparent materials
 		if (is_transparent)
 		{
-			PerformModelDrawCall(context, prev_index_buffer,
-			                     prev_index_offset, prev_index_count,
-			                     instance_count, i - 1, batch_size);
+			PerformMeshInstDrawCall(context, prev_index_buffer,
+			                        prev_index_offset, prev_index_count,
+			                        instance_count, i - 1, batch_size);
 			instance_count = 0;
 			continue;
 		}
 
 		// calculate batch id
 		const ut::uint32 batch_id = i / batch_size;
-		Model::Batch& batch = batches[batch_id];
+		MeshInstance::Batch& batch = batches[batch_id];
 
 		// material maps
 		Map* diffuse_ptr = &material.diffuse.Get();
@@ -556,15 +556,15 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
 
 		// check pipeline state
 		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
-		const GeometryPass::ModelRendering::AlphaMode alpha_mode = material.alpha == Material::alpha_masked ?
-		                                                           GeometryPass::ModelRendering::alpha_test :
-		                                                           GeometryPass::ModelRendering::alpha_opaque;
-		const GeometryPass::ModelRendering::CullMode cull_mode = material.double_sided ?
-		                                                         GeometryPass::ModelRendering::cull_none :
-		                                                         GeometryPass::ModelRendering::cull_back;
-		const GeometryPass::ModelRendering::StencilMode stencil_mode = dc.model.highlighted ?
-		                                                               GeometryPass::ModelRendering::stencil_opaque_and_highlighted :
-		                                                               GeometryPass::ModelRendering::stencil_opaque;
+		const GeometryPass::MeshInstRendering::AlphaMode alpha_mode = material.alpha == Material::alpha_masked ?
+		                                                              GeometryPass::MeshInstRendering::alpha_test :
+		                                                              GeometryPass::MeshInstRendering::alpha_opaque;
+		const GeometryPass::MeshInstRendering::CullMode cull_mode = material.double_sided ?
+		                                                            GeometryPass::MeshInstRendering::cull_none :
+		                                                            GeometryPass::MeshInstRendering::cull_back;
+		const GeometryPass::MeshInstRendering::StencilMode stencil_mode = dc.instance.highlighted ?
+		                                                                  GeometryPass::MeshInstRendering::stencil_opaque_and_highlighted :
+		                                                                  GeometryPass::MeshInstRendering::stencil_opaque;
 		bool pipeline_changed = prev_vertex_format != vertex_format ||
 		                        prev_cull_mode != cull_mode ||
 		                        prev_alpha_mode != alpha_mode ||
@@ -594,9 +594,9 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
 		// draw previous instance group
 		if (state_changed && (i != offset))
 		{
-			PerformModelDrawCall(context, prev_index_buffer,
-			                     prev_index_offset, prev_index_count,
-			                     instance_count, i - 1, batch_size);
+			PerformMeshInstDrawCall(context, prev_index_buffer,
+			                        prev_index_offset, prev_index_count,
+			                        instance_count, i - 1, batch_size);
 			instance_count = 0;
 		}
 		instance_count++;
@@ -604,11 +604,11 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
 		// set pipeline state
 		if (pipeline_changed)
 		{
-			const size_t pipeline_state_id = GeometryPass::ModelRendering::PipelineGrid::GetId(vertex_format,
-			                                                                                   alpha_mode,
-			                                                                                   cull_mode,
-			                                                                                   stencil_mode);
-			context.BindPipelineState(data.model_gpass_pipeline[pipeline_state_id]);
+			const size_t pipeline_state_id = GeometryPass::MeshInstRendering::PipelineGrid::GetId(vertex_format,
+			                                                                                      alpha_mode,
+			                                                                                      cull_mode,
+			                                                                                      stencil_mode);
+			context.BindPipelineState(data.mesh_gpass_pipeline[pipeline_state_id]);
 
 			prev_vertex_format = vertex_format;
 			prev_alpha_mode = alpha_mode;
@@ -659,19 +659,19 @@ void DeferredShading::BakeOpaqueModelsJob(Context& context,
 		// draw last element
 		if (i == last_element)
 		{
-			PerformModelDrawCall(context, index_buffer,
-			                     index_offset, index_count,
-			                     instance_count, i, batch_size);
+			PerformMeshInstDrawCall(context, index_buffer,
+			                        index_offset, index_count,
+			                        instance_count, i, batch_size);
 		}
 	}
 }
 
 // Creates shaders for rendering geometry to the g-buffer.
-ut::Array<BoundShader> DeferredShading::CreateModelGPassShader()
+ut::Array<BoundShader> DeferredShading::CreateMeshInstGPassShader()
 {
-	const ut::String shader_name_prefix = "model_gpass_";
+	const ut::String shader_name_prefix = "mesh_gpass_";
 	ut::Array<BoundShader> shaders;
-	const size_t shader_count = GeometryPass::ModelRendering::ShaderGrid::size;
+	const size_t shader_count = GeometryPass::MeshInstRendering::ShaderGrid::size;
 	for (size_t i = 0; i < shader_count; i++)
 	{
 		ut::String shader_name_suffix;
@@ -690,17 +690,21 @@ ut::Array<BoundShader> DeferredShading::CreateModelGPassShader()
 
 		// batch size
 		macro.name = "BATCH_SIZE";
-		macro.value = ut::Print(ModelBatcher::CalculateBatchSize(tools.device));
+		macro.value = ut::Print(Batcher::CalculateBatchSize(tools.device));
 		macros.Add(macro);
 
 		// vertex traits
-		Mesh::VertexFormat vertex_format = static_cast<Mesh::VertexFormat>(GeometryPass::ModelRendering::ShaderGrid::GetCoordinate<GeometryPass::ModelRendering::vertex_format_column>(i));
+		Mesh::VertexFormat vertex_format =
+			static_cast<Mesh::VertexFormat>(
+				GeometryPass::MeshInstRendering::ShaderGrid::GetCoordinate<GeometryPass::MeshInstRendering::vertex_format_column>(i));
 		macros += Mesh::GenerateVertexMacros(vertex_format, true);
 		shader_name_suffix += ut::String("_vf") + ut::Print<ut::uint32>(vertex_format);
 
 		// alpha mode
-		GeometryPass::ModelRendering::AlphaMode alpha_mode = static_cast<GeometryPass::ModelRendering::AlphaMode>(GeometryPass::ModelRendering::ShaderGrid::GetCoordinate<GeometryPass::ModelRendering::alpha_mode_column>(i));
-		const bool alpha_test = alpha_mode == GeometryPass::ModelRendering::alpha_test;
+		GeometryPass::MeshInstRendering::AlphaMode alpha_mode =
+			static_cast<GeometryPass::MeshInstRendering::AlphaMode>(
+				GeometryPass::MeshInstRendering::ShaderGrid::GetCoordinate<GeometryPass::MeshInstRendering::alpha_mode_column>(i));
+		const bool alpha_test = alpha_mode == GeometryPass::MeshInstRendering::alpha_test;
 		macro.name = "ALPHA_TEST";
 		macro.value = alpha_test ? "1" : "0";
 		macros.Add(macro);
@@ -708,9 +712,9 @@ ut::Array<BoundShader> DeferredShading::CreateModelGPassShader()
 
 		// compile shaders
 		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::vertex, shader_name_prefix + "vs" + shader_name_suffix,
-		                                                            "VS", "model.hlsl", macros);
+		                                                            "VS", "mesh.hlsl", macros);
 		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::pixel, shader_name_prefix + "ps" + shader_name_suffix,
-		                                                            "PS", "model.hlsl", macros);
+		                                                            "PS", "mesh.hlsl", macros);
 		
 		if (!shaders.Add(BoundShader(vs.MoveOrThrow(), ps.MoveOrThrow())))
 		{
@@ -800,7 +804,7 @@ Shader DeferredShading::CreateIblShader(ut::uint32 ibl_mip_count)
 }
 
 // Creates a render pass for the g-buffer.
-ut::Result<RenderPass, ut::Error> DeferredShading::CreateModelGeometryPass(pixel::Format depth_stencil_format)
+ut::Result<RenderPass, ut::Error> DeferredShading::CreateMeshInstGeometryPass(pixel::Format depth_stencil_format)
 {
 	RenderTargetSlot depth_slot(depth_stencil_format, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
 	RenderTargetSlot color_slot(skGBufferFormat, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
@@ -824,18 +828,18 @@ ut::Result<RenderPass, ut::Error> DeferredShading::CreateLightPass(pixel::Format
 }
 
 // Creates a pipeline state to render geometry to the g-buffer.
-ut::Result<PipelineState, ut::Error> DeferredShading::CreateModelGPassPipeline(RenderPass& geometry_pass,
-                                                                               ut::uint32 width,
-                                                                               ut::uint32 height,
-                                                                               Mesh::VertexFormat vertex_format,
-                                                                               GeometryPass::ModelRendering::AlphaMode alpha_mode,
-                                                                               GeometryPass::ModelRendering::CullMode cull_mode,
-                                                                               GeometryPass::ModelRendering::StencilMode stencil_mode)
+ut::Result<PipelineState, ut::Error> DeferredShading::CreateMeshInstGPassPipeline(RenderPass& geometry_pass,
+                                                                                  ut::uint32 width,
+                                                                                  ut::uint32 height,
+                                                                                  Mesh::VertexFormat vertex_format,
+                                                                                  GeometryPass::MeshInstRendering::AlphaMode alpha_mode,
+                                                                                  GeometryPass::MeshInstRendering::CullMode cull_mode,
+                                                                                  GeometryPass::MeshInstRendering::StencilMode stencil_mode)
 {
-	const size_t shader_id = GeometryPass::ModelRendering::ShaderGrid::GetId(vertex_format, alpha_mode);
-	BoundShader& shader = model_gpass_shader[shader_id];
+	const size_t shader_id = GeometryPass::MeshInstRendering::ShaderGrid::GetId(vertex_format, alpha_mode);
+	BoundShader& shader = mesh_inst_gpass_shader[shader_id];
 
-	const ut::uint32 stencil_mask = stencil_mode == GeometryPass::ModelRendering::stencil_opaque_and_highlighted ?
+	const ut::uint32 stencil_mask = stencil_mode == GeometryPass::MeshInstRendering::stencil_opaque_and_highlighted ?
 		(stencilref_opaque | stencilref_highlight) : stencilref_opaque;
 
 	PipelineState::Info info;
@@ -860,7 +864,7 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateModelGPassPipeline(R
 	info.depth_stencil_state.stencil_write_mask = 0xff;
 	info.depth_stencil_state.stencil_reference = stencil_mask;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = cull_mode == GeometryPass::ModelRendering::cull_back ?
+	info.rasterization_state.cull_mode = cull_mode == GeometryPass::MeshInstRendering::cull_back ?
 	                                                  RasterizationState::back_culling :
 	                                                  RasterizationState::no_culling;
 	info.rasterization_state.line_width = 1.0f;
@@ -940,10 +944,10 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateIblPipeline(RenderPa
 void DeferredShading::ConnectDescriptors()
 {
 	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
-	gpass_model_desc_set.Resize(thread_count);
+	gpass_mesh_inst_desc_set.Resize(thread_count);
 	for (ut::uint32 i = 0; i < thread_count; i++)
 	{
-		gpass_model_desc_set[i].Connect(model_gpass_shader.GetFirst());
+		gpass_mesh_inst_desc_set[i].Connect(mesh_inst_gpass_shader.GetFirst());
 	}
 
 	ibl_desc_set.Connect(ibl_shader);

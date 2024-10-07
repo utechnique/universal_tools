@@ -8,7 +8,7 @@
 //----------------------------------------------------------------------------//
 // Render units.
 #include "units/ve_render_view.h"
-#include "units/ve_render_model.h"
+#include "units/ve_render_mesh_instance.h"
 #include "units/ve_render_directional_light.h"
 #include "units/ve_render_point_light.h"
 #include "units/ve_render_spot_light.h"
@@ -22,7 +22,7 @@ START_NAMESPACE(render)
 using EngineUnits = ut::Tuple
 <
 	View,
-	Model,
+	MeshInstance,
 	DirectionalLight,
 	PointLight,
 	SpotLight,

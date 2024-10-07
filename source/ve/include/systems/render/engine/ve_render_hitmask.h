@@ -4,7 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_toolset.h"
-#include "systems/render/engine/ve_render_model_batcher.h"
+#include "systems/render/engine/ve_render_batcher.h"
 #include "templates/ut_grid.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -23,7 +23,7 @@ public:
 		Target target;
 		RenderPass pass;
 		Framebuffer framebuffer;
-		ut::Array<PipelineState> model_pipeline;
+		ut::Array<PipelineState> mesh_inst_pipeline;
 		bool submitted;
 	};
 
@@ -42,7 +42,7 @@ public:
 	          Target& depth_stencil,
 	          HitMask::ViewData& data,
 	          Buffer& view_uniform_buffer,
-	          ModelBatcher& batcher);
+	          Batcher& batcher);
 
 	// Copies gpu data to the provided cpu buffer.
 	void Read(Context& context,
@@ -50,14 +50,14 @@ public:
 	          ut::Array<Entity::Id>& cpu_buffer);
 
 	// Encodes the provided entity identifier into the hitmask compatible value.
-	static Model::EntityIdBuffer::Type EncodeEntityId(Entity::Id entity_id);
+	static MeshInstance::EntityIdBuffer::Type EncodeEntityId(Entity::Id entity_id);
 
 	// Decodes the provided hitmask value into the entity identifier.
 	static Entity::Id DecodeEntityId(const ut::Vector<4, ut::byte>& hitmask_value);
 
 private:
-	// Model-rendering options.
-	struct ModelRendering
+	// Mesh instance rendering options.
+	struct MeshInstRendering
 	{
 		enum CullMode
 		{
@@ -108,28 +108,28 @@ private:
 		};
 	};
 
-	// Renders specified range of models.
-	void DrawModelsJob(Context& context,
-	                   HitMask::ViewData& data,
-	                   Buffer& view_uniform_buffer,
-	                   ModelBatcher& batcher,
-	                   ut::uint32 thread_id,
-	                   ut::uint32 drawcall_index_offset,
-	                   ut::uint32 drawcall_count);
+	// Renders specified range of mesh instances.
+	void DrawMeshInstancesJob(Context& context,
+	                          HitMask::ViewData& data,
+	                          Buffer& view_uniform_buffer,
+	                          Batcher& batcher,
+	                          ut::uint32 thread_id,
+	                          ut::uint32 drawcall_index_offset,
+	                          ut::uint32 drawcall_count);
 
-	// Creates shaders for model rendering.
-	ut::Array<BoundShader> CreateModelShader();
+	// Creates shaders to draw mesh instances.
+	ut::Array<BoundShader> CreateMeshInstShader();
 
 	// Creates the hitmask render pass.
 	ut::Result<RenderPass, ut::Error> CreateRenderPass(pixel::Format depth_stencil_format);
 
 	// Creates a pipeline state to render geometry to the hitmask.
-	ut::Result<PipelineState, ut::Error> CreateModelPipeline(RenderPass& render_pass,
-	                                                         ut::uint32 width,
-	                                                         ut::uint32 height,
-	                                                         Mesh::VertexFormat vertex_format,
-	                                                         ModelRendering::AlphaMode alpha_mode,
-	                                                         ModelRendering::CullMode cull_mode);
+	ut::Result<PipelineState, ut::Error> CreateMeshInstPipeline(RenderPass& render_pass,
+	                                                            ut::uint32 width,
+	                                                            ut::uint32 height,
+	                                                            Mesh::VertexFormat vertex_format,
+	                                                            MeshInstRendering::AlphaMode alpha_mode,
+	                                                            MeshInstRendering::CullMode cull_mode);
 
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();
@@ -137,12 +137,12 @@ private:
 	// Common rendering tools.
 	Toolset& tools;
 
-	// Shaders for model-rendering.
-	ut::Array<BoundShader> model_shader;
+	// Shaders to draw mesh instances.
+	ut::Array<BoundShader> mesh_inst_shader;
 
 	// Descriptor sets.
-	ModelRendering::AlphaTestOffDescriptors model_at_off_desc_set;
-	ModelRendering::AlphaTestOnDescriptors model_at_on_desc_set;
+	MeshInstRendering::AlphaTestOffDescriptors mesh_inst_at_off_desc_set;
+	MeshInstRendering::AlphaTestOnDescriptors mesh_inst_at_on_desc_set;
 
 	// G-Buffer target format.
 	static constexpr pixel::Format skHitMaskFormat = pixel::r8g8b8a8_unorm;

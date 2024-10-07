@@ -4,7 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 // Policies.
-#include "ve_render_model_policy.h"
+#include "ve_render_mesh_instance_policy.h"
 #include "ve_render_directional_light_policy.h"
 #include "ve_render_point_light_policy.h"
 #include "ve_render_spot_light_policy.h"

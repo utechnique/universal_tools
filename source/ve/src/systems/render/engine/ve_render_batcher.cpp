@@ -1,24 +1,24 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-#include "systems/render/engine/ve_render_model_batcher.h"
+#include "systems/render/engine/ve_render_batcher.h"
 #include "systems/render/engine/ve_render_hitmask.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-ModelBatcher::ModelBatcher(Toolset &toolset) : tools(toolset)
-                                             , frame_data(toolset.config.frames_in_flight)
-                                             , instance_buffer(CreateInstanceBuffer(toolset.device))
-                                             , parallelize_buffer_update(toolset.device.GetInfo().supports_async_rc_mapping)
-                                             , batch_size(CalculateBatchSize(toolset.device))
+Batcher::Batcher(Toolset &toolset) : tools(toolset)
+                                   , frame_data(toolset.config.frames_in_flight)
+                                   , instance_buffer(CreateInstanceBuffer(toolset.device))
+                                   , parallelize_buffer_update(toolset.device.GetInfo().supports_async_rc_mapping)
+                                   , batch_size(CalculateBatchSize(toolset.device))
 {}
 
-// Registers provided model unit.
-void ModelBatcher::Register(Entity::Id entity_id, ut::Array< ut::UniquePtr<Unit> >& units)
+// Registers provided mesh instance unit.
+void Batcher::Register(Entity::Id entity_id, ut::Array< ut::UniquePtr<Unit> >& units)
 {
-	const ut::DynamicType::Handle model_handle = ut::GetPolymorphicHandle<Model>();
+	const ut::DynamicType::Handle mesh_inst_handle = ut::GetPolymorphicHandle<MeshInstance>();
 	const size_t unit_count = units.Count();
 	for (size_t i = 0; i < unit_count; i++)
 	{
@@ -29,24 +29,24 @@ void ModelBatcher::Register(Entity::Id entity_id, ut::Array< ut::UniquePtr<Unit>
 
 		Unit& unit = units[i].GetRef();
 		const ut::DynamicType& unit_type = unit.Identify();
-		if (unit_type.GetHandle() != model_handle)
+		if (unit_type.GetHandle() != mesh_inst_handle)
 		{
 			continue;
 		}
 
 		ut::ScopeLock lock(mutex);
 
-		Model& model = static_cast<Model&>(unit);
-		const ut::uint32 subset_count = static_cast<ut::uint32>(model.mesh->subsets.Count());
+		MeshInstance& instance = static_cast<MeshInstance&>(unit);
+		const ut::uint32 subset_count = static_cast<ut::uint32>(instance.mesh->subsets.Count());
 		for (ut::uint32 subset_id = 0; subset_id < subset_count; subset_id++)
 		{
-			draw_calls.Add(Model::DrawCall{ model, entity_id, subset_id });
+			draw_calls.Add(MeshInstance::DrawCall{ instance, entity_id, subset_id });
 		}
 	}
 }
 
 // Unregisters all units with the provided entity identifier..
-void ModelBatcher::Unregister(Entity::Id entity_id)
+void Batcher::Unregister(Entity::Id entity_id)
 {
 	ut::ScopeLock lock(mutex);
 	const size_t count = draw_calls.Count();
@@ -60,45 +60,45 @@ void ModelBatcher::Unregister(Entity::Id entity_id)
 }
 
 // Updates a batch (material and transform buffer) with specified units.
-void ModelBatcher::UpdateBatch(Context& context,
-                               Model::Batch& batch,
-                               size_t first_element_id,
-                               size_t element_count)
+void Batcher::UpdateBatch(Context& context,
+                          MeshInstance::Batch& batch,
+                          size_t first_element_id,
+                          size_t element_count)
 {
     // Linux works better with intermediate buffer while windows
 	// is faster writing directly to the mapped memory
 #if UT_LINUX
-	const size_t transform_size = element_count * sizeof(Model::TransformBuffer);
-	const size_t material_size = element_count * sizeof(Model::MaterialBuffer);
+	const size_t transform_size = element_count * sizeof(MeshInstance::TransformBuffer);
+	const size_t material_size = element_count * sizeof(MeshInstance::MaterialBuffer);
 	ut::Array<ut::byte> cache(transform_size + material_size);
 
-	Model::TransformBuffer* transform_memory = reinterpret_cast<Model::TransformBuffer*>(cache.GetAddress());
-	Model::MaterialBuffer* material_memory = reinterpret_cast<Model::MaterialBuffer*>(transform_memory + element_count);
+	MeshInstance::TransformBuffer* transform_memory = reinterpret_cast<MeshInstance::TransformBuffer*>(cache.GetAddress());
+	MeshInstance::MaterialBuffer* material_memory = reinterpret_cast<MeshInstance::MaterialBuffer*>(transform_memory + element_count);
 #else
 	ut::Result<void*, ut::Error> transform_map_result = context.MapBuffer(batch.transform, ut::access_write);
 	ut::Result<void*, ut::Error> material_map_result = context.MapBuffer(batch.material, ut::access_write);
 
 	// copy transform and material data
-	Model::TransformBuffer* transform_memory = static_cast<Model::TransformBuffer*>(transform_map_result.MoveOrThrow());
-	Model::MaterialBuffer* material_memory = static_cast<Model::MaterialBuffer*>(material_map_result.MoveOrThrow());
+	MeshInstance::TransformBuffer* transform_memory = static_cast<MeshInstance::TransformBuffer*>(transform_map_result.MoveOrThrow());
+	MeshInstance::MaterialBuffer* material_memory = static_cast<MeshInstance::MaterialBuffer*>(material_map_result.MoveOrThrow());
 #endif
 
 	// copy data
-    Model::DrawCall* dc_start = &draw_calls[first_element_id];
+	MeshInstance::DrawCall* dc_start = &draw_calls[first_element_id];
     for (size_t j = 0; j < element_count; j++)
 	{
-		Model::DrawCall& dc = dc_start[j];
-		Model& model = dc.model;
+		MeshInstance::DrawCall& dc = dc_start[j];
+		MeshInstance& instance = dc.instance;
 
 		// transform
-		ut::memory::Copy(transform_memory + j, &model.world_matrix, sizeof(ut::Matrix<4, 4>));
+		ut::memory::Copy(transform_memory + j, &instance.world_matrix, sizeof(ut::Matrix<4, 4>));
 
 		// material
-		Model::MaterialBuffer& material = material_memory[j];
-		ut::memory::Copy(&material.diffuse_add, &model.diffuse_add, sizeof(ut::Color<3>));
-		ut::memory::Copy(&material.diffuse_mul, &model.diffuse_mul, sizeof(ut::Color<3>));
-		ut::memory::Copy(&material.material_add, &model.material_add, sizeof(ut::Color<3>));
-		ut::memory::Copy(&material.material_mul, &model.material_mul, sizeof(ut::Color<3>));
+		MeshInstance::MaterialBuffer& material = material_memory[j];
+		ut::memory::Copy(&material.diffuse_add, &instance.diffuse_add, sizeof(ut::Color<3>));
+		ut::memory::Copy(&material.diffuse_mul, &instance.diffuse_mul, sizeof(ut::Color<3>));
+		ut::memory::Copy(&material.material_add, &instance.material_add, sizeof(ut::Color<3>));
+		ut::memory::Copy(&material.material_mul, &instance.material_mul, sizeof(ut::Color<3>));
 	}
 
 	// finish mapping
@@ -119,7 +119,7 @@ void ModelBatcher::UpdateBatch(Context& context,
 	if (tools.frame_mgr.GetCurrentFrame().info.needs_entity_id_buffer_update)
 	{
 		ut::Result<void*, ut::Error> id_buffer_map_result = context.MapBuffer(batch.entity_id, ut::access_write);
-		Model::EntityIdBuffer* id_buffer_memory = static_cast<Model::EntityIdBuffer*>(id_buffer_map_result.MoveOrThrow());
+		MeshInstance::EntityIdBuffer* id_buffer_memory = static_cast<MeshInstance::EntityIdBuffer*>(id_buffer_map_result.MoveOrThrow());
 		for (size_t j = 0; j < element_count; j++)
 		{
 			id_buffer_memory[j].entity_id = HitMask::EncodeEntityId(dc_start[j].entity_id);
@@ -130,7 +130,7 @@ void ModelBatcher::UpdateBatch(Context& context,
 }
 
 // Updates desired batch.
-void ModelBatcher::UpdateBatchById(Context& context, size_t batch_id)
+void Batcher::UpdateBatchById(Context& context, size_t batch_id)
 {
 	// get references to the desired buffers
 	const ut::uint32 current_frame_id = tools.frame_mgr.GetCurrentFrameId();
@@ -149,9 +149,9 @@ void ModelBatcher::UpdateBatchById(Context& context, size_t batch_id)
 }
 
 // Updates all batches.
-void ModelBatcher::UpdateBuffers(Context& context)
+void Batcher::UpdateBuffers(Context& context)
 {
-	// calculate how many buffers are needed to cover all model units
+	// calculate how many buffers are needed to cover all mesh instance units
 	const size_t dc_count = draw_calls.Count();
 	const size_t buffer_need = dc_count / batch_size +
 	                           ((dc_count % batch_size != 0) ? 1 : 0);
@@ -165,7 +165,7 @@ void ModelBatcher::UpdateBuffers(Context& context)
 		Buffer::Info buffer_info;
 		buffer_info.type = Buffer::uniform;
 		buffer_info.usage = render::memory::gpu_read_cpu_write;
-		buffer_info.size = batch_size * sizeof(Model::TransformBuffer);
+		buffer_info.size = batch_size * sizeof(MeshInstance::TransformBuffer);
 		ut::Result<Buffer, ut::Error> transform_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
 		if (!transform_buffer)
 		{
@@ -173,7 +173,7 @@ void ModelBatcher::UpdateBuffers(Context& context)
 		}
 
 		// material
-		buffer_info.size = batch_size * sizeof(Model::MaterialBuffer);
+		buffer_info.size = batch_size * sizeof(MeshInstance::MaterialBuffer);
 		ut::Result<Buffer, ut::Error> material_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
 		if (!material_buffer)
 		{
@@ -181,7 +181,7 @@ void ModelBatcher::UpdateBuffers(Context& context)
 		}
 
 		// entity-id
-		buffer_info.size = batch_size * sizeof(Model::EntityIdBuffer);
+		buffer_info.size = batch_size * sizeof(MeshInstance::EntityIdBuffer);
 		ut::Result<Buffer, ut::Error> entity_id_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
 		if (!entity_id_buffer)
 		{
@@ -189,9 +189,9 @@ void ModelBatcher::UpdateBuffers(Context& context)
 		}
 
 		// add batch
-		current_frame.batches.Add(Model::Batch{transform_buffer.Move(),
-		                                       material_buffer.Move(),
-		                                       entity_id_buffer.Move()});
+		current_frame.batches.Add(MeshInstance::Batch{ transform_buffer.Move(),
+		                                               material_buffer.Move(),
+		                                               entity_id_buffer.Move() });
 	}
 
 	// update buffers
@@ -199,8 +199,8 @@ void ModelBatcher::UpdateBuffers(Context& context)
 	{
 		if (parallelize_buffer_update)
 		{
-			void(ModelBatcher::*callback)(Context&, size_t) = &ModelBatcher::UpdateBatchById;
-			auto f = ut::MemberFunction<ModelBatcher, void(Context&, size_t)>(this, callback);
+			void(Batcher::*callback)(Context&, size_t) = &Batcher::UpdateBatchById;
+			auto f = ut::MemberFunction<Batcher, void(Context&, size_t)>(this, callback);
 			tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void(Context&, size_t)> >(f, context, i));
 		}
 		else
@@ -217,22 +217,23 @@ void ModelBatcher::UpdateBuffers(Context& context)
 }
 
 // Returns the number of elements in one batch.
-ut::uint32 ModelBatcher::GetBatchSize() const
+ut::uint32 Batcher::GetBatchSize() const
 {
 	return batch_size;
 }
 
 // Calculates number of individual elements in one batch.
-ut::uint32 ModelBatcher::CalculateBatchSize(Device& device)
+ut::uint32 Batcher::CalculateBatchSize(Device& device)
 {
 	const size_t ub_max_size = ut::Min<size_t>(65536, device.GetInfo().max_uniform_buffer_size);
-	const ut::uint32 buffer_bound_size = ut::Max<ut::uint32>(ut::Max<ut::uint32>(sizeof(Model::TransformBuffer),
-	                                                         sizeof(Model::MaterialBuffer)), sizeof(Model::EntityIdBuffer));
+	const ut::uint32 buffer_bound_size = ut::Max<ut::uint32>(ut::Max<ut::uint32>(sizeof(MeshInstance::TransformBuffer),
+	                                                                             sizeof(MeshInstance::MaterialBuffer)),
+	                                                                             sizeof(MeshInstance::EntityIdBuffer));
 	return static_cast<ut::uint32>(ub_max_size) / buffer_bound_size;
 }
 
 // Creates a vertex buffer with instance id for the batch.
-Buffer ModelBatcher::CreateInstanceBuffer(Device& device)
+Buffer Batcher::CreateInstanceBuffer(Device& device)
 {
 	ut::uint32 element_count = CalculateBatchSize(device);
 

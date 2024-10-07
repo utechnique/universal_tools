@@ -4,7 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_toolset.h"
-#include "systems/render/engine/ve_render_model_batcher.h"
+#include "systems/render/engine/ve_render_batcher.h"
 #include "systems/render/engine/units/ve_render_directional_light.h"
 #include "systems/render/engine/units/ve_render_point_light.h"
 #include "systems/render/engine/units/ve_render_spot_light.h"
@@ -35,7 +35,7 @@ public:
 		ut::Array<Framebuffer> light_framebuffer;
 
 		// pipeline states
-		ut::Array<PipelineState> model_gpass_pipeline;
+		ut::Array<PipelineState> mesh_gpass_pipeline;
 		ut::Array<PipelineState> light_pipeline;
 		PipelineState ibl_pipeline;
 
@@ -65,7 +65,7 @@ public:
 	                        Target& depth_stencil,
 	                        DeferredShading::ViewData& data,
 	                        Buffer& view_uniform_buffer,
-	                        ModelBatcher& batcher,
+	                        Batcher& batcher,
 	                        Image::Cube::Face cubeface = Image::Cube::positive_x);
 
 	// Applies lighting techniques to the provided target.
@@ -96,7 +96,7 @@ private:
 	// Geometry pass pipeline and shaders permutations.
 	struct GeometryPass
 	{
-		struct ModelRendering
+		struct MeshInstRendering
 		{
 			enum CullMode
 			{
@@ -125,14 +125,14 @@ private:
 			static constexpr ut::uint32 stencil_mode_column = 3;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
-			                 GeometryPass::ModelRendering::alpha_mode_count,
-			                 GeometryPass::ModelRendering::cull_mode_count,
-			                 GeometryPass::ModelRendering::stencil_mode_count> PipelineGrid;
+			                 GeometryPass::MeshInstRendering::alpha_mode_count,
+			                 GeometryPass::MeshInstRendering::cull_mode_count,
+			                 GeometryPass::MeshInstRendering::stencil_mode_count> PipelineGrid;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
-			                 GeometryPass::ModelRendering::alpha_mode_count> ShaderGrid;
+			                 GeometryPass::MeshInstRendering::alpha_mode_count> ShaderGrid;
 
-			// Descriptor set for the model geometry pass shaders.
+			// Descriptor set to render mesh with geometry pass shaders.
 			struct Descriptors : public DescriptorSet
 			{
 				Descriptors() : DescriptorSet(view_ub, transform_ub, material_ub,
@@ -180,24 +180,24 @@ private:
 		Descriptor normal = "g_tex2d_normal";
 	};
 
-	// Renders model units to the g-buffer.
-	void BakeOpaqueModels(Context& context,
-	                      DeferredShading::ViewData& data,
-	                      Buffer& view_uniform_buffer,
-	                      ModelBatcher& batcher,
-	                      Image::Cube::Face cubeface);
+	// Renders mesh instance units to the g-buffer.
+	void BakeOpaqueMeshInstances(Context& context,
+	                             DeferredShading::ViewData& data,
+	                             Buffer& view_uniform_buffer,
+	                             Batcher& batcher,
+	                             Image::Cube::Face cubeface);
 
-	// Renders specified range of models.
-	void BakeOpaqueModelsJob(Context& context,
-	                         DeferredShading::ViewData& data,
-	                         Buffer& view_uniform_buffer,
-	                         ModelBatcher& batcher,
-	                         ut::uint32 thread_id,
-	                         ut::uint32 offset,
-	                         ut::uint32 count);
+	// Renders specified range of mesh instances.
+	void BakeOpaqueMeshInstancesJob(Context& context,
+	                                DeferredShading::ViewData& data,
+	                                Buffer& view_uniform_buffer,
+	                                Batcher& batcher,
+	                                ut::uint32 thread_id,
+	                                ut::uint32 offset,
+	                                ut::uint32 count);
 
 	// Creates shaders for rendering geometry to the g-buffer.
-	ut::Array<BoundShader> CreateModelGPassShader();
+	ut::Array<BoundShader> CreateMeshInstGPassShader();
 
 	// Creates a shader for the lighting pass.
 	Shader CreateLightPassShader(Light::SourceType source_type,
@@ -207,20 +207,20 @@ private:
 	Shader CreateIblShader(ut::uint32 ibl_mip_count);
 
 	// Creates a render pass for the g-buffer.
-	ut::Result<RenderPass, ut::Error> CreateModelGeometryPass(pixel::Format depth_stencil_format);
+	ut::Result<RenderPass, ut::Error> CreateMeshInstGeometryPass(pixel::Format depth_stencil_format);
 
 	// Creates a render pass for the shading techniques.
 	ut::Result<RenderPass, ut::Error> CreateLightPass(pixel::Format depth_stencil_format,
 	                                                  pixel::Format light_buffer_format);
 
 	// Creates a pipeline state to render geometry to the g-buffer.
-	ut::Result<PipelineState, ut::Error> CreateModelGPassPipeline(RenderPass& geometry_pass,
-	                                                              ut::uint32 width,
-	                                                              ut::uint32 height,
-	                                                              Mesh::VertexFormat vertex_format,
-	                                                              GeometryPass::ModelRendering::AlphaMode alpha_mode,
-	                                                              GeometryPass::ModelRendering::CullMode cull_mode,
-	                                                              GeometryPass::ModelRendering::StencilMode stencil_mode);
+	ut::Result<PipelineState, ut::Error> CreateMeshInstGPassPipeline(RenderPass& geometry_pass,
+	                                                                 ut::uint32 width,
+	                                                                 ut::uint32 height,
+	                                                                 Mesh::VertexFormat vertex_format,
+	                                                                 GeometryPass::MeshInstRendering::AlphaMode alpha_mode,
+	                                                                 GeometryPass::MeshInstRendering::CullMode cull_mode,
+	                                                                 GeometryPass::MeshInstRendering::StencilMode stencil_mode);
 
 	// Creates a pipeline state to apply lighting.
 	ut::Result<PipelineState, ut::Error> CreateLightPassPipeline(RenderPass& light_pass,
@@ -241,7 +241,7 @@ private:
 	Toolset& tools;
 
 	// Shaders.
-	ut::Array<BoundShader> model_gpass_shader;
+	ut::Array<BoundShader> mesh_inst_gpass_shader;
 	ut::Array<Shader> light_shader;
 	Shader ibl_shader;
 
@@ -249,7 +249,7 @@ private:
 	ut::Array< ut::Ref<CmdBuffer> > secondary_buffer_cache;
 
 	// Descriptors.
-	ut::Array<GeometryPass::ModelRendering::Descriptors> gpass_model_desc_set;
+	ut::Array<GeometryPass::MeshInstRendering::Descriptors> gpass_mesh_inst_desc_set;
 	IblDescriptorSet ibl_desc_set;
 	LightPassDescriptorSet lightpass_desc_set;
 
