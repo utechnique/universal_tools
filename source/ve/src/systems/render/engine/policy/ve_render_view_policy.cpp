@@ -193,6 +193,11 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 	UT_ASSERT(color_buffer);
 
 	// here unlit objects can be rendered
+	lighting_mgr.unlit.DrawUnlitGeometryLdr(context,
+	                                        color_buffer->color_and_ds_framebuffer,
+	                                        frame.scene.lighting.unlit,
+	                                        frame.scene.view_ub[0],
+	                                        mesh_instance_policy.batcher);
 
 	// make color buffer accessible as a resource
 	context.SetTargetState(color_buffer->color_target, Target::Info::state_resource);

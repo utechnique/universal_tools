@@ -447,8 +447,8 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 		Material& material = subset.material;
 		const bool is_transparent = material.alpha == Material::alpha_transparent;
 
-		// skip transparent materials
-		if (is_transparent)
+		// skip transparent and unlit materials
+		if (is_transparent || material.unlit)
 		{
 			PerformMeshInstDrawCall(context, prev_index_buffer,
 			                        prev_index_offset, prev_index_count,

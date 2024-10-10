@@ -38,6 +38,12 @@
 #define HITMASK_PASS 0
 #endif
 
+// Define 'UNLIT_PASS' macro to compile shader rendering a mesh
+// in unlit mode.
+#ifndef UNLIT_PASS
+#define UNLIT_PASS 0
+#endif
+
 // Define 'IBL_MIP_COUNT' macro to set the number of
 // mip levels in the ibl cubemap.
 #ifndef IBL_MIP_COUNT
@@ -45,8 +51,8 @@
 #endif
 
 #define NEEDS_DIFFUSE_MAP (!HITMASK_PASS || ALPHA_TEST)
-#define NEEDS_NORMAL_MAP (!HITMASK_PASS)
-#define NEEDS_MATERIAL_MAP (!HITMASK_PASS)
+#define NEEDS_NORMAL_MAP (!HITMASK_PASS && !UNLIT_PASS)
+#define NEEDS_MATERIAL_MAP (!HITMASK_PASS && !UNLIT_PASS)
 #define NEEDS_MATERIAL_BUFFER (!HITMASK_PASS)
 #define NEEDS_TEXTURE_COORD (NEEDS_DIFFUSE_MAP || NEEDS_NORMAL_MAP || NEEDS_MATERIAL_MAP)
 #define ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT (LIGHT_PASS && AMBIENT_LIGHT)
@@ -82,7 +88,7 @@ struct PS_INPUT
 
 #if HITMASK_PASS
 	float4 hitmask_id : TEXCOORD1;
-#else // HITMASK_PASS
+#elif !UNLIT_PASS
 	#if VERTEX_HAS_NORMAL
 		float3 normal : TEXCOORD1;
 	#endif
@@ -95,7 +101,7 @@ struct PS_INPUT
 	#if !DEFERRED_PASS
 		float3 world_position : TEXCOORD4;
 	#endif
-#endif // !HITMASK_PASS
+#endif // !UNLIT_PASS
 
 #if INSTANCING
 	uint instance_id : TEXCOORD5;
@@ -208,7 +214,7 @@ PS_INPUT VS(Vertex input)
 	#else
 		output.hitmask_id = g_hitmask_id;
 	#endif
-#else // HITMASK_PASS
+#elif !UNLIT_PASS
 	// world position
 	#if !DEFERRED_PASS
 		output.world_position = world_position;
@@ -224,7 +230,7 @@ PS_INPUT VS(Vertex input)
 		output.tangent = mul(input.tangent, transform);
 		output.binormal = cross(output.normal, output.tangent);
 	#endif
-#endif // !HITMASK_PASS
+#endif // !UNLIT_PASS
 
 	// instance id
 #if INSTANCING
@@ -264,7 +270,15 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 	// process appropriate render pass
 #if HITMASK_PASS
 	output = input.hitmask_id;
-#else // not HITMASK_PASS
+#elif UNLIT_PASS
+	#if INSTANCING
+		Material material = g_material[input.instance_id];
+	#else
+		Material material = g_material;
+	#endif
+	output.rgb = diffuse_sample.rgb * material.diffuse_mul.rgb + material.diffuse_add.rgb;
+	output.a = diffuse_sample.a;
+#else // not HITMASK_PASS and not UNLIT_PASS
 	// sample normal and material textures
 	float4 normal_sample = g_tex2d_normal.Sample(g_sampler, texcoord);
 	float4 material_sample = g_tex2d_material.Sample(g_sampler, texcoord);
@@ -328,7 +342,7 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 			light.source_length = g_light_color.w;
 			light.is_radial = light.source_radius > 0.001f;
 
-				// calculate lighting
+			// calculate lighting
 			#if AMBIENT_LIGHT
 				float3 light_amount = ComputeAmbientLighting(surface, light);
 			#else

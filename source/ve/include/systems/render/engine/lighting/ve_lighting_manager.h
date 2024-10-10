@@ -8,6 +8,7 @@
 #include "ve_deferred_shading.h"
 #include "ve_forward_shading.h"
 #include "ve_image_based_lighting.h"
+#include "ve_render_unlit.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -39,6 +40,7 @@ public:
 	IBL ibl;
 	DeferredShading deferred_shading;
 	ForwardShading forward_shading;
+	UnlitRenderer unlit;
 
 private:
 	// Updates light source buffer with provided data.

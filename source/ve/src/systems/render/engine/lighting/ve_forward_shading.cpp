@@ -23,11 +23,9 @@ ForwardShading::ForwardShading(Toolset& toolset,
 	ConnectDescriptors();
 }
 
-// Creates deferred shading (per-view) data.
+// Creates forward shading (per-view) data.
 //    @param depth_stencil - reference to the depth buffer.
 //    @param light_buffer - reference to the light buffer.
-//    @param width - width of the view in pixels.
-//    @param height - height of the view in pixels.
 //    @param is_cube - 'true' to create as a cubemap.
 //    @return - a new ForwardShading::ViewData object or error if failed.
 ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(Target& depth_stencil,
@@ -80,7 +78,7 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 	return ut::Move(data);
 }
 
-// Renders scene directly to the light buffer.
+// Renders transparent units directly to the light buffer.
 void ForwardShading::DrawTransparentGeometry(Context& context,
                                              ForwardShading::ViewData& data,
                                              Buffer& view_uniform_buffer,
@@ -906,11 +904,11 @@ void ForwardShading::SortTransparentDrawCalls(const ut::Vector<3>& view_position
 	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.Count());
 	for (ut::uint32 dc_index = 0; dc_index < dc_count; dc_index++)
 	{
-		// skip opaque draw calls
+		// skip opaque and unlit draw calls
 		const MeshInstance::DrawCall& dc = draw_list[dc_index];
 		const Mesh::Subset& subset = dc.instance.mesh->subsets[dc.subset_id];
 		const Material& material = subset.material;
-		if (material.alpha != Material::alpha_transparent)
+		if (material.unlit || material.alpha != Material::alpha_transparent)
 		{
 			continue;
 		}

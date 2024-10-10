@@ -27,6 +27,7 @@ public:
 
 	Alpha alpha = alpha_opaque;
 	bool double_sided = false;
+	bool unlit = false;
 };
 
 //----------------------------------------------------------------------------//

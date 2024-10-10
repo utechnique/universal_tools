@@ -15,7 +15,8 @@ START_NAMESPACE(lighting)
 Manager::Manager(Toolset& toolset) : tools(toolset)
                                    , ibl(toolset)
                                    , deferred_shading(toolset, ibl.GetMipCount())
-                                   , forward_shading(toolset, ibl.GetMipCount())                           
+                                   , forward_shading(toolset, ibl.GetMipCount())
+                                   , unlit(toolset)
 {}
 
 // Creates lighting (per-view) data.
@@ -64,11 +65,19 @@ ut::Result<lighting::ViewData, ut::Error> Manager::CreateViewData(Target& depth_
 		return ut::MakeError(forward_sh_data.MoveAlt());
 	}
 
+	// unlit
+	ut::Result<UnlitRenderer::ViewData, ut::Error> unlit_data = unlit.CreateViewData(depth_stencil);
+	if (!forward_sh_data)
+	{
+		return ut::MakeError(forward_sh_data.MoveAlt());
+	}
+
 	lighting::ViewData data = 
 	{
 	    light_buffer.Move(),
 		def_sh_data.Move(),
-		forward_sh_data.Move()
+		forward_sh_data.Move(),
+		unlit_data.Move()
 	};
 
 	return data;

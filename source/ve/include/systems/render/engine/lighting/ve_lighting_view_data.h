@@ -6,7 +6,7 @@
 #include "ve_deferred_shading.h"
 #include "ve_forward_shading.h"
 #include "ve_image_based_lighting.h"
-
+#include "ve_render_unlit.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -19,9 +19,11 @@ struct ViewData
 	// Constructor, all necessary resources must be provided.
 	ViewData(Target lightbuf_target,
 	         DeferredShading::ViewData deferred_shading_data,
-	         ForwardShading::ViewData forward_shading_data) : light_buffer(ut::Move(lightbuf_target))
-	                                                        , deferred_shading(ut::Move(deferred_shading_data))
-	                                                        , forward_shading(ut::Move(forward_shading_data))
+	         ForwardShading::ViewData forward_shading_data,
+	         UnlitRenderer::ViewData unlit_data) : light_buffer(ut::Move(lightbuf_target))
+	                                             , deferred_shading(ut::Move(deferred_shading_data))
+	                                             , forward_shading(ut::Move(forward_shading_data))
+	                                             , unlit(ut::Move(unlit_data))
 	{}
 
 	// Move constructor and operator.
@@ -35,6 +37,7 @@ struct ViewData
 	Target light_buffer;
 	DeferredShading::ViewData deferred_shading;
 	ForwardShading::ViewData forward_shading;
+	UnlitRenderer::ViewData unlit;
 };
 
 //----------------------------------------------------------------------------//

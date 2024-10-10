@@ -32,18 +32,16 @@ public:
 	// Constructor.
 	ForwardShading(Toolset& toolset, ut::uint32 ibl_mip_count);
 
-	// Creates deferred shading (per-view) data.
+	// Creates forward shading (per-view) data.
 	//    @param depth_stencil - reference to the depth buffer.
 	//    @param light_buffer - reference to the light buffer.
-	//    @param width - width of the view in pixels.
-	//    @param height - height of the view in pixels.
 	//    @param is_cube - 'true' to create as a cubemap.
 	//    @return - a new ForwardShading::ViewData object or error if failed.
 	ut::Result<ForwardShading::ViewData, ut::Error> CreateViewData(Target& depth_stencil,
 	                                                               Target& light_buffer,
 	                                                               bool is_cube);
 
-	// Renders scene directly to the light buffer.
+	// Renders transparent units directly to the light buffer.
 	void DrawTransparentGeometry(Context& context,
 	                             ForwardShading::ViewData& data,
 	                             Buffer& view_uniform_buffer,
