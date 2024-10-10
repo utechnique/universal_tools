@@ -22,10 +22,7 @@ public:
 	// Per-view gpu data.
 	struct ViewData
 	{
-		RenderPass lightpass;
 		ut::Array<Framebuffer> light_framebuffer;
-		ut::Array<PipelineState> lightpass_pipeline;
-		ut::Array<PipelineState> iblpass_pipeline;
 
 		// secondary buffers to parallelize cpu work
 		// note that cubemaps need a separate set of buffers for each face
@@ -44,8 +41,6 @@ public:
 	//    @return - a new ForwardShading::ViewData object or error if failed.
 	ut::Result<ForwardShading::ViewData, ut::Error> CreateViewData(Target& depth_stencil,
 	                                                               Target& light_buffer,
-	                                                               ut::uint32 width,
-	                                                               ut::uint32 height,
 	                                                               bool is_cube);
 
 	// Renders scene directly to the light buffer.
@@ -106,6 +101,7 @@ private:
 			static constexpr ut::uint32 alpha_mode_column = 4;
 			static constexpr ut::uint32 cull_mode_column = 5;
 			static constexpr ut::uint32 stencil_mode_column = 6;
+			static constexpr ut::uint32 polygon_mode_column = 7;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 ibl_preset_count,
@@ -113,7 +109,8 @@ private:
 			                 alpha_test_count,
 			                 alpha_mode_count,
 			                 cull_mode_count,
-			                 stencil_mode_count> PipelineGrid;
+			                 stencil_mode_count,
+			                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 ibl_preset_count,
@@ -178,12 +175,14 @@ private:
 			static constexpr ut::uint32 alpha_mode_column = 2;
 			static constexpr ut::uint32 cull_mode_column = 3;
 			static constexpr ut::uint32 stencil_mode_column = 4;
+			static constexpr ut::uint32 polygon_mode_column = 5;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 alpha_test_count,
 			                 alpha_mode_count,
 			                 cull_mode_count,
-			                 stencil_mode_count> PipelineGrid;
+			                 stencil_mode_count,
+			                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 alpha_test_count> ShaderGrid;
@@ -260,30 +259,31 @@ private:
 	ut::Array<BoundShader> CreateMeshInstIblShader(ut::uint32 ibl_mip_count);
 
 	// Creates a render pass for the shading techniques.
-	ut::Result<RenderPass, ut::Error> CreateLightPass(pixel::Format depth_stencil_format,
-	                                                  pixel::Format light_buffer_format);
+	RenderPass CreateLightPass();
 
 	// Creates a pipeline state to apply lighting.
-	ut::Result<PipelineState, ut::Error> CreateMeshInstLightPassPipeline(RenderPass& light_pass,
-	                                                                     ut::uint32 width,
-	                                                                     ut::uint32 height,
-	                                                                     Mesh::VertexFormat vertex_format,
+	ut::Result<PipelineState, ut::Error> CreateMeshInstLightPassPipeline(Mesh::VertexFormat vertex_format,
+	                                                                     Mesh::PolygonMode polygon_mode,
 	                                                                     LightPass::MeshInstRendering::AlphaTest alpha_test,
 	                                                                     LightPass::MeshInstRendering::AlphaMode alpha_mode,
 	                                                                     LightPass::MeshInstRendering::IblPreset ibl_preset,
-	                                                                     Light::SourceType source_type,
 	                                                                     LightPass::MeshInstRendering::CullMode cull_mode,
-	                                                                     LightPass::MeshInstRendering::StencilMode stencil_mode);
+	                                                                     LightPass::MeshInstRendering::StencilMode stencil_mode,
+	                                                                     Light::SourceType source_type);
 
 	// Creates a pipeline state to apply ibl reflections.
-	ut::Result<PipelineState, ut::Error> CreateMeshInstIblPassPipeline(RenderPass& light_pass,
-	                                                                   ut::uint32 width,
-	                                                                   ut::uint32 height,
-	                                                                   Mesh::VertexFormat vertex_format,
+	ut::Result<PipelineState, ut::Error> CreateMeshInstIblPassPipeline(Mesh::VertexFormat vertex_format,
+	                                                                   Mesh::PolygonMode polygon_mode,
 	                                                                   IblPass::MeshInstRendering::AlphaTest alpha_test,
 	                                                                   IblPass::MeshInstRendering::AlphaMode alpha_mode,
 	                                                                   IblPass::MeshInstRendering::CullMode cull_mode,
 	                                                                   IblPass::MeshInstRendering::StencilMode stencil_mode);
+
+	// Creates all possible lighting pipeline state permutations for a mesh instance.
+	ut::Array<PipelineState> CreateMeshInstLightPassPipelinePermutations();
+
+	// Creates all possible ibl pipeline state permutations for a mesh instance.
+	ut::Array<PipelineState> CreateMeshInstIblPassPipelinePermutations();
 
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();
@@ -299,6 +299,13 @@ private:
 	// Shaders.
 	ut::Array<BoundShader> light_shader;
 	ut::Array<BoundShader> ibl_shader;
+
+	// Render pass.
+	RenderPass lightpass;
+
+	// Pipeline states.
+	ut::Array<PipelineState> mesh_inst_lightpass_pipeline;
+	ut::Array<PipelineState> mesh_inst_iblpass_pipeline;
 
 	// Descriptors.
 	ut::Array<LightPass::MeshInstRendering::Descriptors> lightpass_mesh_inst_desc_set;

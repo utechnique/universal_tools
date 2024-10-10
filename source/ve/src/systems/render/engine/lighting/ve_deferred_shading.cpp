@@ -14,18 +14,15 @@ START_NAMESPACE(lighting)
 // Constructor.
 DeferredShading::DeferredShading(Toolset& toolset,
                                  ut::uint32 ibl_mip_count) : tools(toolset)
-                                                           , mesh_inst_gpass_shader(CreateMeshInstGPassShader())
+                                                           , mesh_inst_gpass_shader(CreateMeshInstGPassShaders())
+                                                           , light_shader(CreateLightPassShaders())
                                                            , ibl_shader(CreateIblShader(ibl_mip_count))
+                                                           , geometry_pass(CreateMeshInstGeometryPass())
+                                                           , light_pass(CreateLightPass())
+                                                           , mesh_inst_gpass_pipeline(CreateMeshInstGPassPipelinePermutations())
+                                                           , light_pipeline(CreateLightPassPipelinePermutations())
+                                                           , ibl_pipeline(CreateIblPipeline())
 {
-	constexpr size_t light_permutation_count = LightPass::Grid::size;
-	for (size_t i = 0; i < light_permutation_count; i++)
-	{
-		const size_t source_type = LightPass::Grid::GetCoordinate<LightPass::light_type_column>(i);
-		const size_t ibl_preset = LightPass::Grid::GetCoordinate<LightPass::ibl_column>(i);
-		light_shader.Add(CreateLightPassShader(static_cast<Light::SourceType>(source_type),
-		                                       static_cast<LightPass::IblPreset>(ibl_preset)));
-	}
-
 	ConnectDescriptors();
 }
 
@@ -42,13 +39,12 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
                                                                                  ut::uint32 height,
                                                                                  bool is_cube)
 {
-	const pixel::Format depth_stencil_format = depth_stencil.GetInfo().format;
 	const ut::uint32 face_count = is_cube ? 6 : 1;
 
 	// target info
 	Target::Info info;
 	info.type = is_cube ? Image::type_cube : Image::type_2D;
-	info.format = skGBufferFormat;
+	info.format = tools.formats.gbuffer;
 	info.usage = Target::Info::usage_color;
 	info.mip_count = 1;
 	info.width = width;
@@ -70,27 +66,12 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 	}
 
 	// depth
-	info.format = depth_stencil_format;
+	info.format = tools.formats.depth_stencil;
 	info.usage = Target::Info::usage_depth;
 	ut::Result<Target, ut::Error> depth = tools.device.CreateTarget(info);
 	if (!depth)
 	{
 		return ut::MakeError(depth.MoveAlt());
-	}
-
-	// render pass
-	ut::Result<RenderPass, ut::Error> geometry_pass = CreateMeshInstGeometryPass(depth_stencil_format);
-	if (!geometry_pass)
-	{
-		return ut::MakeError(geometry_pass.MoveAlt());
-	}
-
-	// light pass
-	ut::Result<RenderPass, ut::Error> light_pass = CreateLightPass(depth_stencil_format,
-	                                                               light_buffer.GetInfo().format);
-	if (!light_pass)
-	{
-		return ut::MakeError(light_pass.MoveAlt());
 	}
 
 	// geometry pass framebuffer
@@ -100,7 +81,7 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 		ut::Array<Framebuffer::Attachment> color_targets;
 		color_targets.Add(Framebuffer::Attachment(diffuse.Get(), face_id));
 		color_targets.Add(Framebuffer::Attachment(normal.Get(), face_id));
-		ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(geometry_pass.Get(),
+		ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(geometry_pass,
 		                                                                                ut::Move(color_targets),
 		                                                                                Framebuffer::Attachment(depth_stencil, face_id));
 		if (!framebuffer)
@@ -116,7 +97,7 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 	{
 		ut::Array<Framebuffer::Attachment> color_targets;
 		color_targets.Add(Framebuffer::Attachment(light_buffer, face_id));
-		ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(light_pass.Get(),
+		ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(light_pass,
 		                                                                                ut::Move(color_targets),
 		                                                                                Framebuffer::Attachment(depth_stencil, face_id));
 		if (!framebuffer)
@@ -124,63 +105,6 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 			return ut::MakeError(framebuffer.MoveAlt());
 		}
 		light_framebuffer.Add(framebuffer.Move());
-	}
-
-	// mesh instance gpass pipeline state
-	constexpr ut::uint32 mesh_inst_pipeline_count = static_cast<ut::uint32>(GeometryPass::MeshInstRendering::PipelineGrid::size);
-	ut::Array<PipelineState> mesh_inst_gpass_pipeline;
-	for (ut::uint32 i = 0; i < mesh_inst_pipeline_count; i++)
-	{
-		const size_t vertex_format = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::vertex_format_column>(i);
-		const size_t alpha_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::alpha_mode_column>(i);
-		const size_t cull_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::cull_mode_column>(i);
-		const size_t stencil_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::stencil_mode_column>(i);
-
-		ut::Result<PipelineState, ut::Error> pipeline = CreateMeshInstGPassPipeline(geometry_pass.Get(),
-		                                                                            width, height,
-		                                                                            static_cast<Mesh::VertexFormat>(vertex_format),
-		                                                                            static_cast<GeometryPass::MeshInstRendering::AlphaMode>(alpha_mode),
-		                                                                            static_cast<GeometryPass::MeshInstRendering::CullMode>(cull_mode),
-		                                                                            static_cast<GeometryPass::MeshInstRendering::StencilMode>(stencil_mode));
-		if (!pipeline)
-		{
-			return ut::MakeError(pipeline.MoveAlt());
-		}
-
-		if (!mesh_inst_gpass_pipeline.Add(pipeline.Move()))
-		{
-			return ut::MakeError(ut::error::out_of_memory);
-		}
-	}
-
-	// light pass pipeline state
-	ut::Array<PipelineState> lightpass_pipeline;
-	constexpr size_t light_permutation_count = LightPass::Grid::size;
-	for (ut::uint32 i = 0; i < light_permutation_count; i++)
-	{
-		const size_t source_type = LightPass::Grid::GetCoordinate<LightPass::light_type_column>(i);
-		const size_t ibl_preset = LightPass::Grid::GetCoordinate<LightPass::ibl_column>(i);
-		ut::Result<PipelineState, ut::Error> pipeline = CreateLightPassPipeline(light_pass.Get(),
-		                                                                        width, height,
-		                                                                        static_cast<Light::SourceType>(source_type),
-		                                                                        static_cast<LightPass::IblPreset>(ibl_preset));
-		if (!pipeline)
-		{
-			return ut::MakeError(pipeline.MoveAlt());
-		}
-
-		if (!lightpass_pipeline.Add(pipeline.Move()))
-		{
-			return ut::MakeError(ut::error::out_of_memory);
-		}
-	}
-
-	// ibl reflections pipeline state
-	ut::Result<PipelineState, ut::Error> ibl_pipeline = CreateIblPipeline(light_pass.Get(),
-	                                                                      width, height);
-	if (!ibl_pipeline)
-	{
-		return ut::MakeError(ibl_pipeline.MoveAlt());
 	}
 
 	// secondary command buffers
@@ -207,13 +131,8 @@ ut::Result<DeferredShading::ViewData, ut::Error> DeferredShading::CreateViewData
 		diffuse.Move(),
 		normal.Move(),
 		depth.Move(),
-		geometry_pass.Move(),
-		light_pass.Move(),
 		ut::Move(gpass_framebuffer),
 		ut::Move(light_framebuffer),
-		ut::Move(mesh_inst_gpass_pipeline),
-		ut::Move(lightpass_pipeline),
-		ibl_pipeline.Move(),
 		ut::Move(gpass_cmd),
 	};
 
@@ -259,7 +178,7 @@ void DeferredShading::Shade(Context& context,
 	Framebuffer& light_framebuffer = data.light_framebuffer[cubeface];
 	const Framebuffer::Info& fb_info = light_framebuffer.GetInfo();
 	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-	context.BeginRenderPass(data.light_pass, light_framebuffer, render_area, ut::Color<4>(0));
+	context.BeginRenderPass(light_pass, light_framebuffer, render_area, ut::Color<4>(0));
 
 	// set shader resources
 	lightpass_desc_set.view_ub.BindUniformBuffer(view_uniform_buffer);
@@ -302,7 +221,7 @@ void DeferredShading::Shade(Context& context,
 		ibl_desc_set.sampler.BindSampler(tools.sampler_cache.point_clamp);
 		ibl_desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
 		ibl_desc_set.ibl_cubemap.BindImage(ibl_cubemap.Get());
-		context.BindPipelineState(data.ibl_pipeline);
+		context.BindPipelineState(ibl_pipeline);
 		context.BindDescriptorSet(ibl_desc_set);
 		context.Draw(6, 0);
 	}
@@ -312,7 +231,7 @@ void DeferredShading::Shade(Context& context,
 	if (ambient_light_count > 0)
 	{
 		const size_t pipeline_id = LightPass::Grid::GetId(ibl_preset, Light::source_ambient);
-		context.BindPipelineState(data.light_pipeline[pipeline_id]);
+		context.BindPipelineState(light_pipeline[pipeline_id]);
 		for (size_t i = 0; i < ambient_light_count; i++)
 		{
 			AmbientLight& light = lights.ambient[i];
@@ -328,7 +247,7 @@ void DeferredShading::Shade(Context& context,
 	if (directional_light_count > 0)
 	{
 		const size_t pipeline_id = LightPass::Grid::GetId(ibl_preset, Light::source_directional);
-		context.BindPipelineState(data.light_pipeline[pipeline_id]);
+		context.BindPipelineState(light_pipeline[pipeline_id]);
 		for (size_t i = 0; i < directional_light_count; i++)
 		{
 			DirectionalLight& light = lights.directional[i];
@@ -344,7 +263,7 @@ void DeferredShading::Shade(Context& context,
 	if (point_light_count > 0)
 	{
 		const size_t pipeline_id = LightPass::Grid::GetId(ibl_preset, Light::source_point);
-		context.BindPipelineState(data.light_pipeline[pipeline_id]);
+		context.BindPipelineState(light_pipeline[pipeline_id]);
 		for (size_t i = 0; i < point_light_count; i++)
 		{
 			PointLight& light = lights.point[i];
@@ -360,7 +279,7 @@ void DeferredShading::Shade(Context& context,
 	if (spot_light_count > 0)
 	{
 		const size_t pipeline_id = LightPass::Grid::GetId(ibl_preset, Light::source_spot);
-		context.BindPipelineState(data.light_pipeline[pipeline_id]);
+		context.BindPipelineState(light_pipeline[pipeline_id]);
 		for (size_t i = 0; i < spot_light_count; i++)
 		{
 			SpotLight& light = lights.spot[i];
@@ -401,7 +320,7 @@ void DeferredShading::BakeOpaqueMeshInstances(Context& context,
 	Framebuffer& geometry_framebuffer = data.geometry_framebuffer[cubeface];
 	const Framebuffer::Info& fb_info = geometry_framebuffer.GetInfo();
 	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-	context.BeginRenderPass(data.geometry_pass, geometry_framebuffer, render_area, ut::Color<4>(0), 1.0f, 0, true);
+	context.BeginRenderPass(geometry_pass, geometry_framebuffer, render_area, ut::Color<4>(0), 1.0f, 0, true);
 
 	// parallelize drawcalls
 	const ut::uint32 dc_per_thread = dc_count / thread_count; // drawcalls per thread
@@ -425,7 +344,7 @@ void DeferredShading::BakeOpaqueMeshInstances(Context& context,
 		{
 			tools.device.Record(secondary_buffer_cache[thread_id],
 			                    record_commands,
-			                    data.geometry_pass,
+			                    geometry_pass,
 			                    geometry_framebuffer);
 		};
 
@@ -500,6 +419,7 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 
 	// variables tracking if something changes between iterations
 	Mesh::VertexFormat prev_vertex_format = Mesh::vertex_format_count;
+	Mesh::PolygonMode prev_polygon_mode = Mesh::PolygonMode::count;
 	GeometryPass::MeshInstRendering::AlphaMode prev_alpha_mode = GeometryPass::MeshInstRendering::alpha_mode_count;
 	GeometryPass::MeshInstRendering::CullMode prev_cull_mode = GeometryPass::MeshInstRendering::cull_mode_count;
 	GeometryPass::MeshInstRendering::StencilMode prev_stencil_mode = GeometryPass::MeshInstRendering::stencil_mode_count;
@@ -556,6 +476,7 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 
 		// check pipeline state
 		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
+		const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
 		const GeometryPass::MeshInstRendering::AlphaMode alpha_mode = material.alpha == Material::alpha_masked ?
 		                                                              GeometryPass::MeshInstRendering::alpha_test :
 		                                                              GeometryPass::MeshInstRendering::alpha_opaque;
@@ -566,6 +487,7 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 		                                                                  GeometryPass::MeshInstRendering::stencil_opaque_and_highlighted :
 		                                                                  GeometryPass::MeshInstRendering::stencil_opaque;
 		bool pipeline_changed = prev_vertex_format != vertex_format ||
+		                        prev_polygon_mode != polygon_mode ||
 		                        prev_cull_mode != cull_mode ||
 		                        prev_alpha_mode != alpha_mode ||
 		                        prev_stencil_mode != stencil_mode;
@@ -607,10 +529,12 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 			const size_t pipeline_state_id = GeometryPass::MeshInstRendering::PipelineGrid::GetId(vertex_format,
 			                                                                                      alpha_mode,
 			                                                                                      cull_mode,
-			                                                                                      stencil_mode);
-			context.BindPipelineState(data.mesh_gpass_pipeline[pipeline_state_id]);
+			                                                                                      stencil_mode,
+			                                                                                      static_cast<size_t>(polygon_mode));
+			context.BindPipelineState(mesh_inst_gpass_pipeline[pipeline_state_id]);
 
 			prev_vertex_format = vertex_format;
+			prev_polygon_mode = polygon_mode;
 			prev_alpha_mode = alpha_mode;
 			prev_cull_mode = cull_mode;
 			prev_stencil_mode = stencil_mode;
@@ -667,7 +591,7 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 }
 
 // Creates shaders for rendering geometry to the g-buffer.
-ut::Array<BoundShader> DeferredShading::CreateMeshInstGPassShader()
+ut::Array<BoundShader> DeferredShading::CreateMeshInstGPassShaders()
 {
 	const ut::String shader_name_prefix = "mesh_gpass_";
 	ut::Array<BoundShader> shaders;
@@ -697,7 +621,7 @@ ut::Array<BoundShader> DeferredShading::CreateMeshInstGPassShader()
 		Mesh::VertexFormat vertex_format =
 			static_cast<Mesh::VertexFormat>(
 				GeometryPass::MeshInstRendering::ShaderGrid::GetCoordinate<GeometryPass::MeshInstRendering::vertex_format_column>(i));
-		macros += Mesh::GenerateVertexMacros(vertex_format, true);
+		macros += Mesh::GenerateVertexMacros(vertex_format, Mesh::Instancing::on);
 		shader_name_suffix += ut::String("_vf") + ut::Print<ut::uint32>(vertex_format);
 
 		// alpha mode
@@ -777,6 +701,23 @@ Shader DeferredShading::CreateLightPassShader(Light::SourceType source_type,
 	return ps.MoveOrThrow();
 }
 
+// Creates all permutations of light pass shaders.
+ut::Array<Shader> DeferredShading::CreateLightPassShaders()
+{
+	ut::Array<Shader> shaders;
+
+	constexpr size_t light_permutation_count = LightPass::Grid::size;
+	for (size_t i = 0; i < light_permutation_count; i++)
+	{
+		const size_t source_type = LightPass::Grid::GetCoordinate<LightPass::light_type_column>(i);
+		const size_t ibl_preset = LightPass::Grid::GetCoordinate<LightPass::ibl_column>(i);
+		shaders.Add(CreateLightPassShader(static_cast<Light::SourceType>(source_type),
+		                                  static_cast<LightPass::IblPreset>(ibl_preset)));
+	}
+
+	return shaders;
+}
+
 // Creates a pixel shader for the image based lighting.
 Shader DeferredShading::CreateIblShader(ut::uint32 ibl_mip_count)
 {
@@ -804,34 +745,31 @@ Shader DeferredShading::CreateIblShader(ut::uint32 ibl_mip_count)
 }
 
 // Creates a render pass for the g-buffer.
-ut::Result<RenderPass, ut::Error> DeferredShading::CreateMeshInstGeometryPass(pixel::Format depth_stencil_format)
+RenderPass DeferredShading::CreateMeshInstGeometryPass()
 {
-	RenderTargetSlot depth_slot(depth_stencil_format, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
-	RenderTargetSlot color_slot(skGBufferFormat, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
+	RenderTargetSlot depth_slot(tools.formats.depth_stencil, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
+	RenderTargetSlot color_slot(tools.formats.gbuffer, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
 
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot); // diffuse
 	color_slots.Add(color_slot); // normal
 
-	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot);
+	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot).MoveOrThrow();
 }
 
 // Creates a render pass for the shading techniques.
-ut::Result<RenderPass, ut::Error> DeferredShading::CreateLightPass(pixel::Format depth_stencil_format,
-                                                                   pixel::Format light_buffer_format)
+RenderPass DeferredShading::CreateLightPass()
 {
-	RenderTargetSlot depth_slot(depth_stencil_format, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
-	RenderTargetSlot color_slot(light_buffer_format, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
+	RenderTargetSlot depth_slot(tools.formats.depth_stencil, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	RenderTargetSlot color_slot(tools.formats.light_buffer, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
-	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot);
+	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot).MoveOrThrow();
 }
 
 // Creates a pipeline state to render geometry to the g-buffer.
-ut::Result<PipelineState, ut::Error> DeferredShading::CreateMeshInstGPassPipeline(RenderPass& geometry_pass,
-                                                                                  ut::uint32 width,
-                                                                                  ut::uint32 height,
-                                                                                  Mesh::VertexFormat vertex_format,
+ut::Result<PipelineState, ut::Error> DeferredShading::CreateMeshInstGPassPipeline(Mesh::VertexFormat vertex_format,
+                                                                                  Mesh::PolygonMode polygon_mode,
                                                                                   GeometryPass::MeshInstRendering::AlphaMode alpha_mode,
                                                                                   GeometryPass::MeshInstRendering::CullMode cull_mode,
                                                                                   GeometryPass::MeshInstRendering::StencilMode stencil_mode)
@@ -845,13 +783,7 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateMeshInstGPassPipelin
 	PipelineState::Info info;
 	info.stages[Shader::vertex] = shader.stages[Shader::vertex].Get();
 	info.stages[Shader::pixel] = shader.stages[Shader::pixel].Get();
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            static_cast<ut::uint32>(width),
-	                            static_cast<ut::uint32>(height)));
-	info.input_assembly_state = Mesh::CreateIaState(vertex_format, true);
+	info.input_assembly_state = Mesh::CreateIaState(vertex_format, polygon_mode, Mesh::Instancing::on);
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = true;
 	info.depth_stencil_state.depth_compare_op = compare::less;
@@ -863,7 +795,7 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateMeshInstGPassPipelin
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0xff;
 	info.depth_stencil_state.stencil_reference = stencil_mask;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.polygon_mode = Mesh::GetRasterizerPolygonMode(polygon_mode);
 	info.rasterization_state.cull_mode = cull_mode == GeometryPass::MeshInstRendering::cull_back ?
 	                                                  RasterizationState::back_culling :
 	                                                  RasterizationState::no_culling;
@@ -874,23 +806,14 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateMeshInstGPassPipelin
 }
 
 // Creates a pipeline state to apply lighting.
-ut::Result<PipelineState, ut::Error> DeferredShading::CreateLightPassPipeline(RenderPass& light_pass,
-                                                                              ut::uint32 width,
-                                                                              ut::uint32 height,
-                                                                              Light::SourceType source_type,
+ut::Result<PipelineState, ut::Error> DeferredShading::CreateLightPassPipeline(Light::SourceType source_type,
                                                                               LightPass::IblPreset ibl_preset)
 {
 	PipelineState::Info info;
 	const size_t shader_id = LightPass::Grid::GetId(ibl_preset, source_type);
 	info.stages[Shader::vertex] = tools.shaders.quad_vs;
 	info.stages[Shader::pixel] = light_shader[shader_id];
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            static_cast<ut::uint32>(width),
-	                            static_cast<ut::uint32>(height)));
-	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->input_assembly;
+	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::never;
@@ -909,20 +832,12 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateLightPassPipeline(Re
 }
 
 // Creates a pipeline state to apply image based lighting.
-ut::Result<PipelineState, ut::Error> DeferredShading::CreateIblPipeline(RenderPass& light_pass,
-                                                                        ut::uint32 width,
-                                                                        ut::uint32 height)
+PipelineState DeferredShading::CreateIblPipeline()
 {
 	PipelineState::Info info;
 	info.stages[Shader::vertex] = tools.shaders.quad_vs;
 	info.stages[Shader::pixel] = ibl_shader;
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            static_cast<ut::uint32>(width),
-	                            static_cast<ut::uint32>(height)));
-	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->input_assembly;
+	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::never;
@@ -937,7 +852,66 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateIblPipeline(RenderPa
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;
 	info.blend_state.attachments.Add(BlendState::CreateAdditiveBlending());
-	return tools.device.CreatePipelineState(ut::Move(info), light_pass);
+	return tools.device.CreatePipelineState(ut::Move(info), light_pass).MoveOrThrow();
+}
+
+// Creates all possible geometry pass pipeline permutations for a mesh instance.
+ut::Array<PipelineState> DeferredShading::CreateMeshInstGPassPipelinePermutations()
+{
+	ut::Array<PipelineState> pipelines;
+
+	constexpr ut::uint32 mesh_inst_pipeline_count = static_cast<ut::uint32>(GeometryPass::MeshInstRendering::PipelineGrid::size);
+	for (ut::uint32 i = 0; i < mesh_inst_pipeline_count; i++)
+	{
+		const size_t vertex_format = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::vertex_format_column>(i);
+		const size_t alpha_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::alpha_mode_column>(i);
+		const size_t cull_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::cull_mode_column>(i);
+		const size_t stencil_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::stencil_mode_column>(i);
+		const size_t polygon_mode = GeometryPass::MeshInstRendering::PipelineGrid::GetCoordinate<GeometryPass::MeshInstRendering::polygon_mode_column>(i);
+
+		ut::Result<PipelineState, ut::Error> pipeline = CreateMeshInstGPassPipeline(static_cast<Mesh::VertexFormat>(vertex_format),
+		                                                                            static_cast<Mesh::PolygonMode>(polygon_mode),
+		                                                                            static_cast<GeometryPass::MeshInstRendering::AlphaMode>(alpha_mode),
+		                                                                            static_cast<GeometryPass::MeshInstRendering::CullMode>(cull_mode),
+		                                                                            static_cast<GeometryPass::MeshInstRendering::StencilMode>(stencil_mode));
+		if (!pipeline)
+		{
+			throw ut::Error(pipeline.MoveAlt());
+		}
+
+		if (!pipelines.Add(pipeline.Move()))
+		{
+			throw ut::Error(ut::error::out_of_memory);
+		}
+	}
+
+	return pipelines;
+}
+
+// Creates all possible light pass pipeline permutations for a mesh instance.
+ut::Array<PipelineState> DeferredShading::CreateLightPassPipelinePermutations()
+{
+	ut::Array<PipelineState> pipelines;
+
+	constexpr size_t light_permutation_count = LightPass::Grid::size;
+	for (ut::uint32 i = 0; i < light_permutation_count; i++)
+	{
+		const size_t source_type = LightPass::Grid::GetCoordinate<LightPass::light_type_column>(i);
+		const size_t ibl_preset = LightPass::Grid::GetCoordinate<LightPass::ibl_column>(i);
+		ut::Result<PipelineState, ut::Error> pipeline = CreateLightPassPipeline(static_cast<Light::SourceType>(source_type),
+		                                                                        static_cast<LightPass::IblPreset>(ibl_preset));
+		if (!pipeline)
+		{
+			throw ut::Error(pipeline.MoveAlt());
+		}
+
+		if (!pipelines.Add(pipeline.Move()))
+		{
+			throw ut::Error(ut::error::out_of_memory);
+		}
+	}
+
+	return pipelines;
 }
 
 // Connects all descriptor sets to the corresponding shaders.

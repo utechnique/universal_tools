@@ -69,11 +69,6 @@ private:
 	                        const ut::Vector<3>& view_position,
 	                        Image::Cube::Face face);
 
-	// G-Buffer target format.
-	static constexpr pixel::Format skPreferredDepthFormat = pixel::d24_unorm_s8_uint;
-	static constexpr pixel::Format skAlternativeDepthFormat = pixel::d32_float_s8_uint;
-	static constexpr pixel::Format skGBufferFormat = pixel::r8g8b8a8_unorm;
-
 	// policy tools
 	Toolset& tools;
 	Policies& policies;

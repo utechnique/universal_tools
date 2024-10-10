@@ -35,8 +35,6 @@ GaussianBlur::GaussianBlur(Toolset& toolset) : tools(toolset)
 //    @return - a new GaussianBlur::ViewData object or error if failed.
 ut::Result<GaussianBlur::ViewData, ut::Error> GaussianBlur::CreateViewData(RenderPass& render_pass,
                                                                            Shader& blur_shader,
-                                                                           ut::uint32 width,
-                                                                           ut::uint32 height,
                                                                            ut::uint32 radius,
                                                                            float sigma)
 {
@@ -44,12 +42,7 @@ ut::Result<GaussianBlur::ViewData, ut::Error> GaussianBlur::CreateViewData(Rende
 	PipelineState::Info info;
 	info.stages[Shader::vertex] = tools.shaders.quad_vs;
 	info.stages[Shader::pixel] = blur_shader;
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            width, height));
-	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->input_assembly;
+	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::never;

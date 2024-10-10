@@ -26,18 +26,9 @@ public:
 		Target normal;
 		Target depth;
 
-		// render passes
-		RenderPass geometry_pass;
-		RenderPass light_pass;
-
 		// cubemaps need a separate framebuffer for each face
 		ut::Array<Framebuffer> geometry_framebuffer;
 		ut::Array<Framebuffer> light_framebuffer;
-
-		// pipeline states
-		ut::Array<PipelineState> mesh_gpass_pipeline;
-		ut::Array<PipelineState> light_pipeline;
-		PipelineState ibl_pipeline;
 
 		// secondary buffers to parallelize cpu work
 		// note that cubemaps need a separate set of buffers for each face
@@ -123,11 +114,13 @@ private:
 			static constexpr ut::uint32 alpha_mode_column = 1;
 			static constexpr ut::uint32 cull_mode_column = 2;
 			static constexpr ut::uint32 stencil_mode_column = 3;
+			static constexpr ut::uint32 polygon_mode_column = 4;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 GeometryPass::MeshInstRendering::alpha_mode_count,
 			                 GeometryPass::MeshInstRendering::cull_mode_count,
-			                 GeometryPass::MeshInstRendering::stencil_mode_count> PipelineGrid;
+			                 GeometryPass::MeshInstRendering::stencil_mode_count,
+			                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
 			typedef ut::Grid<Mesh::vertex_format_count,
 			                 GeometryPass::MeshInstRendering::alpha_mode_count> ShaderGrid;
@@ -197,42 +190,43 @@ private:
 	                                ut::uint32 count);
 
 	// Creates shaders for rendering geometry to the g-buffer.
-	ut::Array<BoundShader> CreateMeshInstGPassShader();
+	ut::Array<BoundShader> CreateMeshInstGPassShaders();
 
 	// Creates a shader for the lighting pass.
 	Shader CreateLightPassShader(Light::SourceType source_type,
 	                             LightPass::IblPreset ibl_preset);
 
+	// Creates all permutations of light pass shaders.
+	ut::Array<Shader> CreateLightPassShaders();
+
 	// Creates a pixel shader for the image based lighting.
 	Shader CreateIblShader(ut::uint32 ibl_mip_count);
 
 	// Creates a render pass for the g-buffer.
-	ut::Result<RenderPass, ut::Error> CreateMeshInstGeometryPass(pixel::Format depth_stencil_format);
+	RenderPass CreateMeshInstGeometryPass();
 
 	// Creates a render pass for the shading techniques.
-	ut::Result<RenderPass, ut::Error> CreateLightPass(pixel::Format depth_stencil_format,
-	                                                  pixel::Format light_buffer_format);
+	RenderPass CreateLightPass();
 
 	// Creates a pipeline state to render geometry to the g-buffer.
-	ut::Result<PipelineState, ut::Error> CreateMeshInstGPassPipeline(RenderPass& geometry_pass,
-	                                                                 ut::uint32 width,
-	                                                                 ut::uint32 height,
-	                                                                 Mesh::VertexFormat vertex_format,
+	ut::Result<PipelineState, ut::Error> CreateMeshInstGPassPipeline(Mesh::VertexFormat vertex_format,
+	                                                                 Mesh::PolygonMode polygon_mode,
 	                                                                 GeometryPass::MeshInstRendering::AlphaMode alpha_mode,
 	                                                                 GeometryPass::MeshInstRendering::CullMode cull_mode,
 	                                                                 GeometryPass::MeshInstRendering::StencilMode stencil_mode);
 
 	// Creates a pipeline state to apply lighting.
-	ut::Result<PipelineState, ut::Error> CreateLightPassPipeline(RenderPass& light_pass,
-	                                                             ut::uint32 width,
-	                                                             ut::uint32 height,
-	                                                             Light::SourceType source_type,
+	ut::Result<PipelineState, ut::Error> CreateLightPassPipeline(Light::SourceType source_type,
 	                                                             LightPass::IblPreset ibl_preset);
 
 	// Creates a pipeline state to apply image based lighting.
-	ut::Result<PipelineState, ut::Error> CreateIblPipeline(RenderPass& light_pass,
-	                                                       ut::uint32 width,
-	                                                       ut::uint32 height);
+	PipelineState CreateIblPipeline();
+
+	// Creates all possible geometry pass pipeline permutations for a mesh instance.
+	ut::Array<PipelineState> CreateMeshInstGPassPipelinePermutations();
+
+	// Creates all possible light pass pipeline permutations for a mesh instance.
+	ut::Array<PipelineState> CreateLightPassPipelinePermutations();
 
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();
@@ -245,6 +239,15 @@ private:
 	ut::Array<Shader> light_shader;
 	Shader ibl_shader;
 
+	// Render passes.
+	RenderPass geometry_pass;
+	RenderPass light_pass;
+
+	// Pipeline states.
+	ut::Array<PipelineState> mesh_inst_gpass_pipeline;
+	ut::Array<PipelineState> light_pipeline;
+	PipelineState ibl_pipeline;
+
 	// Secondary command buffers to parallelize cpu work.
 	ut::Array< ut::Ref<CmdBuffer> > secondary_buffer_cache;
 
@@ -252,9 +255,6 @@ private:
 	ut::Array<GeometryPass::MeshInstRendering::Descriptors> gpass_mesh_inst_desc_set;
 	IblDescriptorSet ibl_desc_set;
 	LightPassDescriptorSet lightpass_desc_set;
-
-	// G-Buffer target format.
-	static constexpr pixel::Format skGBufferFormat = pixel::r16g16b16a16_float;
 };
 
 //----------------------------------------------------------------------------//

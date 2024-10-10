@@ -29,8 +29,25 @@ public:
 		vertex_pos3_texcoord2_normal3_tangent3_weights4_float_bones4_uint32,
 		vertex_format_count
 	};
+	
+	// Supported polygon rendering mode
+	enum class PolygonMode
+	{
+		line,
+		triangle,
+		triangle_wireframe,
+		count
+	};
 
-	// Mesh::Subset is a part of the mesh with a separate material.
+	// Instancing mode
+	enum class Instancing
+	{
+		on,
+		off
+	};
+
+	// Mesh::Subset is a part of the mesh with a separate material
+	// and rendering options.
 	struct Subset
 	{
 		Material material;
@@ -51,6 +68,7 @@ public:
 		 ut::Optional<Buffer> in_index_buffer,
 		 IndexType in_index_type,
 	     VertexFormat in_vertex_format,
+	     PolygonMode in_polygon_mode,
 	     ut::Array<Subset> in_subsets);
 
 	// Identify() method must be implemented for the polymorphic types.
@@ -58,11 +76,19 @@ public:
 
 	// Creates the input assembly state from the provided vertex format.
 	static InputAssemblyState CreateIaState(VertexFormat vertex_format,
-	                                        bool instancing);
+	                                        PolygonMode polygon_mode,
+	                                        Instancing instancing);
+
+	// Converts provided Mesh::PolygonMode value to corresponding
+	// RasterizationState::PolygonMode value.
+	static RasterizationState::PolygonMode GetRasterizerPolygonMode(PolygonMode polygon_mode);
+
+	// Creates the input assembly state for the desired subset of this mesh.
+	InputAssemblyState CreateIaState(Instancing instancing = Instancing::off) const;
 
 	// Returns an array of shader macros for the specified vertex format.
 	static ut::Array<Shader::MacroDefinition> GenerateVertexMacros(VertexFormat vertex_format,
-	                                                               bool instancing);
+	                                                               Instancing instancing = Instancing::off);
 
 	// Number of vertices in one face.
 	static constexpr ut::uint32 skPolygonVertices = 3;
@@ -88,11 +114,8 @@ public:
 	// The format of the vertices in the vertex buffer.
 	VertexFormat vertex_format;
 
-	// IA state for the vertices of this mesh.
-	InputAssemblyState input_assembly;
-
-	// IA state for the vertices of this mesh with instance id.
-	InputAssemblyState input_assembly_instancing;
+	// The polygon mode of this mesh.
+	PolygonMode polygon_mode;
 
 	// Subset groups, each has it's own material.
 	ut::Array<Subset> subsets;

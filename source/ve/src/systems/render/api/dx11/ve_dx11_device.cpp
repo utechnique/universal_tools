@@ -1187,18 +1187,6 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		ut::log.Lock() << "Warning! Pipeline state has no vertex shader stage." << ut::cret;
 	}
 
-	// check if at least one scissor is used
-	const size_t viewport_count = info.viewports.Count();
-	BOOL scissor_enable = FALSE;
-	for (size_t i = 0; i < viewport_count; i++)
-	{
-		if (info.viewports[i].scissor)
-		{
-			scissor_enable = TRUE;
-			break;
-		}
-	}
-
 	// create rasterizer state
 	const RasterizationState& rs = info.rasterization_state;
 	D3D11_RASTERIZER_DESC raster_desc;
@@ -1209,7 +1197,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	raster_desc.DepthBiasClamp = rs.depth_bias_clamp;
 	raster_desc.SlopeScaledDepthBias = rs.depth_bias_slope_factor;
 	raster_desc.DepthClipEnable = TRUE;
-	raster_desc.ScissorEnable = scissor_enable;
+	raster_desc.ScissorEnable = TRUE;
 	raster_desc.MultisampleEnable = FALSE;
 	raster_desc.AntialiasedLineEnable = FALSE;
 	result = d3d11_device->CreateRasterizerState(&raster_desc, &rasterizer_state);
@@ -1307,10 +1295,24 @@ void Device::Record(CmdBuffer& cmd_buffer,
 	                ut::Optional<RenderPass&> render_pass,
 	                ut::Optional<Framebuffer&> framebuffer)
 {
+	// inherit bound framebuffer size
+	ut::Optional< ut::Vector<2, ut::uint32> > framebuffer_size;
+	if (framebuffer)
+	{
+		const Framebuffer::Info& framebuffer_info = framebuffer->GetInfo();
+		framebuffer_size = ut::Vector<2, ut::uint32>(framebuffer_info.width,
+		                                             framebuffer_info.height);
+	}
+
+	// choose primary or deferred context
 	const bool is_secondary_buffer = cmd_buffer.info.level == CmdBuffer::level_secondary;
 	ID3D11DeviceContext* dx11_context_ptr = is_secondary_buffer ? cmd_buffer.deferred_context.Get() :
-	                                                              immediate_context.Get();
-	Context context(PlatformContext(dx11_context_ptr, is_secondary_buffer));
+	                                        immediate_context.Get();
+	Context context(PlatformContext(dx11_context_ptr,
+	                                is_secondary_buffer,
+	                                ut::Move(framebuffer_size)));
+
+	// deferred context must start render pass separately
 	if (is_secondary_buffer)
 	{
 		UT_ASSERT(render_pass);
@@ -1328,8 +1330,11 @@ void Device::Record(CmdBuffer& cmd_buffer,
 		                        1.0f, 0, false);
 	}
 
+	// record commands
 	function(context);
 
+	// deferred context must call FinishCommandList() after
+	// all commands have been recorded
 	if (is_secondary_buffer)
 	{
 		ID3D11CommandList* cmd_list;

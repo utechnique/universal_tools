@@ -16,6 +16,9 @@ ForwardShading::ForwardShading(Toolset& toolset,
                                ut::uint32 ibl_mip_count) : tools(toolset)
                                                          , light_shader(CreateMeshInstLightPassShader())
                                                          , ibl_shader(CreateMeshInstIblShader(ibl_mip_count))
+                                                         , lightpass(CreateLightPass())
+                                                         , mesh_inst_lightpass_pipeline(CreateMeshInstLightPassPipelinePermutations())
+                                                         , mesh_inst_iblpass_pipeline(CreateMeshInstIblPassPipelinePermutations())
 {
 	ConnectDescriptors();
 }
@@ -29,19 +32,10 @@ ForwardShading::ForwardShading(Toolset& toolset,
 //    @return - a new ForwardShading::ViewData object or error if failed.
 ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(Target& depth_stencil,
                                                                                Target& light_buffer,
-                                                                               ut::uint32 width,
-                                                                               ut::uint32 height,
                                                                                bool is_cube)
 {
 	const ut::uint32 face_count = is_cube ? 6 : 1;
-
-	// light pass
-	ut::Result<RenderPass, ut::Error> lightpass = CreateLightPass(depth_stencil.GetInfo().format,
-	                                                              light_buffer.GetInfo().format);
-	if (!lightpass)
-	{
-		return ut::MakeError(lightpass.MoveAlt());
-	}
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
 
 	// light pass framebuffer
 	ut::Array<Framebuffer> light_framebuffer;
@@ -49,7 +43,7 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 	{
 		ut::Array<Framebuffer::Attachment> color_targets;
 		color_targets.Add(Framebuffer::Attachment(light_buffer, face_id));
-		ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(lightpass.Get(),
+		ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(lightpass,
 		                                                                                ut::Move(color_targets),
 		                                                                                Framebuffer::Attachment(depth_stencil, face_id));
 		if (!framebuffer)
@@ -59,70 +53,7 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 		light_framebuffer.Add(framebuffer.Move());
 	}
 
-	// light pass pipeline states
-	ut::Array<PipelineState> lightpass_pipeline;
-	constexpr size_t light_permutation_count = LightPass::MeshInstRendering::PipelineGrid::size;
-	for (ut::uint32 i = 0; i < light_permutation_count; i++)
-	{
-		const size_t vertex_format = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::vertex_format_column>(i);
-		const size_t alpha_test = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::alpha_test_column>(i);
-		const size_t alpha_mode = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::alpha_mode_column>(i);
-		const size_t ibl_preset = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::ibl_column>(i);
-		const size_t source_type = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::light_type_column>(i);
-		const size_t cull_mode = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::cull_mode_column>(i);
-		const size_t stencil_mode = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::stencil_mode_column>(i);
-
-		ut::Result<PipelineState, ut::Error> pipeline = CreateMeshInstLightPassPipeline(lightpass.Get(),
-		                                                                                width, height,
-		                                                                                static_cast<Mesh::VertexFormat>(vertex_format),
-		                                                                                static_cast<LightPass::MeshInstRendering::AlphaTest>(alpha_test),
-		                                                                                static_cast<LightPass::MeshInstRendering::AlphaMode>(alpha_mode),
-		                                                                                static_cast<LightPass::MeshInstRendering::IblPreset>(ibl_preset),
-		                                                                                static_cast<Light::SourceType>(source_type),
-		                                                                                static_cast<LightPass::MeshInstRendering::CullMode>(cull_mode),
-		                                                                                static_cast<LightPass::MeshInstRendering::StencilMode>(stencil_mode));
-		if (!pipeline)
-		{
-			return ut::MakeError(pipeline.MoveAlt());
-		}
-
-		if (!lightpass_pipeline.Add(pipeline.Move()))
-		{
-			return ut::MakeError(ut::error::out_of_memory);
-		}
-	}
-
-	// ibl pass pipeline states
-	ut::Array<PipelineState> iblpass_pipeline;
-	constexpr size_t ibl_permutation_count = IblPass::MeshInstRendering::PipelineGrid::size;
-	for (ut::uint32 i = 0; i < ibl_permutation_count; i++)
-	{
-		const size_t vertex_format = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::vertex_format_column>(i);
-		const size_t alpha_test = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::alpha_test_column>(i);
-		const size_t alpha_mode = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::alpha_mode_column>(i);
-		const size_t cull_mode = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::cull_mode_column>(i);
-		const size_t stencil_mode = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::stencil_mode_column>(i);
-
-		ut::Result<PipelineState, ut::Error> pipeline = CreateMeshInstIblPassPipeline(lightpass.Get(),
-		                                                                              width, height,
-		                                                                              static_cast<Mesh::VertexFormat>(vertex_format),
-		                                                                              static_cast<IblPass::MeshInstRendering::AlphaTest>(alpha_test),
-		                                                                              static_cast<IblPass::MeshInstRendering::AlphaMode>(alpha_mode),
-		                                                                              static_cast<IblPass::MeshInstRendering::CullMode>(cull_mode),
-		                                                                              static_cast<IblPass::MeshInstRendering::StencilMode>(stencil_mode));
-		if (!pipeline)
-		{
-			return ut::MakeError(pipeline.MoveAlt());
-		}
-
-		if (!iblpass_pipeline.Add(pipeline.Move()))
-		{
-			return ut::MakeError(ut::error::out_of_memory);
-		}
-	}
-
 	// secondary command buffers
-	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
 	const ut::uint32 secondary_buffer_count = thread_count * (is_cube ? 6 : 1);
 	ut::Array<CmdBuffer> lightpass_cmd_buffers;
 	for (ut::uint32 i = 0; i < secondary_buffer_count; i++)
@@ -142,10 +73,7 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 
 	ForwardShading::ViewData data =
 	{
-		lightpass.Move(),
 		ut::Move(light_framebuffer),
-		ut::Move(lightpass_pipeline),
-		ut::Move(iblpass_pipeline),
 		ut::Move(lightpass_cmd_buffers),
 	};
 
@@ -183,7 +111,7 @@ void ForwardShading::DrawTransparentGeometry(Context& context,
 	Framebuffer& framebuffer = data.light_framebuffer[cubeface];
 	const Framebuffer::Info& fb_info = framebuffer.GetInfo();
 	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-	context.BeginRenderPass(data.lightpass, framebuffer, render_area, ut::Color<4>(0), 1.0f, 0, true);
+	context.BeginRenderPass(lightpass, framebuffer, render_area, ut::Color<4>(0), 1.0f, 0, true);
 
 	// render all mesh instances in different threads
 	ut::uint32 offset = 0; // offset from the first drawcall in the batcher
@@ -207,7 +135,7 @@ void ForwardShading::DrawTransparentGeometry(Context& context,
 		{
 			tools.device.Record(secondary_buffer_cache[thread_id],
 			                    record_commands,
-			                    data.lightpass,
+			                    lightpass,
 			                    framebuffer);
 		};
 
@@ -390,13 +318,15 @@ void ForwardShading::RenderTransparentMeshInstanceLights(Context& context,
 
 		// bind pipeline state
 		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
+		const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
 		const size_t pipeline_state_id = LightPass::MeshInstRendering::PipelineGrid::GetId(vertex_format,
 		                                                                                   ibl_preset,
 		                                                                                   light_type,
 		                                                                                   alpha_test,
 		                                                                                   alpha_mode,
 		                                                                                   cull_mode,
-		                                                                                   stencil_mode);
+		                                                                                   stencil_mode,
+		                                                                                   static_cast<size_t>(polygon_mode));
 
 		// bind uniforms
 		LightPass::MeshInstRendering::Descriptors& desc_set = lightpass_mesh_inst_desc_set[thread_id];
@@ -412,7 +342,7 @@ void ForwardShading::RenderTransparentMeshInstanceLights(Context& context,
 		// bind index buffer and draw
 		DrawMesh(context,
 		         mesh,
-		         data.lightpass_pipeline[pipeline_state_id],
+		         mesh_inst_lightpass_pipeline[pipeline_state_id],
 		         desc_set,
 		         instance_buffer,
 		         subset.index_count,
@@ -457,11 +387,13 @@ void ForwardShading::RenderTransparentMeshInstanceIbl(Context& context,
 
 	// get pipeline state
 	const Mesh::VertexFormat vertex_format = mesh.vertex_format;
+	const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
 	const size_t pipeline_state_id = IblPass::MeshInstRendering::PipelineGrid::GetId(vertex_format,
 	                                                                                 alpha_test,
 	                                                                                 alpha_mode,
 	                                                                                 cull_mode,
-	                                                                                 stencil_mode);
+	                                                                                 stencil_mode,
+	                                                                                 static_cast<size_t>(polygon_mode));
 
 	// bind uniforms
 	IblPass::MeshInstRendering::Descriptors& desc_set = iblpass_mesh_inst_desc_set[thread_id];
@@ -477,7 +409,7 @@ void ForwardShading::RenderTransparentMeshInstanceIbl(Context& context,
 	// draw
 	DrawMesh(context,
 	         mesh,
-	         data.iblpass_pipeline[pipeline_state_id],
+	         mesh_inst_iblpass_pipeline[pipeline_state_id],
 	         desc_set,
 	         instance_buffer,
 	         subset.index_count,
@@ -548,7 +480,7 @@ ut::Array<BoundShader> ForwardShading::CreateMeshInstLightPassShader()
 		macros.Add(macro);
 
 		// vertex traits
-		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), true);
+		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
 		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
 		// ibl preset
@@ -651,7 +583,7 @@ ut::Array<BoundShader> ForwardShading::CreateMeshInstIblShader(ut::uint32 ibl_mi
 		macros.Add(ut::Move(macro));
 
 		// vertex traits
-		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), true);
+		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
 		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
 		// alpha test
@@ -684,27 +616,24 @@ ut::Array<BoundShader> ForwardShading::CreateMeshInstIblShader(ut::uint32 ibl_mi
 }
 
 // Creates a render pass for the shading techniques.
-ut::Result<RenderPass, ut::Error> ForwardShading::CreateLightPass(pixel::Format depth_stencil_format,
-                                                                  pixel::Format light_buffer_format)
+RenderPass ForwardShading::CreateLightPass()
 {
-	RenderTargetSlot depth_slot(depth_stencil_format, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
-	RenderTargetSlot color_slot(light_buffer_format, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	RenderTargetSlot depth_slot(tools.formats.depth_stencil, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	RenderTargetSlot color_slot(tools.formats.light_buffer, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
-	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot);
+	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot).MoveOrThrow();
 }
 
 // Creates a pipeline state to apply lighting.
-ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstLightPassPipeline(RenderPass& lightpass,
-                                                                                     ut::uint32 width,
-                                                                                     ut::uint32 height,
-                                                                                     Mesh::VertexFormat vertex_format,
+ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstLightPassPipeline(Mesh::VertexFormat vertex_format,
+                                                                                     Mesh::PolygonMode polygon_mode,
                                                                                      LightPass::MeshInstRendering::AlphaTest alpha_test,
                                                                                      LightPass::MeshInstRendering::AlphaMode alpha_mode,
                                                                                      LightPass::MeshInstRendering::IblPreset ibl_preset,
-                                                                                     Light::SourceType source_type,
                                                                                      LightPass::MeshInstRendering::CullMode cull_mode,
-                                                                                     LightPass::MeshInstRendering::StencilMode stencil_mode)
+                                                                                     LightPass::MeshInstRendering::StencilMode stencil_mode,
+                                                                                     Light::SourceType source_type)
 {
 	PipelineState::Info info;
 	const size_t shader_id = LightPass::MeshInstRendering::ShaderGrid::GetId(vertex_format,
@@ -719,13 +648,7 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstLightPassPipe
 
 	info.stages[Shader::vertex] = light_shader[shader_id].stages[Shader::vertex].Get();
 	info.stages[Shader::pixel] = light_shader[shader_id].stages[Shader::pixel].Get();
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            static_cast<ut::uint32>(width),
-	                            static_cast<ut::uint32>(height)));
-	info.input_assembly_state = Mesh::CreateIaState(vertex_format, true);
+	info.input_assembly_state = Mesh::CreateIaState(vertex_format, polygon_mode, Mesh::Instancing::on);
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::less_or_equal;
@@ -737,7 +660,7 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstLightPassPipe
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0xffffffff;
 	info.depth_stencil_state.stencil_reference = stencil_mask;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.polygon_mode = Mesh::GetRasterizerPolygonMode(polygon_mode);
 	info.rasterization_state.cull_mode = cull_mode == LightPass::MeshInstRendering::cull_back ?
 	                                                  RasterizationState::back_culling :
 	                                                  RasterizationState::no_culling;
@@ -770,10 +693,8 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstLightPassPipe
 }
 
 // Creates a pipeline state to apply ibl reflections.
-ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstIblPassPipeline(RenderPass& lightpass,
-                                                                                   ut::uint32 width,
-                                                                                   ut::uint32 height,
-                                                                                   Mesh::VertexFormat vertex_format,
+ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstIblPassPipeline(Mesh::VertexFormat vertex_format,
+                                                                                   Mesh::PolygonMode polygon_mode,
                                                                                    IblPass::MeshInstRendering::AlphaTest alpha_test,
                                                                                    IblPass::MeshInstRendering::AlphaMode alpha_mode,
                                                                                    IblPass::MeshInstRendering::CullMode cull_mode,
@@ -789,13 +710,7 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstIblPassPipeli
 
 	info.stages[Shader::vertex] = ibl_shader[shader_id].stages[Shader::vertex].Get();
 	info.stages[Shader::pixel] = ibl_shader[shader_id].stages[Shader::pixel].Get();
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            static_cast<ut::uint32>(width),
-	                            static_cast<ut::uint32>(height)));
-	info.input_assembly_state = Mesh::CreateIaState(vertex_format, true);
+	info.input_assembly_state = Mesh::CreateIaState(vertex_format, polygon_mode, Mesh::Instancing::on);
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::less_or_equal;
@@ -810,7 +725,7 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstIblPassPipeli
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0xffffffff;
 	info.depth_stencil_state.stencil_reference = stencil_mask;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.polygon_mode = Mesh::GetRasterizerPolygonMode(polygon_mode);
 	info.rasterization_state.cull_mode = cull_mode == IblPass::MeshInstRendering::cull_back ?
 	                                                  RasterizationState::back_culling :
 	                                                  RasterizationState::no_culling;
@@ -840,6 +755,131 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstIblPassPipeli
 	}
 	
 	return tools.device.CreatePipelineState(ut::Move(info), lightpass);
+}
+
+// Creates all possible lighting pipeline state permutations for a mesh instance.
+ut::Array<PipelineState> ForwardShading::CreateMeshInstLightPassPipelinePermutations()
+{
+	// calculate multithreading data to create light pass pipeline states
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
+	constexpr size_t light_permutation_count = LightPass::MeshInstRendering::PipelineGrid::size;
+	const size_t light_permutations_per_thread = light_permutation_count / thread_count;
+	ut::Array< ut::UniquePtr<PipelineState> > lightpass_pipeline_mt_cache(light_permutation_count);
+
+	// multithreading job to create lightpass pipeline
+	auto mesh_inst_lp_pipeline_job = [&](ut::uint32 offset, ut::uint32 count)
+	{
+		for (ut::uint32 i = offset; i < offset + count; i++)
+		{
+			const size_t vertex_format = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::vertex_format_column>(i);
+			const size_t alpha_test = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::alpha_test_column>(i);
+			const size_t alpha_mode = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::alpha_mode_column>(i);
+			const size_t ibl_preset = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::ibl_column>(i);
+			const size_t source_type = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::light_type_column>(i);
+			const size_t cull_mode = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::cull_mode_column>(i);
+			const size_t stencil_mode = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::stencil_mode_column>(i);
+			const size_t polygon_mode = LightPass::MeshInstRendering::PipelineGrid::GetCoordinate<LightPass::MeshInstRendering::polygon_mode_column>(i);
+
+			ut::Result<PipelineState, ut::Error> pipeline = CreateMeshInstLightPassPipeline(static_cast<Mesh::VertexFormat>(vertex_format),
+			                                                                                static_cast<Mesh::PolygonMode>(polygon_mode),
+			                                                                                static_cast<LightPass::MeshInstRendering::AlphaTest>(alpha_test),
+			                                                                                static_cast<LightPass::MeshInstRendering::AlphaMode>(alpha_mode),
+			                                                                                static_cast<LightPass::MeshInstRendering::IblPreset>(ibl_preset),
+			                                                                                static_cast<LightPass::MeshInstRendering::CullMode>(cull_mode),
+			                                                                                static_cast<LightPass::MeshInstRendering::StencilMode>(stencil_mode),
+			                                                                                static_cast<Light::SourceType>(source_type));
+			if (!pipeline)
+			{
+				throw ut::Error(pipeline.MoveAlt());
+			}
+
+			lightpass_pipeline_mt_cache[i] = ut::MakeUnique<PipelineState>(ut::Move(pipeline.Move()));
+		}
+	};
+
+	// create light pass pipeline in multiple threads
+	for (ut::uint32 thread_id = 0, offset = 0; thread_id < thread_count; thread_id++)
+	{
+		const ut::uint32 count = static_cast<ut::uint32>(light_permutations_per_thread) +
+			(thread_id == 0 ? (static_cast<ut::uint32>(light_permutation_count) % thread_count) : 0);
+		tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void(ut::uint32,
+		                                                      ut::uint32)> >(mesh_inst_lp_pipeline_job,
+		                                                                     offset, count));
+		offset += count;
+	}
+	tools.scheduler.WaitForCompletion();
+
+	// get rid of unique ptr containers
+	ut::Array<PipelineState> pipeline_permutations;
+	for (ut::uint32 i = 0; i < light_permutation_count; i++)
+	{
+		if (!pipeline_permutations.Add(ut::Move(lightpass_pipeline_mt_cache[i].GetRef())))
+		{
+			throw ut::Error(ut::error::out_of_memory);
+		}
+	}
+
+	return pipeline_permutations;
+}
+
+// Creates all possible ibl pipeline state permutations for a mesh instance.
+ut::Array<PipelineState> ForwardShading::CreateMeshInstIblPassPipelinePermutations()
+{
+	// calculate multithreading data to create ibl pass pipeline states
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
+	constexpr size_t ibl_permutation_count = IblPass::MeshInstRendering::PipelineGrid::size;
+	const size_t ibl_permutations_per_thread = ibl_permutation_count / thread_count;
+	ut::Array< ut::UniquePtr<PipelineState> > ibl_pipeline_mt_cache(ibl_permutation_count);
+
+	// multithreading job to create iblpass pipeline
+	auto mesh_inst_ibl_pipeline_job = [&](ut::uint32 offset, ut::uint32 count)
+	{
+		for (ut::uint32 i = offset; i < offset + count; i++)
+		{
+			const size_t vertex_format = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::vertex_format_column>(i);
+			const size_t alpha_test = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::alpha_test_column>(i);
+			const size_t alpha_mode = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::alpha_mode_column>(i);
+			const size_t cull_mode = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::cull_mode_column>(i);
+			const size_t stencil_mode = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::stencil_mode_column>(i);
+			const size_t polygon_mode = IblPass::MeshInstRendering::PipelineGrid::GetCoordinate<IblPass::MeshInstRendering::polygon_mode_column>(i);
+
+			ut::Result<PipelineState, ut::Error> pipeline = CreateMeshInstIblPassPipeline(static_cast<Mesh::VertexFormat>(vertex_format),
+			                                                                              static_cast<Mesh::PolygonMode>(polygon_mode),
+			                                                                              static_cast<IblPass::MeshInstRendering::AlphaTest>(alpha_test),
+			                                                                              static_cast<IblPass::MeshInstRendering::AlphaMode>(alpha_mode),
+			                                                                              static_cast<IblPass::MeshInstRendering::CullMode>(cull_mode),
+			                                                                              static_cast<IblPass::MeshInstRendering::StencilMode>(stencil_mode));
+			if (!pipeline)
+			{
+				throw ut::MakeError(pipeline.MoveAlt());
+			}
+
+			ibl_pipeline_mt_cache[i] = ut::MakeUnique<PipelineState>(ut::Move(pipeline.Move()));
+		}
+	};
+
+	// create light pass pipeline in multiple threads
+	for (ut::uint32 thread_id = 0, offset = 0; thread_id < thread_count; thread_id++)
+	{
+		const ut::uint32 count = static_cast<ut::uint32>(ibl_permutations_per_thread) +
+			(thread_id == 0 ? (static_cast<ut::uint32>(ibl_permutation_count) % thread_count) : 0);
+		tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void(ut::uint32,
+		                                                      ut::uint32)> >(mesh_inst_ibl_pipeline_job,
+		                                                      offset, count));
+		offset += count;
+	}
+	tools.scheduler.WaitForCompletion();
+
+	ut::Array<PipelineState> pipeline_permutations;
+	for (ut::uint32 i = 0; i < ibl_permutation_count; i++)
+	{
+		if (!pipeline_permutations.Add(ut::Move(ibl_pipeline_mt_cache[i].GetRef())))
+		{
+			throw ut::Error(ut::error::out_of_memory);
+		}
+	}
+
+	return pipeline_permutations;
 }
 
 // Connects all descriptor sets to the corresponding shaders.

@@ -50,6 +50,19 @@ public:
 		Shader img_quad_srgb2rgb_ps;
 	} shaders;
 
+	// common formats
+	struct Formats
+	{
+		pixel::Format depth_stencil;
+		pixel::Format preferred_depth_stencil = pixel::d24_unorm_s8_uint;
+		pixel::Format alternative_depth_stencil = pixel::d32_float_s8_uint;
+		pixel::Format light_buffer = pixel::r16g16b16a16_float;
+		pixel::Format ibl = pixel::r16g16b16a16_float;
+		pixel::Format gbuffer = pixel::r16g16b16a16_float;
+		pixel::Format hitmask = pixel::r8g8b8a8_unorm;
+		pixel::Format ldr = pixel::r8g8b8a8_unorm;
+	} formats;
+
 private:
 	// Returns a configuration object. Tries to load it from file, and creates
 	// a default one if loading failed.

@@ -59,17 +59,16 @@ Mesh::Mesh(ut::uint32 in_face_count,
            ut::Optional<Buffer> in_index_buffer,
            IndexType in_index_type,
            VertexFormat in_vertex_format,
+           PolygonMode in_polygon_mode,
            ut::Array<Subset> in_subsets) : face_count(in_face_count)
                                          , vertex_count(in_vertex_count)
                                          , vertex_buffer(ut::Move(in_vertex_buffer))
                                          , index_buffer(ut::Move(in_index_buffer))
                                          , index_type(in_index_type)
                                          , vertex_format(in_vertex_format)
+                                         , polygon_mode(in_polygon_mode)
                                          , subsets(ut::Move(in_subsets))
-{
-	input_assembly = CreateIaState(vertex_format, false);
-	input_assembly_instancing = CreateIaState(vertex_format, true);
-}
+{}
 
 // Identify() method must be implemented for the polymorphic types.
 const ut::DynamicType& Mesh::Identify() const
@@ -79,15 +78,23 @@ const ut::DynamicType& Mesh::Identify() const
 
 // Creates the input assembly state from the provided vertex format.
 InputAssemblyState Mesh::CreateIaState(VertexFormat vertex_format,
-                                       bool instancing)
+                                       PolygonMode polygon_mode,
+                                       Instancing instancing)
 {
 	InputAssemblyState ia_state;
-	ia_state.topology = primitive::triangle_list;
+	switch (polygon_mode)
+	{
+		case Mesh::PolygonMode::line: ia_state.topology = primitive::line_list; break;
+		case Mesh::PolygonMode::triangle: ia_state.topology = primitive::triangle_list; break;
+		case Mesh::PolygonMode::triangle_wireframe: ia_state.topology = primitive::triangle_list; break;
+		default: ia_state.topology = primitive::triangle_list;
+	}
+
 	ut::Optional<ut::Error> init_error = MeshVertexHelper<vertex_format_count - 1>::InitializeIaState(vertex_format,
 	                                                                                                  ia_state);
 	UT_ASSERT(!init_error);
 
-	if (instancing)
+	if (instancing == Instancing::on)
 	{
 		VertexElement instance_id(skInstanceIdSemantic, skInstanceIdFormat, 0);
 		ia_state.instance_stride = pixel::GetSize(skInstanceIdFormat);
@@ -97,14 +104,33 @@ InputAssemblyState Mesh::CreateIaState(VertexFormat vertex_format,
 	return ia_state;
 }
 
+// Creates the input assembly state for the desired subset of this mesh.
+InputAssemblyState Mesh::CreateIaState(Instancing instancing) const
+{
+	return CreateIaState(vertex_format, polygon_mode, instancing);
+}
+
+// Converts provided Mesh::PolygonMode value to corresponding
+// RasterizationState::PolygonMode value.
+RasterizationState::PolygonMode Mesh::GetRasterizerPolygonMode(PolygonMode polygon_mode)
+{
+	switch (polygon_mode)
+	{
+		case Mesh::PolygonMode::line: return RasterizationState::line;
+		case Mesh::PolygonMode::triangle: return RasterizationState::fill;
+		case Mesh::PolygonMode::triangle_wireframe: return RasterizationState::line;
+		default: return RasterizationState::fill;
+	}
+}
+
 // Returns an array of shader macros for the specified vertex format.
 ut::Array<Shader::MacroDefinition> Mesh::GenerateVertexMacros(VertexFormat vertex_format,
-                                                              bool instancing)
+                                                              Instancing instancing)
 {
 	// detect what components (position, texcoord, etc.) are available for
 	// the provided vertex format
 	ut::Optional<const VertexElement&> component_map[vertex_traits::component_count];
-	InputAssemblyState ia = Mesh::CreateIaState(vertex_format, instancing);
+	InputAssemblyState ia = CreateIaState(vertex_format, PolygonMode::triangle, instancing);
 	vertex_traits::ComponentIterator<vertex_traits::component_count - 1>::Map(component_map, ia);
 	
 	const ut::String availability_prefix = "VERTEX_HAS_";
@@ -145,7 +171,7 @@ ut::Array<Shader::MacroDefinition> Mesh::GenerateVertexMacros(VertexFormat verte
 	}
 
 	// instancing
-	if (instancing)
+	if (instancing == Instancing::on)
 	{
 		Shader::MacroDefinition macro;
 		macro.name = availability_prefix + skInstanceIdSemantic;

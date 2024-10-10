@@ -54,8 +54,6 @@ public:
 	//    @return - a new GaussianBlur::ViewData object or error if failed.
 	ut::Result<ViewData, ut::Error> CreateViewData(RenderPass& render_pass,
 	                                               Shader& blur_shader,
-	                                               ut::uint32 width,
-	                                               ut::uint32 height,
 	                                               ut::uint32 radius,
 	                                               float sigma);
 

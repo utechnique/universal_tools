@@ -12,6 +12,7 @@ IBL::IBL(Toolset& toolset) : tools(toolset)
                            , mip_count(CalculateMipCount(toolset.config.ibl_size))
                            , filter_shader(CreateFilterShader())
                            , filter_pass(CreateFilterPass())
+                           , filter_pipeline(CreateFilterPipelines())
                            , filter_ub(CreateFilterUniformBuffers())
 {
 	filter_desc_set.Connect(filter_shader);
@@ -23,7 +24,7 @@ ut::Result<IBL::ViewData, ut::Error> IBL::CreateViewData()
 	// cubemap
 	Target::Info info;
 	info.type = Image::type_cube;
-	info.format = skFormat;
+	info.format = tools.formats.ibl;
 	info.usage = Target::Info::usage_color;
 	info.mip_count = mip_count;
 	info.width = tools.config.ibl_size;
@@ -38,7 +39,6 @@ ut::Result<IBL::ViewData, ut::Error> IBL::CreateViewData()
 	// create framebuffers and pipeline states
 	ut::uint32 mip_size = tools.config.ibl_size;
 	ut::Array< ut::Array<Framebuffer> > filter_framebuffers(6);
-	ut::Array<PipelineState> filter_pipeline_states;
 	for (ut::uint32 mip_id = 0; mip_id < mip_count; mip_id++)
 	{
 		// create framebuffers for all faces
@@ -55,35 +55,12 @@ ut::Result<IBL::ViewData, ut::Error> IBL::CreateViewData()
 			filter_framebuffers[face_id].Add(filter_framebuffer.Move());
 		}
 
-		// create pipeline for the current mip
-		PipelineState::Info info;
-		info.stages[Shader::vertex] = filter_shader.stages[Shader::vertex].Get();
-		info.stages[Shader::pixel] = filter_shader.stages[Shader::pixel].Get();
-		info.viewports.Add(Viewport(0.0f, 0.0f,
-		                            static_cast<float>(mip_size),
-		                            static_cast<float>(mip_size),
-		                            0.0f, 1.0f,
-		                            mip_size, mip_size));
-		info.input_assembly_state = tools.rc_mgr.cube->input_assembly;
-		info.depth_stencil_state.depth_test_enable = false;
-		info.depth_stencil_state.depth_write_enable = false;
-		info.rasterization_state.polygon_mode = RasterizationState::fill;
-		info.rasterization_state.cull_mode = RasterizationState::no_culling;
-		info.blend_state.attachments.Add(BlendState::CreateNoBlending());
-		ut::Result<PipelineState, ut::Error> filter_pipeline = tools.device.CreatePipelineState(ut::Move(info), filter_pass);
-		if (!filter_pipeline)
-		{
-			return ut::MakeError(filter_pipeline.MoveAlt());
-		}
-		filter_pipeline_states.Add(filter_pipeline.Move());
-
 		// calculate the mip size for the next iteration
 		mip_size /= 2;
 	}
 
 	return IBL::ViewData{ cubemap.Move(),
 	                      ut::Move(filter_framebuffers),
-	                      ut::Move(filter_pipeline_states),
 	                      0, false };
 }
 
@@ -106,7 +83,7 @@ void IBL::FilterCubemap(Context& context,
 
 		ut::Rect<ut::uint32> render_area(0, 0, mip_size, mip_size);
 		context.BeginRenderPass(filter_pass, data.filter_framebuffer[face][mip], render_area, ut::Color<4>(0));
-		context.BindPipelineState(data.filter_pipeline[mip]);
+		context.BindPipelineState(filter_pipeline[mip]);
 		context.BindDescriptorSet(filter_desc_set);
 		context.BindVertexBuffer(tools.rc_mgr.cube->vertex_buffer, 0);
 
@@ -202,10 +179,42 @@ BoundShader IBL::CreateFilterShader()
 // Creates a render pass for the IBL filtering.
 RenderPass IBL::CreateFilterPass()
 {
-	RenderTargetSlot color_slot(skFormat, RenderTargetSlot::load_dont_care, RenderTargetSlot::store_save, false);
+	RenderTargetSlot color_slot(tools.formats.ibl, RenderTargetSlot::load_dont_care, RenderTargetSlot::store_save, false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
 	return tools.device.CreateRenderPass(ut::Move(color_slots)).MoveOrThrow();
+}
+
+// Creates all permutations of ibl filtering pipeline states.
+ut::Array<PipelineState> IBL::CreateFilterPipelines()
+{
+	ut::Array<PipelineState> pipeline_states;
+
+	ut::uint32 mip_size = tools.config.ibl_size;
+	for (ut::uint32 mip_id = 0; mip_id < mip_count; mip_id++)
+	{
+		// create pipeline for the current mip
+		PipelineState::Info info;
+		info.stages[Shader::vertex] = filter_shader.stages[Shader::vertex].Get();
+		info.stages[Shader::pixel] = filter_shader.stages[Shader::pixel].Get();
+		info.input_assembly_state = tools.rc_mgr.cube->CreateIaState();
+		info.depth_stencil_state.depth_test_enable = false;
+		info.depth_stencil_state.depth_write_enable = false;
+		info.rasterization_state.polygon_mode = RasterizationState::fill;
+		info.rasterization_state.cull_mode = RasterizationState::no_culling;
+		info.blend_state.attachments.Add(BlendState::CreateNoBlending());
+		ut::Result<PipelineState, ut::Error> filter_pipeline = tools.device.CreatePipelineState(ut::Move(info), filter_pass);
+		if (!filter_pipeline)
+		{
+			throw ut::Error(filter_pipeline.MoveAlt());
+		}
+		pipeline_states.Add(filter_pipeline.Move());
+
+		// calculate the mip size for the next iteration
+		mip_size /= 2;
+	}
+
+	return pipeline_states;
 }
 
 // Creates uniform buffers for all mips.

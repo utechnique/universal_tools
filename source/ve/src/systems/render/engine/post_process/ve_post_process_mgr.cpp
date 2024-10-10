@@ -9,10 +9,17 @@ START_NAMESPACE(postprocess)
 //----------------------------------------------------------------------------//
 // Constructor.
 Manager::Manager(Toolset& toolset) : tools(toolset)
+                                   , color_only_pass(CreateColorOnlyRenderPass())
+                                   , color_and_ds_pass(CreateColorAndDepthStencilRenderPass())
+                                   , clear_color_and_ds_pass(CreateClearColorAndDepthStencilRenderPass())
                                    , gaussian_blur(toolset)
-                                   , tone_mapper(toolset)
-                                   , stencil_highlight(toolset, gaussian_blur)
-                                   , fxaa(toolset)
+                                   , tone_mapper(toolset, color_only_pass)
+                                   , stencil_highlight(toolset,
+                                                       gaussian_blur,
+                                                       color_only_pass,
+                                                       color_and_ds_pass,
+                                                       clear_color_and_ds_pass)
+                                   , fxaa(toolset, color_only_pass)
 {}
 
 // Creates post-process (per-view) data.
@@ -105,27 +112,21 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 	}
 
 	// tone mapping
-	ut::Result<ToneMapper::ViewData, ut::Error> tone_mapping_data = tone_mapper.CreateViewData(color_only_pass.Get(),
-	                                                                                           width, height);
+	ut::Result<ToneMapper::ViewData, ut::Error> tone_mapping_data = tone_mapper.CreateViewData();
 	if (!tone_mapping_data)
 	{
 		return ut::MakeError(tone_mapping_data.MoveAlt());
 	}
 
 	// stencil highlight
-	ut::Result<StencilHighlight::ViewData, ut::Error> stencil_highlight_data = stencil_highlight.CreateViewData(color_only_pass.Get(),
-	                                                                                                            color_and_ds_pass.Get(),
-	                                                                                                            clear_color_and_ds_pass.Get(),
-	                                                                                                            width, height);
+	ut::Result<StencilHighlight::ViewData, ut::Error> stencil_highlight_data = stencil_highlight.CreateViewData();
 	if (!stencil_highlight_data)
 	{
 		return ut::MakeError(stencil_highlight_data.MoveAlt());
 	}
 
 	// fxaa
-	ut::Result<Fxaa::ViewData, ut::Error> fxaa_data = fxaa.CreateViewData(color_only_pass.Get(),
-	                                                                      width,
-	                                                                      height);
+	ut::Result<Fxaa::ViewData, ut::Error> fxaa_data = fxaa.CreateViewData();
 	if (!fxaa_data)
 	{
 		return ut::MakeError(fxaa_data.MoveAlt());
@@ -143,9 +144,6 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 
 	// success
 	return ViewData(ut::Move(swap_slots),
-	                color_only_pass.Move(),
-	                color_and_ds_pass.Move(),
-	                clear_color_and_ds_pass.Move(),
 	                tone_mapping_data.Move(),
 	                stencil_highlight_data.Move(),
 	                fxaa_data.Move());
@@ -162,7 +160,6 @@ ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::tone_mapping>(Context& cont
 	return tone_mapper.Apply(data.swap_mgr,
 	                         context,
 	                         data.tone_mapping,
-	                         data.color_only_pass,
 	                         source,
 	                         parameters.tone_mapping);
 }
@@ -178,9 +175,6 @@ ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::stencil_highlighting>(Conte
 	return stencil_highlight.Apply(data.swap_mgr,
 	                               context,
 	                               data.stencil_highlight,
-	                               data.color_only_pass,
-	                               data.color_and_ds_pass,
-	                               data.clear_color_and_ds_pass,
 	                               source,
 	                               parameters.stencil_highlight,
 	                               static_cast<float>(time_ms));
@@ -197,9 +191,39 @@ ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::fxaa>(Context& context,
 	return fxaa.Apply(data.swap_mgr,
 	                  context,
 	                  data.fxaa,
-	                  data.color_only_pass,
+	                  color_only_pass,
 	                  source,
 	                  parameters.fxaa);
+}
+
+// Creates a render pass with only one attached color slot.
+RenderPass Manager::CreateColorOnlyRenderPass()
+{
+	RenderTargetSlot color_slot(tools.formats.ldr, RenderTargetSlot::load_dont_care, RenderTargetSlot::store_save, false);
+	ut::Array<RenderTargetSlot> color_slots;
+	color_slots.Add(color_slot);
+	return tools.device.CreateRenderPass(ut::Move(color_slots)).MoveOrThrow();
+}
+
+// Creates a render pass with one color slot and one depth-stencil slot.
+RenderPass Manager::CreateColorAndDepthStencilRenderPass()
+{
+	RenderTargetSlot color_slot(tools.formats.ldr, RenderTargetSlot::load_dont_care, RenderTargetSlot::store_save, false);
+	RenderTargetSlot ds_slot(tools.formats.depth_stencil, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	ut::Array<RenderTargetSlot> color_slots;
+	color_slots.Add(color_slot);
+	return tools.device.CreateRenderPass(ut::Move(color_slots), ds_slot).MoveOrThrow();
+}
+
+// Creates a render pass with one color slot and one depth-stencil slot.
+// Color slot is cleared when the renderpass begins.
+RenderPass Manager::CreateClearColorAndDepthStencilRenderPass()
+{
+	RenderTargetSlot clean_color_slot(tools.formats.ldr, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
+	RenderTargetSlot ds_slot(tools.formats.depth_stencil, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	ut::Array<RenderTargetSlot> color_slots;
+	color_slots.Add(clean_color_slot);
+	return tools.device.CreateRenderPass(ut::Move(color_slots), ds_slot).MoveOrThrow();
 }
 
 //----------------------------------------------------------------------------//

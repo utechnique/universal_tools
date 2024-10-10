@@ -2523,48 +2523,15 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		return ut::MakeError(ut::Error(ut::error::invalid_arg, "Primitive topology can't be converted to Vulkan"));
 	}
 
-	// generate array of vulkan viewports
-	uint32_t viewport_count = static_cast<uint32_t>(info.viewports.Count());
-	ut::Array<VkViewport> viewports(viewport_count);
-	ut::Array<VkRect2D> scissors(viewport_count);
-	for (uint32_t i = 0; i < viewport_count; i++)
-	{
-		// note that height is inverted to make Y up
-		viewports[i].x = info.viewports[i].x;
-		viewports[i].y = info.viewports[i].buffer_height - info.viewports[i].y;
-		viewports[i].width = info.viewports[i].width;
-		viewports[i].height = -info.viewports[i].height;
-		viewports[i].minDepth = info.viewports[i].min_depth;
-		viewports[i].maxDepth = info.viewports[i].max_depth;
-
-		if (info.viewports[i].scissor)
-		{
-			scissors[i].offset.x = info.viewports[i].scissor->offset.X();
-			scissors[i].offset.y = info.viewports[i].scissor->offset.Y();
-			scissors[i].extent.width = info.viewports[i].scissor->extent.X();
-			scissors[i].extent.height = info.viewports[i].scissor->extent.Y();
-		}
-		else
-		{
-			scissors[i].offset.x = static_cast<int32_t>(info.viewports[i].x);
-			scissors[i].offset.y = static_cast<int32_t>(info.viewports[i].y);
-			scissors[i].extent.width = static_cast<uint32_t>(info.viewports[i].width);
-			scissors[i].extent.height = static_cast<uint32_t>(info.viewports[i].height);
-		}
-
-		int32_t scissor_bottom = static_cast<int32_t>(info.viewports[i].buffer_height) - scissors[i].offset.y;
-		scissors[i].offset.y = scissor_bottom - scissors[i].extent.height;
-	}
-
 	// viewport state
 	VkPipelineViewportStateCreateInfo viewport_state = {};
 	viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewport_state.pNext = nullptr;
 	viewport_state.flags = 0;
-	viewport_state.viewportCount = viewport_count;
-	viewport_state.scissorCount = viewport_count;
-	viewport_state.pViewports = viewports.GetAddress();
-	viewport_state.pScissors = scissors.GetAddress();
+	viewport_state.viewportCount = static_cast<int32_t>(info.viewport_count);
+	viewport_state.scissorCount = static_cast<int32_t>(info.viewport_count);
+	viewport_state.pViewports = nullptr;
+	viewport_state.pScissors = nullptr;
 
 	// rasterization state
 	VkPipelineRasterizationStateCreateInfo rasterization_state;
@@ -2737,6 +2704,18 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		return ut::MakeError(VulkanError(res, "vkCreatePipelineLayout"));
 	}
 
+	// viewports and scissors will be set separately dynamically by
+	// vkCmdSetViewport() and vkCmdSetScissor() calls
+	VkDynamicState dynamic_states[] =
+	{
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR
+	};
+	VkPipelineDynamicStateCreateInfo dynamic_state_create_info = {};
+	dynamic_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamic_state_create_info.dynamicStateCount = sizeof(dynamic_states) / sizeof(dynamic_states[0]);
+	dynamic_state_create_info.pDynamicStates = dynamic_states;
+
 	// initialize pipeline create info
 	VkGraphicsPipelineCreateInfo pipeline_info;
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -2755,7 +2734,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	pipeline_info.pDepthStencilState = &ds_state;
 	pipeline_info.pColorBlendState = &blend_state;
 	pipeline_info.pTessellationState = info.tessellation_enable ? &tessellation_state : nullptr;
-	pipeline_info.pDynamicState = nullptr;
+	pipeline_info.pDynamicState = &dynamic_state_create_info;
 	pipeline_info.renderPass = render_pass.GetVkHandle();
 	pipeline_info.subpass = 0;
 
@@ -2864,11 +2843,24 @@ void Device::Record(CmdBuffer& cmd_buffer,
 	}
 
 	// start recording commands
-	VkResult res = vkBeginCommandBuffer(cmd_buffer.GetVkHandle(), &cmd_buffer_info);
+	VkResult res = vkBeginCommandBuffer(cmd_buffer.GetVkHandle(),
+	                                    &cmd_buffer_info);
 	UT_ASSERT(res == VK_SUCCESS);
 
+	// inherit bound framebuffer size
+	ut::Optional< ut::Vector<2, ut::uint32> > framebuffer_size;
+	if (framebuffer)
+	{
+		const Framebuffer::Info& framebuffer_info = framebuffer->GetInfo();
+		framebuffer_size = ut::Vector<2, ut::uint32>(framebuffer_info.width,
+		                                             framebuffer_info.height);
+	}
+
 	// call function
-	Context context(PlatformContext(device.GetVkHandle(), allocator, cmd_buffer));
+	Context context(PlatformContext(device.GetVkHandle(),
+	                                allocator,
+	                                cmd_buffer,
+	                                ut::Move(framebuffer_size)));
 	function(context);
 
 	// stop recording

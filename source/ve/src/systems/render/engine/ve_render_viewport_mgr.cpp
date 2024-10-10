@@ -169,12 +169,6 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 	PipelineState::Info info;
 	info.stages[Shader::vertex] = display_quad_vs.Get();
 	info.stages[Shader::pixel] = display_quad_ps.Get();
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(viewport.w()),
-	                            static_cast<float>(viewport.h()),
-	                            0.0f, 1.0f,
-	                            static_cast<ut::uint32>(viewport.w()),
-	                            static_cast<ut::uint32>(viewport.h())));
 	info.input_assembly_state = Frame::CreateInputAssemblyState();
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;

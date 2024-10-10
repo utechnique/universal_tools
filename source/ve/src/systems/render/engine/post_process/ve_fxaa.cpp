@@ -12,15 +12,15 @@ const ut::uint32 Fxaa::skDefaultPresetId = 5;
 
 //----------------------------------------------------------------------------//
 // View data constructor.
-Fxaa::ViewData::ViewData(PipelineState fxaa_pipeline_state,
-                         Buffer fxaa_uniform_buffer) : pipeline_state(ut::Move(fxaa_pipeline_state))
-                                                     , uniform_buffer(ut::Move(fxaa_uniform_buffer))
+Fxaa::ViewData::ViewData(Buffer fxaa_uniform_buffer) : uniform_buffer(ut::Move(fxaa_uniform_buffer))
 {}
 
 //----------------------------------------------------------------------------//
 // Constructor.
-Fxaa::Fxaa(Toolset& toolset) : tools(toolset)
-                             , pixel_shader(LoadFxaaShader())
+Fxaa::Fxaa(Toolset& toolset,
+           RenderPass& postprocess_pass) : tools(toolset)
+                                         , pixel_shader(LoadFxaaShader())
+                                         , pipeline_state(CreatePipelineState(postprocess_pass))
 {}
 
 // Creates fxaa (per-view) data.
@@ -28,33 +28,8 @@ Fxaa::Fxaa(Toolset& toolset) : tools(toolset)
 //    @param width - width of the view in pixels.
 //    @param height - height of the view in pixels.
 //    @return - a new Fxaa::ViewData object or error if failed.
-ut::Result<Fxaa::ViewData, ut::Error> Fxaa::CreateViewData(RenderPass& postprocess_pass,
-                                                           ut::uint32 width,
-                                                           ut::uint32 height)
+ut::Result<Fxaa::ViewData, ut::Error> Fxaa::CreateViewData()
 {
-	// pipeline
-	PipelineState::Info info;
-	info.stages[Shader::vertex] = tools.shaders.quad_vs;
-	info.stages[Shader::pixel] = pixel_shader;
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            width, height));
-	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->input_assembly;
-	info.depth_stencil_state.depth_test_enable = false;
-	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::never;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
-	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
-	ut::Result<PipelineState, ut::Error> pipeline_state = tools.device.CreatePipelineState(ut::Move(info),
-	                                                                                       postprocess_pass);
-	if (!pipeline_state)
-	{
-		return ut::MakeError(pipeline_state.MoveAlt());
-	}
-
 	// create uniform buffer
 	Buffer::Info buffer_info;
 	buffer_info.type = Buffer::uniform;
@@ -67,7 +42,7 @@ ut::Result<Fxaa::ViewData, ut::Error> Fxaa::CreateViewData(RenderPass& postproce
 	}
 
 	// create final data object
-	ViewData data(pipeline_state.Move(), uniform_buffer.Move());
+	ViewData data(uniform_buffer.Move());
 
 	// connect descriptors
 	data.desc_set.Connect(pixel_shader);
@@ -126,7 +101,7 @@ ut::Optional<SwapSlot&> Fxaa::Apply(SwapManager& swap_mgr,
 	                        slot->color_only_framebuffer,
 	                        render_area,
 	                        ut::Color<4>(0), 1.0f);
-	context.BindPipelineState(data.pipeline_state);
+	context.BindPipelineState(pipeline_state);
 	context.BindDescriptorSet(data.desc_set);
 	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
@@ -144,6 +119,22 @@ Shader Fxaa::LoadFxaaShader()
 	                                                                "fxaa.hlsl",
 	                                                                GenShaderMacros(skDefaultPresetId));
 	return shader.MoveOrThrow();
+}
+
+// Creates a pipeline state for the fxaa effect.
+PipelineState Fxaa::CreatePipelineState(RenderPass& postprocess_pass)
+{
+	PipelineState::Info info;
+	info.stages[Shader::vertex] = tools.shaders.quad_vs;
+	info.stages[Shader::pixel] = pixel_shader;
+	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
+	info.depth_stencil_state.depth_test_enable = false;
+	info.depth_stencil_state.depth_write_enable = false;
+	info.depth_stencil_state.depth_compare_op = compare::never;
+	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
+	return tools.device.CreatePipelineState(ut::Move(info), postprocess_pass).MoveOrThrow();
 }
 
 // Generates an array of macros for fxaa shader.

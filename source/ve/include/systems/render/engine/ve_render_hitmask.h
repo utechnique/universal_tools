@@ -21,9 +21,7 @@ public:
 	struct ViewData
 	{
 		Target target;
-		RenderPass pass;
 		Framebuffer framebuffer;
-		ut::Array<PipelineState> mesh_inst_pipeline;
 		bool submitted;
 	};
 
@@ -75,7 +73,8 @@ private:
 
 		typedef ut::Grid<Mesh::vertex_format_count,
 		                 alpha_mode_count,
-		                 cull_mode_count> PipelineGrid;
+		                 cull_mode_count,
+		                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
 		typedef ut::Grid<Mesh::vertex_format_count,
 		                 alpha_mode_count> ShaderGrid;
@@ -83,6 +82,7 @@ private:
 		static constexpr ut::uint32 vertex_format_column = 0;
 		static constexpr ut::uint32 alpha_mode_column = 1;
 		static constexpr ut::uint32 cull_mode_column = 2;
+		static constexpr ut::uint32 polygon_mode_column = 3;
 
 		struct AlphaTestOffDescriptors : public DescriptorSet
 		{
@@ -121,15 +121,16 @@ private:
 	ut::Array<BoundShader> CreateMeshInstShader();
 
 	// Creates the hitmask render pass.
-	ut::Result<RenderPass, ut::Error> CreateRenderPass(pixel::Format depth_stencil_format);
+	RenderPass CreateRenderPass();
 
 	// Creates a pipeline state to render geometry to the hitmask.
-	ut::Result<PipelineState, ut::Error> CreateMeshInstPipeline(RenderPass& render_pass,
-	                                                            ut::uint32 width,
-	                                                            ut::uint32 height,
-	                                                            Mesh::VertexFormat vertex_format,
+	ut::Result<PipelineState, ut::Error> CreateMeshInstPipeline(Mesh::VertexFormat vertex_format,
+	                                                            Mesh::PolygonMode polygon_mode,
 	                                                            MeshInstRendering::AlphaMode alpha_mode,
 	                                                            MeshInstRendering::CullMode cull_mode);
+
+	// Creates all possible pipeline state permutations for a mesh instance.
+	ut::Array<PipelineState> CreateMeshInstPipelinePermutations();
 
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();
@@ -140,12 +141,15 @@ private:
 	// Shaders to draw mesh instances.
 	ut::Array<BoundShader> mesh_inst_shader;
 
+	// Render pass.
+	RenderPass pass;
+
+	// Pipeline states.
+	ut::Array<PipelineState> mesh_inst_pipeline;
+
 	// Descriptor sets.
 	MeshInstRendering::AlphaTestOffDescriptors mesh_inst_at_off_desc_set;
 	MeshInstRendering::AlphaTestOnDescriptors mesh_inst_at_on_desc_set;
-
-	// G-Buffer target format.
-	static constexpr pixel::Format skHitMaskFormat = pixel::r8g8b8a8_unorm;
 };
 
 //----------------------------------------------------------------------------//

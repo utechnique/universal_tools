@@ -136,6 +136,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateRect(const ut::Vector<
 	          ut::Optional<Buffer>(),
 	          index_type_uint32,
 	          vertex_format,
+	          Mesh::PolygonMode::triangle,
 	          ut::Array<Mesh::Subset>());
 
 	return AddResource<Mesh>(ut::Move(mesh));
@@ -260,6 +261,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateBox(const ut::Vector<3
 	          index_buffer.Move(),
 	          index_type_uint32,
 	          vertex_format,
+	          Mesh::PolygonMode::triangle,
 	          ut::Move(subsets));
 
 	return AddResource<Mesh>(ut::Move(mesh), ut::Move(name));
@@ -384,6 +386,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateSphere(const ut::Vecto
 	          index_buffer.Move(),
 	          index_type_uint32,
 	          vertex_format,
+	          Mesh::PolygonMode::triangle,
 	          ut::Move(subsets));
 
 	return AddResource<Mesh>(ut::Move(mesh), ut::Move(name));
@@ -517,6 +520,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceManager::CreateTorus(const ut::Vector
 	          index_buffer.Move(),
 	          index_type_uint32,
 	          vertex_format,
+	          Mesh::PolygonMode::triangle,
 	          ut::Move(subsets));
 
 	return AddResource<Mesh>(ut::Move(mesh), ut::Move(name));

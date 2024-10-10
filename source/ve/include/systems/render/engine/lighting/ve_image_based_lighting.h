@@ -18,7 +18,6 @@ public:
 	{
 		Target filtered_cubemap;
 		ut::Array< ut::Array<Framebuffer> > filter_framebuffer;
-		ut::Array<PipelineState> filter_pipeline;
 		ut::uint32 face_id;
 		bool initialized;
 	};
@@ -62,6 +61,9 @@ private:
 	// Creates a render pass for the IBL filtering.
 	RenderPass CreateFilterPass();
 
+	// Creates all permutations of ibl filtering pipeline states.
+	ut::Array<PipelineState> CreateFilterPipelines();
+
 	// Creates uniform buffers for all mips.
 	ut::Array< ut::Array<Buffer> > CreateFilterUniformBuffers();
 
@@ -72,6 +74,7 @@ private:
 	ut::uint32 mip_count;
 	BoundShader filter_shader;
 	RenderPass filter_pass;
+	ut::Array<PipelineState> filter_pipeline;
 	ut::Array< ut::Array<Buffer> > filter_ub;
 
 	struct FilterDescriptorSet : public DescriptorSet
@@ -83,9 +86,6 @@ private:
 		Descriptor sampler = "g_sampler";
 		Descriptor cubemap = "g_texcube_scene";
 	} filter_desc_set;
-
-	// IBL format.
-	static constexpr pixel::Format skFormat = pixel::r16g16b16a16_float;
 };
 
 //----------------------------------------------------------------------------//

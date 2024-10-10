@@ -21,9 +21,6 @@ class ViewData
 public:
 	// Constructor.
 	ViewData(ut::Array<SwapSlot> in_swap_slots,
-	         RenderPass in_color_only_pass,
-	         RenderPass in_color_and_ds_pass,
-             RenderPass in_clear_color_and_ds_pass,
 	         ToneMapper::ViewData in_tone_mapping,
 	         StencilHighlight::ViewData in_stencil_highlight,
 	         Fxaa::ViewData in_fxaa);
@@ -38,11 +35,6 @@ public:
 
 	// intermediate buffers
 	SwapManager swap_mgr;
-
-	// render passes for all effects
-	RenderPass color_only_pass;
-	RenderPass color_and_ds_pass;
-	RenderPass clear_color_and_ds_pass;
 
 	// effects
 	ToneMapper::ViewData tone_mapping;

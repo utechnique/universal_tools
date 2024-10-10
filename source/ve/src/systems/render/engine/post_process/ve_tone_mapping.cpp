@@ -8,13 +8,12 @@ START_NAMESPACE(render)
 START_NAMESPACE(postprocess)
 
 //----------------------------------------------------------------------------//
-// SRGB converter (per-view) data constructor.
-ClampToneMapper::ViewData::ViewData(PipelineState in_pipeline) : pipeline_state(ut::Move(in_pipeline))
-{}
-
 // SRGB converter constructor.
-ClampToneMapper::ClampToneMapper(Toolset& toolset) : tools(toolset)
-                                                     , pixel_shader(LoadShader())
+ClampToneMapper::ClampToneMapper(Toolset& toolset,
+                                 RenderPass& postprocess_pass) : tools(toolset)
+                                                               , pass(postprocess_pass)
+                                                               , pixel_shader(LoadShader())
+                                                               , pipeline_state(CreatePipelineState())
 {}
 
 // Returns compiled mapping pixel shader.
@@ -27,39 +26,28 @@ Shader ClampToneMapper::LoadShader()
 	return shader.MoveOrThrow();
 }
 
-// Creates per-view data.
-//    @param postprocess_pass - render pass that will be used for mapping.
-//    @param width - width of the view in pixels.
-//    @param height - height of the view in pixels.
-//    @return - a new LinearToneMapper::ViewData object or error if failed.
-ut::Result<ClampToneMapper::ViewData, ut::Error> ClampToneMapper::CreateViewData(RenderPass& postprocess_pass,
-                                                                                   ut::uint32 width,
-                                                                                   ut::uint32 height)
+// Creates a pipeline state for this tonemapper effect.
+PipelineState ClampToneMapper::CreatePipelineState()
 {
 	PipelineState::Info info;
 	info.stages[Shader::vertex] = tools.shaders.quad_vs;
 	info.stages[Shader::pixel] = pixel_shader;
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            width, height));
-	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->input_assembly;
+	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::never;
 	info.rasterization_state.polygon_mode = RasterizationState::fill;
 	info.rasterization_state.cull_mode = RasterizationState::no_culling;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
-	ut::Result<PipelineState, ut::Error> pipeline_state = tools.device.CreatePipelineState(ut::Move(info),
-	                                                                                       postprocess_pass);
-	if (!pipeline_state)
-	{
-		return ut::MakeError(pipeline_state.MoveAlt());
-	}
+	return tools.device.CreatePipelineState(ut::Move(info), pass).MoveOrThrow();
+}
 
+// Creates per-view data.
+//    @return - a new LinearToneMapper::ViewData object or error if failed.
+ut::Result<ClampToneMapper::ViewData, ut::Error> ClampToneMapper::CreateViewData()
+{
 	// create final data object
-	ClampToneMapper::ViewData data(pipeline_state.Move());
+	ClampToneMapper::ViewData data;
 
 	// connect descriptors
 	data.desc_set.Connect(pixel_shader);
@@ -73,14 +61,11 @@ ut::Result<ClampToneMapper::ViewData, ut::Error> ClampToneMapper::CreateViewData
 //    @param context - reference to the rendering context.
 //    @param data - reference to the LinearToneMapper::ViewData object containing
 //                  converter-specific resources.
-//    @param pass - reference to the render pass with one color attachment
-//                  and no depth.
 //    @param source - reference to the source image.
 //    @return - reference to the postprocess slot used for tone mapping.
 SwapSlot& ClampToneMapper::Apply(SwapManager& swap_mgr,
                                  Context& context,
                                  ViewData& data,
-                                 RenderPass& pass,
                                  Image& source)
 {
 	ut::Optional<SwapSlot&> slot = swap_mgr.Swap();
@@ -97,7 +82,7 @@ SwapSlot& ClampToneMapper::Apply(SwapManager& swap_mgr,
 	                        slot->color_only_framebuffer,
 	                        render_area,
 	                        ut::Color<4>(0), 1.0f);
-	context.BindPipelineState(data.pipeline_state);
+	context.BindPipelineState(pipeline_state);
 	context.BindDescriptorSet(data.desc_set);
 	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
@@ -112,22 +97,17 @@ ToneMapper::ViewData::ViewData(ClampToneMapper::ViewData data) : clamp_mapper_da
 {}
 
 // Tone mapper constructor.
-ToneMapper::ToneMapper(Toolset& toolset) : tools(toolset)
-                                         , clamp_mapper(toolset)
+ToneMapper::ToneMapper(Toolset& toolset,
+                       RenderPass& postprocess_pass) : tools(toolset)
+                                                     , clamp_mapper(toolset, postprocess_pass)
 {}
 
 // Creates tone mapping (per-view) data.
-//    @param postprocess_pass - render pass that will be used for fxaa.
-//    @param width - width of the view in pixels.
-//    @param height - height of the view in pixels.
 //    @return - a new ToneMapper::ViewData object or error if failed.
-ut::Result<ToneMapper::ViewData, ut::Error> ToneMapper::CreateViewData(RenderPass& postprocess_pass,
-                                                                       ut::uint32 width,
-                                                                       ut::uint32 height)
+ut::Result<ToneMapper::ViewData, ut::Error> ToneMapper::CreateViewData()
 {
 	// rgb to srgb converter
-	ut::Result<ClampToneMapper::ViewData, ut::Error> rgb_to_srgb_data = clamp_mapper.CreateViewData(postprocess_pass,
-	                                                                                                width, height);
+	ut::Result<ClampToneMapper::ViewData, ut::Error> rgb_to_srgb_data = clamp_mapper.CreateViewData();
 	if (!rgb_to_srgb_data)
 	{
 		return ut::MakeError(rgb_to_srgb_data.MoveAlt());
@@ -141,8 +121,6 @@ ut::Result<ToneMapper::ViewData, ut::Error> ToneMapper::CreateViewData(RenderPas
 //    @param context - reference to the rendering context.
 //    @param data - reference to the ToneMapper::ViewData object containing
 //                  tonemap-specific resources.
-//    @param pass - reference to the render pass with one color attachment
-//                  and no depth.
 //    @param source - reference to the source image.
 //    @param parameters - reference to the ToneMapper::Parameters object
 //                        containing parameters for the tone mapping effect.
@@ -151,7 +129,6 @@ ut::Result<ToneMapper::ViewData, ut::Error> ToneMapper::CreateViewData(RenderPas
 ut::Optional<SwapSlot&> ToneMapper::Apply(SwapManager& swap_mgr,
                                           Context& context,
                                           ViewData& data,
-                                          RenderPass& pass,
                                           Image& source,
                                           const Parameters& parameters)
 {
@@ -160,7 +137,7 @@ ut::Optional<SwapSlot&> ToneMapper::Apply(SwapManager& swap_mgr,
 		return ut::Optional<SwapSlot&>();
 	}
 
-	return clamp_mapper.Apply(swap_mgr, context, data.clamp_mapper_data, pass, source);
+	return clamp_mapper.Apply(swap_mgr, context, data.clamp_mapper_data, source);
 }
 
 //----------------------------------------------------------------------------//

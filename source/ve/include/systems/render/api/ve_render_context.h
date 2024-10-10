@@ -177,7 +177,11 @@ public:
 
 	// Binds provided pipeline state to the current context.
 	//    @param pipeline_state - reference to the pipeline state.
-	void BindPipelineState(PipelineState& pipeline_state);
+	//    @param viewports - optional reference to an array of viewports,
+	//                       if this parameter is not set, a viewport with the
+	//                       same size as the bound viewport will be used.
+	void BindPipelineState(PipelineState& pipeline_state,
+	                       ut::Optional<const ut::Array<Viewport>&> viewports = ut::Optional<const ut::Array<Viewport>&>());
 
 	// Binds provided descriptor set to the current pipeline.
 	// Note that BindPipelineState() function must be called before.

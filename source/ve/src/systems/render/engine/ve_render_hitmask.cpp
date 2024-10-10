@@ -9,6 +9,8 @@ START_NAMESPACE(render)
 // Constructor.
 HitMask::HitMask(Toolset& toolset) : tools(toolset)
                                    , mesh_inst_shader(CreateMeshInstShader())
+                                   , pass(CreateRenderPass())
+                                   , mesh_inst_pipeline(CreateMeshInstPipelinePermutations())
 {
 	ConnectDescriptors();
 }
@@ -24,7 +26,7 @@ ut::Result<HitMask::ViewData, ut::Error> HitMask::CreateViewData(Target& depth_s
 
 	Target::Info info;
 	info.type = Image::type_2D;
-	info.format = skHitMaskFormat;
+	info.format = tools.formats.hitmask;
 	info.usage = Target::Info::usage_color;
 	info.has_staging_cpu_read_buffer = true;
 	info.mip_count = 1;
@@ -39,17 +41,10 @@ ut::Result<HitMask::ViewData, ut::Error> HitMask::CreateViewData(Target& depth_s
 		return ut::MakeError(target.MoveAlt());
 	}
 
-	// render pass
-	ut::Result<RenderPass, ut::Error> render_pass = CreateRenderPass(depth_stencil_format);
-	if (!render_pass)
-	{
-		return ut::MakeError(render_pass.MoveAlt());
-	}
-
 	// framebuffer
 	ut::Array<Framebuffer::Attachment> color_targets;
 	color_targets.Add(Framebuffer::Attachment(target.Get()));
-	ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(render_pass.Get(),
+	ut::Result<Framebuffer, ut::Error> framebuffer = tools.device.CreateFramebuffer(pass,
 	                                                                                ut::Move(color_targets),
 	                                                                                Framebuffer::Attachment(depth_stencil));
 	if (!framebuffer)
@@ -57,37 +52,10 @@ ut::Result<HitMask::ViewData, ut::Error> HitMask::CreateViewData(Target& depth_s
 		return ut::MakeError(framebuffer.MoveAlt());
 	}
 
-	// pipeline
-	constexpr ut::uint32 mesh_inst_pipeline_count = static_cast<ut::uint32>(MeshInstRendering::PipelineGrid::size);
-	ut::Array<PipelineState> mesh_inst_pipeline;
-	for (ut::uint32 i = 0; i < mesh_inst_pipeline_count; i++)
-	{
-		const size_t vertex_format = MeshInstRendering::PipelineGrid::GetCoordinate<MeshInstRendering::vertex_format_column>(i);
-		const size_t alpha_mode = MeshInstRendering::PipelineGrid::GetCoordinate<MeshInstRendering::alpha_mode_column>(i);
-		const size_t cull_mode = MeshInstRendering::PipelineGrid::GetCoordinate<MeshInstRendering::cull_mode_column>(i);
-
-		ut::Result<PipelineState, ut::Error> pipeline = CreateMeshInstPipeline(render_pass.Get(),
-		                                                                       width, height,
-		                                                                       static_cast<Mesh::VertexFormat>(vertex_format),
-		                                                                       static_cast<MeshInstRendering::AlphaMode>(alpha_mode),
-		                                                                       static_cast<MeshInstRendering::CullMode>(cull_mode));
-		if (!pipeline)
-		{
-			return ut::MakeError(pipeline.MoveAlt());
-		}
-
-		if (!mesh_inst_pipeline.Add(pipeline.Move()))
-		{
-			return ut::MakeError(ut::error::out_of_memory);
-		}
-	}
-
 	HitMask::ViewData data =
 	{
 		target.Move(),
-		render_pass.Move(),
 		framebuffer.Move(),
-		ut::Move(mesh_inst_pipeline),
 		false,
 	};
 
@@ -107,7 +75,7 @@ void HitMask::Draw(Context& context,
 	Framebuffer& framebuffer = data.framebuffer;
 	const Framebuffer::Info& fb_info = framebuffer.GetInfo();
 	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
-	context.BeginRenderPass(data.pass, framebuffer, render_area, ut::Color<4>(1), 1.0f, 0, false);
+	context.BeginRenderPass(pass, framebuffer, render_area, ut::Color<4>(1), 1.0f, 0, false);
 
 	// render mesh instances
 	DrawMeshInstancesJob(context,
@@ -143,7 +111,7 @@ void HitMask::Read(Context& context,
 		throw ut::Error(ut::error::fail, "Failed to map the hitmask image.");
 	}
 
-	const ut::uint32 pixel_size = pixel::GetSize(skHitMaskFormat);
+	const ut::uint32 pixel_size = pixel::GetSize(tools.formats.hitmask);
 	ut::byte* hitmask_data = static_cast<ut::byte*>(mapped_hitmask_rc->data);
 	cpu_buffer.Resize(hitmask_info.width * hitmask_info.height);
 	for (ut::uint32 y = 0; y < hitmask_info.height; y++)
@@ -242,6 +210,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 
 	// variables tracking if something changes between iterations
 	Mesh::VertexFormat prev_vertex_format = Mesh::vertex_format_count;
+	Mesh::PolygonMode prev_polygon_mode = Mesh::PolygonMode::count;
 	MeshInstRendering::AlphaMode prev_alpha_mode = MeshInstRendering::alpha_mode_count;
 	MeshInstRendering::CullMode prev_cull_mode = MeshInstRendering::cull_mode_count;
 	Map* prev_diffuse_ptr = nullptr;
@@ -284,6 +253,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 
 		// check pipeline state
 		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
+		const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
 		const MeshInstRendering::AlphaMode alpha_mode = material.alpha == Material::alpha_masked ?
 		                                                MeshInstRendering::alpha_test :
 		                                                MeshInstRendering::alpha_opaque;
@@ -292,6 +262,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 		                                              MeshInstRendering::cull_back;
 		const bool alpha_mode_changed = prev_alpha_mode != alpha_mode;
 		bool pipeline_changed = prev_vertex_format != vertex_format ||
+		                        prev_polygon_mode != polygon_mode ||
 		                        prev_cull_mode != cull_mode ||
 		                        alpha_mode_changed;
 
@@ -331,10 +302,12 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 		{
 			const size_t pipeline_state_id = MeshInstRendering::PipelineGrid::GetId(vertex_format,
 			                                                                        alpha_mode,
-			                                                                        cull_mode);
-			context.BindPipelineState(data.mesh_inst_pipeline[pipeline_state_id]);
+			                                                                        cull_mode,
+			                                                                        static_cast<size_t>(polygon_mode));
+			context.BindPipelineState(mesh_inst_pipeline[pipeline_state_id]);
 
 			prev_vertex_format = vertex_format;
+			prev_polygon_mode = polygon_mode;
 			prev_alpha_mode = alpha_mode;
 			prev_cull_mode = cull_mode;
 		}
@@ -431,7 +404,7 @@ ut::Array<BoundShader> HitMask::CreateMeshInstShader()
 		shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
 
 		// vertex traits
-		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), true);
+		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
 		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
 		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::vertex,
@@ -457,22 +430,20 @@ ut::Array<BoundShader> HitMask::CreateMeshInstShader()
 }
 
 // Creates the hitmask render pass.
-ut::Result<RenderPass, ut::Error> HitMask::CreateRenderPass(pixel::Format depth_stencil_format)
+RenderPass HitMask::CreateRenderPass()
 {
-	RenderTargetSlot depth_slot(depth_stencil_format, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
-	RenderTargetSlot color_slot(skHitMaskFormat, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
+	RenderTargetSlot depth_slot(tools.formats.depth_stencil, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
+	RenderTargetSlot color_slot(tools.formats.hitmask, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
 
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot); // hitmask itself
 
-	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot);
+	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot).MoveOrThrow();
 }
 
 // Creates a pipeline state to render geometry to the hitmask.
-ut::Result<PipelineState, ut::Error> HitMask::CreateMeshInstPipeline(RenderPass& render_pass,
-                                                                     ut::uint32 width,
-                                                                     ut::uint32 height,
-                                                                     Mesh::VertexFormat vertex_format,
+ut::Result<PipelineState, ut::Error> HitMask::CreateMeshInstPipeline(Mesh::VertexFormat vertex_format,
+                                                                     Mesh::PolygonMode polygon_mode,
                                                                      MeshInstRendering::AlphaMode alpha_mode,
                                                                      MeshInstRendering::CullMode cull_mode)
 {
@@ -482,13 +453,7 @@ ut::Result<PipelineState, ut::Error> HitMask::CreateMeshInstPipeline(RenderPass&
 	PipelineState::Info info;
 	info.stages[Shader::vertex] = shader.stages[Shader::vertex].Get();
 	info.stages[Shader::pixel] = shader.stages[Shader::pixel].Get();
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            static_cast<ut::uint32>(width),
-	                            static_cast<ut::uint32>(height)));
-	info.input_assembly_state = Mesh::CreateIaState(vertex_format, true);
+	info.input_assembly_state = Mesh::CreateIaState(vertex_format, polygon_mode, Mesh::Instancing::on);
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = true;
 	info.depth_stencil_state.depth_compare_op = compare::less;
@@ -500,13 +465,44 @@ ut::Result<PipelineState, ut::Error> HitMask::CreateMeshInstPipeline(RenderPass&
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0xff;
 	info.depth_stencil_state.stencil_reference = 0x0;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.polygon_mode = Mesh::GetRasterizerPolygonMode(polygon_mode);
 	info.rasterization_state.cull_mode = cull_mode == MeshInstRendering::cull_back ?
 	                                                  RasterizationState::back_culling :
 	                                                  RasterizationState::no_culling;
 	info.rasterization_state.line_width = 1.0f;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
-	return tools.device.CreatePipelineState(ut::Move(info), render_pass);
+	return tools.device.CreatePipelineState(ut::Move(info), pass);
+}
+
+// Creates all possible pipeline state permutations for a mesh instance.
+ut::Array<PipelineState> HitMask::CreateMeshInstPipelinePermutations()
+{
+	ut::Array<PipelineState> pipeline_states;
+
+	constexpr ut::uint32 mesh_inst_pipeline_count = static_cast<ut::uint32>(MeshInstRendering::PipelineGrid::size);
+	for (ut::uint32 i = 0; i < mesh_inst_pipeline_count; i++)
+	{
+		const size_t vertex_format = MeshInstRendering::PipelineGrid::GetCoordinate<MeshInstRendering::vertex_format_column>(i);
+		const size_t alpha_mode = MeshInstRendering::PipelineGrid::GetCoordinate<MeshInstRendering::alpha_mode_column>(i);
+		const size_t cull_mode = MeshInstRendering::PipelineGrid::GetCoordinate<MeshInstRendering::cull_mode_column>(i);
+		const size_t polygon_mode = MeshInstRendering::PipelineGrid::GetCoordinate<MeshInstRendering::polygon_mode_column>(i);
+
+		ut::Result<PipelineState, ut::Error> pipeline = CreateMeshInstPipeline(static_cast<Mesh::VertexFormat>(vertex_format),
+		                                                                       static_cast<Mesh::PolygonMode>(polygon_mode),
+		                                                                       static_cast<MeshInstRendering::AlphaMode>(alpha_mode),
+		                                                                       static_cast<MeshInstRendering::CullMode>(cull_mode));
+		if (!pipeline)
+		{
+			throw ut::Error(pipeline.MoveAlt());
+		}
+
+		if (!pipeline_states.Add(pipeline.Move()))
+		{
+			throw ut::Error(ut::error::out_of_memory);
+		}
+	}
+
+	return pipeline_states;
 }
 
 // Connects all descriptor sets to the corresponding shaders.

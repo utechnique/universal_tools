@@ -33,7 +33,7 @@ ut::Result<lighting::ViewData, ut::Error> Manager::CreateViewData(Target& depth_
 	// light buffer
 	Target::Info info;
 	info.type = is_cube ? Image::type_cube : Image::type_2D;
-	info.format = skLightBufferFormat;
+	info.format = tools.formats.light_buffer;
 	info.usage = Target::Info::usage_color;
 	info.mip_count = light_buffer_mip_count;
 	info.width = width;
@@ -58,7 +58,6 @@ ut::Result<lighting::ViewData, ut::Error> Manager::CreateViewData(Target& depth_
 	// forward shading
 	ut::Result<ForwardShading::ViewData, ut::Error> forward_sh_data = forward_shading.CreateViewData(depth_stencil,
 	                                                                                                 light_buffer.Get(),
-	                                                                                                 width, height,
 	                                                                                                 is_cube);
 	if (!forward_sh_data)
 	{

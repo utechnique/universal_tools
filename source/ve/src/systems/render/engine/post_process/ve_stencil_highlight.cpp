@@ -16,32 +16,35 @@ const ut::uint32 StencilHighlight::skLineWidth = 8;
 
 //----------------------------------------------------------------------------//
 // Stencil highlighting (per-view) data constructor.
-StencilHighlight::ViewData::ViewData(PipelineState in_fill_pass_pipeline,
-                                     PipelineState in_lines_pass_pipeline,
-                                     PipelineState in_blend_pass_pipeline,
+StencilHighlight::ViewData::ViewData(GaussianBlur::ViewData horizontal_blur_data,
+                                     GaussianBlur::ViewData vertical_blur_data,
                                      Buffer in_white_color_buffer,
                                      Buffer in_lines_color_buffer,
-                                     Buffer in_blend_color_buffer,
-                                     GaussianBlur::ViewData horizontal_blur_data,
-                                     GaussianBlur::ViewData vertical_blur_data) : fill_pass_pipeline(ut::Move(in_fill_pass_pipeline))
-                                                                                , lines_pass_pipeline(ut::Move(in_lines_pass_pipeline))
-                                                                                , blend_pass_pipeline(ut::Move(in_blend_pass_pipeline))
-                                                                                , white_color_buffer(ut::Move(in_white_color_buffer))
-                                                                                , lines_color_buffer(ut::Move(in_lines_color_buffer))
-                                                                                , blend_color_buffer(ut::Move(in_blend_color_buffer))
-                                                                                , horizontal_blur(ut::Move(horizontal_blur_data))
-                                                                                , vertical_blur(ut::Move(vertical_blur_data))
+                                     Buffer in_blend_color_buffer) : horizontal_blur(ut::Move(horizontal_blur_data))
+                                                                   , vertical_blur(ut::Move(vertical_blur_data))
+                                                                   , white_color_buffer(ut::Move(in_white_color_buffer))
+                                                                   , lines_color_buffer(ut::Move(in_lines_color_buffer))
+                                                                   , blend_color_buffer(ut::Move(in_blend_color_buffer))
 {}
 
 // Stencil highlighting constructor.
 StencilHighlight::StencilHighlight(Toolset& toolset,
-                                   GaussianBlur& gaussian_blur) : tools(toolset)
+                                   GaussianBlur& gaussian_blur,
+                                   RenderPass& in_color_only_pass,
+                                   RenderPass& in_color_and_ds_pass,
+                                   RenderPass& in_clear_color_and_ds_pass) : tools(toolset)
                                                                 , blur(gaussian_blur)
                                                                 , fill_shader(LoadFillShader())
                                                                 , line_shader(LoadLineShader())
                                                                 , blend_shader(LoadBlendShader())
                                                                 , blur_shader(gaussian_blur.LoadShader(skHighlightRadius,
                                                                                                        skHighlightSigma).MoveOrThrow())
+                                                                , color_only_pass(in_color_only_pass)
+                                                                , color_and_ds_pass(in_color_and_ds_pass)
+                                                                , clear_color_and_ds_pass(in_clear_color_and_ds_pass)
+                                                                , fill_pass_pipeline(CreateFillPassPipelineState())
+                                                                , lines_pass_pipeline(CreateLinePassPipelineState())
+                                                                , blend_pass_pipeline(CreateBlendPasPipelineState())
 {}
 
 // Returns compiled pixel shader filling a surface with solid color.
@@ -88,64 +91,9 @@ Shader StencilHighlight::LoadBlendShader()
 }
 
 // Creates highlighting (per-view) data.
-//    @param color_only_pass - reference to the render pass with one
-//                             color attachment and no depth.
-//    @param color_and_ds_pass - reference to the render pass with one
-//                               color and one depth-stencil attachment.
-//    @param clear_color_and_ds_pass - reference to the render pass with one
-//                                     color and one depth-stencil attachment,
-//                                     color attachment is set to be cleared.
-//    @param width - width of the view in pixels.
-//    @param height - height of the view in pixels.
 //    @return - a new StencilHighlight::ViewData object or error if failed.
-ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewData(RenderPass& color_only_pass,
-                                                                                   RenderPass& color_and_ds_pass,
-                                                                                   RenderPass& clear_color_and_ds_pass,
-                                                                                   ut::uint32 width,
-                                                                                   ut::uint32 height)
+ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewData()
 {
-	// create pipelines
-	PipelineState::Info info;
-	info.stages[Shader::vertex] = tools.shaders.quad_vs;
-	info.stages[Shader::pixel] = fill_shader;
-	info.viewports.Add(Viewport(0.0f, 0.0f,
-	                            static_cast<float>(width),
-	                            static_cast<float>(height),
-	                            0.0f, 1.0f,
-	                            width, height));
-	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->input_assembly;
-	info.depth_stencil_state.depth_test_enable = false;
-	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::never;
-	info.depth_stencil_state.stencil_test_enable = true;
-	info.depth_stencil_state.back.compare_op = compare::equal;
-	info.depth_stencil_state.back.fail_op = StencilOpState::keep;
-	info.depth_stencil_state.back.pass_op = StencilOpState::keep;
-	info.depth_stencil_state.back.compare_mask = stencilref_highlight;
-	info.depth_stencil_state.front = info.depth_stencil_state.back;
-	info.depth_stencil_state.stencil_write_mask = 0x0;
-	info.depth_stencil_state.stencil_reference = stencilref_highlight;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
-	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
-	ut::Result<PipelineState, ut::Error> fill_pipeline = tools.device.CreatePipelineState(info, clear_color_and_ds_pass);
-	if (!fill_pipeline)
-	{
-		return ut::MakeError(fill_pipeline.MoveAlt());
-	}
-	info.stages[Shader::pixel] = line_shader;
-	ut::Result<PipelineState, ut::Error> lines_pipeline = tools.device.CreatePipelineState(info, color_and_ds_pass);
-	if (!lines_pipeline)
-	{
-		return ut::MakeError(lines_pipeline.MoveAlt());
-	}
-	info.stages[Shader::pixel] = blend_shader;
-	ut::Result<PipelineState, ut::Error> blend_pipeline = tools.device.CreatePipelineState(info, color_only_pass);
-	if (!blend_pipeline)
-	{
-		return ut::MakeError(blend_pipeline.MoveAlt());
-	}
-
 	// create uniform buffers
 	ut::Vector<4> white(1.0f);
 	Buffer::Info buffer_info;
@@ -174,7 +122,6 @@ ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewDa
 	// create horizontal gaussian blur data
 	ut::Result<GaussianBlur::ViewData, ut::Error> horizontal_blur = blur.CreateViewData(color_only_pass,
 	                                                                                    blur_shader,
-	                                                                                    width, height,
 	                                                                                    skHighlightRadius,
 	                                                                                    skHighlightSigma);
 	if (!horizontal_blur)
@@ -185,7 +132,6 @@ ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewDa
 	// create vertical gaussian blur data
 	ut::Result<GaussianBlur::ViewData, ut::Error> vertical_blur = blur.CreateViewData(color_only_pass,
 	                                                                                  blur_shader,
-	                                                                                  width, height,
 	                                                                                  skHighlightRadius,
 	                                                                                  skHighlightSigma);
 	if (!vertical_blur)
@@ -202,14 +148,11 @@ ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewDa
 	}
 
 	// create final data object
-	StencilHighlight::ViewData data(fill_pipeline.Move(),
-	                                lines_pipeline.Move(),
-	                                blend_pipeline.Move(),
+	StencilHighlight::ViewData data(horizontal_blur.Move(),
+	                                vertical_blur.Move(),
 	                                white_color_buffer.Move(),
 	                                lines_color_buffer.Move(),
-	                                blend_color_buffer.Move(),
-	                                horizontal_blur.Move(),
-	                                vertical_blur.Move());
+	                                blend_color_buffer.Move());
 
 	// connect descriptors
 	data.fill_desc_set.Connect(fill_shader);
@@ -224,13 +167,6 @@ ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewDa
 //    @param swap_mgr - reference to the post-process swap manager.
 //    @param context - reference to the rendering context.
 //    @param data - reference to the StencilHighlight::ViewData object.
-//    @param color_only_pass - reference to the render pass with one
-//                             color attachment and no depth.
-//    @param color_and_ds_pass - reference to the render pass with one
-//                               color and one depth-stencil attachment.
-//    @param clear_color_and_ds_pass - reference to the render pass with one
-//                                     color and one depth-stencil attachment,
-//                                     color attachment is set to be cleared.
 //    @param source - reference to the source image.
 // 	  @param parameters - reference to the StencilHighlight::Parameters object
 //                        containing parameters for the highlighting effect.
@@ -239,9 +175,6 @@ ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewDa
 ut::Optional<SwapSlot&> StencilHighlight::Apply(SwapManager& swap_mgr,
                                                 Context& context,
                                                 ViewData& data,
-                                                RenderPass& color_only_pass,
-                                                RenderPass& color_and_ds_pass,
-                                                RenderPass& clear_color_and_ds_pass,
                                                 Image& source,
                                                 const Parameters& parameters,
                                                 float time_ms)
@@ -263,7 +196,7 @@ ut::Optional<SwapSlot&> StencilHighlight::Apply(SwapManager& swap_mgr,
 	                        fill_slot->color_and_ds_framebuffer,
 	                        render_area,
 	                        ut::Color<4>(0), 1.0f);
-	context.BindPipelineState(data.fill_pass_pipeline);
+	context.BindPipelineState(fill_pass_pipeline);
 	context.BindDescriptorSet(data.fill_desc_set);
 	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
@@ -310,7 +243,7 @@ ut::Optional<SwapSlot&> StencilHighlight::Apply(SwapManager& swap_mgr,
 	                        vblur_slot->color_and_ds_framebuffer,
 	                        render_area,
 	                        ut::Color<4>(0), 1.0f);
-	context.BindPipelineState(data.lines_pass_pipeline);
+	context.BindPipelineState(lines_pass_pipeline);
 	context.BindDescriptorSet(data.lines_desc_set);
 	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
@@ -337,7 +270,7 @@ ut::Optional<SwapSlot&> StencilHighlight::Apply(SwapManager& swap_mgr,
 	                        blend_slot->color_only_framebuffer,
 	                        render_area,
 	                        ut::Color<4>(0), 1.0f);
-	context.BindPipelineState(data.blend_pass_pipeline);
+	context.BindPipelineState(blend_pass_pipeline);
 	context.BindDescriptorSet(data.blend_desc_set);
 	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
@@ -387,6 +320,81 @@ float StencilHighlight::CalculateLineOffset(const Parameters& parameters,
                                             float time_ms)
 {
 	return time_ms / parameters.line_movement_anim_speed_ms;
+}
+
+// Creates a pipeline state for the pass filling
+// highlighted pixels with solid color.
+PipelineState StencilHighlight::CreateFillPassPipelineState()
+{
+	PipelineState::Info info;
+	info.stages[Shader::vertex] = tools.shaders.quad_vs;
+	info.stages[Shader::pixel] = fill_shader;
+	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
+	info.depth_stencil_state.depth_test_enable = false;
+	info.depth_stencil_state.depth_write_enable = false;
+	info.depth_stencil_state.depth_compare_op = compare::never;
+	info.depth_stencil_state.stencil_test_enable = true;
+	info.depth_stencil_state.back.compare_op = compare::equal;
+	info.depth_stencil_state.back.fail_op = StencilOpState::keep;
+	info.depth_stencil_state.back.pass_op = StencilOpState::keep;
+	info.depth_stencil_state.back.compare_mask = stencilref_highlight;
+	info.depth_stencil_state.front = info.depth_stencil_state.back;
+	info.depth_stencil_state.stencil_write_mask = 0x0;
+	info.depth_stencil_state.stencil_reference = stencilref_highlight;
+	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
+	return tools.device.CreatePipelineState(info, clear_color_and_ds_pass).MoveOrThrow();
+}
+
+// Creates a pipeline state for the pass drawing
+// animated lines over highlighted pixels.
+PipelineState StencilHighlight::CreateLinePassPipelineState()
+{
+	PipelineState::Info info;
+	info.stages[Shader::vertex] = tools.shaders.quad_vs;
+	info.stages[Shader::pixel] = line_shader;
+	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
+	info.depth_stencil_state.depth_test_enable = false;
+	info.depth_stencil_state.depth_write_enable = false;
+	info.depth_stencil_state.depth_compare_op = compare::never;
+	info.depth_stencil_state.stencil_test_enable = true;
+	info.depth_stencil_state.back.compare_op = compare::equal;
+	info.depth_stencil_state.back.fail_op = StencilOpState::keep;
+	info.depth_stencil_state.back.pass_op = StencilOpState::keep;
+	info.depth_stencil_state.back.compare_mask = stencilref_highlight;
+	info.depth_stencil_state.front = info.depth_stencil_state.back;
+	info.depth_stencil_state.stencil_write_mask = 0x0;
+	info.depth_stencil_state.stencil_reference = stencilref_highlight;
+	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
+	return tools.device.CreatePipelineState(info, color_and_ds_pass).MoveOrThrow();
+}
+
+// Creates a pipeline state for the pass blending
+// final highlight color with the original image.
+PipelineState StencilHighlight::CreateBlendPasPipelineState()
+{
+	PipelineState::Info info;
+	info.stages[Shader::vertex] = tools.shaders.quad_vs;
+	info.stages[Shader::pixel] = blend_shader;
+	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
+	info.depth_stencil_state.depth_test_enable = false;
+	info.depth_stencil_state.depth_write_enable = false;
+	info.depth_stencil_state.depth_compare_op = compare::never;
+	info.depth_stencil_state.stencil_test_enable = true;
+	info.depth_stencil_state.back.compare_op = compare::equal;
+	info.depth_stencil_state.back.fail_op = StencilOpState::keep;
+	info.depth_stencil_state.back.pass_op = StencilOpState::keep;
+	info.depth_stencil_state.back.compare_mask = stencilref_highlight;
+	info.depth_stencil_state.front = info.depth_stencil_state.back;
+	info.depth_stencil_state.stencil_write_mask = 0x0;
+	info.depth_stencil_state.stencil_reference = stencilref_highlight;
+	info.rasterization_state.polygon_mode = RasterizationState::fill;
+	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
+	return tools.device.CreatePipelineState(info, color_only_pass).MoveOrThrow();
 }
 
 //----------------------------------------------------------------------------//

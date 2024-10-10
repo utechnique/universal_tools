@@ -21,6 +21,9 @@ Policy<View>::Policy(Toolset &toolset,
 // Initializes provided view unit.
 void Policy<View>::Initialize(View& view)
 {
+	ut::time::Counter timer;
+	timer.Start();
+
 	ut::Array<View::FrameData> frames;
 	for (ut::uint32 i = 0; i < tools.config.frames_in_flight; i++)
 	{
@@ -81,6 +84,9 @@ void Policy<View>::Initialize(View& view)
 			throw ut::Error(ut::error::out_of_memory);
 		}
 	}
+
+	ut::log.Lock() << "Render engine initialized view #" << view.viewport_id
+	               << " in "<< timer.GetTime<ut::time::seconds>() << "s." << ut::cret;
 
 	View::GpuData gpu_data;
 	gpu_data.frames = ut::Move(frames);
@@ -208,25 +214,6 @@ ut::Result<View::SceneBuffer, ut::Error> Policy<View>::CreateSceneBuffer(ut::uin
                                                                          bool is_cube,
                                                                          ut::uint32 light_buffer_mip_count)
 {
-	// check if gbuffer pixel format is supported by gpu
-	const Device::Info& device_info = tools.device.GetInfo();
-	if (!device_info.supports_2d_render_target_format[skGBufferFormat])
-	{
-		return ut::MakeError(ut::error::not_supported);
-	}
-
-	// figure out what depth stencil format is supported
-	const bool supports_preferred_depth_format = device_info.supports_2d_render_target_format[skPreferredDepthFormat];
-	const bool supports_alternative_depth_format = device_info.supports_2d_render_target_format[skAlternativeDepthFormat];
-	if (!supports_preferred_depth_format && !supports_alternative_depth_format)
-	{
-		return ut::MakeError(ut::error::not_supported);
-	}
-	const pixel::Format depth_format = supports_preferred_depth_format ?
-	                                   skPreferredDepthFormat :
-	                                   skAlternativeDepthFormat;
-
-
 	// create view uniform buffer
 	const ut::uint32 ub_count = is_cube ? 6 : 1;
 	ut::Array<Buffer> view_ub;
@@ -247,7 +234,7 @@ ut::Result<View::SceneBuffer, ut::Error> Policy<View>::CreateSceneBuffer(ut::uin
 	// depth stencil
 	Target::Info info;
 	info.type = is_cube ? Image::type_cube : Image::type_2D;
-	info.format = depth_format;
+	info.format = tools.formats.depth_stencil;
 	info.usage = Target::Info::usage_depth;
 	info.mip_count = 1;
 	info.width = width;

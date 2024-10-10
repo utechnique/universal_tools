@@ -22,14 +22,11 @@ public:
 	class ViewData
 	{
 	public:
-		ViewData(PipelineState highlight_fill_pass_pipeline,
-		         PipelineState highlight_lines_pass_pipeline,
-		         PipelineState highlight_blend_pass_pipeline,
-		         Buffer white_color_buffer,
-		         Buffer lines_color_buffer,
-		         Buffer blend_color_buffer,
-		         GaussianBlur::ViewData horizontal_blur_data,
-		         GaussianBlur::ViewData vertical_blur_data);
+		ViewData(GaussianBlur::ViewData horizontal_blur_data,
+		         GaussianBlur::ViewData vertical_blur_data,
+		         Buffer in_white_color_buffer,
+		         Buffer in_lines_color_buffer,
+		         Buffer in_blend_color_buffer);
 
 		struct FillDescriptorSet : public DescriptorSet
 		{
@@ -53,14 +50,12 @@ public:
 			Descriptor sampler = "g_sampler";
 		} blend_desc_set;
 
-		PipelineState fill_pass_pipeline;
-		PipelineState lines_pass_pipeline;
-		PipelineState blend_pass_pipeline;
+		GaussianBlur::ViewData horizontal_blur;
+		GaussianBlur::ViewData vertical_blur;
+
 		Buffer white_color_buffer;
 		Buffer lines_color_buffer;
 		Buffer blend_color_buffer;
-		GaussianBlur::ViewData horizontal_blur;
-		GaussianBlur::ViewData vertical_blur;
 	};
 
 	// Customisable effect parameters.
@@ -77,36 +72,19 @@ public:
 
 	// Constructor.
 	StencilHighlight(Toolset& toolset,
-	                 GaussianBlur& gaussian_blur);
+	                 GaussianBlur& gaussian_blur,
+	                 RenderPass& color_only_pass,
+	                 RenderPass& color_and_ds_pass,
+	                 RenderPass& clear_color_and_ds_pass);
 
 	// Creates highlighting (per-view) data.
-	//    @param color_only_pass - reference to the render pass with one
-	//                             color attachment and no depth.
-	//    @param color_and_ds_pass - reference to the render pass with one
-	//                               color and one depth-stencil attachment.
-	//    @param clear_color_and_ds_pass - reference to the render pass with one
-	//                                     color and one depth-stencil attachment,
-	//                                     color attachment is set to be cleared.
-	//    @param width - width of the view in pixels.
-	//    @param height - height of the view in pixels.
 	//    @return - a new StencilHighlight::ViewData object or error if failed.
-	ut::Result<ViewData, ut::Error> CreateViewData(RenderPass& color_only_pass,
-	                                               RenderPass& color_and_ds_pass,
-	                                               RenderPass& clear_color_and_ds_pass,
-	                                               ut::uint32 width,
-	                                               ut::uint32 height);
+	ut::Result<ViewData, ut::Error> CreateViewData();
 
 	// Performs highlighting.
 	//    @param swap_mgr - reference to the post-process swap manager.
 	//    @param context - reference to the rendering context.
 	//    @param data - reference to the StencilHighlight::ViewData object.
-	//    @param color_only_pass - reference to the render pass with one
-	//                             color attachment and no depth.
-	//    @param color_and_ds_pass - reference to the render pass with one
-	//                               color and one depth-stencil attachment.
-	//    @param clear_color_and_ds_pass - reference to the render pass with one
-	//                                     color and one depth-stencil attachment,
-	//                                     color attachment is set to be cleared.
 	//    @param source - reference to the source image.
 	// 	  @param parameters - reference to the StencilHighlight::Parameters object
 	//                        containing parameters for the highlighting effect.
@@ -115,9 +93,6 @@ public:
 	ut::Optional<SwapSlot&> Apply(SwapManager& swap_mgr,
 	                              Context& context,
 	                              ViewData& data,
-	                              RenderPass& color_only_pass,
-	                              RenderPass& color_and_ds_pass,
-	                              RenderPass& clear_color_and_ds_pass,
 	                              Image& source,
 	                              const Parameters& parameters,
 	                              float time_ms);
@@ -133,6 +108,18 @@ private:
 	// highlighting mask.
 	Shader LoadBlendShader();
 
+	// Creates a pipeline state for the pass filling
+	// highlighted pixels with solid color.
+	PipelineState CreateFillPassPipelineState();
+
+	// Creates a pipeline state for the pass drawing
+	// animated lines over highlighted pixels.
+	PipelineState CreateLinePassPipelineState();
+
+	// Creates a pipeline state for the pass blending
+	// final highlight color with the original image.
+	PipelineState CreateBlendPasPipelineState();
+
 	// Calculates visibility factor for lines animation.
 	static float CalculateLineVisibility(const Parameters& parameters,
 	                                     float time_ms);
@@ -141,13 +128,22 @@ private:
 	static float CalculateLineOffset(const Parameters& parameters,
 	                                 float time_ms);
 
-	// Common rendering tools.
 	Toolset& tools;
+
 	GaussianBlur& blur;
+
 	Shader fill_shader;
 	Shader line_shader;
 	Shader blend_shader;
 	Shader blur_shader;
+
+	RenderPass& color_only_pass;
+	RenderPass& color_and_ds_pass;
+	RenderPass& clear_color_and_ds_pass;
+
+	PipelineState fill_pass_pipeline;
+	PipelineState lines_pass_pipeline;
+	PipelineState blend_pass_pipeline;
 };
 
 //----------------------------------------------------------------------------//

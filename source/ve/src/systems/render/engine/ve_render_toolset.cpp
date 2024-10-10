@@ -56,7 +56,33 @@ Toolset::Toolset(Device& dvc_ref) : device(dvc_ref)
                                                                    "img_quad_ps.hlsl",
                                                                    GenQuadShaderConversionMacros(false)).MoveOrThrow()
                                             }
-{}
+{
+    // check supported depth-stencil formats
+    const Device::Info& device_info = device.GetInfo();
+    const bool supports_preferred_depth_format = device_info.supports_2d_render_target_format[formats.preferred_depth_stencil];
+    const bool supports_alternative_depth_format = device_info.supports_2d_render_target_format[formats.alternative_depth_stencil];
+    if (!supports_preferred_depth_format && !supports_alternative_depth_format)
+    {
+        throw ut::Error(ut::error::not_supported, "Depth-stencil format is not supported.");
+    }
+
+    // choose supported depth-stencil format
+    formats.depth_stencil = supports_preferred_depth_format ?
+                            formats.preferred_depth_stencil :
+                            formats.alternative_depth_stencil;
+
+    // check supported G-Buffer format
+    if (!device_info.supports_2d_render_target_format[formats.gbuffer])
+    {
+        throw ut::Error(ut::error::not_supported, "G-Buffer format is not supported.");
+    }
+
+    // check supported light-buffer format
+    if (!device_info.supports_2d_render_target_format[formats.light_buffer])
+    {
+        throw ut::Error(ut::error::not_supported, "Light buffer format is not supported.");
+    }
+}
 
 //----------------------------------------------------------------------------->
 // Returns a configuration object. Tries to load it from file, and creates

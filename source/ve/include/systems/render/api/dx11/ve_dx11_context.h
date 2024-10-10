@@ -20,7 +20,9 @@ class PlatformContext
 public:
 	// Constructor.
 	PlatformContext(ID3D11DeviceContext* context_ptr,
-	                bool is_deferred_context);
+	                bool is_deferred_context,
+	                ut::Optional< ut::Vector<2, ut::uint32> > bound_framebuffer_size =
+	                                                          ut::Optional< ut::Vector<2, ut::uint32> >());
 
 	// Move constructor.
 	PlatformContext(PlatformContext&&) noexcept;
@@ -55,6 +57,9 @@ protected:
 
 	// Indicates that this context is a deferred context.
 	bool is_deferred;
+
+	// current render area
+	ut::Optional< ut::Vector<2, ut::uint32> > bound_framebuffer_size;
 };
 
 //----------------------------------------------------------------------------//

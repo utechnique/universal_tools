@@ -132,7 +132,22 @@ private:
 		return slot;
 	}
 
+	// Creates a render pass with only one attached color slot.
+	RenderPass CreateColorOnlyRenderPass();
+
+	// Creates a render pass with one color slot and one depth-stencil slot.
+	RenderPass CreateColorAndDepthStencilRenderPass();
+
+	// Creates a render pass with one color slot and one depth-stencil slot.
+	// Color slot is cleared when the renderpass begins.
+	RenderPass CreateClearColorAndDepthStencilRenderPass();
+
 	Toolset& tools;
+
+	RenderPass color_only_pass;
+	RenderPass color_and_ds_pass;
+	RenderPass clear_color_and_ds_pass;
+
 	GaussianBlur gaussian_blur;
 	ToneMapper tone_mapper;
 	StencilHighlight stencil_highlight;

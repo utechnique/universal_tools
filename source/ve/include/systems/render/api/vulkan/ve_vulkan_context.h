@@ -20,7 +20,9 @@ public:
 	// Constructor.
 	PlatformContext(VkDevice device_handle,
 	                VmaAllocator allocator_handle,
-	                PlatformCmdBuffer& cmd_buffer_ref);
+	                PlatformCmdBuffer& cmd_buffer_ref,
+	                ut::Optional< ut::Vector<2, ut::uint32> > bound_framebuffer_size =
+	                                                          ut::Optional< ut::Vector<2, ut::uint32> >());
 
 	// Move constructor.
 	PlatformContext(PlatformContext&&) noexcept;
@@ -70,6 +72,9 @@ protected:
 	// reference to the buffer containing all commands recorded
 	// by this context
 	PlatformCmdBuffer& cmd_buffer;
+
+	// current render area
+	ut::Optional< ut::Vector<2, ut::uint32> > bound_framebuffer_size;
 };
 
 //----------------------------------------------------------------------------//

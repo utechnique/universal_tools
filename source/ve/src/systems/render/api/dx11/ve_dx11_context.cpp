@@ -10,8 +10,10 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformContext::PlatformContext(ID3D11DeviceContext* context_ptr,
-                                 bool is_deferred_context) : d3d11_context(context_ptr)
-                                                           , is_deferred(is_deferred_context)
+                                 bool is_deferred_context,
+                                 ut::Optional< ut::Vector<2, ut::uint32> > framebuffer_size) : d3d11_context(context_ptr)
+                                                                                             , is_deferred(is_deferred_context)
+                                                                                             , bound_framebuffer_size(ut::Move(framebuffer_size))
 {
 	for (ut::uint32 i = 0; i < 6; i++)
 	{
@@ -472,15 +474,26 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	{
 		d3d11_context->OMSetRenderTargets(static_cast<UINT>(color_target_count), rtv.GetAddress(), dsv);
 	}
+
+	// remember render area metrics
+	const Framebuffer::Info& framebuffer_info = framebuffer.GetInfo();
+	bound_framebuffer_size = ut::Vector<2, ut::uint32>(framebuffer_info.width,
+	                                                   framebuffer_info.height);
 }
 
 // End current render pass.
 void Context::EndRenderPass()
-{}
+{
+	bound_framebuffer_size = ut::Optional< ut::Vector<2, ut::uint32> >();
+}
 
 // Binds provided pipeline state to the current context.
 //    @param pipeline_state - reference to the pipeline state.
-void Context::BindPipelineState(PipelineState& state)
+//    @param viewports - optional reference to an array of viewports,
+//                       if this parameter is not set, a viewport with the
+//                       same size as the bound viewport will be used.
+void Context::BindPipelineState(PipelineState& state,
+                                ut::Optional<const ut::Array<Viewport>&> viewports)
 {
 	// input layout
 	d3d11_context->IASetInputLayout(state.input_layout.Get());
@@ -489,31 +502,64 @@ void Context::BindPipelineState(PipelineState& state)
 	d3d11_context->IASetPrimitiveTopology(ConvertPrimitiveTopologyToDX11(state.info.input_assembly_state.topology));
 
 	// set viewports
-	const UINT viewport_count = static_cast<UINT>(state.info.viewports.Count());
-	ut::Array<D3D11_VIEWPORT> viewports(viewport_count);
-	ut::Array<D3D11_RECT> scissors;
-	for (size_t i = 0; i < viewport_count; i++)
+	if (viewports)
 	{
-		const Viewport& viewport = state.info.viewports[i];
-		viewports[i].TopLeftX = viewport.x;
-		viewports[i].TopLeftY = viewport.y;
-		viewports[i].Width = viewport.width;
-		viewports[i].Height = viewport.height;
-		viewports[i].MinDepth = viewport.min_depth;
-		viewports[i].MaxDepth = viewport.max_depth;
-
-		if (viewport.scissor)
+		const UINT viewport_count = static_cast<UINT>(viewports->Count());
+		ut::Array<D3D11_VIEWPORT> dx_viewports(viewport_count);
+		ut::Array<D3D11_RECT> scissors(viewport_count);
+		for (size_t i = 0; i < viewport_count; i++)
 		{
-			D3D11_RECT scissor;
-			scissor.left = viewport.scissor->offset.X();
-			scissor.top = viewport.scissor->offset.Y();
-			scissor.right = scissor.left + viewport.scissor->extent.X();
-			scissor.bottom = scissor.top + viewport.scissor->extent.Y();
-			scissors.Add(scissor);
+			const Viewport& viewport = viewports.Get()[i];
+			D3D11_VIEWPORT& dx_viewport = dx_viewports[i];
+			D3D11_RECT& scissor = scissors[i];
+
+			dx_viewport.TopLeftX = viewport.x;
+			dx_viewport.TopLeftY = viewport.y;
+			dx_viewport.Width = viewport.width;
+			dx_viewport.Height = viewport.height;
+			dx_viewport.MinDepth = viewport.min_depth;
+			dx_viewport.MaxDepth = viewport.max_depth;
+			
+			if (viewport.scissor)
+			{
+				scissor.left = viewport.scissor->offset.X();
+				scissor.top = viewport.scissor->offset.Y();
+				scissor.right = scissor.left + viewport.scissor->extent.X();
+				scissor.bottom = scissor.top + viewport.scissor->extent.Y();
+			}
+			else
+			{
+				scissor.left = static_cast<LONG>(viewport.x);
+				scissor.top = static_cast<LONG>(viewport.y);
+				scissor.right = scissor.left + static_cast<LONG>(viewport.width);
+				scissor.bottom = scissor.top + static_cast<LONG>(viewport.height);
+			}
 		}
+
+		d3d11_context->RSSetViewports(viewport_count, dx_viewports.GetAddress());
+		d3d11_context->RSSetScissorRects(viewport_count, scissors.GetAddress());
 	}
-	d3d11_context->RSSetViewports(viewport_count, viewports.GetAddress());
-	d3d11_context->RSSetScissorRects(static_cast<UINT>(scissors.Count()), scissors.GetAddress());
+	else
+	{
+		UT_ASSERT(bound_framebuffer_size);
+
+		D3D11_VIEWPORT vp;
+		vp.TopLeftX = 0.0f;
+		vp.TopLeftY = 0.0f;
+		vp.Width = static_cast<float>(bound_framebuffer_size->X());
+		vp.Height = static_cast<float>(bound_framebuffer_size->Y());
+		vp.MinDepth = 0.0f;
+		vp.MaxDepth = 1.0f;
+
+		D3D11_RECT scissor;
+		scissor.left = 0;
+		scissor.top = 0;
+		scissor.right = bound_framebuffer_size->X();
+		scissor.bottom = bound_framebuffer_size->Y();
+
+		d3d11_context->RSSetViewports(1, &vp);
+		d3d11_context->RSSetScissorRects(1, &scissor);
+	}
 
 	// raster state
 	d3d11_context->RSSetState(state.rasterizer_state.Get());

@@ -42,9 +42,11 @@ PlatformImage::State CreateTargetImageState(Target::Info target_info,
 // Constructor.
 PlatformContext::PlatformContext(VkDevice device_handle,
                                  VmaAllocator allocator_handle,
-                                 PlatformCmdBuffer& cmd_buffer_ref) : device(device_handle)
-                                                                    , allocator(allocator_handle)
-                                                                    , cmd_buffer(cmd_buffer_ref)
+                                 PlatformCmdBuffer& cmd_buffer_ref,
+                                 ut::Optional< ut::Vector<2, ut::uint32> > framebuffer_size) : device(device_handle)
+                                                                                             , allocator(allocator_handle)
+                                                                                             , cmd_buffer(cmd_buffer_ref)
+                                                                                             , bound_framebuffer_size(ut::Move(framebuffer_size))
 {}
 
 // Move constructor.
@@ -678,19 +680,90 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	                                    VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS :
 	                                    VK_SUBPASS_CONTENTS_INLINE;
 	vkCmdBeginRenderPass(cmd_buffer.GetVkHandle(), &rp_begin, subpass_content);
+
+	// remember render area metrics
+	const Framebuffer::Info& framebuffer_info = framebuffer.GetInfo();
+	bound_framebuffer_size = ut::Vector<2, ut::uint32>(framebuffer_info.width,
+	                                                   framebuffer_info.height);
 }
 
 // End current render pass.
 void Context::EndRenderPass()
 {
 	vkCmdEndRenderPass(cmd_buffer.GetVkHandle());
+	bound_framebuffer_size = ut::Optional< ut::Vector<2, ut::uint32> >();
 }
 
 // Binds provided pipeline state to the current context.
 //    @param pipeline_state - reference to the pipeline state.
-void Context::BindPipelineState(PipelineState& pipeline_state)
+//    @param viewports - optional reference to an array of viewports.
+void Context::BindPipelineState(PipelineState& pipeline_state,
+                                ut::Optional<const ut::Array<Viewport>&> viewports)
 {
 	vkCmdBindPipeline(cmd_buffer.GetVkHandle(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_state.pipeline.GetVkHandle());
+
+	if (viewports)
+	{
+		const ut::uint32 viewport_count = static_cast<ut::uint32>(viewports->Count());
+		ut::Array<VkViewport> vp(viewport_count);
+		ut::Array<VkRect2D> scissors(viewport_count);
+		for (uint32_t i = 0; i < viewport_count; i++)
+		{
+			const Viewport& viewport = viewports.Get()[i];
+
+			vp[i].x = viewport.x;
+			vp[i].y = viewport.buffer_height - viewport.y;
+			vp[i].width = viewport.width;
+			vp[i].height = -viewport.height;
+			vp[i].minDepth = viewport.min_depth;
+			vp[i].maxDepth = viewport.max_depth;
+
+			if (viewport.scissor)
+			{
+				scissors[i].offset.x = viewport.scissor->offset.X();
+				scissors[i].offset.y = viewport.scissor->offset.Y();
+				scissors[i].extent.width = viewport.scissor->extent.X();
+				scissors[i].extent.height = viewport.scissor->extent.Y();
+			}
+			else
+			{
+				scissors[i].offset.x = static_cast<int32_t>(viewport.x);
+				scissors[i].offset.y = static_cast<int32_t>(viewport.y);
+				scissors[i].extent.width = static_cast<uint32_t>(viewport.width);
+				scissors[i].extent.height = static_cast<uint32_t>(viewport.height);
+			}
+
+			int32_t scissor_bottom = static_cast<int32_t>(viewport.buffer_height) - scissors[i].offset.y;
+			scissors[i].offset.y = scissor_bottom - scissors[i].extent.height;
+		}
+
+		vkCmdSetViewport(cmd_buffer.GetVkHandle(), 0, viewport_count, vp.GetAddress());
+		vkCmdSetScissor(cmd_buffer.GetVkHandle(), 0, viewport_count, scissors.GetAddress());
+	}
+	else
+	{
+		UT_ASSERT(bound_framebuffer_size);
+
+		const float framebuffer_width = static_cast<float>(bound_framebuffer_size->X());
+		const float framebuffer_height = static_cast<float>(bound_framebuffer_size->Y());
+
+		VkViewport vp;
+		vp.x = 0.0f;
+		vp.y = framebuffer_height;
+		vp.width = framebuffer_width;
+		vp.height = -framebuffer_height;
+		vp.minDepth = 0.0f;
+		vp.maxDepth = 1.0f;
+		vkCmdSetViewport(cmd_buffer.GetVkHandle(), 0, 1, &vp);
+
+		VkRect2D scissor;
+		scissor.extent.width = bound_framebuffer_size->X();
+		scissor.extent.height = bound_framebuffer_size->Y();
+		scissor.offset.x = 0.0f;
+		scissor.offset.y = bound_framebuffer_size->Y() - scissor.extent.height;
+		vkCmdSetScissor(cmd_buffer.GetVkHandle(), 0, 1, &scissor);
+	}
+
 	cmd_buffer.bound_pipeline = pipeline_state;
 }
 

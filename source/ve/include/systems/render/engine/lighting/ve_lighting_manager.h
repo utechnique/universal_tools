@@ -56,7 +56,6 @@ private:
 	                         float shape_length);
 
 	Toolset& tools;
-	static constexpr pixel::Format skLightBufferFormat = pixel::r16g16b16a16_float;
 };
 
 //----------------------------------------------------------------------------//

@@ -336,8 +336,8 @@ public:
 		// shaders bound to the pipeline
 		ut::Optional<Shader&> stages[Shader::skStageCount];
 
-		// viewports
-		ut::Array<Viewport> viewports;
+		// the number of viewports used in this pipeline
+		ut::uint32 viewport_count = 1;
 
 		// tessellation
 		bool tessellation_enable;

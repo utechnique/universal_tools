@@ -18,8 +18,7 @@ public:
 	{
 	public:
 		// Constructor.
-		ViewData(PipelineState fxaa_pipeline_state,
-		         Buffer fxaa_uniform_buffer);
+		ViewData(Buffer fxaa_uniform_buffer);
 
 		// Move constructor and operator.
 		ViewData(ViewData&&) noexcept = default;
@@ -42,7 +41,6 @@ public:
 			alignas(16) ut::Vector<4> texel_size;
 		};
 
-		PipelineState pipeline_state;
 		Buffer uniform_buffer;
 	};
 
@@ -53,16 +51,14 @@ public:
 	};
 
 	// Constructor.
-	Fxaa(Toolset& toolset);
+	Fxaa(Toolset& toolset, RenderPass& postprocess_pass);
 
 	// Creates fxaa (per-view) data.
 	//    @param postprocess_pass - render pass that will be used for fxaa.
 	//    @param width - width of the view in pixels.
 	//    @param height - height of the view in pixels.
 	//    @return - a new Fxaa::ViewData object or error if failed.
-	ut::Result<ViewData, ut::Error> CreateViewData(RenderPass& postprocess_pass,
-	                                               ut::uint32 width,
-	                                               ut::uint32 height);
+	ut::Result<ViewData, ut::Error> CreateViewData();
 
 	// Applies fxaa effect.
 	//    @param swap_mgr - reference to the post-process swap manager.
@@ -86,6 +82,9 @@ private:
 	// Returns compiled fxaa pixel shader.
 	Shader LoadFxaaShader();
 
+	// Creates a pipeline state for the fxaa effect.
+	PipelineState CreatePipelineState(RenderPass& postprocess_pass);
+
 	// Generates an array of macros for fxaa shader.
 	//    @param preset_id - quality preset (from 0 to 5).
 	//    @return - an array of macros.
@@ -99,6 +98,9 @@ private:
 
 	// FXAA pixel shader.
 	Shader pixel_shader;
+
+	// FXAA pipeline state.
+	PipelineState pipeline_state;
 };
 
 //----------------------------------------------------------------------------//
