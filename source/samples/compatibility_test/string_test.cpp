@@ -26,6 +26,9 @@ StringTestUnit::StringTestUnit() : TestUnit("STRING")
 	tasks.Add(ut::MakeUnique<StrScanTask>());
 	tasks.Add(ut::MakeUnique<StrMoveTask>());
 	tasks.Add(ut::MakeUnique<StrReplaceTask>());
+	tasks.Add(ut::MakeUnique<StrFindTask>());
+	tasks.Add(ut::MakeUnique<StrSubStrTask>());
+	tasks.Add(ut::MakeUnique<StrSplitTask>());
 }
 
 //----------------------------------------------------------------------------//
@@ -608,7 +611,156 @@ void StrReplaceTask::Execute()
 		return;
 	}
 
+	test = original;
+	test.Replace('2', '@');
+	report += ut::String("     replace character 2 with @: ") + test + ut::cret;
+	if (test != "1@3 abc 1@3 bca 1@3 ddf")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
 	report += "     Success.";
+}
+
+//----------------------------------------------------------------------------//
+// Find string
+StrFindTask::StrFindTask() : TestTask("Find")
+{ }
+
+void StrFindTask::Execute()
+{
+	const ut::String src = "123 abc 123 bca 123 ddf";
+	const ut::String search = "23";
+	const ut::String non_existent = "32";
+
+	ut::Optional<size_t> occurrence = src.Find(search);
+	if (!occurrence || occurrence.Get() != 1)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	occurrence = src.Find(search, 11);
+	if (!occurrence || occurrence.Get() != 17)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	occurrence = src.Find(non_existent);
+	if (occurrence)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	occurrence = src.Find('c');
+	if (!occurrence || occurrence.Get() != 6)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	occurrence = src.Find('c', 8);
+	if (!occurrence || occurrence.Get() != 13)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	report += "Success.";
+}
+
+//----------------------------------------------------------------------------//
+// Substring
+StrSubStrTask::StrSubStrTask() : TestTask("Substring")
+{ }
+
+void StrSubStrTask::Execute()
+{
+	const ut::String src = "123 abc 123 bca 123 ddf";
+	
+	ut::String substr = src.SubStr(2);
+	if (substr != "3 abc 123 bca 123 ddf")
+	{
+		report += ut::String("Failed. ") + substr + "instead of 3 abc 123 bca 123 ddf";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	substr = src.SubStr(4, 5);
+	if (substr != "abc 1")
+	{
+		report += ut::String("Failed. ") + substr + "instead of bc 12";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	substr = src.SubStr();
+	if (substr != src)
+	{
+		report += ut::String("Failed. ") + substr + "instead of " + src;
+		failed_test_counter.Increment();
+		return;
+	}
+
+	report += "Success.";
+}
+
+//----------------------------------------------------------------------------//
+// Split
+StrSplitTask::StrSplitTask() : TestTask("Split")
+{ }
+
+void StrSplitTask::Execute()
+{
+	const ut::String src = "123-=@abc-=@123-=@bca-=@123-=@ddf";
+	ut::Array<ut::String> substrs = src.Split("-=@");
+
+	if (substrs.Count() != 6 ||
+		substrs[0] != "123" ||
+		substrs[1] != "abc" || 
+		substrs[2] != "123" || 
+		substrs[3] != "bca" || 
+		substrs[4] != "123" || 
+		substrs[5] != "ddf")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	substrs = src.Split('=');
+	if (substrs.Count() != 6 ||
+		substrs[0] != "123-" ||
+		substrs[1] != "@abc-" ||
+		substrs[2] != "@123-" ||
+		substrs[3] != "@bca-" ||
+		substrs[4] != "@123-" ||
+		substrs[5] != "@ddf")
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	substrs = src.Split("#");
+	if (substrs.Count() != 1 ||
+		substrs[0] != src)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	report += "Success.";
 }
 
 //----------------------------------------------------------------------------//
