@@ -7,6 +7,7 @@
 //----------------------------------------------------------------------------//
 #include "common/ut_common.h"
 #include "containers/ut_array.h"
+#include "templates/ut_optional.h"
 #include "system/ut_memory.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
@@ -217,10 +218,25 @@ public:
 		return out;
 	}
 
+	// Additive promotion operator (single character)
+	TString operator +(T chr) const
+	{
+		TString out(*this);
+		out.Append(chr);
+		return out;
+	}
+
 	// Addition assignment operator
 	TString& operator +=(const TString& str)
 	{
 		Append(str);
+		return *this;
+	}
+
+	// Addition assignment operator (single character)
+	TString& operator +=(T chr)
+	{
+		Append(chr);
 		return *this;
 	}
 
@@ -490,14 +506,8 @@ public:
 	// Resets this string.
 	void Reset()
 	{
-		if (length <= sso_size)
-		{
-			sso[0] = '\0';
-			length = 1;
-			return;
-		}
-
-		heap.Reset();
+		T empty[1] = {'\0'};
+		Set(empty);
 	}
 
 	// Returns isolated filename string (directory is deleted)
@@ -607,6 +617,76 @@ public:
 		}
 	}
 
+	// Searches the string for the first occurrence of the sequence specified
+	// by its arguments.
+	//    @param str - searched null-terminated string.
+	//    @param pos - when specified, the search only includes characters
+	//                 at or after position pos, ignoring any possible
+	//                 occurrences that include characters before it.
+	//    @return - the position of the first character of the first match.
+	//              If no matches were found, the function returns nothing.
+	Optional<size_t> Find(const T* str, size_t pos = 0) const
+	{
+		UT_ASSERT(pos < length);
+		const T* src = GetAddress();
+		const T* occurrence = StrStr<T>(src + pos, str);
+		if (occurrence == nullptr)
+		{
+			return Optional<size_t>();
+		}
+
+		return occurrence - src;
+	}
+
+	// Searches the string for the first occurrence of the sequence specified
+	// by its arguments.
+	//    @param str - the reference to the searched string.
+	//    @param pos - when specified, the search only includes characters
+	//                 at or after position pos, ignoring any possible
+	//                 occurrences that include characters before it.
+	//    @return - the position of the first character of the first match.
+	//              If no matches were found, the function returns nothing.
+	Optional<size_t> Find(const TString& str, size_t pos = 0) const
+	{
+		return Find(str.GetAddress(), pos);
+	}
+
+	// Searches the string for the first occurrence of the character specified
+	// by its argument.
+	//    @param str - the reference to the searched string.
+	//    @param pos - when specified, the search only includes characters
+	//                 at or after position pos, ignoring any possible
+	//                 occurrences that include characters before it.
+	//    @return - the position of the first character of the first match.
+	//              If no matches were found, the function returns nothing.
+	Optional<size_t> Find(T c, size_t pos = 0) const
+	{
+		UT_ASSERT(pos < length);
+		const T* src = GetAddress();
+		const T* occurrence = StrChr<T>(src + pos, c);
+		if (occurrence == nullptr)
+		{
+			return Optional<size_t>();
+		}
+
+		return occurrence - src;
+	}
+
+	// Returns a newly constructed string object with its value initialized
+	// to a copy of a substring of this object.
+	//    @param pos - position of the first character to be copied as a
+	//                 substring.
+	//    @param len - optional number of characters to include in the
+	//                 substring, if the string is shorter, as many characters
+	//                 as possible are used, if this parameter is not set then
+	//                 all remaining characters are included.
+	//    @return - a string object with a substring of this object.
+	TString SubStr(size_t pos = 0, Optional<size_t> len = Optional<size_t>()) const
+	{
+		UT_ASSERT(pos < length);
+		return TString(GetAddress() + pos, len ? len.Get() : (length - pos));
+	}
+
 	// Parses self into set of words separated by spaces, tabs, etc.
 	// If something is concluded into quates - it is perceived as a single word
 	//    @param words - array of strings, every parsed word will be appended to it
@@ -652,6 +732,55 @@ public:
 				}
 			}
 		}
+	}
+
+	// Takes a pattern and divides this string into an ordered list of substrings
+	// by searching for the pattern, puts these substrings into an array, and
+	// returns the array.
+	//    @param delimiter - the pattern describing where each split should occur.
+	//    @return - an Array of strings, split at each point where the delimiter
+	//              occurs in the given string.
+	ut::Array<TString> Split(const TString& delimiter) const
+	{
+		size_t pos_start = 0;
+		Optional<size_t> pos_end;
+		size_t delim_len = delimiter.Length();
+		TString token;
+		ut::Array<TString> result;
+
+		while (pos_end = Find(delimiter, pos_start))
+		{
+			token = SubStr(pos_start, pos_end.Get() - pos_start);
+			pos_start = pos_end.Get() + delim_len;
+			result.Add(token);
+		}
+
+		result.Add(SubStr(pos_start));
+		return result;
+	}
+
+	// Takes a character and divides this string into an ordered list of
+	// substrings by searching for the pattern, puts these substrings into
+	// an array, and returns the array.
+	//    @param delimiter - the character where each split should occur.
+	//    @return - an Array of strings, split at each point where the delimiter
+	//              occurs in the given string.
+	ut::Array<TString> Split(T delimiter) const
+	{
+		size_t pos_start = 0;
+		Optional<size_t> pos_end;
+		TString token;
+		ut::Array<TString> result;
+
+		while (pos_end = Find(delimiter, pos_start))
+		{
+			token = SubStr(pos_start, pos_end.Get() - pos_start);
+			pos_start = pos_end.Get() + 1;
+			result.Add(token);
+		}
+
+		result.Add(SubStr(pos_start));
+		return result;
 	}
 
 	// Replaces separator characters with platform-specific ones:
@@ -722,6 +851,47 @@ public:
 			const TString sufix(addr + src_len);
 
 			*this = prefix + str + sufix;
+		}
+	}
+
+	// Replaces the character.
+	//    @param src - desired character.
+	//    @param str - another character, whose value is copied.
+	//    @param first - index of the first occurence of the character @src,
+	//                   where replacing must take place.
+	//    @param count - how many times to replace @src character, 0 means all.
+	void Replace(const T src,
+	             const T chr,
+	             uint32 first = 0,
+	             uint32 count = 0)
+	{
+		uint32 i = 0;
+		size_t offset = 0;
+		while (true)
+		{
+			const T* start = GetAddress();
+			const T* addr = StrChr<T>(start + offset, src);
+			if (!addr)
+			{
+				break;
+			}
+
+			const size_t prefix_len = addr - start;
+			offset = prefix_len + 1;
+
+			if (i++ < first)
+			{
+				continue;
+			}
+			else if (count != 0 && i > first + count)
+			{
+				break;
+			}
+
+			const TString prefix(start, prefix_len);
+			const TString sufix(addr + 1);
+
+			*this = prefix + chr + sufix;
 		}
 	}
 
