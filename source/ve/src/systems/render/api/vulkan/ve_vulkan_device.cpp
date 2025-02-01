@@ -633,6 +633,7 @@ ut::Optional<ut::Error> PlatformDevice::EndImmediateCmdBuffer(VkCommandBuffer cm
 	                     1,
 	                     &cmd_buffer);
 
+	ut::ScopeLock lock(immediate_buffer_mutex);
 	immediate_buffer_cvar.WakeOne();
 	immediate_buffer_busy = false;
 
