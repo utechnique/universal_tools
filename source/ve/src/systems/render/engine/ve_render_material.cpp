@@ -28,6 +28,7 @@ const char* Material::Generator::skTypeSurface = "surface"; // Solid 2d surface.
 // 'a': alpha value that is applied only if 'c' parameter was also
 //      provided, must be an integer from 0 to 255. Default is 255.
 // 't': enables transparency, must be 'yes' or 'no'. Default is 'no'.
+// 'u': enables unlit mode, must be 'yes' or 'no'. Default is 'no'.
 ut::Result<Material, ut::Error> Material::Generator::CreateFromPrompt(const ut::String& prompt,
                                                                       ResourceManager& rc_mgr)
 {
@@ -60,6 +61,7 @@ ut::Result<Material, ut::Error> Material::Generator::CreateFromPrompt(const ut::
 	ut::String color;
 	ut::byte alpha = 255;
 	bool enable_transparency = false;
+	bool unlit = false;
 
 	// update parameters using generator prompt attributes
 	for (const Resource::GeneratorPrompt::Attribute& attribute : generator_attributes)
@@ -72,6 +74,7 @@ ut::Result<Material, ut::Error> Material::Generator::CreateFromPrompt(const ut::
 			case 'c': color = attribute.value; break;
 			case 'a': alpha = ut::Scan<ut::byte>(attribute.value); break;
 			case 't': enable_transparency = attribute.value == "yes"; break;
+			case 'u': unlit = attribute.value == "yes"; break;
 		}
 	}
 
@@ -125,6 +128,7 @@ ut::Result<Material, ut::Error> Material::Generator::CreateFromPrompt(const ut::
 	material.alpha = enable_transparency ? Material::alpha_transparent :
 	                                       Material::alpha_opaque;
 	material.double_sided = false;
+	material.unlit = unlit;
 
 	return material;
 }

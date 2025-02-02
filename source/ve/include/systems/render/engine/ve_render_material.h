@@ -39,6 +39,7 @@ public:
 		// 'a': alpha value that is applied only if 'c' parameter was also
 		//      provided, must be an integer from 0 to 255. Default is 255.
 		// 't': enables transparency, must be 'yes' or 'no'. Default is 'no'.
+		// 'u': enables unlit mode, must be 'yes' or 'no'. Default is 'no'.
 		static ut::Result<Material, ut::Error> CreateFromPrompt(const ut::String& prompt,
 		                                                        ResourceManager& rc_mgr);
 

@@ -337,67 +337,67 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenBoxVertices(Mesh::
 
 	vertices.Get<vertex_traits::position>(8).Write(ut::Vector<3>(-extent.X(), -extent.Y(), extent.Z()));
 	vertices.Get<vertex_traits::normal>(8).Write(ut::Vector<3>(-1, 0, 0));
-	vertices.Get<vertex_traits::texcoord>(8).Write(ut::Vector<2>(0, 0));
+	vertices.Get<vertex_traits::texcoord>(8).Write(ut::Vector<2>(0, 1));
 
 	vertices.Get<vertex_traits::position>(9).Write(ut::Vector<3>(-extent.X(), -extent.Y(), -extent.Z()));
 	vertices.Get<vertex_traits::normal>(9).Write(ut::Vector<3>(-1, 0, 0));
-	vertices.Get<vertex_traits::texcoord>(9).Write(ut::Vector<2>(1, 0));
+	vertices.Get<vertex_traits::texcoord>(9).Write(ut::Vector<2>(1, 1));
 
 	vertices.Get<vertex_traits::position>(10).Write(ut::Vector<3>(-extent.X(), extent.Y(), -extent.Z()));
 	vertices.Get<vertex_traits::normal>(10).Write(ut::Vector<3>(-1, 0, 0));
-	vertices.Get<vertex_traits::texcoord>(10).Write(ut::Vector<2>(1, 1));
+	vertices.Get<vertex_traits::texcoord>(10).Write(ut::Vector<2>(1, 0));
 
 	vertices.Get<vertex_traits::position>(11).Write(ut::Vector<3>(-extent.X(), extent.Y(), extent.Z()));
 	vertices.Get<vertex_traits::normal>(11).Write(ut::Vector<3>(-1, 0, 0));
-	vertices.Get<vertex_traits::texcoord>(11).Write(ut::Vector<2>(0, 1));
+	vertices.Get<vertex_traits::texcoord>(11).Write(ut::Vector<2>(0, 0));
 
 	vertices.Get<vertex_traits::position>(12).Write(ut::Vector<3>(extent.X(), -extent.Y(), extent.Z()));
 	vertices.Get<vertex_traits::normal>(12).Write(ut::Vector<3>(1, 0, 0));
-	vertices.Get<vertex_traits::texcoord>(12).Write(ut::Vector<2>(0, 0));
+	vertices.Get<vertex_traits::texcoord>(12).Write(ut::Vector<2>(1, 1));
 
 	vertices.Get<vertex_traits::position>(13).Write(ut::Vector<3>(extent.X(), -extent.Y(), -extent.Z()));
 	vertices.Get<vertex_traits::normal>(13).Write(ut::Vector<3>(1, 0, 0));
-	vertices.Get<vertex_traits::texcoord>(13).Write(ut::Vector<2>(1, 0));
+	vertices.Get<vertex_traits::texcoord>(13).Write(ut::Vector<2>(0, 1));
 
 	vertices.Get<vertex_traits::position>(14).Write(ut::Vector<3>(extent.X(), extent.Y(), -extent.Z()));
 	vertices.Get<vertex_traits::normal>(14).Write(ut::Vector<3>(1, 0, 0));
-	vertices.Get<vertex_traits::texcoord>(14).Write(ut::Vector<2>(1, 1));
+	vertices.Get<vertex_traits::texcoord>(14).Write(ut::Vector<2>(0, 0));
 
 	vertices.Get<vertex_traits::position>(15).Write(ut::Vector<3>(extent.X(), extent.Y(), extent.Z()));
 	vertices.Get<vertex_traits::normal>(15).Write(ut::Vector<3>(1, 0, 0));
-	vertices.Get<vertex_traits::texcoord>(15).Write(ut::Vector<2>(0, 1));
+	vertices.Get<vertex_traits::texcoord>(15).Write(ut::Vector<2>(1, 0));
 
 	vertices.Get<vertex_traits::position>(16).Write(ut::Vector<3>(-extent.X(), -extent.Y(), -extent.Z()));
 	vertices.Get<vertex_traits::normal>(16).Write(ut::Vector<3>(0, 0, -1));
-	vertices.Get<vertex_traits::texcoord>(16).Write(ut::Vector<2>(0, 0));
+	vertices.Get<vertex_traits::texcoord>(16).Write(ut::Vector<2>(0, 1));
 
 	vertices.Get<vertex_traits::position>(17).Write(ut::Vector<3>(extent.X(), -extent.Y(), -extent.Z()));
 	vertices.Get<vertex_traits::normal>(17).Write(ut::Vector<3>(0, 0, -1));
-	vertices.Get<vertex_traits::texcoord>(17).Write(ut::Vector<2>(1, 0));
+	vertices.Get<vertex_traits::texcoord>(17).Write(ut::Vector<2>(1, 1));
 
 	vertices.Get<vertex_traits::position>(18).Write(ut::Vector<3>(extent.X(), extent.Y(), -extent.Z()));
 	vertices.Get<vertex_traits::normal>(18).Write(ut::Vector<3>(0, 0, -1));
-	vertices.Get<vertex_traits::texcoord>(18).Write(ut::Vector<2>(1, 1));
+	vertices.Get<vertex_traits::texcoord>(18).Write(ut::Vector<2>(1, 0));
 
 	vertices.Get<vertex_traits::position>(19).Write(ut::Vector<3>(-extent.X(), extent.Y(), -extent.Z()));
 	vertices.Get<vertex_traits::normal>(19).Write(ut::Vector<3>(0, 0, -1));
-	vertices.Get<vertex_traits::texcoord>(19).Write(ut::Vector<2>(0, 1));
+	vertices.Get<vertex_traits::texcoord>(19).Write(ut::Vector<2>(0, 0));
 
 	vertices.Get<vertex_traits::position>(20).Write(ut::Vector<3>(-extent.X(), -extent.Y(), extent.Z()));
 	vertices.Get<vertex_traits::normal>(20).Write(ut::Vector<3>(0, 0, 1));
-	vertices.Get<vertex_traits::texcoord>(20).Write(ut::Vector<2>(0, 0));
+	vertices.Get<vertex_traits::texcoord>(20).Write(ut::Vector<2>(1, 1));
 
 	vertices.Get<vertex_traits::position>(21).Write(ut::Vector<3>(extent.X(), -extent.Y(), extent.Z()));
 	vertices.Get<vertex_traits::normal>(21).Write(ut::Vector<3>(0, 0, 1));
-	vertices.Get<vertex_traits::texcoord>(21).Write(ut::Vector<2>(1, 0));
+	vertices.Get<vertex_traits::texcoord>(21).Write(ut::Vector<2>(0, 1));
 
 	vertices.Get<vertex_traits::position>(22).Write(ut::Vector<3>(extent.X(), extent.Y(), extent.Z()));
 	vertices.Get<vertex_traits::normal>(22).Write(ut::Vector<3>(0, 0, 1));
-	vertices.Get<vertex_traits::texcoord>(22).Write(ut::Vector<2>(1, 1));
+	vertices.Get<vertex_traits::texcoord>(22).Write(ut::Vector<2>(0, 0));
 
 	vertices.Get<vertex_traits::position>(23).Write(ut::Vector<3>(-extent.X(), extent.Y(), extent.Z()));
 	vertices.Get<vertex_traits::normal>(23).Write(ut::Vector<3>(0, 0, 1));
-	vertices.Get<vertex_traits::texcoord>(23).Write(ut::Vector<2>(0, 1));
+	vertices.Get<vertex_traits::texcoord>(23).Write(ut::Vector<2>(1, 0));
 
 	// set indices
 	geometry.index_count = 36;
@@ -794,6 +794,7 @@ void ResourceCreator<Mesh>::ComputeTangents(const InputAssemblyState& input_asse
 //        mesh won't have any material at all.
 //   'c': name of the color to be used if 'm' parameter wasn't provided,
 //        see ResourceCreator<Map>::GenColorNameMap() for details.
+//   'l': enables line (wireframe) mode, must be 'yes' or 'no'. Default is 'no'.
 ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateBox(const ut::String& name,
                                                                     const Resource::GeneratorPrompt::Attributes& attributes,
                                                                     Device& device,
@@ -804,6 +805,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateBox(const ut::St
 	ut::Vector<3> extent(1.0f);
 	ut::Optional<ut::String> material_prompt;
 	ut::Optional<ut::String> color;
+	bool line_mode = false;
 
 	// update parameters using generator prompt attributes
 	for (const Resource::GeneratorPrompt::Attribute& attribute : attributes)
@@ -818,12 +820,14 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateBox(const ut::St
 			case 'd': extent.Z() = ut::Scan<float>(attribute.value) * 0.5f; break;
 			case 'm': material_prompt = attribute.value; break;
 			case 'c': color = attribute.value; break;
+			case 'l': line_mode = attribute.value == "yes"; break;
 		}
 	}	
 
 	// set vertex format and polygon mode
 	constexpr Mesh::VertexFormat vertex_format = Mesh::VertexFormat::pos3_texcoord2_normal3_tangent3_float;
-	constexpr Mesh::PolygonMode polygon_mode = Mesh::PolygonMode::triangle;
+	const Mesh::PolygonMode polygon_mode = line_mode ? Mesh::PolygonMode::triangle_wireframe :
+	                                                   Mesh::PolygonMode::triangle;
 
 	// generate vertices and indices
 	InputAssemblyState input_assembly = Mesh::CreateIaState(vertex_format, Mesh::PolygonMode::triangle);
@@ -855,6 +859,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateBox(const ut::St
 //        mesh won't have any material at all.
 //   'c': name of the color to be used if 'm' parameter wasn't provided,
 //        see ResourceCreator<Map>::GenColorNameMap() for details.
+//   'l': enables line (wireframe) mode, must be 'yes' or 'no'. Default is 'no'.
 ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateSphere(const ut::String& name,
                                                                        const Resource::GeneratorPrompt::Attributes& attributes,
                                                                        Device& device,
@@ -866,6 +871,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateSphere(const ut:
 	ut::Vector<3> position(0.0f);
 	ut::Optional<ut::String> material_prompt;
 	ut::Optional<ut::String> color;
+	bool line_mode = false;
 
 	// update parameters using generator prompt attributes
 	for (const Resource::GeneratorPrompt::Attribute& attribute : attributes)
@@ -879,12 +885,14 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateSphere(const ut:
 			case 'z': position.Z() = ut::Scan<float>(attribute.value); break;
 			case 'm': material_prompt = attribute.value; break;
 			case 'c': color = attribute.value; break;
+			case 'l': line_mode = attribute.value == "yes"; break;
 		}
 	}
 
 	// set vertex format and polygon mode
 	constexpr Mesh::VertexFormat vertex_format = Mesh::VertexFormat::pos3_texcoord2_normal3_tangent3_float;
-	constexpr Mesh::PolygonMode polygon_mode = Mesh::PolygonMode::triangle;
+	const Mesh::PolygonMode polygon_mode = line_mode ? Mesh::PolygonMode::triangle_wireframe :
+	                                                   Mesh::PolygonMode::triangle;
 
 	// generate vertices and indices
 	GeometryData geometry_data = GenSphereVertices(vertex_format,
@@ -923,6 +931,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateSphere(const ut:
 //        mesh won't have any material at all.
 //   'c': name of the color to be used if 'm' parameter wasn't provided,
 //        see ResourceCreator<Map>::GenColorNameMap() for details.
+//   'l': enables line (wireframe) mode, must be 'yes' or 'no'. Default is 'no'.
 ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateTorus(const ut::String& name,
                                                                       const Resource::GeneratorPrompt::Attributes& attributes,
                                                                       Device& device,
@@ -936,6 +945,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateTorus(const ut::
 	ut::String orientation;
 	ut::Optional<ut::String> material_prompt;
 	ut::Optional<ut::String> color;
+	bool line_mode = false;
 
 	// update parameters using generator prompt attributes
 	for (const Resource::GeneratorPrompt::Attribute& attribute : attributes)
@@ -951,6 +961,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateTorus(const ut::
 			case 'o': orientation = attribute.value; break;
 			case 'm': material_prompt = attribute.value; break;
 			case 'c': color = attribute.value; break;
+			case 'l': line_mode = attribute.value == "yes"; break;
 		}
 	}
 
@@ -972,7 +983,8 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateTorus(const ut::
 
 	// set vertex format and polygon mode
 	constexpr Mesh::VertexFormat vertex_format = Mesh::VertexFormat::pos3_texcoord2_normal3_tangent3_float;
-	constexpr Mesh::PolygonMode polygon_mode = Mesh::PolygonMode::triangle;
+	const Mesh::PolygonMode polygon_mode = line_mode ? Mesh::PolygonMode::triangle_wireframe :
+	                                                   Mesh::PolygonMode::triangle;
 
 	// generate vertices and indices
 	GeometryData geometry_data = GenTorusVertices(vertex_format,

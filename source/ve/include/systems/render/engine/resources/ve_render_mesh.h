@@ -274,6 +274,7 @@ private:
 	//        mesh won't have any material at all.
 	//   'c': name of the color to be used if 'm' parameter wasn't provided,
 	//        see ResourceCreator<Map>::GenColorNameMap() for details.
+	//   'l': enables line (wireframe) mode, must be 'yes' or 'no'. Default is 'no'.
 	static Generator CreateBox;
 
 	// Creates a spherical mesh from the provided generator prompt.
@@ -291,6 +292,7 @@ private:
 	//        mesh won't have any material at all.
 	//   'c': name of the color to be used if 'm' parameter wasn't provided,
 	//        see ResourceCreator<Map>::GenColorNameMap() for details.
+	//   'l': enables line (wireframe) mode, must be 'yes' or 'no'. Default is 'no'.
 	static Generator CreateSphere;
 
 	// Creates a torus mesh from the provided generator prompt.
@@ -312,6 +314,7 @@ private:
 	//        mesh won't have any material at all.
 	//   'c': name of the color to be used if 'm' parameter wasn't provided,
 	//        see ResourceCreator<Map>::GenColorNameMap() for details.
+	//   'l': enables line (wireframe) mode, must be 'yes' or 'no'. Default is 'no'.
 	static Generator CreateTorus;
 
 	// All generator functions are gathered in this hashmap to be quickly picked
