@@ -17,10 +17,7 @@ public:
 	// value on loading.
 	struct Info
 	{
-	    Info() : srgb(false)
-	           , high_quality_mips(false)
-	    {}
-
+        Info() {}
 		ut::Optional<ut::uint32> width;
 		ut::Optional<ut::uint32> height;
 		ut::Optional<ut::uint32> mip_count;

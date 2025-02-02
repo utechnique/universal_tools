@@ -418,7 +418,7 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 	desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
 
 	// variables tracking if something changes between iterations
-	Mesh::VertexFormat prev_vertex_format = Mesh::vertex_format_count;
+	Mesh::VertexFormat prev_vertex_format = Mesh::VertexFormat::count;
 	Mesh::PolygonMode prev_polygon_mode = Mesh::PolygonMode::count;
 	GeometryPass::MeshInstRendering::AlphaMode prev_alpha_mode = GeometryPass::MeshInstRendering::alpha_mode_count;
 	GeometryPass::MeshInstRendering::CullMode prev_cull_mode = GeometryPass::MeshInstRendering::cull_mode_count;
@@ -526,7 +526,7 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 		// set pipeline state
 		if (pipeline_changed)
 		{
-			const size_t pipeline_state_id = GeometryPass::MeshInstRendering::PipelineGrid::GetId(vertex_format,
+			const size_t pipeline_state_id = GeometryPass::MeshInstRendering::PipelineGrid::GetId(static_cast<size_t>(vertex_format),
 			                                                                                      alpha_mode,
 			                                                                                      cull_mode,
 			                                                                                      stencil_mode,
@@ -622,7 +622,7 @@ ut::Array<BoundShader> DeferredShading::CreateMeshInstGPassShaders()
 			static_cast<Mesh::VertexFormat>(
 				GeometryPass::MeshInstRendering::ShaderGrid::GetCoordinate<GeometryPass::MeshInstRendering::vertex_format_column>(i));
 		macros += Mesh::GenerateVertexMacros(vertex_format, Mesh::Instancing::on);
-		shader_name_suffix += ut::String("_vf") + ut::Print<ut::uint32>(vertex_format);
+		shader_name_suffix += ut::String("_vf") + ut::Print<ut::uint32>(static_cast<ut::uint32>(vertex_format));
 
 		// alpha mode
 		GeometryPass::MeshInstRendering::AlphaMode alpha_mode =
@@ -774,7 +774,7 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateMeshInstGPassPipelin
                                                                                   GeometryPass::MeshInstRendering::CullMode cull_mode,
                                                                                   GeometryPass::MeshInstRendering::StencilMode stencil_mode)
 {
-	const size_t shader_id = GeometryPass::MeshInstRendering::ShaderGrid::GetId(vertex_format, alpha_mode);
+	const size_t shader_id = GeometryPass::MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format), alpha_mode);
 	BoundShader& shader = mesh_inst_gpass_shader[shader_id];
 
 	const ut::uint32 stencil_mask = stencil_mode == GeometryPass::MeshInstRendering::stencil_opaque_and_highlighted ?

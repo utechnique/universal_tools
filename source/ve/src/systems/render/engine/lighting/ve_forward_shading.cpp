@@ -317,7 +317,7 @@ void ForwardShading::RenderTransparentMeshInstanceLights(Context& context,
 		// bind pipeline state
 		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
 		const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
-		const size_t pipeline_state_id = LightPass::MeshInstRendering::PipelineGrid::GetId(vertex_format,
+		const size_t pipeline_state_id = LightPass::MeshInstRendering::PipelineGrid::GetId(static_cast<size_t>(vertex_format),
 		                                                                                   ibl_preset,
 		                                                                                   light_type,
 		                                                                                   alpha_test,
@@ -386,7 +386,7 @@ void ForwardShading::RenderTransparentMeshInstanceIbl(Context& context,
 	// get pipeline state
 	const Mesh::VertexFormat vertex_format = mesh.vertex_format;
 	const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
-	const size_t pipeline_state_id = IblPass::MeshInstRendering::PipelineGrid::GetId(vertex_format,
+	const size_t pipeline_state_id = IblPass::MeshInstRendering::PipelineGrid::GetId(static_cast<size_t>(vertex_format),
 	                                                                                 alpha_test,
 	                                                                                 alpha_mode,
 	                                                                                 cull_mode,
@@ -634,7 +634,7 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstLightPassPipe
                                                                                      Light::SourceType source_type)
 {
 	PipelineState::Info info;
-	const size_t shader_id = LightPass::MeshInstRendering::ShaderGrid::GetId(vertex_format,
+	const size_t shader_id = LightPass::MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format),
 	                                                                         ibl_preset,
 	                                                                         source_type,
 	                                                                         alpha_test);
@@ -699,7 +699,7 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstIblPassPipeli
                                                                                    IblPass::MeshInstRendering::StencilMode stencil_mode)
 {
 	PipelineState::Info info;
-	const size_t shader_id = IblPass::MeshInstRendering::ShaderGrid::GetId(vertex_format, alpha_test);
+	const size_t shader_id = IblPass::MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format), alpha_test);
 	UT_ASSERT(ibl_shader[shader_id].stages[Shader::vertex]);
 	UT_ASSERT(ibl_shader[shader_id].stages[Shader::pixel]);
 

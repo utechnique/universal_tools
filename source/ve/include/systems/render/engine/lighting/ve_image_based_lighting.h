@@ -67,11 +67,15 @@ private:
 	// Creates uniform buffers for all mips.
 	ut::Array< ut::Array<Buffer> > CreateFilterUniformBuffers();
 
+	// Creates a cube for rendering.
+	ut::Result<RcRef<Mesh>, ut::Error> CreateCube();
+
 	// Calculates a number of mips in the IBL cubemap.
 	static ut::uint32 CalculateMipCount(ut::uint32 size);
 
 	Toolset& tools;
 	ut::uint32 mip_count;
+	RcRef<Mesh> cube;
 	BoundShader filter_shader;
 	RenderPass filter_pass;
 	ut::Array<PipelineState> filter_pipeline;

@@ -10,6 +10,7 @@ START_NAMESPACE(lighting)
 // Constructor.
 IBL::IBL(Toolset& toolset) : tools(toolset)
                            , mip_count(CalculateMipCount(toolset.config.ibl_size))
+                           , cube(CreateCube().MoveOrThrow())
                            , filter_shader(CreateFilterShader())
                            , filter_pass(CreateFilterPass())
                            , filter_pipeline(CreateFilterPipelines())
@@ -73,7 +74,7 @@ void IBL::FilterCubemap(Context& context,
 	filter_desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
 	filter_desc_set.cubemap.BindImage(cubemap);
 
-	Mesh& mesh = tools.rc_mgr.cube.Get();
+	Mesh& mesh = cube.Get();
 
 	ut::uint32 mip_size = tools.config.ibl_size;
 	for (ut::uint32 mip = 0; mip < mip_count; mip++)
@@ -85,12 +86,14 @@ void IBL::FilterCubemap(Context& context,
 		context.BeginRenderPass(filter_pass, data.filter_framebuffer[face][mip], render_area, ut::Color<4>(0));
 		context.BindPipelineState(filter_pipeline[mip]);
 		context.BindDescriptorSet(filter_desc_set);
-		context.BindVertexBuffer(tools.rc_mgr.cube->vertex_buffer, 0);
+		context.BindVertexBuffer(mesh.vertex_buffer, 0);
 
 		if (mesh.index_buffer)
 		{
+			const ut::uint32 index_count = mesh.polygon_count *
+				Mesh::GetPolygonVertexCount(mesh.polygon_mode);
 			context.BindIndexBuffer(mesh.index_buffer.Get(), 0, mesh.index_type);
-			context.DrawIndexed(mesh.face_count*Mesh::skPolygonVertices, 0, 0);
+			context.DrawIndexed(index_count, 0, 0);
 		}
 		else
 		{
@@ -197,7 +200,7 @@ ut::Array<PipelineState> IBL::CreateFilterPipelines()
 		PipelineState::Info info;
 		info.stages[Shader::vertex] = filter_shader.stages[Shader::vertex].Get();
 		info.stages[Shader::pixel] = filter_shader.stages[Shader::pixel].Get();
-		info.input_assembly_state = tools.rc_mgr.cube->CreateIaState();
+		info.input_assembly_state = cube->CreateIaState();
 		info.depth_stencil_state.depth_test_enable = false;
 		info.depth_stencil_state.depth_write_enable = false;
 		info.rasterization_state.polygon_mode = RasterizationState::fill;
@@ -243,6 +246,58 @@ ut::Array< ut::Array<Buffer> > IBL::CreateFilterUniformBuffers()
 		}
 	}
 	return out;
+}
+
+// Creates a cube for rendering.
+ut::Result<RcRef<Mesh>, ut::Error> IBL::CreateCube()
+{
+	ResourceCreator<Mesh>& mesh_creator = tools.rc_mgr.GetCreator<Mesh>();
+
+	// generate vertices
+	Mesh::VertexFormat vertex_format = Mesh::VertexFormat::pos3_float;
+	Mesh::PolygonMode polygon_mode = Mesh::PolygonMode::triangle;
+	ResourceCreator<Mesh>::GeometryData cube_data = mesh_creator.GenBoxVertices(vertex_format,
+	                                                                            polygon_mode,
+	                                                                            ut::Vector<3>(0),
+	                                                                            ut::Vector<3>(1));
+
+	// create vertex buffer
+	Buffer::Info vertex_buffer_info;
+	vertex_buffer_info.type = Buffer::vertex;
+	vertex_buffer_info.usage = render::memory::gpu_immutable;
+	vertex_buffer_info.size = cube_data.vertex_buffer.GetSize();
+	vertex_buffer_info.stride = static_cast<ut::uint32>(vertex_buffer_info.size) / cube_data.vertex_count;
+	vertex_buffer_info.data = ut::Move(cube_data.vertex_buffer);
+	ut::Result<Buffer, ut::Error> vertex_buffer = tools.device.CreateBuffer(ut::Move(vertex_buffer_info));
+	if (!vertex_buffer)
+	{
+		return ut::MakeError(vertex_buffer.MoveAlt());
+	}
+
+	// create index buffer
+	Buffer::Info index_buffer_info;
+	index_buffer_info.type = Buffer::index;
+	index_buffer_info.usage = render::memory::gpu_immutable;
+	index_buffer_info.size = sizeof(ut::uint32) * cube_data.index_count;
+	index_buffer_info.stride = sizeof(ut::uint32);
+	index_buffer_info.data = ut::Move(cube_data.index_buffer);
+	ut::Result<Buffer, ut::Error> index_buffer = tools.device.CreateBuffer(ut::Move(index_buffer_info));
+	if (!index_buffer)
+	{
+		return ut::MakeError(index_buffer.MoveAlt());
+	}
+
+	// create mesh
+	Mesh mesh(cube_data.index_count / Mesh::GetPolygonVertexCount(polygon_mode),
+	          cube_data.vertex_count,
+	          vertex_buffer.Move(),
+	          index_buffer.Move(),
+	          index_type_uint32,
+	          vertex_format,
+	          polygon_mode,
+	          ut::Array<Mesh::Subset>());
+
+	return tools.rc_mgr.AddResource<Mesh>(ut::Move(mesh));
 }
 
 // Calculates a number of mips in the IBL cubemap.

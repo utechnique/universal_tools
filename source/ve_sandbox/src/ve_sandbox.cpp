@@ -113,14 +113,15 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& p
 	transform_component.scale = ut::Vector<3>(r1 / 500.0f, r2 / 500.0f, r3 / 500.0f);
 
 	// mesh resource name
-	ut::String mesh_name = ve::render::engine_rc::skBox;
+	const ut::String gen_starter = ve::render::Resource::GeneratorPrompt::skStarter;
+	ut::String mesh_name = ve::render::ResourceCreator<ve::render::Mesh>::skTypeBox;
 	if (primitive_type == primitive_sphere)
 	{
-		mesh_name = ve::render::engine_rc::skSphere;
+		mesh_name = ve::render::ResourceCreator<ve::render::Mesh>::skTypeSphere;
 	}
 	else if (primitive_type == primitive_torus)
 	{
-		mesh_name = ve::render::engine_rc::skTorus;
+		mesh_name = ve::render::ResourceCreator<ve::render::Mesh>::skTypeTorus;
 	}
 
 	// mesh unit
@@ -128,7 +129,7 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& p
 	mesh_instance.local_trasform.translation.X() = (rand() % 200) / 40.0f;
 	mesh_instance.local_trasform.translation.Y() = (rand() % 200) / 40.0f;
 	mesh_instance.local_trasform.translation.Z() = (rand() % 200) / 40.0f;
-	mesh_instance.mesh_path = ut::String(ve::render::engine_rc::skDir) + mesh_name;
+	mesh_instance.mesh_path = gen_starter + mesh_name;
 	mesh_instance.diffuse_mul.R() = r1 / 1050.0f;
 	mesh_instance.diffuse_mul.G() = r2 / 1000.0f;
 	mesh_instance.diffuse_mul.B() = r3 / 1000.0f;

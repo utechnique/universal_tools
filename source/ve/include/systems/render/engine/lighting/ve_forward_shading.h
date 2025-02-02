@@ -101,7 +101,7 @@ private:
 			static constexpr ut::uint32 stencil_mode_column = 6;
 			static constexpr ut::uint32 polygon_mode_column = 7;
 
-			typedef ut::Grid<Mesh::vertex_format_count,
+			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
 			                 ibl_preset_count,
 			                 Light::source_type_count,
 			                 alpha_test_count,
@@ -110,7 +110,7 @@ private:
 			                 stencil_mode_count,
 			                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
-			typedef ut::Grid<Mesh::vertex_format_count,
+			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
 			                 ibl_preset_count,
 			                 Light::source_type_count,
 			                 alpha_test_count> ShaderGrid;
@@ -175,14 +175,14 @@ private:
 			static constexpr ut::uint32 stencil_mode_column = 4;
 			static constexpr ut::uint32 polygon_mode_column = 5;
 
-			typedef ut::Grid<Mesh::vertex_format_count,
+			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
 			                 alpha_test_count,
 			                 alpha_mode_count,
 			                 cull_mode_count,
 			                 stencil_mode_count,
 			                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
-			typedef ut::Grid<Mesh::vertex_format_count,
+			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
 			                 alpha_test_count> ShaderGrid;
 
 			// Descriptor set for the ibl pass shaders.

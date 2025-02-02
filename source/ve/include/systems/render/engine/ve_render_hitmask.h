@@ -71,12 +71,12 @@ private:
 			alpha_mode_count
 		};
 
-		typedef ut::Grid<Mesh::vertex_format_count,
+		typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
 		                 alpha_mode_count,
 		                 cull_mode_count,
 		                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
-		typedef ut::Grid<Mesh::vertex_format_count,
+		typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
 		                 alpha_mode_count> ShaderGrid;
 
 		static constexpr ut::uint32 vertex_format_column = 0;

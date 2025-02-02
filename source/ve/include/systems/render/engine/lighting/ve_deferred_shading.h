@@ -116,13 +116,13 @@ private:
 			static constexpr ut::uint32 stencil_mode_column = 3;
 			static constexpr ut::uint32 polygon_mode_column = 4;
 
-			typedef ut::Grid<Mesh::vertex_format_count,
+			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
 			                 GeometryPass::MeshInstRendering::alpha_mode_count,
 			                 GeometryPass::MeshInstRendering::cull_mode_count,
 			                 GeometryPass::MeshInstRendering::stencil_mode_count,
 			                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
-			typedef ut::Grid<Mesh::vertex_format_count,
+			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
 			                 GeometryPass::MeshInstRendering::alpha_mode_count> ShaderGrid;
 
 			// Descriptor set to render mesh with geometry pass shaders.

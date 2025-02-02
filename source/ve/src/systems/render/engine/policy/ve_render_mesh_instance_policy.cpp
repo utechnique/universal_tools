@@ -18,11 +18,12 @@ Policy<MeshInstance>::Policy(Toolset &toolset,
 void Policy<MeshInstance>::Initialize(MeshInstance& instance)
 {
 	// load mesh resource
-	ut::Result<RcRef<Mesh>, ut::Error> mesh = tools.rc_mgr.Find<Mesh>(instance.mesh_path);
+	ut::Result<RcRef<Mesh>, ut::Error> mesh = tools.rc_mgr.Acquire<Mesh>(instance.mesh_path);
 	if (!mesh)
 	{
-		throw ut::Error(ut::error::not_found);
+		throw ut::Error(mesh.MoveAlt());
 	}
+
 	instance.mesh = mesh.Move();
 }
 

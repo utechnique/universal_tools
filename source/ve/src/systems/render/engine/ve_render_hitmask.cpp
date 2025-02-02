@@ -209,7 +209,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 	mesh_inst_at_on_desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
 
 	// variables tracking if something changes between iterations
-	Mesh::VertexFormat prev_vertex_format = Mesh::vertex_format_count;
+	Mesh::VertexFormat prev_vertex_format = Mesh::VertexFormat::count;
 	Mesh::PolygonMode prev_polygon_mode = Mesh::PolygonMode::count;
 	MeshInstRendering::AlphaMode prev_alpha_mode = MeshInstRendering::alpha_mode_count;
 	MeshInstRendering::CullMode prev_cull_mode = MeshInstRendering::cull_mode_count;
@@ -300,7 +300,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 		// set pipeline state
 		if (pipeline_changed)
 		{
-			const size_t pipeline_state_id = MeshInstRendering::PipelineGrid::GetId(vertex_format,
+			const size_t pipeline_state_id = MeshInstRendering::PipelineGrid::GetId(static_cast<size_t>(vertex_format),
 			                                                                        alpha_mode,
 			                                                                        cull_mode,
 			                                                                        static_cast<size_t>(polygon_mode));
@@ -447,7 +447,7 @@ ut::Result<PipelineState, ut::Error> HitMask::CreateMeshInstPipeline(Mesh::Verte
                                                                      MeshInstRendering::AlphaMode alpha_mode,
                                                                      MeshInstRendering::CullMode cull_mode)
 {
-	const size_t shader_id = MeshInstRendering::ShaderGrid::GetId(vertex_format, alpha_mode);
+	const size_t shader_id = MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format), alpha_mode);
 	BoundShader& shader = mesh_inst_shader[shader_id];
 
 	PipelineState::Info info;
@@ -508,10 +508,12 @@ ut::Array<PipelineState> HitMask::CreateMeshInstPipelinePermutations()
 // Connects all descriptor sets to the corresponding shaders.
 void HitMask::ConnectDescriptors()
 {
-	const size_t at_off_shader_id = MeshInstRendering::ShaderGrid::GetId(Mesh::vertex_pos3_texcoord2_normal3_tangent3_float,
-	                                                                     MeshInstRendering::alpha_opaque);
-	const size_t at_on_shader_id = MeshInstRendering::ShaderGrid::GetId(Mesh::vertex_pos3_texcoord2_normal3_tangent3_float,
-	                                                                    MeshInstRendering::alpha_test);
+	const size_t at_off_shader_id = MeshInstRendering::ShaderGrid::GetId(
+		static_cast<size_t>(Mesh::VertexFormat::pos3_texcoord2_normal3_tangent3_float),
+		MeshInstRendering::alpha_opaque);
+	const size_t at_on_shader_id = MeshInstRendering::ShaderGrid::GetId(
+		static_cast<size_t>(Mesh::VertexFormat::pos3_texcoord2_normal3_tangent3_float),
+		MeshInstRendering::alpha_test);
 	mesh_inst_at_off_desc_set.Connect(mesh_inst_shader[at_off_shader_id]);
 	mesh_inst_at_on_desc_set.Connect(mesh_inst_shader[at_on_shader_id]);
 }

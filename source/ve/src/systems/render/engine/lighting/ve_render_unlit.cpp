@@ -175,7 +175,7 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 	desc_set.sampler.BindSampler(tools.sampler_cache.linear_wrap);
 
 	// variables tracking if something changes between iterations
-	Mesh::VertexFormat prev_vertex_format = Mesh::vertex_format_count;
+	Mesh::VertexFormat prev_vertex_format = Mesh::VertexFormat::count;
 	Mesh::PolygonMode prev_polygon_mode = Mesh::PolygonMode::count;
 	MeshInstRendering::AlphaMode prev_alpha_mode = MeshInstRendering::alpha_mode_count;
 	MeshInstRendering::CullMode prev_cull_mode = MeshInstRendering::cull_mode_count;
@@ -276,7 +276,7 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 		// set pipeline state
 		if (pipeline_changed)
 		{
-			const size_t pipeline_state_id = MeshInstRendering::PipelineGrid::GetId(vertex_format,
+			const size_t pipeline_state_id = MeshInstRendering::PipelineGrid::GetId(static_cast<size_t>(vertex_format),
 			                                                                        alpha_mode,
 			                                                                        cull_mode,
 			                                                                        stencil_mode,
@@ -423,7 +423,7 @@ ut::Result<PipelineState, ut::Error> UnlitRenderer::CreateMeshInstPipeline(Mesh:
                                                                            MeshInstRendering::StencilMode stencil_mode)
 {
 	PipelineState::Info info;
-	const size_t shader_id = MeshInstRendering::ShaderGrid::GetId(vertex_format, alpha_mode);
+	const size_t shader_id = MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format), alpha_mode);
 	UT_ASSERT(mesh_inst_shader[shader_id].stages[Shader::vertex]);
 	UT_ASSERT(mesh_inst_shader[shader_id].stages[Shader::pixel]);
 

@@ -759,7 +759,7 @@ void Context::BindPipelineState(PipelineState& pipeline_state,
 		VkRect2D scissor;
 		scissor.extent.width = bound_framebuffer_size->X();
 		scissor.extent.height = bound_framebuffer_size->Y();
-		scissor.offset.x = 0.0f;
+		scissor.offset.x = 0;
 		scissor.offset.y = bound_framebuffer_size->Y() - scissor.extent.height;
 		vkCmdSetScissor(cmd_buffer.GetVkHandle(), 0, 1, &scissor);
 	}

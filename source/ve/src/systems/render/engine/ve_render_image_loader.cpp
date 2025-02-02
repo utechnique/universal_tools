@@ -150,10 +150,10 @@ void ImageLoader::GenerateMipTail4x1(ut::Array<ut::byte>& data,
 	{
 		for (ut::uint32 i = 0; i < mip_height; i++)
 		{
-			// calculate offest
+			// calculate offset
 			const ut::uint32 dst_row_offset = mip_offset + i * mip_width * sizeof(Pixel);
-			const ut::uint32 src_row_offset_up = prev_mip + i * 2 * mip_width * 2 * sizeof(Pixel);
-			const ut::uint32 src_row_offset_down = prev_mip + (i * 2 + 1) * mip_width * 2 * sizeof(Pixel);
+			const ut::uint32 src_row_offset_up = prev_mip + (i * 2) * width * sizeof(Pixel);
+			const ut::uint32 src_row_offset_down = prev_mip + (i * 2 + 1) * height * sizeof(Pixel);
 
 			for (ut::uint32 j = 0; j < mip_width; j++)
 			{
@@ -174,6 +174,8 @@ void ImageLoader::GenerateMipTail4x1(ut::Array<ut::byte>& data,
 		}
 
 		prev_mip = mip_offset;
+		width = mip_width;
+		height = mip_height;
 		mip_offset += mip_width * mip_height * sizeof(Pixel);
 		mip_width /= 2;
 		mip_height /= 2;

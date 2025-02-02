@@ -20,9 +20,6 @@
 struct VS_INPUT
 {
 	float3 position : POSITION;
-	float2 texcoord : TEXCOORD;
-	float3 normal : NORMAL;
-	float3 tangent : TANGENT;
 };
 
 struct PS_INPUT

@@ -18,6 +18,20 @@ START_NAMESPACE(render)
 // render resources.
 class ResourceManager
 {
+	// AcquisitionGuard is a safety mechanism to ensure only one resource with
+	// the same name is being loaded simultaneously, all other threads except
+	// the very first one must wait until a desired resource will be loaded.
+	struct AcquisitionGuard
+	{
+		ut::Mutex mutex;
+		ut::ConditionVariable result_ready_cvar;
+		ut::ConditionVariable waiters_ended_cvar;
+		ut::Optional< ut::Optional<ut::Error> > result;
+		ut::uint32 waiter_count = 0;
+	};
+
+	typedef ut::HashMap<ut::String, ut::SharedPtr<AcquisitionGuard> > AcquisitionApplicants;
+
 public:
 	// Constructor.
 	ResourceManager(Device& device_ref, const Config<Settings>& cfg);
@@ -32,36 +46,6 @@ public:
 	ut::Optional<ut::Error> UpdateBuffer(Context& context,
 	                                     Buffer& buffer,
 	                                     const void* data);
-
-	// Creates a mesh representing a 2d rectangle.
-	ut::Result<RcRef<Mesh>, ut::Error> CreateRect(const ut::Vector<2>& position,
-	                                              const ut::Vector<2>& extent);
-
-	// Creates a mesh representing a box.
-	ut::Result<RcRef<Mesh>, ut::Error> CreateBox(const ut::Vector<3>& position,
-	                                             const ut::Vector<3>& extent,
-	                                             ut::Optional<ut::String> name);
-
-	// Creates a mesh representing a sphere.
-	ut::Result<RcRef<Mesh>, ut::Error> CreateSphere(const ut::Vector<3>& position,
-	                                                float radius,
-	                                                ut::uint32 segment_count,
-	                                                ut::Optional<ut::String> name);
-
-	// Creates a mesh representing a torus.
-	ut::Result<RcRef<Mesh>, ut::Error> CreateTorus(const ut::Vector<3>& position,
-	                                               float radius,
-	                                               float tube_radius,
-	                                               ut::uint32 radial_segment_count,
-	                                               ut::uint32 tubular_segment_count,
-	                                               ut::Optional<ut::String> name);
-
-	// Creates an image filled with solid color.
-	ut::Result<RcRef<Map>, ut::Error> CreateImage(ut::uint32 width,
-	                                              ut::uint32 height,
-	                                              const ut::Color<4, ut::byte>& color,
-	                                              ut::Optional<ut::String> name,
-	                                              bool is_cubemap = false);
 
 	// Finds a resource by name.
 	template<typename ResourceType>
@@ -90,6 +74,104 @@ public:
 
 		// success
 		return RcRef<ResourceType>(static_cast<ResourceType&>(rc->ptr.GetRef()), rc->ref_counter);
+	}
+
+	// Generates a resource.
+	template<typename ResourceType>
+	inline ut::Result<RcRef<ResourceType>, ut::Error> Acquire(const ut::String& name)
+	{
+		// final result will be stored here
+		ut::Result<RcRef<ResourceType>, ut::Error> result;
+
+		// a guard to protect the desired resource from being constructed
+		// simultaneously from different threads
+		ut::SharedPtr<AcquisitionGuard> acquisition_guard;
+
+		// figure out if this function call is the first to acquire the desired
+		// resource in a concurrent run
+		bool is_first_to_acquire;
+		{
+			ut::ScopeSyncLock<AcquisitionApplicants> acquisition_scope_lock(acquisition_lock);
+			ut::Optional<ut::SharedPtr<AcquisitionGuard>&> active_guard = acquisition_scope_lock.Get().Find(name);
+			is_first_to_acquire = !active_guard.HasValue();
+			if (is_first_to_acquire)
+			{
+				acquisition_guard = ut::MakeShared<AcquisitionGuard>();
+				acquisition_scope_lock.Get().Insert(name, acquisition_guard);
+			}
+			else
+			{
+				acquisition_guard = active_guard.Get();
+
+				// apply self as a waiter incrementing the counter
+				ut::ScopeLock guard_lock(acquisition_guard->mutex);
+				acquisition_guard->waiter_count++;
+			}
+		}
+
+		// if this thread is the first who acquired the desired resource,
+		// then this thread is responsible to construct the resource and
+		// inform all other waiting threads about the result
+		if (is_first_to_acquire)
+		{
+			// check if the resource already exist
+			result = Find<ResourceType>(name);
+
+			// try to construct the resource if wasn't loaded yet
+			if (!result && result.GetAlt().GetCode() == ut::error::not_found)
+			{
+				result = creator.Create<ResourceType>(name);
+			}
+
+			// store the result in the guard object and wait for all threads to
+			// receive this result
+			ut::ScopeSyncLock<AcquisitionApplicants> acquisition_scope_lock(acquisition_lock);
+			ut::ScopeLock guard_lock(acquisition_guard->mutex);
+			acquisition_guard->result = result ? ut::Optional<ut::Error>() :
+				                        ut::Optional<ut::Error>(result.GetAlt());
+			acquisition_guard->result_ready_cvar.WakeAll();
+
+			while (acquisition_guard->waiter_count > 0)
+			{
+				acquisition_guard->waiters_ended_cvar.Wait(guard_lock);
+			}
+
+			acquisition_scope_lock.Get().Remove(name);
+		}
+		else
+		{
+			// if another thread already started the acquisition process, this
+			// thread must just wait for the result that will be stored in an
+			// acquisition guard
+			ut::ScopeLock guard_lock(acquisition_guard->mutex);
+			
+			while (!acquisition_guard->result.HasValue())
+			{
+				acquisition_guard->result_ready_cvar.Wait(guard_lock);
+			}
+
+			const ut::Optional<ut::Error>& failed_result = acquisition_guard->result.Get();
+			if (failed_result)
+			{
+				result = ut::MakeError(failed_result.Get());
+			}
+			else
+			{
+				result = Find<ResourceType>(name);
+			}
+			
+			acquisition_guard->waiter_count--;
+
+			// the last waiting thread to receive the result is responsible to
+			// wake main acquisition thread to inform that there is no more
+			// waiters
+			if (acquisition_guard->waiter_count == 0)
+			{
+				acquisition_guard->waiters_ended_cvar.WakeOne();
+			}
+		}
+
+		return result;
 	}
 
 	// Enqueues a deletion of the desired resource.
@@ -131,13 +213,15 @@ public:
 		return ref;
 	}
 
+	// Returns the creator of the desired resource type.
+	template<typename ResourceType>
+	ResourceCreator<ResourceType>& GetCreator()
+	{
+		return creator.Get< ResourceCreator<ResourceType> >();
+	}
+
 	// a mesh representing a fullscreen quad, 2 triangles, 6 vertices
 	RcRef<Mesh> fullscreen_quad;
-
-	// primitives
-	RcRef<Mesh> cube;
-	RcRef<Mesh> sphere;
-	RcRef<Mesh> tor;
 
 	// images
 	RcRef<Map> img_black;
@@ -148,21 +232,21 @@ public:
 	RcRef<Map> img_normal;
 
 private:
-	// Creates a default material (white, roughness is 1, albedo is 0)
-	ut::Result<Material, ut::Error> CreateDefaultMaterial();
-
 	// Creates internal engine resources (primitives, common 1x1 textures, etc.)
 	ut::Optional<ut::Error> CreateEngineResources();
 
 	// Generates unique resource id.
 	IdGenerator<Resource::Id> id_generator;
 
-	// Read-write lock providing thread safety.
+	// Read-write lock providing thread safety for resource modification.
 	ut::RWLock lock;
 
+	// Read-write lock providing thread safety for resource acquisition.
+	ut::Synchronized<AcquisitionApplicants> acquisition_lock;
+
 	// Managed resources.
-	ut::AVLTree<Resource::Id, ReferencedResource> resources;
-	ut::AVLTree<ut::String, Resource::Id> names;
+	ut::HashMap<Resource::Id, ReferencedResource> resources;
+	ut::HashMap<ut::String, Resource::Id> names;
 
 	// Resources enqueued for deletion.
 	ut::Array< ut::Array< ut::UniquePtr<Resource> > > garbage;
@@ -178,6 +262,9 @@ private:
 
 	// Number of frames in flight.
 	const ut::uint32 frames_in_flight;
+
+	// Resource generator.
+	ResourceCreatorCollection<Map, Mesh> creator;
 };
 
 //----------------------------------------------------------------------------//
