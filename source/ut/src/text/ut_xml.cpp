@@ -957,7 +957,7 @@ Optional<Error> XmlDoc::WriteComment(OutputStream& stream,
                                      uint32 depth)
 {
 	// must be comment
-	UT_ASSERT(node.data.GetType() == text::node::comment);
+	UT_ASSERT(node.data.GetType() == text::node::Type::comment);
 
 	// tabulation of the node
 	const String tabulation = GenerateTabs(depth);
@@ -989,7 +989,7 @@ Optional<Error> XmlDoc::WriteDeclaration(OutputStream& stream,
                                          uint32 depth)
 {
 	// must be declaration
-	UT_ASSERT(node.data.GetType() == text::node::xml_declaration);
+	UT_ASSERT(node.data.GetType() == text::node::Type::xml_declaration);
 
 	// tabulation of the node
 	const String tabulation = GenerateTabs(depth);
@@ -1031,7 +1031,7 @@ Optional<Error> XmlDoc::WriteCData(OutputStream& stream,
 	                               uint32 depth)
 {
 	// must be cdata
-	UT_ASSERT(node.data.GetType() == text::node::xml_cdata);
+	UT_ASSERT(node.data.GetType() == text::node::Type::xml_cdata);
 
 	// tabulation of the node
 	const String tabulation = GenerateTabs(depth);
@@ -1063,7 +1063,7 @@ Optional<Error> XmlDoc::WriteDocType(OutputStream& stream,
                                      uint32 depth)
 {
 	// must be doctype
-	UT_ASSERT(node.data.GetType() == text::node::xml_doctype);
+	UT_ASSERT(node.data.GetType() == text::node::Type::xml_doctype);
 
 	// tabulation of the node
 	const String tabulation = GenerateTabs(depth);
@@ -1095,7 +1095,7 @@ Optional<Error> XmlDoc::WritePI(OutputStream& stream,
 	                            uint32 depth)
 {
 	// must be process instruction
-	UT_ASSERT(node.data.GetType() == text::node::xml_pi);
+	UT_ASSERT(node.data.GetType() == text::node::Type::xml_pi);
 
 	// tabulation of the node
 	const String tabulation = GenerateTabs(depth);
