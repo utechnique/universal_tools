@@ -196,9 +196,9 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 			return ut::MakeError(VulkanError(res, "vkMapMemory(image)"));
 		}
 
-		mapped_rc.row_pitch = layout.rowPitch;
-		mapped_rc.depth_pitch = layout.depthPitch;
-		mapped_rc.array_pitch = layout.arrayPitch;
+		mapped_rc.row_pitch = static_cast<size_t>(layout.rowPitch);
+		mapped_rc.depth_pitch = static_cast<size_t>(layout.depthPitch);
+		mapped_rc.array_pitch = static_cast<size_t>(layout.arrayPitch);
 	}
 	else if (info.usage == render::memory::Usage::gpu_read_write &&
 	         access == memory::CpuAccess::read &&

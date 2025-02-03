@@ -356,7 +356,8 @@ ut::Result<VkRc<vk::Rc::memory>, ut::Error> PlatformDevice::AllocateImageMemory(
 	vkBindImageMemory(device.GetVkHandle(), image, image_memory, 0);
 
 	// success
-	VkDetail<vk::Rc::memory> detail(device.GetVkHandle(), alloc_info.allocationSize);
+	VkDetail<vk::Rc::memory> detail(device.GetVkHandle(),
+	                                static_cast<size_t>(alloc_info.allocationSize));
 	return VkRc<vk::Rc::memory>(image_memory, detail);
 }
 
@@ -397,7 +398,8 @@ ut::Result<VkRc<vk::Rc::memory>, ut::Error> PlatformDevice::AllocateBufferMemory
 	vkBindBufferMemory(device.GetVkHandle(), buffer, buffer_memory, 0);
 
 	// success
-	VkDetail<vk::Rc::memory> detail(device.GetVkHandle(), alloc_info.allocationSize);
+	VkDetail<vk::Rc::memory> detail(device.GetVkHandle(),
+	                                static_cast<size_t>(alloc_info.allocationSize));
 	return VkRc<vk::Rc::memory>(buffer_memory, detail);
 }
 
@@ -1294,7 +1296,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	// calculate image size
 	VkMemoryRequirements mem_reqs;
 	vkGetImageMemoryRequirements(device.GetVkHandle(), image, &mem_reqs);
-	const size_t image_size = mem_reqs.size;
+	const size_t image_size = static_cast<size_t>(mem_reqs.size);
 
 	// start immediate commands
 	ut::Result<VkCommandBuffer, ut::Error> immediate_buffer = BeginImmediateCmdBuffer();
@@ -1401,9 +1403,9 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 				                  mip_width,
 				                  mip_height,
 				                  mip_depth,
-				                  layout.offset,
-				                  layout.rowPitch,
-				                  layout.depthPitch);
+				                  static_cast<size_t>(layout.offset),
+				                  static_cast<size_t>(layout.rowPitch),
+				                  static_cast<size_t>(layout.depthPitch));
 
 				// transfer data to the gpu
 				if (needs_staging)
@@ -1413,7 +1415,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 					                        image,
 					                        aspect_mask,
 					                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					                        layout.offset,
+					                        static_cast<size_t>(layout.offset),
 					                        mip_width,
 					                        mip_height,
 					                        mip_depth,
