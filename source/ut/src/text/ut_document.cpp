@@ -18,7 +18,7 @@ Optional<Error> Document::ParseFile(const String& filename)
 {
 	// open file
 	File file;
-	Optional<Error> open_file_error = file.Open(filename, file_access_read);
+	Optional<Error> open_file_error = file.Open(filename, File::Access::read);
 	if (open_file_error)
 	{
 		return open_file_error;

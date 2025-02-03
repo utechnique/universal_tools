@@ -142,22 +142,22 @@ OutputStream& OutputStream::operator << (const String& str)
 
 OutputStream& OutputStream::operator << (const time::Counter& timestamp)
 {
-	ut::uint64 ns = timestamp.GetTime<time::nanoseconds, ut::uint64>();
+	ut::uint64 ns = timestamp.GetTime<time::Unit::nanosecond, ut::uint64>();
 
-	ut::uint64 days = time::Convert<time::nanoseconds, time::days>(ns);
-	ns -= time::Convert<time::days, time::nanoseconds>(days);
+	ut::uint64 days = time::Convert<time::Unit::nanosecond, time::Unit::day>(ns);
+	ns -= time::Convert<time::Unit::day, time::Unit::nanosecond>(days);
 
-	ut::uint64 hours = time::Convert<time::nanoseconds, time::hours>(ns);
-	ns -= time::Convert<time::hours, time::nanoseconds>(hours);
+	ut::uint64 hours = time::Convert<time::Unit::nanosecond, time::Unit::hour>(ns);
+	ns -= time::Convert<time::Unit::hour, time::Unit::nanosecond>(hours);
 
-	ut::uint64 minutes = time::Convert<time::nanoseconds, time::minutes>(ns);
-	ns -= time::Convert<time::minutes, time::nanoseconds>(minutes);
+	ut::uint64 minutes = time::Convert<time::Unit::nanosecond, time::Unit::minute>(ns);
+	ns -= time::Convert<time::Unit::minute, time::Unit::nanosecond>(minutes);
 
-	ut::uint64 seconds = time::Convert<time::nanoseconds, time::seconds>(ns);
-	ns -= time::Convert<time::seconds, time::nanoseconds>(seconds);
+	ut::uint64 seconds = time::Convert<time::Unit::nanosecond, time::Unit::second>(ns);
+	ns -= time::Convert<time::Unit::second, time::Unit::nanosecond>(seconds);
 
-	ut::uint64 milliseconds = time::Convert<time::nanoseconds, time::milliseconds>(ns);
-	ns -= time::Convert<time::milliseconds, time::nanoseconds>(milliseconds);
+	ut::uint64 milliseconds = time::Convert<time::Unit::nanosecond, time::Unit::millisecond>(ns);
+	ns -= time::Convert<time::Unit::millisecond, time::Unit::nanosecond>(milliseconds);
 
 	*this << "[";
 	if (days != 0)

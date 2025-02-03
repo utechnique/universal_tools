@@ -419,7 +419,7 @@ SerializationVariantsTask::SerializationVariantsTask() : TestTask("Serialization
 	info_variants.Insert("full", serialization_info);
 
 	// big endian
-	serialization_info.SetEndianness(ut::endian::big);
+	serialization_info.SetEndianness(ut::endianness::Order::big);
 	info_variants.Insert("big endian", serialization_info);
 
 	// no type information
@@ -495,7 +495,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 		const ut::String json_filename = name + ".json";
 		const ut::String binary_filename = name + ".bin";
 
-		ut::Optional<ut::Error> open_xml_error = xml_file.Open(xml_filename, ut::file_access_write);
+		ut::Optional<ut::Error> open_xml_error = xml_file.Open(xml_filename, ut::File::Access::write);
 		if (open_xml_error)
 		{
 			report += "Saving xml file: failed. ";
@@ -519,7 +519,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 		}
 		xml_file.Close();
 
-		ut::Optional<ut::Error> open_json_error = json_file.Open(json_filename, ut::file_access_write);
+		ut::Optional<ut::Error> open_json_error = json_file.Open(json_filename, ut::File::Access::write);
 		if (open_json_error)
 		{
 			report += "Saving json file: failed. ";
@@ -543,7 +543,7 @@ bool SerializationVariantsTask::TestVariant(const ut::meta::Info& in_info,
 		}
 		json_file.Close();
 
-		ut::Optional<ut::Error> open_binary_error = binary_file.Open(binary_filename, ut::file_access_write);
+		ut::Optional<ut::Error> open_binary_error = binary_file.Open(binary_filename, ut::File::Access::write);
 		if (open_binary_error)
 		{
 			report += "Saving binary file: failed. ";

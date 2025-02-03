@@ -8,13 +8,15 @@
 #include "text/ut_string.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
+START_NAMESPACE(error)
 //----------------------------------------------------------------------------//
 // Returns the description of the provided ut::error::Code value
 //    @param error - error code
 //    @return - text description of the @error code
-String GetErrorDesc(error::Code error);
+String GetCodeDesc(Code error);
 
 //----------------------------------------------------------------------------//
+END_NAMESPACE(error)
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//

@@ -61,7 +61,7 @@ error::Code Error::GetCode() const
 const String Error::GetDesc() const
 {
 	//String desc(GetErrorDesc(code));
-	String desc(GetErrorDesc(code));
+	String desc(error::GetCodeDesc(code));
 
 	// full description
 #if UT_ERROR_DESCRIPTION

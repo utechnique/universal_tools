@@ -17,11 +17,11 @@ namespace stream
 
 	// ut::stream::Position is enumaration of position labels for
 	// the ut::stream::Cursor while navigating inside a stream.
-	enum Position
+	enum class Position
 	{
-		cursor = 0,
-		start = 1,
-		end = 2,
+		cursor,
+		start,
+		end,
 	};
 }
 
@@ -42,7 +42,7 @@ public:
 	//                    @offset will be added to this parameter
 	//    @return - error code if failed
 	virtual Optional<Error> MoveCursor(stream::Cursor offset,
-	                                   stream::Position origin = stream::start) = 0;
+	                                   stream::Position origin = stream::Position::start) = 0;
 
 	// Returns size of the stream buffer or error if failed
 	virtual Result<size_t, Error> GetSize() = 0;

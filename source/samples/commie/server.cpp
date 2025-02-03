@@ -53,7 +53,7 @@ ClientList Server::GetClientList()
 	ClientList list;
 
 	// lock connections
-	ut::ScopeSyncRWLock< ut::Array< ut::UniquePtr<ut::net::Connection> > > connections_scope_lock(connections, ut::access_write);
+	ut::ScopeSyncRWLock< ut::Array< ut::UniquePtr<ut::net::Connection> > > connections_scope_lock(connections, ut::RWLock::Access::write);
 	ut::Array< ut::UniquePtr<ut::net::Connection> >& locked_connections = connections_scope_lock.Get();
 
 	// iterate connections

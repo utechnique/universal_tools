@@ -123,7 +123,9 @@ void ArrayOpsTask::Execute()
 	// test reverse order iterator
 	report += ". Testing array reverse iterator:";
 	ut::Array<int>::Iterator riterator;
-	for (riterator = arr2.Begin(ut::iterator::last); riterator > arr2.End(ut::iterator::first); --riterator)
+	for (riterator = arr2.Begin(ut::iterator::Position::last);
+	     riterator > arr2.End(ut::iterator::Position::first);
+	     --riterator)
 	{
 		int val = *riterator;
 		int& val1 = *riterator;
@@ -135,7 +137,9 @@ void ArrayOpsTask::Execute()
 	// test normal iterator
 	report += ". Testing array forward iterator:";
 	ut::Array<int>::Iterator iterator;
-	for (iterator = arr2.Begin(ut::iterator::first); iterator < arr2.End(ut::iterator::last); ++iterator)
+	for (iterator = arr2.Begin(ut::iterator::Position::first);
+	     iterator < arr2.End(ut::iterator::Position::last);
+	     ++iterator)
 	{
 		int val = *iterator;
 		int& val1 = *iterator;
@@ -147,7 +151,9 @@ void ArrayOpsTask::Execute()
 	// test zero sized iterator
 	ut::Array<int> zarray;
 	ut::Array<int>::Iterator ziterator;
-	for (ziterator = zarray.Begin(ut::iterator::first); ziterator < zarray.End(ut::iterator::last); ++ziterator)
+	for (ziterator = zarray.Begin(ut::iterator::Position::first);
+	     ziterator < zarray.End(ut::iterator::Position::last);
+	     ++ziterator)
 	{
 		int val = *ziterator;
 		int& val1 = *ziterator;
@@ -389,7 +395,9 @@ void TreeTask::Execute()
 	// debug output: all leaves
 	report += " Leaves output (forward): ";
 	ut::Tree<ut::String>::Iterator forward_iter;
-	for (forward_iter = tree.Begin(ut::iterator::first); forward_iter != tree.End(ut::iterator::last); ++forward_iter)
+	for (forward_iter = tree.Begin(ut::iterator::Position::first);
+	     forward_iter != tree.End(ut::iterator::Position::last);
+	     ++forward_iter)
 	{
 		forward_iter->data += "!";
 		report += forward_iter->data;
@@ -400,7 +408,9 @@ void TreeTask::Execute()
 	report += " Leaves output (backward): ";
 	ut::Tree<ut::String>::ConstIterator back_iter;
 	ut::Tree<ut::String>& cnode = tree;
-	for (back_iter = cnode.Begin(ut::iterator::last); back_iter != cnode.End(ut::iterator::first); --back_iter)
+	for (back_iter = cnode.Begin(ut::iterator::Position::last);
+	     back_iter != cnode.End(ut::iterator::Position::first);
+	     --back_iter)
 	{
 		report += back_iter->data;
 		report += " ";
@@ -480,7 +490,9 @@ void AVLTreeTask::Execute()
 	report += ut::CRet() + "iterating forward: ";
 	ut::AVLTree<int, ut::String>::ConstIterator riterator;
 	int previous_key = 0;
-	for (riterator = tree.Begin(ut::iterator::first); riterator != tree.End(ut::iterator::last); ++riterator)
+	for (riterator = tree.Begin(ut::iterator::Position::first);
+	     riterator != tree.End(ut::iterator::Position::last);
+	     ++riterator)
 	{
 		const ut::Pair<const int, ut::String>& node = *riterator;
 		report += node.second;
@@ -499,7 +511,9 @@ void AVLTreeTask::Execute()
 	report += ut::CRet() + "iterating backward: ";
 	ut::AVLTree<int, ut::String>::Iterator literator;
 	previous_key = 100000;
-	for (literator = tree.Begin(ut::iterator::last); literator != tree.End(ut::iterator::first); --literator)
+	for (literator = tree.Begin(ut::iterator::Position::last);
+	     literator != tree.End(ut::iterator::Position::first);
+	     --literator)
 	{
 		ut::Pair<const int, ut::String>& node = *literator;
 		report += node.second;
@@ -697,7 +711,9 @@ void AVLTreeTask::Execute()
 	report += ut::String("Iteration: ");
 	counter.Start();
 	ut::AVLTree<int, MapValue>::Iterator perf_it;
-	for (perf_it = perf_tree.Begin(ut::iterator::first); perf_it != perf_tree.End(ut::iterator::last); perf_it++)
+	for (perf_it = perf_tree.Begin(ut::iterator::Position::first);
+	     perf_it != perf_tree.End(ut::iterator::Position::last);
+	     perf_it++)
 	{
 		ut::Pair<const int, MapValue>& node = *perf_it;
 		node.second.ival++;
@@ -1192,7 +1208,7 @@ SharedPtrTask::SharedPtrTask() : TestTask("Shared pointer")
 
 void SharedPtrTask::Execute()
 {
-	static const ut::thread_safety::Mode safety_mode = ut::thread_safety::on;
+	static const ut::thread_safety::Mode safety_mode = ut::thread_safety::Mode::on;
 	ut::WeakPtr<int, safety_mode> weak;
 
 	if (weak.IsValid()) // can't be valid here
@@ -1488,43 +1504,43 @@ void SmartPtrTask::Execute()
 	//base = ut::Move(other);
 
 	// must be compilable
-	ut::SharedPtr<ContainerTestAnother, ut::thread_safety::on> sh_other_safe = ut::MakeSafeShared<ContainerTestAnother>();
-	ut::SharedPtr<ContainerTestDerived, ut::thread_safety::on> sh_derived_safe = ut::MakeSafeShared<ContainerTestDerived>();
-	ut::SharedPtr<ContainerTestBase, ut::thread_safety::on> sh_base_safe(ut::Move(sh_derived_safe));
+	ut::SharedPtr<ContainerTestAnother, ut::thread_safety::Mode::on> sh_other_safe = ut::MakeSafeShared<ContainerTestAnother>();
+	ut::SharedPtr<ContainerTestDerived, ut::thread_safety::Mode::on> sh_derived_safe = ut::MakeSafeShared<ContainerTestDerived>();
+	ut::SharedPtr<ContainerTestBase, ut::thread_safety::Mode::on> sh_base_safe(ut::Move(sh_derived_safe));
 	sh_base_safe = ut::Move(sh_derived_safe);
 
-	ut::SharedPtr<ContainerTestAnother, ut::thread_safety::off> sh_other_unsafe = ut::MakeUnsafeShared<ContainerTestAnother>();
-	ut::SharedPtr<ContainerTestDerived, ut::thread_safety::off> sh_derived_unsafe = ut::MakeUnsafeShared<ContainerTestDerived>();
-	ut::SharedPtr<ContainerTestBase, ut::thread_safety::off> sh_base_unsafe(ut::Move(sh_derived_unsafe));
+	ut::SharedPtr<ContainerTestAnother, ut::thread_safety::Mode::off> sh_other_unsafe = ut::MakeUnsafeShared<ContainerTestAnother>();
+	ut::SharedPtr<ContainerTestDerived, ut::thread_safety::Mode::off> sh_derived_unsafe = ut::MakeUnsafeShared<ContainerTestDerived>();
+	ut::SharedPtr<ContainerTestBase, ut::thread_safety::Mode::off> sh_base_unsafe(ut::Move(sh_derived_unsafe));
 	sh_base_unsafe = ut::Move(sh_derived_unsafe);
 
 	// must be non-compilable
 	/*
-	ut::SharedPtr<TestBase, ut::thread_safety::on> sh_base2_safe(ut::Move(sh_other_safe));
+	ut::SharedPtr<TestBase, ut::thread_safety::Mode::on> sh_base2_safe(ut::Move(sh_other_safe));
 	sh_base_safe = ut::Move(sh_other_safe);
-	ut::SharedPtr<TestBase, ut::thread_safety::off> sh_base2_unsafe(ut::Move(sh_other_unsafe));
+	ut::SharedPtr<TestBase, ut::thread_safety::Mode::off> sh_base2_unsafe(ut::Move(sh_other_unsafe));
 	sh_base_unsafe = ut::Move(sh_other_unsafe);
 	sh_base_safe = sh_base_unsafe;
 	*/
 
 	// must be compilable
-	ut::WeakPtr<ContainerTestAnother, ut::thread_safety::on> wk_other_safe;
-	ut::WeakPtr<ContainerTestDerived, ut::thread_safety::on> wk_derived_safe;
-	ut::WeakPtr<ContainerTestBase, ut::thread_safety::on> wk_base_safe = wk_derived_safe;
+	ut::WeakPtr<ContainerTestAnother, ut::thread_safety::Mode::on> wk_other_safe;
+	ut::WeakPtr<ContainerTestDerived, ut::thread_safety::Mode::on> wk_derived_safe;
+	ut::WeakPtr<ContainerTestBase, ut::thread_safety::Mode::on> wk_base_safe = wk_derived_safe;
 	wk_base_safe = ut::Move(wk_derived_safe);
 	wk_base_safe = sh_derived_safe;
 
-	ut::WeakPtr<ContainerTestAnother, ut::thread_safety::off> wk_other_unsafe;
-	ut::WeakPtr<ContainerTestDerived, ut::thread_safety::off> wk_derived_unsafe;
-	ut::WeakPtr<ContainerTestBase, ut::thread_safety::off> wk_base_unsafe = wk_derived_unsafe;
+	ut::WeakPtr<ContainerTestAnother, ut::thread_safety::Mode::off> wk_other_unsafe;
+	ut::WeakPtr<ContainerTestDerived, ut::thread_safety::Mode::off> wk_derived_unsafe;
+	ut::WeakPtr<ContainerTestBase, ut::thread_safety::Mode::off> wk_base_unsafe = wk_derived_unsafe;
 	wk_base_unsafe = ut::Move(wk_derived_unsafe);
 	wk_base_unsafe = sh_derived_unsafe;
 
 	// must be non-compilable
 	/*
-	ut::WeakPtr<TestBase, ut::thread_safety::on> wk_base2_safe(ut::Move(wk_other_safe));
+	ut::WeakPtr<TestBase, ut::thread_safety::Mode::on> wk_base2_safe(ut::Move(wk_other_safe));
 	wk_base_safe = ut::Move(sh_other_safe);
-	ut::WeakPtr<TestBase, ut::thread_safety::off> wk_base2_unsafe(ut::Move(wk_other_unsafe));
+	ut::WeakPtr<TestBase, ut::thread_safety::Mode::off> wk_base2_unsafe(ut::Move(wk_other_unsafe));
 	wk_base_unsafe = ut::Move(sh_other_unsafe);
 	wk_base_safe = wk_base_unsafe;
 	wk_base_safe = sh_derived_unsafe;

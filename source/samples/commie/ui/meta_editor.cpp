@@ -285,8 +285,8 @@ ut::Optional<ut::Error> MetaEditor::Rebuild(const ut::text::Document& document)
 void MetaEditor::ResizeItems()
 {
 	ut::Tree<MetaEditorItem>::Iterator iterator;
-	for (iterator = items.Begin(ut::iterator::first);
-	     iterator != items.End(ut::iterator::last);
+	for (iterator = items.Begin(ut::iterator::Position::first);
+	     iterator != items.End(ut::iterator::Position::last);
 	     ++iterator)
 	{
 		iterator->data.Resize(tree.Get());

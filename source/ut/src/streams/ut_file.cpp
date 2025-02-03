@@ -21,9 +21,9 @@ inline int ConvertFileCursor(stream::Position position)
 {
 	switch(position)
 	{
-		case stream::cursor: return UT_FILE_CURSOR_CUR;
-		case stream::start: return UT_FILE_CURSOR_SET;
-		case stream::end: return UT_FILE_CURSOR_END;
+		case stream::Position::cursor: return UT_FILE_CURSOR_CUR;
+		case stream::Position::start: return UT_FILE_CURSOR_SET;
+		case stream::Position::end: return UT_FILE_CURSOR_END;
 	}
 	return UT_FILE_CURSOR_SET;
 }
@@ -32,15 +32,15 @@ inline int ConvertFileCursor(stream::Position position)
 // Composes suitable for fopen() 'mode string' from UT parameters
 //    @param access - file access mode (see FileAccess enumeration)
 //    @return - fopen()-friendly 'mode string'
-String FileAccessStr(FileAccess access)
+String FileAccessStr(File::Access access)
 {
 	String out;
 
 	switch(access)
 	{
-		case file_access_read:   out += "rb"; break;
-		case file_access_write:  out += "wb"; break;
-		case file_access_append: out += "ab"; break;
+		case File::Access::read:   out += "rb"; break;
+		case File::Access::write:  out += "wb"; break;
+		case File::Access::append: out += "ab"; break;
 	}
 
 	return out;
@@ -58,8 +58,8 @@ Optional<Error> RenameFile(const String& old_fn, const String& new_fn)
 
 	// rename file
 #if UT_WINDOWS
-	WString wold = StrConvert<char, wchar, cp_utf8>(old_fn);
-	WString wnew = StrConvert<char, wchar, cp_utf8>(new_fn);
+	WString wold = StrConvert<char, wchar, CodePage::utf8>(old_fn);
+	WString wnew = StrConvert<char, wchar, CodePage::utf8>(new_fn);
 	int result = _wrename(wold.GetAddress(), wnew.GetAddress());
 	if (result != 0)
 	{
@@ -84,7 +84,7 @@ Optional<Error> RenameFile(const String& old_fn, const String& new_fn)
 Optional<Error> RemoveFile(const String& filename)
 {
 #if UT_WINDOWS
-	WString wfn = StrConvert<char, wchar, cp_utf8>(filename);
+	WString wfn = StrConvert<char, wchar, CodePage::utf8>(filename);
 	int result = _wremove(wfn.GetAddress());
 	if (result != 0)
 	{
@@ -119,7 +119,7 @@ Optional<Error> RemoveFolder(const String& folder, bool delete_subdirectories)
 												 // subdirectories have been found
 
 												 // delete all subdirectories
-	WString wfolder = StrConvert<char, wchar, cp_utf8>(folder);
+	WString wfolder = StrConvert<char, wchar, CodePage::utf8>(folder);
 	pattern_str = wfolder;
 	pattern_str += L"\\*.*";
 	directory_handle = ::FindFirstFile(pattern_str.GetAddress(), &file_info);
@@ -139,7 +139,7 @@ Optional<Error> RemoveFolder(const String& folder, bool delete_subdirectories)
 					if (delete_subdirectories)
 					{
 						// Delete subdirectory
-						String wsubdir = StrConvert<wchar, char, cp_utf8>(file_path);
+						String wsubdir = StrConvert<wchar, char, CodePage::utf8>(file_path);
 						Optional<Error> error = RemoveFolder(wsubdir, delete_subdirectories);
 						if (error)
 						{
@@ -291,8 +291,8 @@ Optional<Error> CopyFile(const String& source, const String& dest, bool replace)
 	}
 
 	// convert to wide char
-	WString wsrc = StrConvert<char, wchar, cp_utf8>(source);
-	WString wdst = StrConvert<char, wchar, cp_utf8>(dest);
+	WString wsrc = StrConvert<char, wchar, CodePage::utf8>(source);
+	WString wdst = StrConvert<char, wchar, CodePage::utf8>(dest);
 
 	// copy file
 	BOOL result = ::CopyFileW(wsrc.GetAddress(), wdst.GetAddress(), (BOOL)replace);
@@ -345,7 +345,7 @@ Optional<Error> CopyFile(const String& source, const String& dest, bool replace)
 Optional<Error> CreateFolder(const String& folder)
 {
 #if UT_WINDOWS
-	WString wfolder = StrConvert<char, wchar, cp_utf8>(folder);
+	WString wfolder = StrConvert<char, wchar, CodePage::utf8>(folder);
 	if (CreateDirectory(wfolder.GetAddress(), NULL) == FALSE)
 	{
 		return Error(ConvertWinSysErr(GetLastError()));
@@ -405,7 +405,7 @@ Result<uint32, Error> FileCheckSumAdler32(const String& filename)
 {
 	// open file
 	File file;
-	Optional<Error> open_error = file.Open(filename, file_access_read);
+	Optional<Error> open_error = file.Open(filename, File::Access::read);
 	if (open_error)
 	{
 		return MakeError(open_error.Get());
@@ -445,7 +445,7 @@ Result<Array<ut::byte>, Error> ReadFile(const String& filename)
 {
 	// open a file
 	File file;
-	Optional<Error> open_file_error = file.Open(filename, file_access_read);
+	Optional<Error> open_file_error = file.Open(filename, File::Access::read);
 	if (open_file_error)
 	{
 		return MakeError(open_file_error.Move());
@@ -490,7 +490,7 @@ Optional<Error> WriteFile(const String& filename,
 {
 	// open a file
 	File file;
-	Optional<Error> opt_error = file.Open(filename, file_access_write);
+	Optional<Error> opt_error = file.Open(filename, File::Access::write);
 	if (opt_error)
 	{
 		return opt_error;
@@ -524,8 +524,8 @@ File::File() : f(nullptr)
 //----------------------------------------------------------------------------->
 // Constructor, opens file @filename
 //    @param filename - path to the file
-//    @param access - file access mode (see FileAccess enumeration)
-File::File(const String& filename, FileAccess access) : f(nullptr)
+//    @param access - file access mode (see ut::File::Access enumeration)
+File::File(const String& filename, Access access) : f(nullptr)
 {
 	Optional<Error> open_error = Open(filename, access);
 	if (open_error)
@@ -562,14 +562,14 @@ File::~File()
 //----------------------------------------------------------------------------->
 // Opens file @filename
 //    @param filename - path to the file
-//    @param access - file access mode (see FileAccess enumeration)
-Optional<Error> File::Open(const String& filename, FileAccess access)
+//    @param access - file access mode (see ut::File::Access enumeration)
+Optional<Error> File::Open(const String& filename, Access access)
 {
 	String mode_str = FileAccessStr(access);
 
 #if UT_WINDOWS
-	WString wfilename = StrConvert<char, wchar, cp_utf8>(filename);
-	WString wmode = StrConvert<char, wchar, cp_ascii>(mode_str);
+	WString wfilename = StrConvert<char, wchar, CodePage::utf8>(filename);
+	WString wmode = StrConvert<char, wchar, CodePage::ascii>(mode_str);
 	int result = _wfopen_s(&f, wfilename.GetAddress(), wmode.GetAddress());
 	if (result != 0)
 	{
@@ -783,7 +783,7 @@ Result<size_t, Error> File::GetSize()
 	}
 
 	// move cursor to the end of file
-	Optional<Error> move_forward_error = MoveCursor(0, stream::end);
+	Optional<Error> move_forward_error = MoveCursor(0, stream::Position::end);
 	if (move_forward_error)
 	{
 		return MakeError(move_forward_error.Get());
@@ -807,7 +807,7 @@ Result<size_t, Error> File::GetSize()
 	}
 
 	// move cursor back
-	Optional<Error> move_back_error = MoveCursor(cursor_origin, stream::start);
+	Optional<Error> move_back_error = MoveCursor(cursor_origin, stream::Position::start);
 	if (move_back_error)
 	{
 		return MakeError(move_back_error.Get());

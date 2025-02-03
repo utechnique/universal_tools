@@ -12,36 +12,36 @@ START_NAMESPACE(ut)
 START_NAMESPACE(time)
 //----------------------------------------------------------------------------//
 // Measurement units.
-enum Units
+enum class Unit
 {
-	nanoseconds  = 0,
-	microseconds = 1,
-	milliseconds = 2,
-	seconds      = 3,
-	minutes      = 4,
-	hours        = 5,
-	days         = 6,
+	nanosecond = 0,
+	microsecond = 1,
+	millisecond = 2,
+	second = 3,
+	minute = 4,
+	hour = 5,
+	day = 6
 };
 
 // Epoch dates.
-enum Epoch
+enum class Epoch
 {
-	epoch_unix = 0, // January 1, 1970 UTC
-	epoch_windows = 1 // January 1, 1601 UTC
+	unix, // January 1, 1970 UTC
+	windows // January 1, 1601 UTC
 };
 
 // ut::time::Multiplier describes the relationship
 // between different time units.
-template<Units units> struct Multiplier;
-template<> struct Multiplier<microseconds> { static constexpr ut::uint32 value = 1000; };
-template<> struct Multiplier<milliseconds> { static constexpr ut::uint32 value = 1000; };
-template<> struct Multiplier<seconds>      { static constexpr ut::uint32 value = 1000; };
-template<> struct Multiplier<minutes>      { static constexpr ut::uint32 value = 60; };
-template<> struct Multiplier<hours>        { static constexpr ut::uint32 value = 60; };
-template<> struct Multiplier<days>         { static constexpr ut::uint32 value = 24; };
+template<Unit unit> struct Multiplier;
+template<> struct Multiplier<Unit::microsecond> { static constexpr ut::uint32 value = 1000; };
+template<> struct Multiplier<Unit::millisecond> { static constexpr ut::uint32 value = 1000; };
+template<> struct Multiplier<Unit::second>      { static constexpr ut::uint32 value = 1000; };
+template<> struct Multiplier<Unit::minute>      { static constexpr ut::uint32 value = 60; };
+template<> struct Multiplier<Unit::hour>        { static constexpr ut::uint32 value = 60; };
+template<> struct Multiplier<Unit::day>         { static constexpr ut::uint32 value = 24; };
 
 // ut::time::UnitIterator helps transform time units.
-template<Units start_units, ut::int32 walk>
+template<Unit start_unit, ut::int32 walk>
 struct UnitIterator
 {
 	// Boolean whether iterating forward or backward.
@@ -51,7 +51,7 @@ struct UnitIterator
 	static constexpr ut::int32 step = forward ? 1 : -1;
 
 	// Next unit type.
-	static constexpr Units next_unit = static_cast<Units>(static_cast<ut::int32>(start_units) + step);
+	static constexpr Unit next_unit = static_cast<Unit>(static_cast<ut::int32>(start_unit) + step);
 
 	// Next iterator type.
 	typedef UnitIterator<next_unit, walk - step> NextIterator;
@@ -68,7 +68,7 @@ struct UnitIterator
 	template<typename ValueType>
 	static constexpr typename EnableIf<!forward, ValueType>::Type Accumulate()
 	{
-		return Multiplier<start_units>::value * NextIterator::template Accumulate<ValueType>();
+		return Multiplier<start_unit>::value * NextIterator::template Accumulate<ValueType>();
 	}
 
 	// Returns converted value.
@@ -87,7 +87,7 @@ struct UnitIterator
 };
 
 // Specialized version for the final unit type in a sequence.
-template<Units start_units> struct UnitIterator<start_units, 0>
+template<Unit start_unit> struct UnitIterator<start_unit, 0>
 {
 	template<typename ValueType> static constexpr ValueType Accumulate()
 	{
@@ -101,10 +101,10 @@ template<Units start_units> struct UnitIterator<start_units, 0>
 };
 
 // Converts provided value to another time unit.
-template<Units from_units, Units to_units, typename ValueType = double>
+template<Unit from_unit, Unit to_unit, typename ValueType = double>
 constexpr ValueType Convert(ValueType value)
 {
-	return UnitIterator<from_units, static_cast<ut::int32>(to_units - from_units)>::template Multiply<ValueType>(value);
+	return UnitIterator<from_unit, static_cast<ut::int32>(to_unit) - static_cast<ut::int32>(from_unit)>::template Multiply<ValueType>(value);
 }
 
 // Precise time counter. Use it only for short periods of time, intervals
@@ -126,15 +126,15 @@ public:
 
 	// Returns time passed from the last time::Counter::Start function call.
 	// Resolution: 1 nanosecond.
-	template<time::Units time_units = time::milliseconds, typename ValueType = double>
+	template<Unit time_unit = Unit::millisecond, typename ValueType = double>
 	ValueType GetTime() const // nanosec
 	{
 		ut::int64 time_elapsed_ns = suspended != 0 ? suspended : GetCurrent() - start;
 #if UT_WINDOWS
 		double sec = static_cast<double>(time_elapsed_ns) / frequency;
-		return static_cast<ValueType>(Convert<seconds, time_units, double>(sec));
+		return static_cast<ValueType>(Convert<Unit::second, time_unit, double>(sec));
 #endif
-		return Convert<nanoseconds, time_units, ValueType>(static_cast<ValueType>(time_elapsed_ns));
+		return Convert<Unit::nanosecond, time_unit, ValueType>(static_cast<ValueType>(time_elapsed_ns));
 	}
 
 private:
@@ -183,15 +183,15 @@ public:
 	// Stops and resets the counter.
 	void Stop()
 	{
-		iterations[iterator] = Counter::GetTime<time::nanoseconds, ut::uint64>();
+		iterations[iterator] = Counter::GetTime<Unit::nanosecond, ut::uint64>();
 		Counter::Stop();
 	}
 
 	// Returns the average time of all measurements.
-	template<time::Units time_units = time::milliseconds, typename ValueType = double>
+	template<Unit time_unit = Unit::millisecond, typename ValueType = double>
 	ValueType GetTime() const
 	{
-		return Convert<nanoseconds, time_units, ValueType>(static_cast<ValueType>(Average(iterations)));
+		return Convert<Unit::nanosecond, time_unit, ValueType>(static_cast<ValueType>(Average(iterations)));
 	}
 
 private:
@@ -201,7 +201,7 @@ private:
 
 // Returns the time since the desired epoch.
 // Resolution: 1 microsecond.
-template<time::Units time_units = time::milliseconds, Epoch epoch = epoch_unix>
+template<time::Unit time_unit = Unit::millisecond, Epoch epoch = Epoch::unix>
 ut::uint64 GetTime()
 {
 #if UT_WINDOWS
@@ -216,19 +216,19 @@ ut::uint64 GetTime()
 		ll_time -= 116444736000000000LL;
 	}
 
-	return Convert<microseconds, time_units, ut::uint64>(static_cast<ut::uint64>(ll_time));
+	return Convert<Unit::microsecond, time_unit, ut::uint64>(static_cast<ut::uint64>(ll_time));
 #elif UT_UNIX
 	struct timeval tm;
 	gettimeofday(&tm, NULL);
 
 	ut::uint64 tm_microsec = static_cast<ut::uint64>(tm.tv_sec * 1000000 + tm.tv_usec);
 
-	if (epoch == epoch_windows)
+	if (epoch == Epoch::windows)
 	{
 		tm_microsec += 116444736000000000LL;
 	}
 
-	return Convert<microseconds, time_units, ut::uint64>(static_cast<ut::uint64>(tm_microsec));
+	return Convert<Unit::microsecond, time_unit, ut::uint64>(static_cast<ut::uint64>(tm_microsec));
 #else
 #error ut::time::GetTime() is not implemented
 #endif

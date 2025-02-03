@@ -6,7 +6,7 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// Constructor, cursor is set to ut::stream::start
+// Constructor, cursor is set to ut::stream::Position::start
 BinaryStream::BinaryStream() : cursor(0)
 { }
 
@@ -94,9 +94,9 @@ Optional<Error> BinaryStream::MoveCursor(stream::Cursor offset, stream::Position
 	stream::Cursor start;
 	switch(origin)
 	{
-		case stream::cursor: start = cursor; break;
-		case stream::start: start = 0; break;
-		case stream::end: start = data.GetSize(); break;
+		case stream::Position::cursor: start = cursor; break;
+		case stream::Position::start: start = 0; break;
+		case stream::Position::end: start = data.GetSize(); break;
 		default: return Error(error::invalid_arg);
 	}
 

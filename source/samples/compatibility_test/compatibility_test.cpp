@@ -42,7 +42,7 @@ void PerformTest()
 	ut::log << ut::cret << "[INPUT] You entered: " << input_result.Get() << ". Waiting a second before exit..";
 
 	// wait before exit
-	ut::this_thread::Sleep<ut::time::seconds>(1);
+	ut::this_thread::Sleep<ut::time::Unit::second>(1);
 
 	// finish logging
 	ut::log.End();

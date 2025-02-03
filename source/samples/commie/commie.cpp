@@ -146,7 +146,7 @@ ut::Optional<ut::Error> Application::LoadCfg()
 {
 	ut::File cfg_file;
 	ut::Optional<ut::Error> open_cfg_error = cfg_file.Open(skCfgFileName,
-		ut::file_access_read);
+	                                                       ut::File::Access::read);
 	if (open_cfg_error)
 	{
 		// create default cfg file if it doesn't exist
@@ -199,7 +199,7 @@ ut::Optional<ut::Error> Application::SaveCfgFile()
 {
 	ut::File cfg_file;
 	ut::Optional<ut::Error> open_error = cfg_file.Open(skCfgFileName,
-	                                                   ut::file_access_write);
+	                                                   ut::File::Access::write);
 	if (open_error)
 	{
 		return open_error;

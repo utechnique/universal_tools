@@ -63,7 +63,7 @@ private:
 // Specialized ut::Scheduler template version where synchronization is
 // performed using atomic operations.
 template<typename ReturnType, typename Combiner>
-class Scheduler<ReturnType, Combiner, pool_sync::atomic>
+class Scheduler<ReturnType, Combiner, pool_sync::Method::atomic>
 {
 	// Only corresponding thread pool can create a scheduler, therefore it must
 	// have access to the scheduler's constructor.
@@ -105,11 +105,11 @@ private:
 
 	// Constructor.
 	//    @param thread_pool - pool that owns the scheduler.
-	Scheduler(ThreadPool<ReturnType, pool_sync::atomic>& thread_pool) : pool(thread_pool), counter(0)
+	Scheduler(ThreadPool<ReturnType, pool_sync::Method::atomic>& thread_pool) : pool(thread_pool), counter(0)
 	{}
 
 	//  pool that owns the scheduler
-	ThreadPool<ReturnType, pool_sync::atomic>& pool;
+	ThreadPool<ReturnType, pool_sync::Method::atomic>& pool;
 
 	// counter of the active tasks
 	int counter;
@@ -125,7 +125,7 @@ private:
 // Specialized ut::ThreadPool template version where synchronization is
 // performed using atomic operations.
 template<typename ReturnType>
-class ThreadPool<ReturnType, pool_sync::atomic>
+class ThreadPool<ReturnType, pool_sync::Method::atomic>
 {
 	// Job type for all threads in a pool.
 	typedef AtomicPoolJob<ReturnType> JobType;
@@ -154,15 +154,15 @@ public:
 
 	// Creates a scheduler with custom combiner.
 	template<typename Combiner>
-	Scheduler<ReturnType, Combiner, pool_sync::atomic> CreateScheduler()
+	Scheduler<ReturnType, Combiner, pool_sync::Method::atomic> CreateScheduler()
 	{
-		return Scheduler<ReturnType, Combiner, pool_sync::atomic>(*this);
+		return Scheduler<ReturnType, Combiner, pool_sync::Method::atomic>(*this);
 	}
 
 	// Creates a scheduler with default combiner.
-	Scheduler<ReturnType, DefaultCombiner<ReturnType>, pool_sync::atomic> CreateScheduler()
+	Scheduler<ReturnType, DefaultCombiner<ReturnType>, pool_sync::Method::atomic> CreateScheduler()
 	{
-		return Scheduler<ReturnType, DefaultCombiner<ReturnType>, pool_sync::atomic>(*this);
+		return Scheduler<ReturnType, DefaultCombiner<ReturnType>, pool_sync::Method::atomic>(*this);
 	}
 
 	// Waits for a free thread and assigns provided task to it.

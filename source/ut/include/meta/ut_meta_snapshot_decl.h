@@ -22,7 +22,7 @@ START_NAMESPACE(meta)
 class Snapshot : public BaseTree<Node, Snapshot>
 {
 	typedef BaseTree<Node, Snapshot> Base;
-	typedef SharedPtr<Info, ut::thread_safety::off> InfoSharedPtr;
+	typedef SharedPtr<Info, ut::thread_safety::Mode::off> InfoSharedPtr;
 public:
 
 	// ut::meta::Snapshot::Capture static function is the only way to create a snapshot.

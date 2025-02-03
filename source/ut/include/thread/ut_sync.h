@@ -24,6 +24,8 @@ template<typename T>
 class Synchronized : public NonCopyable
 {
 public:
+	typedef RWLock::Access Access;
+
 	// Default constructor
 	Synchronized() {}
 
@@ -110,6 +112,8 @@ template<typename T>
 class SyncRW
 {
 public:
+	typedef RWLock::Access Access;
+
 	// Default constructor
 	SyncRW() {}
 
@@ -140,19 +144,19 @@ public:
 	//    @return - copy(!) of the @object
 	T Get()
 	{
-		ScopeRWLock scl(lock, access_read);
+		ScopeRWLock scl(lock, Access::read);
 		return object;
 	}
 
 	// Locks mutex @m, and returns @object reference
-	T& Lock(Access access = access_write)
+	T& Lock(Access access = Access::write)
 	{
 		lock.Lock(access);
 		return object;
 	}
 
 	// Unlocks mutex @m
-	void Unlock(Access access = access_write)
+	void Unlock(Access access = Access::write)
 	{
 		lock.Unlock(access);
 	}
@@ -160,14 +164,14 @@ public:
 	// Setter function, @object is safely extracted from @copy
 	void Set(const T& copy)
 	{
-		ScopeRWLock scl(lock, access_write);
+		ScopeRWLock scl(lock, Access::write);
 		object = copy;
 	}
 
 	// Setter function, @object is moved from @rval
 	void Set(T&& rval)
 	{
-		ScopeRWLock scl(lock, access_write);
+		ScopeRWLock scl(lock, Access::write);
 		object = Move(rval);
 	}
 
@@ -243,6 +247,8 @@ template<typename T>
 class ScopeSyncRWLock : public NonCopyable
 {
 public:
+	typedef RWLock::Access Access;
+
 	// Constructor
 	ScopeSyncRWLock(SyncRW<T>& sync_variable,
 	                Access sync_access) : access(sync_access)
@@ -398,7 +404,7 @@ public:
 
 private:
 	// synchronization requests
-	Synchronized< Array< SharedPtr<Request, thread_safety::on> > > requests;
+	Synchronized< Array< SharedPtr<Request, thread_safety::Mode::on> > > requests;
 
 	// occupant thread - is a thread being synchronized with in the moment,
 	// it must be cached to prevent dead lock in recursion cases

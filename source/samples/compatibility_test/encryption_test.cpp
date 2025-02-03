@@ -59,7 +59,7 @@ AesTask::AesTask() : TestTask("AES")
 
 void AesTask::Execute()
 {
-	ut::EncryptionStream<ut::encryption::AES128> stream;
+	ut::EncryptionStream<ut::encryption::Method::AES128> stream;
 	ut::String password("password");
 	ut::String original_string("The quick brown fox jumps over the lazy dog");
 
@@ -115,7 +115,7 @@ XorTask::XorTask() : TestTask("XOR")
 
 void XorTask::Execute()
 {
-	ut::EncryptionStream<ut::encryption::XOR> stream;
+	ut::EncryptionStream<ut::encryption::Method::XOR> stream;
 	ut::String password("password");
 	ut::String original_string("The quick brown fox jumps over the lazy dog");
 

@@ -13,7 +13,7 @@ START_NAMESPACE(meta)
 //    @param info_copy - copy of the serialization info, that will be
 //                       used during serialization and deserialization
 Controller::Controller(const Info& info_copy) : info(info_copy)
-                                              , mode(empty_mode)
+                                              , mode(Mode::empty)
 { }
 
 //----------------------------------------------------------------------------->
@@ -49,7 +49,7 @@ Optional<String> Controller::ExtractTextNodeValue(const Tree<text::Node>& parent
 Optional<Error> Controller::SetBinaryInputStream(InputStream& stream)
 {
 	// set mode and stream
-	mode = binary_input_mode;
+	mode = Mode::binary_input;
 	io.binary_input = &stream;
 
 	// change cursor position
@@ -70,7 +70,7 @@ Optional<Error> Controller::SetBinaryInputStream(InputStream& stream)
 Optional<Error> Controller::SetBinaryOutputStream(OutputStream& stream)
 {
 	// set mode and stream
-	mode = binary_output_mode;
+	mode = Mode::binary_output;
 	io.binary_output = &stream;
 
 	// change cursor position
@@ -90,7 +90,7 @@ Optional<Error> Controller::SetBinaryOutputStream(OutputStream& stream)
 //    @param node - reference to the text node to read data from
 Optional<Error> Controller::SetTextInputNode(const Tree<text::Node>& node)
 {
-	mode = text_input_mode;
+	mode = Mode::text_input;
 	io.text_input = &node;
 	return Optional<Error>();
 }
@@ -100,7 +100,7 @@ Optional<Error> Controller::SetTextInputNode(const Tree<text::Node>& node)
 //    @param node - reference to the text node to write data to
 Optional<Error> Controller::SetTextOutputNode(Tree<text::Node>& node)
 {
-	mode = text_output_mode;
+	mode = Mode::text_output;
 	io.text_output = &node;
 	return Optional<Error>();
 }
@@ -135,8 +135,8 @@ Result<stream::Cursor, Error> Controller::GetStreamCursor()
 	// set stream cursor if controller is in binary mode
 	switch (mode)
 	{
-		case binary_input_mode: return io.binary_input->GetCursor();
-		case binary_output_mode: return io.binary_output->GetCursor();
+		case Mode::binary_input: return io.binary_input->GetCursor();
+		case Mode::binary_output: return io.binary_output->GetCursor();
 	}
 
 	// return current @cursor position if in text mode
@@ -164,11 +164,11 @@ Optional<Error> Controller::SetCursor(stream::Cursor position, bool sync)
 Optional<Error> Controller::Sync()
 {
 	// synchronize binary stream
-	if (mode == binary_input_mode)
+	if (mode == Mode::binary_input)
 	{
 		return io.binary_input->MoveCursor(cursor);
 	}
-	else if (mode == binary_output_mode)
+	else if (mode == Mode::binary_output)
 	{
 		return io.binary_output->MoveCursor(cursor);
 	}
@@ -184,7 +184,7 @@ Optional<Error> Controller::Sync()
 Optional<Error> Controller::SyncWithStream()
 {
 	// synchronize binary stream
-	if (mode == binary_input_mode)
+	if (mode == Mode::binary_input)
 	{
 		Result<stream::Cursor, Error> stream_cursor = io.binary_input->GetCursor();
 		if (!stream_cursor)
@@ -193,7 +193,7 @@ Optional<Error> Controller::SyncWithStream()
 		}
 		cursor = stream_cursor.Get();
 	}
-	else if (mode == binary_output_mode)
+	else if (mode == Mode::binary_output)
 	{
 		Result<stream::Cursor, Error> stream_cursor = io.binary_output->GetCursor();
 		if (!stream_cursor)
@@ -588,7 +588,7 @@ Optional<Error> Controller::ReadBinaryValue(void* dst,
 
 	const size_t element_count = size / granularity;
 
-	if (mode == binary_input_mode)
+	if (mode == Mode::binary_input)
 	{
 		Optional<Error> read_error = ReadBinary(dst, granularity, element_count);
 		if (read_error)
@@ -596,7 +596,7 @@ Optional<Error> Controller::ReadBinaryValue(void* dst,
 			return Error(read_error.Move());
 		}
 	}
-	else if (mode == text_input_mode) // read text form
+	else if (mode == Mode::text_input) // read text form
 	{
 		Result<String, Error> extraction_result = ReadValue<String>();
 		if (!extraction_result)
@@ -610,8 +610,8 @@ Optional<Error> Controller::ReadBinaryValue(void* dst,
 			return Error(error::out_of_bounds);
 		}
 
-		const endian::order endianness = info.GetEndianness();
-		if (endianness == endian::GetNative())
+		const endianness::Order order = info.GetEndianness();
+		if (order == endianness::GetNative())
 		{
 			memory::Copy(dst, decoded_data.GetAddress(), size);
 		}
@@ -619,9 +619,9 @@ Optional<Error> Controller::ReadBinaryValue(void* dst,
 		{
 			BinaryStream binary_stream;
 			binary_stream.SetBuffer(ut::Move(decoded_data));
-			Optional<Error> read_error = endianness == endian::little ?
-			                             endian::Read<endian::little>(binary_stream, dst, granularity, element_count) :
-			                             endian::Read<endian::big>(binary_stream, dst, granularity, element_count);
+			Optional<Error> read_error = order == endianness::Order::little ?
+			                             endianness::Read<endianness::Order::little>(binary_stream, dst, granularity, element_count) :
+			                             endianness::Read<endianness::Order::big>(binary_stream, dst, granularity, element_count);
 			if (read_error)
 			{
 				return read_error;
@@ -648,16 +648,16 @@ Optional<Error> Controller::WriteBinaryValue(const void* data,
 
 	const size_t element_count = size / granularity;
 
-	if (mode == text_output_mode)
+	if (mode == Mode::text_output)
 	{
 		// resolve endianness
 		BinaryStream binary_stream;
-		const endian::order endianness = info.GetEndianness();
-		if (endianness != endian::GetNative())
+		const endianness::Order order = info.GetEndianness();
+		if (order != endianness::GetNative())
 		{
-			Optional<Error> write_error = endianness == endian::little ?
-			                              endian::Write<endian::little>(binary_stream, data, granularity, element_count) :
-			                              endian::Write<endian::big>(binary_stream, data, granularity, element_count);
+			Optional<Error> write_error = order == endianness::Order::little ?
+			                              endianness::Write<endianness::Order::little>(binary_stream, data, granularity, element_count) :
+			                              endianness::Write<endianness::Order::big>(binary_stream, data, granularity, element_count);
 			if (write_error)
 			{
 				return write_error;
@@ -712,7 +712,7 @@ Optional<Error> Controller::FinalizeNode(Snapshot& node)
 	if (info.HasLinkageInformation())
 	{
 		// write/read shared objects before executing linker tasks
-		bool output_mode = mode == binary_output_mode || mode == text_output_mode;
+		bool output_mode = mode == Mode::binary_output || mode == Mode::text_output;
 		const Optional<Error> shared_error = output_mode ? WriteSharedObjects() : ReadSharedObjects();
 		if(shared_error)
 		{
@@ -782,7 +782,7 @@ Result<Optional<stream::Cursor>, Error> Controller::WriteUniformAttributes(Snaps
 	size_t link_id;
 	if (info.HasLinkageInformation())
 	{
-		if (mode == binary_output_mode)
+		if (mode == Mode::binary_output)
 		{
 			Result<stream::Cursor, Error> read_cursor = io.binary_output->GetCursor();
 			if (!read_cursor)
@@ -825,7 +825,7 @@ Result<Optional<stream::Cursor>, Error> Controller::WriteUniformAttributes(Snaps
 	}
 
 	// write linkage information (only text mode)
-	if (info.HasLinkageInformation() && mode == text_output_mode)
+	if (info.HasLinkageInformation() && mode == Mode::text_output)
 	{
 		optional_error = WriteAttribute<SizeType>(static_cast<SizeType>(link_id),
 			                                        node_names::skId,
@@ -857,7 +857,7 @@ Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 	Uniform out;
 
 	// linkage id can be easily calculated for the binary mode
-	if (info.HasLinkageInformation() && mode == binary_input_mode)
+	if (info.HasLinkageInformation() && mode == Mode::binary_input)
 	{
 		Result<stream::Cursor, Error> read_cursor = io.binary_input->GetCursor();
 		if (!read_cursor)
@@ -887,7 +887,7 @@ Result<Controller::Uniform, Error> Controller::ReadUniformAttributes()
 	}
 
 	// read linkage information
-	if (info.HasLinkageInformation() && mode == text_input_mode)
+	if (info.HasLinkageInformation() && mode == Mode::text_input)
 	{
 		Result<SizeType, Error> read_id_result = ReadAttribute<SizeType>(node_names::skId);
 		if (!read_id_result)
@@ -994,7 +994,7 @@ Optional<Error> Controller::WriteChildNodes(Snapshot& node, stream::Cursor start
 	// check case when parent node has the same stream offset as it's first
 	// child node - then one needs to add an offset to the child node so that
 	// it had different linkage id
-	if (mode == binary_output_mode && child_num != 0)
+	if (mode == Mode::binary_output && child_num != 0)
 	{
 		Result<stream::Cursor, Error> current_cursor = io.binary_output->GetCursor();
 		if (!current_cursor)
@@ -1086,7 +1086,7 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node, stream::Cursor start)
 	// check case when parent node has the same stream offset as it's first
 	// child node - then one needs to add an offset to the child node so that
 	// it had different linkage id
-	if (mode == binary_input_mode)
+	if (mode == Mode::binary_input)
 	{
 		Result<stream::Cursor, Error> current_cursor = io.binary_input->GetCursor();
 		if (!current_cursor)
@@ -1146,11 +1146,11 @@ Optional<Error> Controller::ReadChildNodes(Snapshot& node, stream::Cursor start)
 //    @return ut::Error if failed.
 Optional<Error> Controller::WriteNodeName(const String& name)
 {
-	if (mode == binary_output_mode)
+	if (mode == Mode::binary_output)
 	{
 		return info.HasBinaryNames() ? WriteBinary<String>(&name, 1) : Optional<Error>();
 	}
-	else if (mode == text_output_mode)
+	else if (mode == Mode::text_output)
 	{
 		io.text_output->data.name = name;
 		return Optional<Error>();
@@ -1165,7 +1165,7 @@ Optional<Error> Controller::WriteNodeName(const String& name)
 //    @return ut::Error if failed.
 Result<Optional<String>, Error> Controller::ReadNodeName()
 {
-	if (mode == binary_input_mode)
+	if (mode == Mode::binary_input)
 	{
 		// if source has no names - return empty container
 		if (!info.HasBinaryNames())
@@ -1182,7 +1182,7 @@ Result<Optional<String>, Error> Controller::ReadNodeName()
 		}
 		return Optional<String>(name);
 	}
-	else if (mode == text_input_mode)
+	else if (mode == Mode::text_input)
 	{
 		return Optional<String>(io.text_input->data.name);
 	}
@@ -1196,7 +1196,7 @@ Result<Optional<String>, Error> Controller::ReadNodeName()
 //    @return ut::Error if failed.
 Optional<Error> Controller::WriteNumberOfChildNodes(size_t count)
 {
-	if (mode == binary_output_mode)
+	if (mode == Mode::binary_output)
 	{
 		// there is no sense to write a number of children if they have no name
 		if (!info.HasBinaryNames())
@@ -1208,7 +1208,7 @@ Optional<Error> Controller::WriteNumberOfChildNodes(size_t count)
 		SizeType converted_count = static_cast<SizeType>(count);
 		return WriteBinary<SizeType>(&converted_count, 1);
 	}
-	else if (mode == text_output_mode)
+	else if (mode == Mode::text_output)
 	{
 		// text document retrieves a number of child nodes during a
 		// parsing process, so this information must be already known
@@ -1224,7 +1224,7 @@ Optional<Error> Controller::WriteNumberOfChildNodes(size_t count)
 //    @return ut::Error if failed.
 Result<size_t, Error> Controller::ReadNumberOfChildNodes(const Snapshot& node)
 {
-	if (mode == binary_input_mode)
+	if (mode == Mode::binary_input)
 	{
 		// if there is no names - there is no number of children, we can only hope
 		// that the number of serialized children matches current number of children
@@ -1242,7 +1242,7 @@ Result<size_t, Error> Controller::ReadNumberOfChildNodes(const Snapshot& node)
 		}
 		return static_cast<size_t>(count);
 	}
-	else if (mode == text_input_mode)
+	else if (mode == Mode::text_input)
 	{
 		// text document retrieves a number of child nodes during a
 		// parsing process, so this information is already known
@@ -1260,7 +1260,7 @@ Result<size_t, Error> Controller::ReadNumberOfChildNodes(const Snapshot& node)
 Result<size_t, Error> Controller::AllocateChildNodes(size_t count)
 {
 	size_t id = 0;
-	if (mode == text_output_mode)
+	if (mode == Mode::text_output)
 	{
 		// get id of the first leaf
 		id = io.text_output->CountChildren();
@@ -1287,7 +1287,7 @@ Result<Optional<stream::Cursor>, Error> Controller::ReserveParameterSize()
 {
 	// this function is sensible only for a binary variant
 	// and only if parameters can be skipped
-	if (mode != binary_output_mode || !SkipIsPossible())
+	if (mode != Mode::binary_output || !SkipIsPossible())
 	{
 		return Optional<stream::Cursor>();
 	}
@@ -1325,7 +1325,7 @@ Optional<Error> Controller::WriteParameterSize(const Optional<stream::Cursor>& s
 {
 	// this function is sensible only for a binary variant
 	// and only if parameters have names - so that they could be randomly iterated
-	if (mode != binary_output_mode || !start_position)
+	if (mode != Mode::binary_output || !start_position)
 	{
 		return Optional<Error>();
 	}
@@ -1373,7 +1373,7 @@ Optional<Error> Controller::WriteParameterSize(const Optional<stream::Cursor>& s
 Result<stream::Cursor, Error> Controller::ReadParameterSize()
 {
 	// this function is sensible only for binary variant
-	if (mode != binary_input_mode || !SkipIsPossible())
+	if (mode != Mode::binary_input || !SkipIsPossible())
 	{
 		return static_cast<stream::Cursor>(0);
 	}
@@ -1486,7 +1486,7 @@ Optional<Error> Controller::SkipParameter(const Optional<stream::Cursor>& next)
 	}
 
 	// this function is sensible only for binary variant
-	if (mode != binary_input_mode)
+	if (mode != Mode::binary_input)
 	{
 		return Optional<Error>();
 	}
@@ -1499,7 +1499,7 @@ Optional<Error> Controller::SkipParameter(const Optional<stream::Cursor>& next)
 // Returns 'true' if parameters can be skipped without error if something went wrong.
 bool Controller::SkipIsPossible() const
 {
-	bool is_text_mode = mode == text_input_mode || mode == text_output_mode;
+	bool is_text_mode = mode == Mode::text_input || mode == Mode::text_output;
 
 	// Skipping is sensible only if we can check type or name, in other words - only 
 	// if we can detect that serialized parameter doesn't match a current one
@@ -1514,7 +1514,7 @@ bool Controller::SkipIsPossible() const
 Optional<Error> Controller::DiveIntoNamedNode(const String& name)
 {
 	// this function is sensible only for text variant
-	if (mode == text_output_mode)
+	if (mode == Mode::text_output)
 	{
 		// get reference to the parent node
 		Tree<text::Node>& parent = *io.text_output;
@@ -1541,7 +1541,7 @@ Optional<Error> Controller::DiveIntoNamedNode(const String& name)
 			io.text_output = &parent.GetLastChild();
 		}
 	}
-	else if (mode == text_input_mode)
+	else if (mode == Mode::text_input)
 	{
 		// get reference to the parent node
 		const Tree<text::Node>& parent = *io.text_input;
@@ -1587,7 +1587,7 @@ Optional<Error> Controller::WriteInfo()
 	Info::Flag flags = info.GetFlags();
 
 	// info is always written in little-endian mode
-	info.SetEndianness(endian::little);
+	info.SetEndianness(endianness::Order::little);
 
 	// create 'info' node
 	Optional<Error> optional_error = DiveIntoNamedNode(node_names::skInfo);
@@ -1627,7 +1627,7 @@ Optional<Error> Controller::ReadInfo()
 	Controller state = SaveState();
 
 	// info is always written in little-endian mode
-	info.SetEndianness(endian::little);
+	info.SetEndianness(endianness::Order::little);
 
 	// create 'info' node
 	Optional<Error> optional_error = DiveIntoNamedNode(node_names::skInfo);
@@ -1926,7 +1926,7 @@ String Controller::GenerateSharedObjectName(size_t id)
 Optional<Error> Controller::DiveIntoChildNode(size_t id)
 {
 	// this function is sensible only for text variant
-	if (mode == text_output_mode)
+	if (mode == Mode::text_output)
 	{
 		// get reference to the parent node
 		Tree<text::Node>& parent = *io.text_output;
@@ -1940,7 +1940,7 @@ Optional<Error> Controller::DiveIntoChildNode(size_t id)
 		// set new output target
 		io.text_output = &parent[id];
 	}
-	else if (mode == text_input_mode)
+	else if (mode == Mode::text_input)
 	{
 		// get reference to the parent node
 		const Tree<text::Node>& parent = *io.text_input;
@@ -2001,26 +2001,26 @@ Optional<Error> Controller::ReadBinary(void* address,
                                        size_t count)
 {
 	// check mode
-	if (mode != binary_input_mode)
+	if (mode != Mode::binary_input)
 	{
 		return Error(error::fail, "Invalid mode.");
 	}
 
 	// read elements using correct endianness order
 	Optional<Error> read_error;
-	if (info.GetEndianness() == endian::little)
+	if (info.GetEndianness() == endianness::Order::little)
 	{
-		read_error = endian::Read<endian::little>(*io.binary_input,
-		                                          address,
-		                                          granularity,
-		                                          count);
+		read_error = endianness::Read<endianness::Order::little>(*io.binary_input,
+		                                                         address,
+		                                                         granularity,
+		                                                         count);
 	}
 	else
 	{
-		read_error = endian::Read<endian::big>(*io.binary_input,
-		                                          address,
-		                                          granularity,
-		                                          count);
+		read_error = endianness::Read<endianness::Order::big>(*io.binary_input,
+		                                                      address,
+		                                                      granularity,
+		                                                      count);
 	}
 
 	// check read result
@@ -2051,26 +2051,26 @@ Optional<Error> Controller::WriteBinary(const void* address,
                                         size_t count)
 {
 	// check mode
-	if (mode != binary_output_mode)
+	if (mode != Mode::binary_output)
 	{
 		return Error(error::fail, "Invalid mode.");
 	}
 
 	// write elements using correct endianness order
 	Optional<Error> write_error;
-	if (info.GetEndianness() == endian::little)
+	if (info.GetEndianness() == endianness::Order::little)
 	{
-		write_error = endian::Write<endian::little>(*io.binary_output,
-		                                            address,
-		                                            granularity,
-		                                            count);
+		write_error = endianness::Write<endianness::Order::little>(*io.binary_output,
+		                                                           address,
+		                                                           granularity,
+		                                                           count);
 	}
 	else
 	{
-		write_error = endian::Write<endian::big>(*io.binary_output,
-		                                         address,
-		                                         granularity,
-		                                         count);
+		write_error = endianness::Write<endianness::Order::big>(*io.binary_output,
+		                                                        address,
+		                                                        granularity,
+		                                                        count);
 	}
 
 	// check write result

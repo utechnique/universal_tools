@@ -37,7 +37,7 @@ public:
 	//                    @offset will be added to this parameter
 	//    @return - error code if failed
 	virtual Optional<Error> MoveCursor(stream::Cursor offset,
-	                                   stream::Position origin = stream::start);
+	                                   stream::Position origin = stream::Position::start);
 
 	// Returns size of the stream buffer or error if failed,
 	// returns "not_implemented" error if not overridend by child class

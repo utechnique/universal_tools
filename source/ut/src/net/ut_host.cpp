@@ -28,7 +28,7 @@ Optional<Error> Host::ShutDown()
 	active = false;
 
 	// close all connections
-	ScopeSyncRWLock< Array< UniquePtr<Connection> > > locked_connections(connections, access_write);
+	ScopeSyncRWLock< Array< UniquePtr<Connection> > > locked_connections(connections, RWLock::Access::write);
 	locked_connections.Get().Reset();
 
 	// success
@@ -45,7 +45,7 @@ Optional<Error> Host::SendCommand(UniquePtr<Command> command,
                                   const HostAddress& address)
 {
 	// lock connections
-	ScopeSyncRWLock< Array< UniquePtr<Connection> > > connections_scope_lock(connections, access_read);
+	ScopeSyncRWLock< Array< UniquePtr<Connection> > > connections_scope_lock(connections, RWLock::Access::read);
 	Array< UniquePtr<Connection> >& locked_connections = connections_scope_lock.Get();
 
 	// add command
@@ -89,7 +89,7 @@ Optional<Error> Host::SendCommand(UniquePtr<Command> command,
 void Host::CloseConnection(const HostAddress& address)
 {
 	// lock connections
-	ScopeSyncRWLock< Array< UniquePtr<Connection> > > connections_scope_lock(connections, access_write);
+	ScopeSyncRWLock< Array< UniquePtr<Connection> > > connections_scope_lock(connections, RWLock::Access::write);
 	Array< UniquePtr<Connection> >& locked_connections = connections_scope_lock.Get();
 
 	// find and delete connection with matching address

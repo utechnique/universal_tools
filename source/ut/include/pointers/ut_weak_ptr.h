@@ -11,7 +11,7 @@ START_NAMESPACE(ut)
 // template class ut::WeakPtr is a smart pointer that holds a non - owning("weak")
 // reference to an object that is managed by ut::SharedPtr. It must be converted
 // to ut::SharedPtr in order to access the referenced object.
-template<typename ObjectType, thread_safety::Mode thread_safety_mode = thread_safety::on>
+template<typename ObjectType, thread_safety::Mode thread_safety_mode = thread_safety::Mode::on>
 class WeakPtr
 {
 	// SharedPtr is a friend to get access to the reference controller.

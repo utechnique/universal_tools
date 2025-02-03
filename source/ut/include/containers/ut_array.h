@@ -660,27 +660,27 @@ public:
 	}
 
 	// Returns constant read / write iterator that points to the first element
-	ConstIterator Begin(iterator::Position position = iterator::first) const
+	ConstIterator Begin(iterator::Position position = iterator::Position::first) const
 	{
-		return position == iterator::first ? ConstIterator(arr) : ConstIterator(arr + num - 1);
+		return position == iterator::Position::first ? ConstIterator(arr) : ConstIterator(arr + num - 1);
 	}
 
 	// Returns constant read / write iterator that points to the last element
-	ConstIterator End(iterator::Position position = iterator::last) const
+	ConstIterator End(iterator::Position position = iterator::Position::last) const
 	{
-		return position == iterator::last ? ConstIterator(arr + num) : ConstIterator(arr - 1);
+		return position == iterator::Position::last ? ConstIterator(arr + num) : ConstIterator(arr - 1);
 	}
 	
 	// Returns a read / write iterator that points to the first element
-	Iterator Begin(iterator::Position position = iterator::first)
+	Iterator Begin(iterator::Position position = iterator::Position::first)
 	{
-		return position == iterator::first ? Iterator(arr) : Iterator(arr + num - 1);
+		return position == iterator::Position::first ? Iterator(arr) : Iterator(arr + num - 1);
 	}
 
 	// Returns a read / write iterator that points to the last element
-	Iterator End(iterator::Position position = iterator::last)
+	Iterator End(iterator::Position position = iterator::Position::last)
 	{
-		return position == iterator::last ? Iterator(arr + num) : Iterator(arr - 1);
+		return position == iterator::Position::last ? Iterator(arr + num) : Iterator(arr - 1);
 	}
 
 protected:

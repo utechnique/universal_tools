@@ -72,9 +72,9 @@ void CreateFileTask::Execute()
 	report += "creating \"test/test.txt\": ";
 	const ut::wchar wfn[] = { 't','e','s','t','/','t','e','s','t', 0442, 0435, 0441, 0442,'.','t','x','t',0 };
 	ut::WString fn(wfn);
-	ut::String mbfn = ut::StrConvert<ut::wchar, char, ut::cp_utf8>(fn);
+	ut::String mbfn = ut::StrConvert<ut::wchar, char, ut::CodePage::utf8>(fn);
 	ut::File file;
-	ut::Optional<ut::Error> open_error = file.Open(g_test_dir + mbfn, ut::file_access_write);
+	ut::Optional<ut::Error> open_error = file.Open(g_test_dir + mbfn, ut::File::Access::write);
 	if (open_error)
 	{
 		report += ut::String("failed to open a file:\n") + open_error->GetDesc();
@@ -96,7 +96,7 @@ void CopyFileTask::Execute()
 
 	const ut::wchar wfn[] = { 't','e','s','t','/','t','e','s','t', 0442, 0435, 0441, 0442,'.','t','x','t',0 };
 	ut::WString fn(wfn);
-	ut::String mbfn = ut::StrConvert<ut::wchar, char, ut::cp_utf8>(fn);
+	ut::String mbfn = ut::StrConvert<ut::wchar, char, ut::CodePage::utf8>(fn);
 	
 	ut::Optional<ut::Error> copy_error_0 = ut::CopyFile(g_test_dir + mbfn, g_test_dir + "test/copy.txt");
 	ut::Optional<ut::Error> copy_error_1 = ut::CopyFile(g_test_dir + mbfn, g_test_dir + "test/testfolder1/copy.txt");
@@ -173,7 +173,7 @@ void BinaryFileOpsTask::Execute()
 	// binary file
 	report += "testing: ";
 	ut::File bfile;
-	ut::Optional<ut::Error> open_error = bfile.Open(g_test_dir + "test/binary.txt", ut::file_access_write);
+	ut::Optional<ut::Error> open_error = bfile.Open(g_test_dir + "test/binary.txt", ut::File::Access::write);
 	ut::uint32 ua = 100, ub = 255;
 	ut::Optional<ut::Error> bytes_written0_error = bfile.Write(&ua, sizeof(ut::uint32), 1);
 	ut::Optional<ut::Error> bytes_written1_error = bfile.Write(&ub, sizeof(ut::uint32), 1);

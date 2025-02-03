@@ -15,7 +15,7 @@ START_NAMESPACE(ut)
 // UT provides different methods to synchronize worker threads in a pool.
 namespace pool_sync
 {
-	enum Method
+	enum class Method
 	{
 		// synchronization via condition variables, common case
 		cond_var,
@@ -26,7 +26,7 @@ namespace pool_sync
 	};
 
 	// default synchronization method
-	static const Method skDefaultMethod = cond_var;
+	static const Method skDefaultMethod = Method::cond_var;
 }
 
 //----------------------------------------------------------------------------//
@@ -73,7 +73,7 @@ struct ThreadCombinerHelper<void, Combiner>
 // Specialized ut::Scheduler template version where synchronization is
 // performed using condition variables.
 template<typename ReturnType, typename Combiner>
-class Scheduler<ReturnType, Combiner, pool_sync::cond_var>
+class Scheduler<ReturnType, Combiner, pool_sync::Method::cond_var>
 {
 	// Only corresponding thread pool can create a scheduler, therefore it must
 	// have access to the scheduler's constructor.
@@ -145,12 +145,12 @@ private:
 
 	// Constructor.
 	//    @param thread_pool - pool that owns the scheduler.
-	Scheduler(ThreadPool<ReturnType, pool_sync::cond_var>& thread_pool) : pool(thread_pool)
-	                                                                    , counter(0)
+	Scheduler(ThreadPool<ReturnType, pool_sync::Method::cond_var>& thread_pool) : pool(thread_pool)
+	                                                                            , counter(0)
 	{}
 
 	// pool that owns the scheduler
-	ThreadPool<ReturnType, pool_sync::cond_var>& pool;
+	ThreadPool<ReturnType, pool_sync::Method::cond_var>& pool;
 
 	// counter of the active tasks
 	int counter;
@@ -168,7 +168,7 @@ private:
 // Specialized ut::ThreadPool template version where synchronization is
 // performed using condition variables.
 template<typename ReturnType>
-class ThreadPool<ReturnType, pool_sync::cond_var> : NonCopyable
+class ThreadPool<ReturnType, pool_sync::Method::cond_var> : NonCopyable
 {
 	// Type of the task to be executed in a thread.
 	typedef UniquePtr< BaseTask<void> > UniqueTaskPtr;
@@ -210,15 +210,15 @@ public:
 
 	// Creates a scheduler with custom combiner.
 	template<typename Combiner>
-	Scheduler<ReturnType, Combiner, pool_sync::cond_var> CreateScheduler()
+	Scheduler<ReturnType, Combiner, pool_sync::Method::cond_var> CreateScheduler()
 	{
-		return Scheduler<ReturnType, Combiner, pool_sync::cond_var>(*this);
+		return Scheduler<ReturnType, Combiner, pool_sync::Method::cond_var>(*this);
 	}
 
 	// Creates a scheduler with default combiner.
-	Scheduler<ReturnType, DefaultCombiner<ReturnType>, pool_sync::cond_var> CreateScheduler()
+	Scheduler<ReturnType, DefaultCombiner<ReturnType>, pool_sync::Method::cond_var> CreateScheduler()
 	{
-		return Scheduler<ReturnType, DefaultCombiner<ReturnType>, pool_sync::cond_var>(*this);
+		return Scheduler<ReturnType, DefaultCombiner<ReturnType>, pool_sync::Method::cond_var>(*this);
 	}
 
 	// Checks if current thread belongs to pool.

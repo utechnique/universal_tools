@@ -25,7 +25,7 @@ MessageCmd::MessageCmd(const ut::String& msg,
 	if (apply_encryption)
 	{
 		// encrypt buffer
-		ut::EncryptionStream<ut::encryption::AES128> encryption_stream;
+		ut::EncryptionStream<ut::encryption::Method::AES128> encryption_stream;
 		encryption_stream.Write(msg.GetAddress(), 1, msg.Length() + 1);
 		encryption_stream.Encrypt(password);
 		buffer = encryption_stream.GetBuffer();
@@ -75,7 +75,7 @@ ut::Optional<ut::Error> MessageCmd::ExecuteOnClient(ut::net::Connection& connect
 	ut::Array<ut::byte> decrypted_buffer;
 	if (is_encrypted)
 	{
-		ut::EncryptionStream<ut::encryption::AES128> encryption_stream;
+		ut::EncryptionStream<ut::encryption::Method::AES128> encryption_stream;
 		encryption_stream.SetBuffer(buffer);
 		encryption_stream.Decrypt(host.GetEncryptionKey());
 		decrypted_buffer = encryption_stream.GetBuffer();

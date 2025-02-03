@@ -248,7 +248,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseElement(text::Reader& cursor)
 Result<Tree<text::Node>, Error> XmlDoc::ParseXmlDeclaration(text::Reader& cursor)
 {
 	// Create declaration
-	Tree<text::Node> declaration(text::node::xml_declaration);
+	Tree<text::Node> declaration(text::node::Type::xml_declaration);
 
 	// Skip whitespace before attributes or ?>
 	Skip(cursor, Lookup::skWhitespace);
@@ -277,7 +277,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseXmlDeclaration(text::Reader& cursor
 Result<Tree<text::Node>, Error> XmlDoc::ParsePi(text::Reader& cursor)
 {
 	// Create pi node
-	Tree<text::Node> pi(text::node::xml_pi);
+	Tree<text::Node> pi(text::node::Type::xml_pi);
 
 	// Extract PI target name
 	const char* name = cursor.Get();
@@ -334,7 +334,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseComment(text::Reader& cursor)
 	}
 
 	// Create comment node
-	Tree<text::Node> comment(text::node::comment);
+	Tree<text::Node> comment(text::node::Type::comment);
 	comment.data.value = String(value, cursor.Get() - value);
 
 	// Skip '-->'
@@ -362,7 +362,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseCData(text::Reader& cursor)
 	}
 
 	// Create new cdata node
-	Tree<text::Node> cdata(text::node::xml_cdata);
+	Tree<text::Node> cdata(text::node::Type::xml_cdata);
 	cdata.data.value = String(value, cursor.Get() - value);
 
 	// Skip ]]>
@@ -425,7 +425,7 @@ Result<Tree<text::Node>, Error> XmlDoc::ParseDoctype(text::Reader& cursor)
 	}
 
 	// Create a new doctype node
-	Tree<text::Node> doctype(text::node::xml_doctype);
+	Tree<text::Node> doctype(text::node::Type::xml_doctype);
 	doctype.data.value = String(value, cursor.Get() - value);
 
 	// skip '>'
@@ -823,12 +823,12 @@ Optional<Error> XmlDoc::WriteNode(OutputStream& stream,
 {
 	switch (node.data.GetType())
 	{
-		case text::node::general:         return WriteGeneralNode(stream, node, depth);
-		case text::node::comment:         return WriteComment(stream, node, depth);
-		case text::node::xml_pi:          return WritePI(stream, node, depth);
-		case text::node::xml_doctype:     return WriteDocType(stream, node, depth);
-		case text::node::xml_declaration: return WriteDeclaration(stream, node, depth);
-		case text::node::xml_cdata:       return WriteCData(stream, node, depth);
+		case text::node::Type::general:         return WriteGeneralNode(stream, node, depth);
+		case text::node::Type::comment:         return WriteComment(stream, node, depth);
+		case text::node::Type::xml_pi:          return WritePI(stream, node, depth);
+		case text::node::Type::xml_doctype:     return WriteDocType(stream, node, depth);
+		case text::node::Type::xml_declaration: return WriteDeclaration(stream, node, depth);
+		case text::node::Type::xml_cdata:       return WriteCData(stream, node, depth);
 		default: return Error(error::not_implemented);
 	}
 }

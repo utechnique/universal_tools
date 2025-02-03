@@ -14,8 +14,8 @@ START_NAMESPACE(ut)
 //                               to generate encryption key from the provided
 //                               password.
 //    @return  - error if failed.
-Optional<Error> EncryptionStream<encryption::XOR>::Encrypt(const String& password,
-	                                                       uint32 pbkdf2_iterations)
+Optional<Error> EncryptionStream<encryption::Method::XOR>::Encrypt(const String& password,
+	                                                               uint32 pbkdf2_iterations)
 {
 	// generate 16-bit key from the password
 	byte key[16];
@@ -42,8 +42,8 @@ Optional<Error> EncryptionStream<encryption::XOR>::Encrypt(const String& passwor
 //                               to generate decryption key from the provided
 //                               password.
 //    @return  - error if failed.
-Optional<Error> EncryptionStream<encryption::XOR>::Decrypt(const String& password,
-	                                                       uint32 pbkdf2_iterations)
+Optional<Error> EncryptionStream<encryption::Method::XOR>::Decrypt(const String& password,
+	                                                               uint32 pbkdf2_iterations)
 {
 	// generate 16-bit key from the password
 	byte key[16];

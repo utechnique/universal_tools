@@ -43,12 +43,12 @@ public:
 	// Getter for endianness order flag, see 
 	// ut::meta::serialization_flags::kLittleEndian for details.
 	//    @return - current endianness order.
-	endian::order GetEndianness() const;
+	endianness::Order GetEndianness() const;
 
 	// Setter for endianness order flag, see 
 	// ut::meta::serialization_flags::kLittleEndian for details.
 	//    @param endianness - endianness to be set.
-	void SetEndianness(endian::order endianness);
+	void SetEndianness(endianness::Order endianness);
 
 	// Returns 'true' if type information flag is on.
 	// See ut::meta::serialization_flags::kTypeInfo for details.

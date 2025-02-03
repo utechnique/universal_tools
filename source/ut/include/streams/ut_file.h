@@ -11,19 +11,6 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// ut::FileAccess describes access to the data of the opened file
-//    @fa_read - file's data is preserved, and can only be read,
-//               writing is forbidden
-//    @fa_write - file's data is erased, writing is allowed
-//    @fa_append - file's data is preserved, writing is allowed
-enum FileAccess
-{
-	file_access_read   = 0,
-	file_access_write  = 1,
-	file_access_append = 2
-};
-
-//----------------------------------------------------------------------------//
 // Renames a file
 //    @param old_fn - old filename
 //    @param new_fn - new filename
@@ -108,13 +95,25 @@ Optional<Error> WriteFile(const String& filename,
 class File : public InputStream, public OutputStream
 {
 public:
+	// ut::File::Access describes access to the data of the opened file
+	//    @read - file's data is preserved, and can only be read,
+	//               writing is forbidden
+	//    @write - file's data is erased, writing is allowed
+	//    @append - file's data is preserved, writing is allowed
+	enum class Access
+	{
+		read,
+		write,
+		append
+	};
+
 	// Default constructor
     File();
 
 	// Constructor, opens file @filename
 	//    @param filename - path to the file
-	//    @param access - file access mode (see FileAccess enumeration)
-	File(const String& filename, FileAccess access);
+	//    @param access - file access mode (see ut::File::Access enumeration)
+	File(const String& filename, Access access);
 
 	// Move constructor.
 	File(File&& other) noexcept;
@@ -131,8 +130,8 @@ public:
 
 	// Opens file @filename
 	//    @param filename - path to the file
-	//    @param access - file access mode (see FileAccess enumeration)
-	Optional<Error> Open(const String& filename, FileAccess access);
+	//    @param access - file access mode (see ut::File::Access enumeration)
+	Optional<Error> Open(const String& filename, Access access);
 
 	// Closes the file (if it was previously opened), you have no real need
 	// to close file manually, it will be closed in destructor anyway. However

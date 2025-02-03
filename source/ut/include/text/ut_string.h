@@ -14,10 +14,10 @@ START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // CodePage describes code pages for encoding/convertion string operations.
 // Used in StrConvert<>() function to convert strings with different encoding.
-enum CodePage
+enum class CodePage
 {
-	cp_ascii = 0,
-	cp_utf8  = 1
+	ascii = 0,
+	utf8  = 1
 };
 
 //----------------------------------------------------------------------------//
@@ -1055,10 +1055,10 @@ TString<T1> StrConvert(const T0* src)
 }
 
 // StrConvert spec for utf8: wchar -> char
-template<> String StrConvert<wchar, char, cp_utf8>(const wchar* src);
+template<> String StrConvert<wchar, char, CodePage::utf8>(const wchar* src);
 
 // StrConvert spec for utf8: char -> wchar
-template<> WString StrConvert<char, wchar, cp_utf8>(const char* src);
+template<> WString StrConvert<char, wchar, CodePage::utf8>(const char* src);
 
 // StrConvert variant with @src parameter as a string object
 template <typename T0, typename T1, CodePage cp>

@@ -34,7 +34,7 @@ Optional<Error> Client::Run()
 	// make connection attempts
 	while (active.Get())
 	{
-		ScopeSyncRWLock< Array< UniquePtr<Connection> > > connection_lock(connections, access_write);
+		ScopeSyncRWLock< Array< UniquePtr<Connection> > > connection_lock(connections, RWLock::Access::write);
 
 		// connect only if there is no established connection
 		if (connection_lock.Get().Count() == 0)

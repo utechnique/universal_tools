@@ -269,25 +269,25 @@ public:
 	}
 
 	// Returns constant read / write iterator that points to the first element
-	ConstIterator Begin(iterator::Position position = iterator::first) const
+	ConstIterator Begin(iterator::Position position = iterator::Position::first) const
 	{
 		return nodes.Begin();
 	}
 
 	// Returns constant read / write iterator that points to the last element
-	ConstIterator End(iterator::Position position = iterator::last) const
+	ConstIterator End(iterator::Position position = iterator::Position::last) const
 	{
 		return nodes.End();
 	}
 
 	// Returns a read / write iterator that points to the first element
-	Iterator Begin(iterator::Position position = iterator::first)
+	Iterator Begin(iterator::Position position = iterator::Position::first)
 	{
 		return nodes.Begin();
 	}
 
 	// Returns a read / write iterator that points to the last element
-	Iterator End(iterator::Position position = iterator::last)
+	Iterator End(iterator::Position position = iterator::Position::last)
 	{
 		return nodes.End();
 	}

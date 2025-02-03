@@ -14,7 +14,7 @@ START_NAMESPACE(ut)
 class BinaryStream : public InputStream, public OutputStream
 {
 public:
-	// Constructor, cursor is set to ut::stream::start
+	// Constructor, cursor is set to ut::stream::Position::start
 	BinaryStream();
 
 	// Writes an array of @count elements, each one with a size of @size bytes,
@@ -44,7 +44,7 @@ public:
 	//                    @offset will be added to this parameter
 	//    @return - error code if failed
 	Optional<Error> MoveCursor(stream::Cursor offset,
-	                           stream::Position origin = stream::start);
+	                           stream::Position origin = stream::Position::start);
 
 	// Returns size of the stream buffer or error if failed
 	Result<size_t, Error> GetSize();

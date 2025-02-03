@@ -7,10 +7,10 @@
 #include "streams/ut_streams.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
-START_NAMESPACE(endian)
+START_NAMESPACE(endianness)
 //----------------------------------------------------------------------------//
 // Endianness order.
-enum order
+enum class Order
 {
 	little = 0,
 	big = 1
@@ -18,17 +18,17 @@ enum order
 
 //----------------------------------------------------------------------------//
 // Use this function to know endianness order of the current platform.
-order GetNative();
+Order GetNative();
 
 //----------------------------------------------------------------------------//
 // Use this function to read custom data in custom byte order from the stream.
-//    @param endianness - byte order of the variable in memory.
+//    @param order - byte order of the variable in memory.
 //    @param stream - reference to the input stream.
 //    @param data - address of the data to be read.
 //    @param granularity - size of one element.
 //    @param count - number of elements.
 //    @return - ut::Error if failed.
-template <order endianness>
+template <Order order>
 Optional<Error> Read(InputStream& stream,
                      void* dst,
                      size_t granularity,
@@ -36,11 +36,11 @@ Optional<Error> Read(InputStream& stream,
 {
 	// check if order is straight, note that this action is performed
 	// only once during runtime for performance reason
-	static const bool endianness_match = endianness == GetNative();
+	static const bool order_match = order == GetNative();
 
-	// check if endianness is the same in stream buffer and memory, and if so - just read
+	// check if order is the same in stream buffer and memory, and if so - just read
 	// bytes in forward order (making only one call to stream::Read function)
-	if (endianness_match)
+	if (order_match)
 	{
 		return stream.Read(dst, granularity, count);
 	}
@@ -67,27 +67,27 @@ Optional<Error> Read(InputStream& stream,
 
 // Use this function to read stream data as a variable in custom byte order.
 //    @param T - type of the variable to be read.
-//    @param endianness - byte order of the variable in stream.
+//    @param order - byte order of the variable in stream.
 //    @param stream - reference to the input stream.
 //    @param address - destination address of the variable to be read to.
 //    @param count - number of elements.
 //    @return - ut::Error if failed.
-template <typename T, order endianness>
+template <typename T, Order order>
 Optional<Error> Read(InputStream& stream, T* address, size_t count)
 {
-	return Read<endianness>(stream, address, sizeof(T), count);
+	return Read<order>(stream, address, sizeof(T), count);
 }
 
 //----------------------------------------------------------------------------//
 // Use this function to write custom data in custom byte order to the stream.
 //    @param T - type of the variable to be written.
-//    @param endianness - byte order of the variable in memory.
+//    @param order - byte order of the variable in memory.
 //    @param stream - reference to the output stream.
 //    @param data - address of the data to be written.
 //    @param granularity - size of one element.
 //    @param count - number of elements.
 //    @return - ut::Error if failed.
-template <order endianness>
+template <Order order>
 Optional<Error> Write(OutputStream& stream,
                       const void* data,
                       size_t granularity,
@@ -95,11 +95,11 @@ Optional<Error> Write(OutputStream& stream,
 {
 	// check if order is straight, note that this action is performed
 	// only once during runtime for performance reason
-	static bool endianness_match = endianness == GetNative();
+	static bool order_match = order == GetNative();
 
-	// check if endianness is the same in stream buffer and memory, and if so - just write
+	// check if order is the same in stream buffer and memory, and if so - just write
 	// bytes in forward order (making only one call to stream::Write function)
-	if (endianness_match)
+	if (order_match)
 	{
 		return stream.Write(data, 1, granularity * count);
 	}
@@ -126,21 +126,21 @@ Optional<Error> Write(OutputStream& stream,
 
 // Use this function to write variables in custom byte order to the stream.
 //    @param T - type of the variable to be written.
-//    @param endianness - byte order of the variable in memory.
+//    @param order - byte order of the variable in memory.
 //    @param stream - reference to the output stream.
 //    @param address - source address of the variable to be written.
 //    @param count - number of elements.
 //    @return - ut::Error if failed.
-template <typename T, order endianness>
+template <typename T, Order order>
 Optional<Error> Write(OutputStream& stream, const T* address, size_t count)
 {
-	return Write<endianness>(stream, address, sizeof(T), count);
+	return Write<order>(stream, address, sizeof(T), count);
 }
 
 
 
 //----------------------------------------------------------------------------//
-END_NAMESPACE(endian)
+END_NAMESPACE(endianness)
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
