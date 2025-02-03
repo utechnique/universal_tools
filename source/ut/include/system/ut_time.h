@@ -211,7 +211,7 @@ ut::uint64 GetTime()
 	LONGLONG ll_time = (LONGLONG)ft.dwLowDateTime + ((LONGLONG)(ft.dwHighDateTime) << 32LL);
 	ll_time /= 10;
 
-	if (epoch == epoch_unix)
+	if (epoch == Epoch::unix)
 	{
 		ll_time -= 116444736000000000LL;
 	}
