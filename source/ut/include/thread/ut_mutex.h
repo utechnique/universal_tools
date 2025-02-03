@@ -34,9 +34,6 @@ public:
 	// thread of execution, otherwise, the behavior is undefined
 	void Unlock();
 
-	// Just calls Lock() and then Unlock()
-	void Sync();
-
 private:
 	// Platform-specific mutex type
 #if UT_WINDOWS
