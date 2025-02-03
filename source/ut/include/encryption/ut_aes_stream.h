@@ -7,10 +7,10 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// ut::EncryptionStream<encryption::AES128> is a specialized EncryptionStream<>
+// ut::EncryptionStream<encryption::Method::AES128> is a specialized EncryptionStream<>
 // template for the AES method of encryption.
 template<>
-class EncryptionStream<encryption::AES128> : public EncryptionStreamBase
+class EncryptionStream<encryption::Method::AES128> : public EncryptionStreamBase
 {
 public:
 	// Constructor

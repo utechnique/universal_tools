@@ -12,12 +12,12 @@ START_NAMESPACE(render)
 // Converts shader parameter type to the Vulkan descriptor type.
 VkDescriptorType ConvertShaderParameterTypeToVulkan(ut::uint32 type)
 {
-	switch (type)
+	switch (static_cast<Shader::Parameter::Type>(type))
 	{
-	case Shader::Parameter::uniform_buffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	case Shader::Parameter::image:          return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	case Shader::Parameter::sampler:        return VK_DESCRIPTOR_TYPE_SAMPLER;
-	case Shader::Parameter::storage_buffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	case Shader::Parameter::Type::uniform_buffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	case Shader::Parameter::Type::image:          return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	case Shader::Parameter::Type::sampler:        return VK_DESCRIPTOR_TYPE_SAMPLER;
+	case Shader::Parameter::Type::storage_buffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	}
 	return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 }
@@ -51,7 +51,7 @@ DescriptorPool::DescriptorPool(VkDevice device_handle) : device(device_handle)
 		throw VulkanError(res, "vkCreateDescriptorPool");
 	}
 
-	pool = VkRc<vk::descriptor_pool>(pool_handle, device);
+	pool = VkRc<vk::Rc::descriptor_pool>(pool_handle, device);
 }
 
 // Move constructor.
@@ -301,7 +301,7 @@ ut::Optional<size_t> DescriptorManager::InitializeWriteDescriptorSet(VkWriteDesc
 	wds.dstBinding = binding->id;
 	wds.dstArrayElement = 0;
 	wds.descriptorCount = static_cast<uint32_t>(array_elements);
-	wds.descriptorType = ConvertShaderParameterTypeToVulkan(binding->type);
+	wds.descriptorType = ConvertShaderParameterTypeToVulkan(static_cast<ut::uint32>(binding->type));
 	wds.pImageInfo = nullptr;
 	wds.pBufferInfo = nullptr;
 	wds.pTexelBufferView = nullptr;
@@ -329,7 +329,7 @@ ut::Optional<size_t> DescriptorManager::InitializeWriteDescriptorSet(VkWriteDesc
 
 		// initialize buffer or image information according to the
 		// appropriate shader parameter type
-		if (binding->type == Shader::Parameter::uniform_buffer)
+		if (binding->type == Shader::Parameter::Type::uniform_buffer)
 		{
 			Buffer* uniform_buffer = slot->uniform_buffer;
 			buffer_element_info.buffer = uniform_buffer->GetVkHandle();
@@ -337,11 +337,11 @@ ut::Optional<size_t> DescriptorManager::InitializeWriteDescriptorSet(VkWriteDesc
 			buffer_element_info.range = uniform_buffer->GetInfo().size;
 			wds.pBufferInfo = buffer_cache_entry;
 		}
-		else if (binding->type == Shader::Parameter::image)
+		else if (binding->type == Shader::Parameter::Type::image)
 		{
 			if (slot->cube_face)
 			{
-				img_element_info.imageView = slot->image->GetCubeFaceView(slot->cube_face.Get());
+				img_element_info.imageView = slot->image->GetCubeFaceView(static_cast<ut::uint32>(slot->cube_face.Get()));
 			}
 			else
 			{
@@ -351,7 +351,7 @@ ut::Optional<size_t> DescriptorManager::InitializeWriteDescriptorSet(VkWriteDesc
 			img_element_info.imageLayout = slot->image->GetLayout();
 			wds.pImageInfo = image_cache_entry;
 		}
-		else if (binding->type == Shader::Parameter::sampler)
+		else if (binding->type == Shader::Parameter::Type::sampler)
 		{
 			img_element_info.sampler = slot->sampler->GetVkHandle();
 			img_element_info.imageView = VK_NULL_HANDLE;

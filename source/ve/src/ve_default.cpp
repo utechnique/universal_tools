@@ -57,17 +57,17 @@ ut::Optional<ut::String> FindResourceFile(const ut::String& filename)
 {
 	ut::File file;
 	ut::String path = filename;
-	ut::Optional<ut::Error> open_file_error = file.Open(path, ut::file_access_read);
+	ut::Optional<ut::Error> open_file_error = file.Open(path, ut::File::Access::read);
 	if (open_file_error)
 	{
 		// if didn't work - try default resources directory
 		path = ut::String(directories::skRc) + ut::skFileSeparator + filename;
-		open_file_error = file.Open(path, ut::file_access_read);
+		open_file_error = file.Open(path, ut::File::Access::read);
 		if (open_file_error)
 		{
 			// finally try alternative resources directory
 			path = ut::String(directories::skRcAlt) + ut::skFileSeparator + filename;
-			open_file_error = file.Open(path, ut::file_access_read);
+			open_file_error = file.Open(path, ut::File::Access::read);
 			if (open_file_error)
 			{
 				return ut::Optional<ut::String>();
@@ -89,7 +89,7 @@ ut::Result<ut::File, ut::Error> OpenResourceFile(const ut::String& filename)
 	}
 
 	ut::File file;
-	ut::Optional<ut::Error> open_file_error = file.Open(path.Get(), ut::file_access_read);
+	ut::Optional<ut::Error> open_file_error = file.Open(path.Get(), ut::File::Access::read);
 	if (open_file_error)
 	{
 		return ut::MakeError(open_file_error.Move());

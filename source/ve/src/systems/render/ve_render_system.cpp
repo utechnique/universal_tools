@@ -32,7 +32,7 @@ RenderSystem::RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread,
 	ui_thread->Enqueue([&](ui::Frontend& frontend) { engine->OpenViewports(frontend); });
 
 	ut::log.Lock() << "Render engine is ready in "
-	               << timer.GetTime<ut::time::seconds>()
+	               << timer.GetTime<ut::time::Unit::second>()
 	               << "s." << ut::cret;
 }
 
@@ -129,7 +129,7 @@ void RenderSystem::InitializeUnitsJob(Base::Access& access,
 //                    desired components.
 void RenderSystem::InitializeUnits(Base::Access& access)
 {
-	ut::ThreadPool<void, ut::pool_sync::cond_var>& thread_pool = engine->GetThreadPool();
+	ut::ThreadPool<void>& thread_pool = engine->GetThreadPool();
 	const size_t entity_count = access.CountEntities();
 	const size_t thread_count = thread_pool.GetThreadCount();
 	const size_t entities_per_thread = entity_count / thread_count;

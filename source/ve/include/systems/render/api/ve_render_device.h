@@ -53,7 +53,7 @@ public:
 
 		// each element of this array represents a support for the pixel format
 		// (format is an index of element) in a render target
-		bool supports_2d_render_target_format[pixel::format_count] = { false };
+		bool supports_2d_render_target_format[static_cast<size_t>(pixel::Format::count)] = { false };
 	};
 
 	// Constructor.

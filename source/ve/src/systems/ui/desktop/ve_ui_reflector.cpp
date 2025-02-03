@@ -284,7 +284,7 @@ void RecreateElementButton::Recreate()
 	callback(path, ut::Move(dynamic_type));
 
 	// fix hover bug
-	Fl::awake([](void* ptr) { static_cast<Button*>(ptr)->SetState(Button::state_release); }, this);
+	Fl::awake([](void* ptr) { static_cast<Button*>(ptr)->SetState(Button::State::release); }, this);
 }
 
 //----------------------------------------------------------------------------//

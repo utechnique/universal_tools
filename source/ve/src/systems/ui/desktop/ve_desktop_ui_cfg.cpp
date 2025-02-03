@@ -17,7 +17,7 @@ Theme::Theme(ColorScheme scheme)
 {
 	switch (scheme)
 	{
-	case scheme_dark:
+	case ColorScheme::dark:
 		background_color = ut::Color<3, ut::byte>(51, 51, 55);
 		foreground_color = ut::Color<3, ut::byte>(150, 150, 165);
 		frame_color = ut::Color<3, ut::byte>(80, 80, 88);
@@ -76,15 +76,15 @@ Settings::Settings() : window(0, 0, 640, 480)
                      , viewport_frame_size(4)
                      , layout_id(0)
 {
-	projections.Add(Viewport::perspective);
-	projections.Add(Viewport::orthographic_negative_y);
-	projections.Add(Viewport::orthographic_positive_x);
-	projections.Add(Viewport::orthographic_positive_z);
+	projections.Add(static_cast<ut::uint32>(Viewport::Projection::perspective));
+	projections.Add(static_cast<ut::uint32>(Viewport::Projection::orthographic_negative_y));
+	projections.Add(static_cast<ut::uint32>(Viewport::Projection::orthographic_positive_x));
+	projections.Add(static_cast<ut::uint32>(Viewport::Projection::orthographic_positive_z));
 
-	render_modes.Add(Viewport::render_mode_complete);
-	render_modes.Add(Viewport::render_mode_diffuse);
-	render_modes.Add(Viewport::render_mode_diffuse);
-	render_modes.Add(Viewport::render_mode_diffuse);
+	render_modes.Add(Viewport::RenderMode::complete);
+	render_modes.Add(Viewport::RenderMode::diffuse);
+	render_modes.Add(Viewport::RenderMode::diffuse);
+	render_modes.Add(Viewport::RenderMode::diffuse);
 }
 
 // Registers data into reflection tree.

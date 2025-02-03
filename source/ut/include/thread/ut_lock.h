@@ -8,19 +8,6 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// ut::Access enumeration describes possible access
-// to objects that are shared between different threads
-//    @access_full - full access
-//    @access_read - managed object can only be read, writing is forbidden
-//    @access_write - writing allowed to the managed object
-enum Access
-{
-	access_full,
-	access_read,
-	access_write
-};
-
-//----------------------------------------------------------------------------//
 // ut::ScopeLock is a mutex wrapper that provides a convenient RAII-style
 // mechanism for owning a mutex for the duration of a scoped block
 class ScopeLock : public NonCopyable
@@ -50,6 +37,16 @@ private:
 class RWLock : public NonCopyable
 {
 public:
+	// ut::RWLock::Access enumeration describes possible access
+	// to objects that are shared between different threads
+	//    @read - managed object can only be read, writing is forbidden
+	//    @write - writing allowed to the managed object
+	enum class Access
+	{
+		read,
+		write
+	};
+
 	// Constructor, critical sections and condition variables are initialize here
 	// Windows realization uses two critical sections and two conditional variables
 	// Linux realization uses two conditional variables and a mutex
@@ -64,20 +61,16 @@ public:
 	// Destructor, platform-specific synchronization primitives are destructed here
 	~RWLock();
 
-	// Locks section with 'access_write' access
+	// Locks section with 'RWLock::Access::write' access
 	void Lock();
 
-	// Unlocks section with 'access_write' access
+	// Unlocks section with 'RWLock::Access::write' access
 	void Unlock();
 
 	// Locks section with desired access
-	//    @param access - access to lock section with
-	//                    see ut::Access for details
 	void Lock(Access access);
 
 	// Unlocks section with desired access
-	//    @param access - access to unlock section with
-	//                    see ut::Access for details
 	void Unlock(Access access);
 
 private:
@@ -138,11 +131,13 @@ private:
 class ScopeRWLock : public NonCopyable
 {
 public:
+	typedef RWLock::Access Access;
+
 	// Constructor, @lock is locked here
 	//    @param in_lock - object to lock
 	//    @param in_access - object will be locked and (then)
 	//                       unlocked with this flag
-	ScopeRWLock(RWLock& in_lock, Access in_access = access_write);
+	ScopeRWLock(RWLock& in_lock, Access in_access = RWLock::Access::write);
 
 	// Constructor, @lock is unlocked here with @access key
 	~ScopeRWLock();

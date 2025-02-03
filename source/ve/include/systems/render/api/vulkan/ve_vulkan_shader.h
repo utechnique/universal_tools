@@ -11,7 +11,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Vulkan shader.
-class PlatformShader : public VkRc<vk::shader_module>
+class PlatformShader : public VkRc<vk::Rc::shader_module>
 {
 	friend class Device;
 	friend class Context;

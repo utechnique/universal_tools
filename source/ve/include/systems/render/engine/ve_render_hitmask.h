@@ -57,27 +57,27 @@ private:
 	// Mesh instance rendering options.
 	struct MeshInstRendering
 	{
-		enum CullMode
+		enum class CullMode
 		{
-			cull_none,
-			cull_back,
-			cull_mode_count
+			none,
+			back,
+			count
 		};
 
-		enum AlphaMode
+		enum class AlphaMode
 		{
-			alpha_opaque,
+			opaque,
 			alpha_test,
-			alpha_mode_count
+			count
 		};
 
 		typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-		                 alpha_mode_count,
-		                 cull_mode_count,
+		                 static_cast<size_t>(AlphaMode::count),
+		                 static_cast<size_t>(CullMode::count),
 		                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
 		typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-		                 alpha_mode_count> ShaderGrid;
+		                 static_cast<size_t>(AlphaMode::count)> ShaderGrid;
 
 		static constexpr ut::uint32 vertex_format_column = 0;
 		static constexpr ut::uint32 alpha_mode_column = 1;

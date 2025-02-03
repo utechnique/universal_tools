@@ -83,19 +83,19 @@ public:
 	// access map so that the both maps shared the same source.
 	//    @return - a reference to the component map collection to
 	//              synchronize @component_access with.
-	ComponentMapCollection<ut::access_full> SynchronizeComponents();
+	ComponentMapCollection<ComponentMap::Access::read_write> SynchronizeComponents();
 
 private:
 	// Collects component maps from all internal systems.
 	//    @param map_collection -  reference to the component map collection to
 	//                             store component maps in.
-	void CollectComponentMaps(ComponentMapCollection<ut::access_full>& map_collection);
+	void CollectComponentMaps(ComponentMapCollection<ComponentMap::Access::read_write>& map_collection);
 
 	// Recursively synchronizes the provided component map collection with the
 	// internal access map so that the both maps shared the same source.
 	//    @param source - a reference to the component map collection to
 	//                    synchronize @component_access with.
-	void SynchronizeComponents(ComponentMapCollection<ut::access_full>& source);
+	void SynchronizeComponents(ComponentMapCollection<ComponentMap::Access::read_write>& source);
 
 	// managed system
 	ut::SharedPtr<System> system;

@@ -11,7 +11,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Vulkan framebuffer.
-class PlatformFramebuffer : public VkRc<vk::framebuffer>
+class PlatformFramebuffer : public VkRc<vk::Rc::framebuffer>
 {
 	friend class Device;
 	friend class Context;

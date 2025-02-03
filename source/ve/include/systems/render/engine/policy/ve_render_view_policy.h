@@ -54,7 +54,7 @@ private:
 	                       const ut::Vector<3>& view_position,
 	                       View::LightPassMode light_pass_mode,
 	                       ut::Optional<Image&> ibl_cubemap = ut::Optional<Image&>(),
-	                       Image::Cube::Face face = Image::Cube::positive_x);
+	                       Image::Cube::Face face = Image::Cube::Face::positive_x);
 
 	// Renders IBL cubemap.
 	void RenderIblCubemap(Context& context,

@@ -17,7 +17,7 @@ public:
 	typedef ut::uint32 Id;
 
 	// Projection types.
-	enum Projection
+	enum class Projection
 	{
 		perspective,
 		orthographic_negative_x,
@@ -29,22 +29,22 @@ public:
 	};
 
 	// Resolution variants.
-	enum Resolution
+	enum class Resolution
 	{
-		resolution_auto, // the same as viewport
-		resolution_4k,
-		resolution_full_hd,
-		resolution_hd,
-		resolution_480p,
-		resolution_320p,
+		fit, // the same as viewport
+		ultra_hd_4k,
+		full_hd_1080p,
+		hd_720p,
+		sd_480p,
+		ld_320p
 	};
 
 	// Rendering mode.
 	enum RenderMode
 	{
-		render_mode_complete,
-		render_mode_diffuse,
-		render_mode_normal
+		complete,
+		diffuse,
+		normal
 	};
 
 	// Mode describes how this viewport interacts with user and how
@@ -55,10 +55,10 @@ public:
 		bool is_active = true;
 
 		// Current projection type of this viewport.
-		Projection projection = perspective;
+		Projection projection = Projection::perspective;
 
 		// Viewport resolution.
-		Resolution resolution = resolution_auto;
+		Resolution resolution = Resolution::fit;
 
 		// Indicates if this viewport is accessible for interactions.
 		bool is_interactive = false;
@@ -69,7 +69,7 @@ public:
 
 		// Rendering mode affects what parts of the rendering
 		// pipeline will be displayed to user.
-		ut::uint32 render_mode = render_mode_complete;
+		ut::uint32 render_mode = RenderMode::complete;
 
 		// Milliseconds from the last update (0 means never)
 		ut::uint64 update_time_ms = 0;

@@ -11,7 +11,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Vulkan renderpass.
-class PlatformRenderPass : public VkRc<vk::render_pass>
+class PlatformRenderPass : public VkRc<vk::Rc::render_pass>
 {
 	friend class Device;
 	friend class Context;

@@ -22,7 +22,7 @@ public:
 	// slice and one mip.
 	struct SliceView
 	{
-		ut::Array< VkRc<vk::image_view> > mips;
+		ut::Array< VkRc<vk::Rc::image_view> > mips;
 	};
 
 	// Constructor.

@@ -57,7 +57,7 @@ ID3D11Device* CreateDX11Device(IDXGIFactory1* factory,
 	{
 		adapter_iterator->GetDesc1(&adapter_desc);
 
-		const ut::String mb_adapter_name = ut::StrConvert<ut::wchar, char, ut::cp_utf8>(adapter_desc.Description);
+		const ut::String mb_adapter_name = ut::StrConvert<ut::wchar, char, ut::CodePage::utf8>(adapter_desc.Description);
 		adapter_list_msg += ut::cret + "  " + ut::Print(i) + " = " +
 		                    mb_adapter_name + "(" + ut::Print(adapter_desc.DeviceId) + ")";
 
@@ -136,7 +136,7 @@ ID3D11Device* CreateDX11Device(IDXGIFactory1* factory,
 
 	DXGI_ADAPTER_DESC active_adapter_desc;
 	active_adapter->GetDesc(&active_adapter_desc);
-	const ut::String active_adapter_name = ut::StrConvert<ut::wchar, char, ut::cp_utf8>(active_adapter_desc.Description);
+	const ut::String active_adapter_name = ut::StrConvert<ut::wchar, char, ut::CodePage::utf8>(active_adapter_desc.Description);
 	ut::log.Lock() << "Using " << active_adapter_name << " for rendering." << ut::cret;
 
 	return new_device_ptr;
@@ -147,9 +147,9 @@ D3D11_USAGE ConvertUsageToDX11(memory::Usage usage)
 {
 	switch (usage)
 	{
-	case render::memory::gpu_read_write:             return D3D11_USAGE_DEFAULT;
-	case render::memory::gpu_read_cpu_write:         return D3D11_USAGE_DYNAMIC;
-	case render::memory::gpu_immutable:              return D3D11_USAGE_IMMUTABLE;
+	case render::memory::Usage::gpu_read_write:             return D3D11_USAGE_DEFAULT;
+	case render::memory::Usage::gpu_read_cpu_write:         return D3D11_USAGE_DYNAMIC;
+	case render::memory::Usage::gpu_immutable:              return D3D11_USAGE_IMMUTABLE;
 	}
 	return D3D11_USAGE_DEFAULT;
 }
@@ -159,14 +159,14 @@ D3D11_COMPARISON_FUNC ConvertCompareOpToDX11(compare::Operation op)
 {
 	switch (op)
 	{
-	case compare::never:            return D3D11_COMPARISON_NEVER;
-	case compare::less:             return D3D11_COMPARISON_LESS;
-	case compare::equal:            return D3D11_COMPARISON_EQUAL;
-	case compare::less_or_equal:    return D3D11_COMPARISON_LESS_EQUAL;
-	case compare::greater:          return D3D11_COMPARISON_GREATER;
-	case compare::not_equal:        return D3D11_COMPARISON_NOT_EQUAL;
-	case compare::greater_or_equal: return D3D11_COMPARISON_GREATER_EQUAL;
-	case compare::always:           return D3D11_COMPARISON_ALWAYS;
+	case compare::Operation::never:            return D3D11_COMPARISON_NEVER;
+	case compare::Operation::less:             return D3D11_COMPARISON_LESS;
+	case compare::Operation::equal:            return D3D11_COMPARISON_EQUAL;
+	case compare::Operation::less_or_equal:    return D3D11_COMPARISON_LESS_EQUAL;
+	case compare::Operation::greater:          return D3D11_COMPARISON_GREATER;
+	case compare::Operation::not_equal:        return D3D11_COMPARISON_NOT_EQUAL;
+	case compare::Operation::greater_or_equal: return D3D11_COMPARISON_GREATER_EQUAL;
+	case compare::Operation::always:           return D3D11_COMPARISON_ALWAYS;
 	}
 	return D3D11_COMPARISON_ALWAYS;
 }
@@ -176,14 +176,14 @@ D3D11_STENCIL_OP ConvertStencilOpToDX11(StencilOpState::Operation op)
 {
 	switch (op)
 	{
-	case StencilOpState::keep:                return D3D11_STENCIL_OP_KEEP;
-	case StencilOpState::zero:                return D3D11_STENCIL_OP_ZERO;
-	case StencilOpState::replace:             return D3D11_STENCIL_OP_REPLACE;
-	case StencilOpState::increment_and_clamp: return D3D11_STENCIL_OP_INCR_SAT;
-	case StencilOpState::decrement_and_clamp: return D3D11_STENCIL_OP_DECR_SAT;
-	case StencilOpState::invert:              return D3D11_STENCIL_OP_INVERT;
-	case StencilOpState::increment_and_wrap:  return D3D11_STENCIL_OP_INCR;
-	case StencilOpState::decrement_and_wrap:  return D3D11_STENCIL_OP_DECR;
+	case StencilOpState::Operation::keep:                return D3D11_STENCIL_OP_KEEP;
+	case StencilOpState::Operation::zero:                return D3D11_STENCIL_OP_ZERO;
+	case StencilOpState::Operation::replace:             return D3D11_STENCIL_OP_REPLACE;
+	case StencilOpState::Operation::increment_and_clamp: return D3D11_STENCIL_OP_INCR_SAT;
+	case StencilOpState::Operation::decrement_and_clamp: return D3D11_STENCIL_OP_DECR_SAT;
+	case StencilOpState::Operation::invert:              return D3D11_STENCIL_OP_INVERT;
+	case StencilOpState::Operation::increment_and_wrap:  return D3D11_STENCIL_OP_INCR;
+	case StencilOpState::Operation::decrement_and_wrap:  return D3D11_STENCIL_OP_DECR;
 	}
 	return D3D11_STENCIL_OP_KEEP;
 }
@@ -193,9 +193,9 @@ D3D11_CULL_MODE ConvertCullModeToDX11(RasterizationState::CullMode mode)
 {
 	switch (mode)
 	{
-	case RasterizationState::no_culling:    return D3D11_CULL_NONE;
-	case RasterizationState::front_culling: return D3D11_CULL_FRONT;
-	case RasterizationState::back_culling:  return D3D11_CULL_BACK;
+	case RasterizationState::CullMode::off:    return D3D11_CULL_NONE;
+	case RasterizationState::CullMode::front: return D3D11_CULL_FRONT;
+	case RasterizationState::CullMode::back:  return D3D11_CULL_BACK;
 	}
 	return D3D11_CULL_NONE;
 }
@@ -205,11 +205,11 @@ D3D11_BLEND_OP ConvertBlendOpToDX11(Blending::Operation op)
 {
 	switch (op)
 	{
-	case Blending::add:              return D3D11_BLEND_OP_ADD;
-	case Blending::subtract:         return D3D11_BLEND_OP_SUBTRACT;
-	case Blending::reverse_subtract: return D3D11_BLEND_OP_REV_SUBTRACT;
-	case Blending::min:              return D3D11_BLEND_OP_MIN;
-	case Blending::max:              return D3D11_BLEND_OP_MAX;
+	case Blending::Operation::add:              return D3D11_BLEND_OP_ADD;
+	case Blending::Operation::subtract:         return D3D11_BLEND_OP_SUBTRACT;
+	case Blending::Operation::reverse_subtract: return D3D11_BLEND_OP_REV_SUBTRACT;
+	case Blending::Operation::min:              return D3D11_BLEND_OP_MIN;
+	case Blending::Operation::max:              return D3D11_BLEND_OP_MAX;
 	}
 	return D3D11_BLEND_OP_MAX;
 }
@@ -219,20 +219,20 @@ D3D11_BLEND ConvertBlendFactorToDX11(Blending::Factor op)
 {
 	switch (op)
 	{
-	case Blending::zero:                return D3D11_BLEND_ZERO;
-	case Blending::one:                 return D3D11_BLEND_ONE;
-	case Blending::src_color:           return D3D11_BLEND_SRC_COLOR;
-	case Blending::inverted_src_color:  return D3D11_BLEND_INV_SRC_COLOR;
-	case Blending::dst_color:           return D3D11_BLEND_DEST_COLOR;
-	case Blending::inverted_dst_color:  return D3D11_BLEND_INV_DEST_COLOR;
-	case Blending::src_alpha:           return D3D11_BLEND_SRC_ALPHA;
-	case Blending::inverted_src_alpha:  return D3D11_BLEND_INV_SRC_ALPHA;
-	case Blending::dst_alpha:           return D3D11_BLEND_DEST_ALPHA;
-	case Blending::inverted_dst_alpha:  return D3D11_BLEND_INV_DEST_ALPHA;
-	case Blending::src1_color:          return D3D11_BLEND_SRC1_COLOR;
-	case Blending::inverted_src1_color: return D3D11_BLEND_INV_SRC1_COLOR;
-	case Blending::src1_alpha:          return D3D11_BLEND_SRC1_ALPHA;
-	case Blending::inverted_src1_alpha: return D3D11_BLEND_INV_SRC1_ALPHA;
+	case Blending::Factor::zero:                return D3D11_BLEND_ZERO;
+	case Blending::Factor::one:                 return D3D11_BLEND_ONE;
+	case Blending::Factor::src_color:           return D3D11_BLEND_SRC_COLOR;
+	case Blending::Factor::inverted_src_color:  return D3D11_BLEND_INV_SRC_COLOR;
+	case Blending::Factor::dst_color:           return D3D11_BLEND_DEST_COLOR;
+	case Blending::Factor::inverted_dst_color:  return D3D11_BLEND_INV_DEST_COLOR;
+	case Blending::Factor::src_alpha:           return D3D11_BLEND_SRC_ALPHA;
+	case Blending::Factor::inverted_src_alpha:  return D3D11_BLEND_INV_SRC_ALPHA;
+	case Blending::Factor::dst_alpha:           return D3D11_BLEND_DEST_ALPHA;
+	case Blending::Factor::inverted_dst_alpha:  return D3D11_BLEND_INV_DEST_ALPHA;
+	case Blending::Factor::src1_color:          return D3D11_BLEND_SRC1_COLOR;
+	case Blending::Factor::inverted_src1_color: return D3D11_BLEND_INV_SRC1_COLOR;
+	case Blending::Factor::src1_alpha:          return D3D11_BLEND_SRC1_ALPHA;
+	case Blending::Factor::inverted_src1_alpha: return D3D11_BLEND_INV_SRC1_ALPHA;
 	}
 	return D3D11_BLEND_ONE;
 }
@@ -242,10 +242,10 @@ D3D11_TEXTURE_ADDRESS_MODE ConvertTexAddressModeToDX11(Sampler::AddressMode mode
 {
 	switch (mode)
 	{
-	case Sampler::address_wrap: return D3D11_TEXTURE_ADDRESS_WRAP;
-	case Sampler::address_mirror: return D3D11_TEXTURE_ADDRESS_MIRROR;
-	case Sampler::address_clamp: return D3D11_TEXTURE_ADDRESS_CLAMP;
-	case Sampler::address_border: return D3D11_TEXTURE_ADDRESS_BORDER;
+	case Sampler::AddressMode::wrap: return D3D11_TEXTURE_ADDRESS_WRAP;
+	case Sampler::AddressMode::mirror: return D3D11_TEXTURE_ADDRESS_MIRROR;
+	case Sampler::AddressMode::clamp: return D3D11_TEXTURE_ADDRESS_CLAMP;
+	case Sampler::AddressMode::border: return D3D11_TEXTURE_ADDRESS_BORDER;
 	}
 	return D3D11_TEXTURE_ADDRESS_WRAP;
 }
@@ -316,7 +316,7 @@ Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend,
 	info.supports_async_rc_mapping = false;
 	info.supports_sv_instance_offset = false;
 
-	for (ut::uint32 i = 0; i < pixel::format_count; i++)
+	for (ut::uint32 i = 0; i < static_cast<ut::uint32>(pixel::Format::count); i++)
 	{
 		info.supports_2d_render_target_format[i] = true;
 	}
@@ -354,13 +354,13 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	}
 
 	// dimensions
-	bool is_1d = info.type == Image::type_1D;
-	bool is_2d = info.type == Image::type_2D || info.type == Image::type_cube;
-	bool is_3d = info.type == Image::type_3D;
-	bool is_cube = info.type == Image::type_cube;
+	bool is_1d = info.type == Image::Type::linear;
+	bool is_2d = info.type == Image::Type::planar || info.type == Image::Type::cubic;
+	bool is_3d = info.type == Image::Type::volumetric;
+	bool is_cube = info.type == Image::Type::cubic;
 
 	// check if image is used as a render target
-	const bool is_render_target = info.usage == render::memory::gpu_read_write;
+	const bool is_render_target = info.usage == render::memory::Usage::gpu_read_write;
 	const bool is_depth_buffer = is_render_target && pixel::IsDepthFormat(info.format);
 
 	// initialize subresource data
@@ -409,7 +409,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	}
 
 	// cpu access
-	UINT cpu_access = info.usage == render::memory::gpu_read_cpu_write ? D3D11_CPU_ACCESS_WRITE : 0;
+	UINT cpu_access = info.usage == render::memory::Usage::gpu_read_cpu_write ? D3D11_CPU_ACCESS_WRITE : 0;
 
 	// bind flags
 	UINT bind_flags = D3D11_BIND_SHADER_RESOURCE;
@@ -475,7 +475,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 		tex2d_desc.Width = info.width;
 		tex2d_desc.Height = info.height;
 		tex2d_desc.MipLevels = info.mip_count;
-		tex2d_desc.ArraySize = info.type == Image::type_cube ? 6 : 1;
+		tex2d_desc.ArraySize = info.type == Image::Type::cubic ? 6 : 1;
 		tex2d_desc.Format = tex_pixel_format;
 		tex2d_desc.SampleDesc.Count = 1;
 		tex2d_desc.SampleDesc.Quality = 0;
@@ -606,51 +606,51 @@ ut::Result<Sampler, ut::Error> Device::CreateSampler(const Sampler::Info& info)
 		sampler_desc.ComparisonFunc = ConvertCompareOpToDX11(info.compare_op.Get());
 	}
 
-	if (info.mag_filter == Sampler::filter_nearest)
+	if (info.mag_filter == Sampler::Filter::nearest)
 	{
-		if (info.min_filter == Sampler::filter_nearest)
+		if (info.min_filter == Sampler::Filter::nearest)
 		{
-			if (info.mip_filter == Sampler::filter_nearest)
+			if (info.mip_filter == Sampler::Filter::nearest)
 			{
 				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
 			}
-			else if (info.mip_filter == Sampler::filter_linear)
+			else if (info.mip_filter == Sampler::Filter::linear)
 			{
 				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR;
 			}
 		}
-		else if (info.min_filter == Sampler::filter_linear)
+		else if (info.min_filter == Sampler::Filter::linear)
 		{
-			if (info.mip_filter == Sampler::filter_nearest)
+			if (info.mip_filter == Sampler::Filter::nearest)
 			{
 				sampler_desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT;
 			}
-			else if (info.mip_filter == Sampler::filter_linear)
+			else if (info.mip_filter == Sampler::Filter::linear)
 			{
 				sampler_desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
 			}
 		}
 	}
-	else if (info.mag_filter == Sampler::filter_linear)
+	else if (info.mag_filter == Sampler::Filter::linear)
 	{
-		if (info.min_filter == Sampler::filter_nearest)
+		if (info.min_filter == Sampler::Filter::nearest)
 		{
-			if (info.mip_filter == Sampler::filter_nearest)
+			if (info.mip_filter == Sampler::Filter::nearest)
 			{
 				sampler_desc.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
 			}
-			else if (info.mip_filter == Sampler::filter_linear)
+			else if (info.mip_filter == Sampler::Filter::linear)
 			{
 				sampler_desc.Filter = D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR;
 			}
 		}
-		else if (info.min_filter == Sampler::filter_linear)
+		else if (info.min_filter == Sampler::Filter::linear)
 		{
-			if (info.mip_filter == Sampler::filter_nearest)
+			if (info.mip_filter == Sampler::Filter::nearest)
 			{
 				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 			}
-			else if (info.mip_filter == Sampler::filter_linear)
+			else if (info.mip_filter == Sampler::Filter::linear)
 			{
 				sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 			}
@@ -678,7 +678,7 @@ ut::Result<Sampler, ut::Error> Device::CreateSampler(const Sampler::Info& info)
 ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 {
 	// no image other than 2d or cubemap can be a render target
-	if (info.type != Image::type_2D && info.type != Image::type_cube)
+	if (info.type != Image::Type::planar && info.type != Image::Type::cubic)
 	{
 		return ut::MakeError(ut::error::not_supported, "Only 2D image can be a render target.");
 	}
@@ -687,7 +687,7 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 	Image::Info img_info;
 	img_info.type = info.type;
 	img_info.format = info.format;
-	img_info.usage = render::memory::gpu_read_write;
+	img_info.usage = render::memory::Usage::gpu_read_write;
 	img_info.has_staging_cpu_read_buffer = info.has_staging_cpu_read_buffer;
 	img_info.mip_count = info.mip_count;
 	img_info.width = info.width;
@@ -703,7 +703,7 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 	ID3D11Texture2D *tex2d = image->tex2d.Get();
 
 	// check if image is a cubemap
-	const bool is_cube = info.type == Image::type_cube;
+	const bool is_cube = info.type == Image::Type::cubic;
 
 	// create render target views
 	const ut::uint32 slice_count = is_cube ? 6 : 1;
@@ -714,7 +714,7 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 		{
 			ID3D11RenderTargetView* rtv = nullptr;
 			ID3D11DepthStencilView* dsv = nullptr;
-			if (info.usage == Target::Info::usage_depth)
+			if (info.usage == Target::Info::Usage::depth)
 			{
 				D3D11_DEPTH_STENCIL_VIEW_DESC desc;
 				desc.Format = ConvertPixelFormatToDX11(info.format);
@@ -782,7 +782,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 
 	// initialize target backbuffer info
 	Image::Info backbuffer_info;
-	backbuffer_info.format = pixel::r8g8b8a8_srgb;
+	backbuffer_info.format = pixel::Format::r8g8b8a8_srgb;
 	backbuffer_info.width = width;
 	backbuffer_info.height = height;
 
@@ -824,7 +824,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	// initialize render target info
 	Target::Info target_info;
 	target_info.format = backbuffer_info.format;
-	target_info.usage = Target::Info::usage_present;
+	target_info.usage = Target::Info::Usage::present;
 
 	// create render target that will be associated with provided viewport
 	Image texture(PlatformImage(backbuffer, nullptr, nullptr), ut::Move(backbuffer_info));
@@ -849,7 +849,7 @@ ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBuffer::Info& 
 {
 	ID3D11CommandList* cmd_list = nullptr;
 	ID3D11DeviceContext* deferred_context = nullptr;
-	if (cmd_buffer_info.level == CmdBuffer::level_secondary)
+	if (cmd_buffer_info.level == CmdBuffer::Level::secondary)
 	{
 		HRESULT result = d3d11_device->CreateDeferredContext(0, &deferred_context);
 		if (FAILED(result))
@@ -932,7 +932,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	buffer_desc.MiscFlags = 0;
 
 	// allignment for uniform buffers
-	if (info.type == Buffer::uniform && (buffer_desc.ByteWidth % 16 != 0))
+	if (info.type == Buffer::Type::uniform && (buffer_desc.ByteWidth % 16 != 0))
 	{
 		buffer_desc.ByteWidth += (16 - buffer_desc.ByteWidth % 16);
 	}
@@ -940,14 +940,14 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	// bind flags
 	switch (info.type)
 	{
-	case Buffer::vertex:  buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;   break;
-	case Buffer::index:   buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;    break;
-	case Buffer::uniform: buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER; break;
-	case Buffer::storage: buffer_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE; break;
+	case Buffer::Type::vertex:  buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;   break;
+	case Buffer::Type::index:   buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;    break;
+	case Buffer::Type::uniform: buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER; break;
+	case Buffer::Type::storage: buffer_desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE; break;
 	}
 
 	// cpu access
-	if (info.usage == render::memory::gpu_read_cpu_write)
+	if (info.usage == render::memory::Usage::gpu_read_cpu_write)
 	{
 		buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	}
@@ -956,7 +956,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 		buffer_desc.CPUAccessFlags = 0;
 	}
 
-	if (info.type == Buffer::storage)
+	if (info.type == Buffer::Type::storage)
 	{
 		buffer_desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 		buffer_desc.StructureByteStride = info.stride;
@@ -983,7 +983,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	}
 
 	// create DX11 uav and srv
-	if (info.type == Buffer::storage)
+	if (info.type == Buffer::Type::storage)
 	{
 		D3D11_UNORDERED_ACCESS_VIEW_DESC desc_uav;
 		D3D11_SHADER_RESOURCE_VIEW_DESC  desc_srv;
@@ -1032,7 +1032,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 	// create DX11 shader
 	switch (info.stage)
 	{
-		case Shader::vertex:
+		case Shader::Stage::vertex:
 		{
 			HRESULT result = d3d11_device->CreateVertexShader(info.bytecode.GetAddress(),
 															  info.bytecode.GetSize(),
@@ -1044,7 +1044,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 			}
 		} break;
 
-		case Shader::hull:
+		case Shader::Stage::hull:
 		{
 			HRESULT result = d3d11_device->CreateHullShader(info.bytecode.GetAddress(),
 															info.bytecode.GetSize(),
@@ -1056,7 +1056,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 			}
 		} break;
 
-		case Shader::domain:
+		case Shader::Stage::domain:
 		{
 			HRESULT result = d3d11_device->CreateDomainShader(info.bytecode.GetAddress(),
 															  info.bytecode.GetSize(),
@@ -1068,7 +1068,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 			}
 		} break;
 
-		case Shader::geometry:
+		case Shader::Stage::geometry:
 		{
 			HRESULT result = d3d11_device->CreateGeometryShader(info.bytecode.GetAddress(),
 																info.bytecode.GetSize(),
@@ -1080,7 +1080,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 			}
 		} break;
 
-		case Shader::pixel:
+		case Shader::Stage::pixel:
 		{
 			HRESULT result = d3d11_device->CreatePixelShader(info.bytecode.GetAddress(),
 															 info.bytecode.GetSize(),
@@ -1092,7 +1092,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 			}
 		} break;
 
-		case Shader::compute:
+		case Shader::Stage::compute:
 		{
 			HRESULT result = d3d11_device->CreateComputeShader(info.bytecode.GetAddress(),
 															   info.bytecode.GetSize(),
@@ -1108,12 +1108,12 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 	// create ve shader
 	switch (info.stage)
 	{
-	case Shader::vertex:   return Shader(PlatformShader(vs), ut::Move(info));
-	case Shader::hull:     return Shader(PlatformShader(hs), ut::Move(info));
-	case Shader::domain:   return Shader(PlatformShader(ds), ut::Move(info));
-	case Shader::geometry: return Shader(PlatformShader(gs), ut::Move(info));
-	case Shader::pixel:    return Shader(PlatformShader(ps), ut::Move(info));
-	case Shader::compute:  return Shader(PlatformShader(cs), ut::Move(info));
+	case Shader::Stage::vertex:   return Shader(PlatformShader(vs), ut::Move(info));
+	case Shader::Stage::hull:     return Shader(PlatformShader(hs), ut::Move(info));
+	case Shader::Stage::domain:   return Shader(PlatformShader(ds), ut::Move(info));
+	case Shader::Stage::geometry: return Shader(PlatformShader(gs), ut::Move(info));
+	case Shader::Stage::pixel:    return Shader(PlatformShader(ps), ut::Move(info));
+	case Shader::Stage::compute:  return Shader(PlatformShader(cs), ut::Move(info));
 	}
 	return ut::MakeError(ut::error::fail);
 }
@@ -1168,9 +1168,9 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	}
 
 	// create dx11 input layout
-	if (info.stages[Shader::vertex])
+	if (info.stages[static_cast<ut::uint32>(Shader::Stage::vertex)])
 	{
-		const ut::Array<ut::byte>& vs_bytecode = info.stages[Shader::vertex]->info.bytecode;
+		const ut::Array<ut::byte>& vs_bytecode = info.stages[static_cast<ut::uint32>(Shader::Stage::vertex)]->info.bytecode;
 
 		result = d3d11_device->CreateInputLayout(input_el_desc.GetAddress(),
 		                                         input_element_count,
@@ -1190,9 +1190,9 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 	// create rasterizer state
 	const RasterizationState& rs = info.rasterization_state;
 	D3D11_RASTERIZER_DESC raster_desc;
-	raster_desc.FillMode = rs.polygon_mode == RasterizationState::fill ? D3D11_FILL_SOLID : D3D11_FILL_WIREFRAME;
+	raster_desc.FillMode = rs.polygon_mode == RasterizationState::PolygonMode::fill ? D3D11_FILL_SOLID : D3D11_FILL_WIREFRAME;
 	raster_desc.CullMode = ConvertCullModeToDX11(rs.cull_mode);
-	raster_desc.FrontCounterClockwise = rs.front_face == RasterizationState::counter_clockwise ? TRUE : FALSE;
+	raster_desc.FrontCounterClockwise = rs.front_face == RasterizationState::FrontFace::counter_clockwise ? TRUE : FALSE;
 	raster_desc.DepthBias = rs.depth_bias_enable ? 1 : 0;
 	raster_desc.DepthBiasClamp = rs.depth_bias_clamp;
 	raster_desc.SlopeScaledDepthBias = rs.depth_bias_slope_factor;
@@ -1254,8 +1254,8 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 		target.SrcBlend = ConvertBlendFactorToDX11(blending.src_blend);
 		target.DestBlend = ConvertBlendFactorToDX11(blending.dst_blend);
 		target.BlendOp = ConvertBlendOpToDX11(blending.color_op);
-		target.SrcBlendAlpha = ConvertBlendFactorToDX11(blending.src_alpha);
-		target.DestBlendAlpha = ConvertBlendFactorToDX11(blending.dst_alpha);
+		target.SrcBlendAlpha = ConvertBlendFactorToDX11(blending.src_blend_alpha);
+		target.DestBlendAlpha = ConvertBlendFactorToDX11(blending.dst_blend_alpha);
 		target.BlendOpAlpha = ConvertBlendOpToDX11(blending.alpha_op);
 		target.RenderTargetWriteMask = blending.write_mask;
 	}
@@ -1305,7 +1305,7 @@ void Device::Record(CmdBuffer& cmd_buffer,
 	}
 
 	// choose primary or deferred context
-	const bool is_secondary_buffer = cmd_buffer.info.level == CmdBuffer::level_secondary;
+	const bool is_secondary_buffer = cmd_buffer.info.level == CmdBuffer::Level::secondary;
 	ID3D11DeviceContext* dx11_context_ptr = is_secondary_buffer ? cmd_buffer.deferred_context.Get() :
 	                                        immediate_context.Get();
 	Context context(PlatformContext(dx11_context_ptr,

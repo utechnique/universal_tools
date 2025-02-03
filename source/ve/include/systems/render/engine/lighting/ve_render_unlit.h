@@ -42,26 +42,26 @@ public:
 private:
 	struct MeshInstRendering
 	{
-		enum AlphaMode
+		enum class AlphaMode
 		{
-			alpha_opaque,
+			opaque,
 			alpha_test,
-			alpha_blend,
-			alpha_mode_count
+			blend,
+			count
 		};
 
-		enum CullMode
+		enum class CullMode
 		{
-			cull_none,
-			cull_back,
-			cull_mode_count
+			none,
+			back,
+			count
 		};
 
-		enum StencilMode
+		enum class StencilMode
 		{
-			stencil_none,
-			stencil_highlighted,
-			stencil_mode_count
+			none,
+			highlighted,
+			count
 		};
 
 		static constexpr ut::uint32 vertex_format_column = 0;
@@ -71,13 +71,13 @@ private:
 		static constexpr ut::uint32 polygon_mode_column = 4;
 
 		typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-		                 alpha_mode_count,
-		                 cull_mode_count,
-		                 stencil_mode_count,
+		                 static_cast<size_t>(AlphaMode::count),
+		                 static_cast<size_t>(CullMode::count),
+		                 static_cast<size_t>(StencilMode::count),
 		                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
 		typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-		                 alpha_mode_count> ShaderGrid;
+		                 static_cast<size_t>(AlphaMode::count)> ShaderGrid;
 
 		// Descriptor set for the light pass shaders.
 		struct Descriptors : public DescriptorSet

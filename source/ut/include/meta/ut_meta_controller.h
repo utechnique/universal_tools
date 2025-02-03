@@ -33,13 +33,13 @@ public:
 	typedef uint32 SizeType;
 
 	// Enumeration of possible modes, all modes are mutually exclusive
-	enum Mode
+	enum class Mode
 	{
-		empty_mode = 0,
-		binary_input_mode = 1,
-		binary_output_mode = 2,
-		text_input_mode = 3,
-		text_output_mode = 4
+		empty,
+		binary_input,
+		binary_output,
+		text_input,
+		text_output
 	};
 
 	// Union of pointers to possible input/output
@@ -230,7 +230,7 @@ public:
 	                               bool is_attribute = true)
 	{
 		// write binary form
-		if (mode == binary_output_mode)
+		if (mode == Mode::binary_output)
 		{
 			Optional<Error> write_error = WriteBinary<T>(&element, 1);
 			if (write_error)
@@ -238,7 +238,7 @@ public:
 				return write_error;
 			}
 		}
-		else if (mode == text_output_mode) // write text form
+		else if (mode == Mode::text_output) // write text form
 		{
 			// create new text node or use existing one
 			Optional< Ref< Tree<text::Node> > > find_result = FindTextNode<Ref>(*io.text_output, attribute_name);
@@ -282,7 +282,7 @@ public:
 		T element;
 
 		// read binary form
-		if (mode == binary_input_mode)
+		if (mode == Mode::binary_input)
 		{
 			Optional<Error> read_error = ReadBinary<T>(&element, 1);
 			if (read_error)
@@ -290,7 +290,7 @@ public:
 				return MakeError(read_error.Move());
 			}
 		}
-		else if (mode == text_input_mode) // read text form
+		else if (mode == Mode::text_input) // read text form
 		{
 			Optional<String> extraction_result = ExtractTextNodeValue(*io.text_input, attribute_name);
 			if (!extraction_result)
@@ -315,7 +315,7 @@ public:
 	template <typename T>
 	Optional<Error> WriteValue(const T& element)
 	{
-		if (mode == text_output_mode && !info.HasValueEncapsulation())
+		if (mode == Mode::text_output && !info.HasValueEncapsulation())
 		{
 			io.text_output->data.value = Print<T>(element);
 			io.text_output->data.value_type = String(Type<T>::Name());
@@ -333,7 +333,7 @@ public:
 	template <typename T>
 	Result<T, Error> ReadValue()
 	{
-		if (mode == text_input_mode && !info.HasValueEncapsulation())
+		if (mode == Mode::text_input && !info.HasValueEncapsulation())
 		{
 			// try to find a value in a separate "value" node (variant for json)
 			Optional<String> extraction_result = ExtractTextNodeValue(*io.text_input, node_names::skValue);

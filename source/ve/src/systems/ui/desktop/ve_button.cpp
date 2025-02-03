@@ -20,7 +20,7 @@ Button::Button(ut::uint32 x,
                                                     fl_color_average(FL_BACKGROUND_COLOR, FL_FOREGROUND_COLOR, 0.75f) }
 {
 	box(FL_FLAT_BOX);
-	SetState(state_release);
+	SetState(State::release);
 	if (text->Length() != 0)
 	{
 		label(text->GetAddress());
@@ -30,9 +30,9 @@ Button::Button(ut::uint32 x,
 // Assigns background color for the provided state.
 void Button::SetBackgroundColor(State state, Fl_Color new_color)
 {
-	UT_ASSERT(state < state_count);
-	bkg_color[state] = new_color;
-	color(bkg_color[current_state]);
+	UT_ASSERT(state < State::count);
+	bkg_color[static_cast<size_t>(state)] = new_color;
+	color(bkg_color[static_cast<size_t>(current_state)]);
 }
 
 // Assigns a callback function that will be triggered on release action.
@@ -58,7 +58,7 @@ Button::State Button::GetState() const
 void Button::SetState(State new_state)
 {
 	current_state = new_state;
-	color(bkg_color[new_state]);
+	color(bkg_color[static_cast<size_t>(new_state)]);
 	redraw();
 }
 
@@ -72,7 +72,7 @@ int Button::handle(int e)
 	switch (e)
 	{
 	case FL_PUSH:
-		SetState(state_push);
+		SetState(State::push);
 		return 1;
 	case FL_RELEASE:
 		if (ex >= x() && ey >= y() && ex < x() + w() && ey < y() + h())
@@ -81,24 +81,24 @@ int Button::handle(int e)
 			{
 				callback();
 			}
-			SetState(state_hover);
+			SetState(State::hover);
 		}
 		else
 		{
-			SetState(state_release);
+			SetState(State::release);
 		}
 		return 1;
 	case FL_MOVE:
-		SetState(state_hover);
+		SetState(State::hover);
 		return 1;
 	case FL_ENTER:
-		SetState(state_hover);
+		SetState(State::hover);
 		return 1;
 	case FL_LEAVE:
-		SetState(state_release);
+		SetState(State::release);
 		return 1;
 	case FL_SHOW:
-		SetState(state_release);
+		SetState(State::release);
 		return 1;
 	}
 

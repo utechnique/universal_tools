@@ -40,14 +40,14 @@ ut::Result<GaussianBlur::ViewData, ut::Error> GaussianBlur::CreateViewData(Rende
 {
 	// create pipeline state
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = tools.shaders.quad_vs;
-	info.stages[Shader::pixel] = blur_shader;
+	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::pixel, blur_shader);
 	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::never;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::never;
+	info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
+	info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
 	ut::Result<PipelineState, ut::Error> pipeline_state = tools.device.CreatePipelineState(ut::Move(info),
 	                                                                                       render_pass);
@@ -61,8 +61,8 @@ ut::Result<GaussianBlur::ViewData, ut::Error> GaussianBlur::CreateViewData(Rende
 
 	// create the uniform buffer for weights
 	Buffer::Info buffer_info;
-	buffer_info.type = Buffer::uniform;
-	buffer_info.usage = render::memory::gpu_read_cpu_write;
+	buffer_info.type = Buffer::Type::uniform;
+	buffer_info.usage = render::memory::Usage::gpu_read_cpu_write;
 	buffer_info.size = weights.Count() * sizeof(ut::Vector<4>);
 	ut::Result<Buffer, ut::Error> weights_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
 	if (!weights_buffer)
@@ -106,7 +106,7 @@ void GaussianBlur::Apply(Context& context,
 	{
 		ut::Vector<4>& weight = data.weights[i + radius];
 		
-		if (direction == GaussianBlur::direction_horizontal)
+		if (direction == GaussianBlur::Direction::horizontal)
 		{
 			weight.X() = static_cast<float>(i) / fb_info.width;
 			weight.Y() = 0.0f;
@@ -163,7 +163,7 @@ ut::Result<Shader, ut::Error> GaussianBlur::LoadShader(ut::uint32 radius,
 	macro.value = radius_str;
 	macros.Add(ut::Move(macro));
 
-	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::pixel,
+	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::Stage::pixel,
 	                                                                ut::String("gaussian_blur_") + shader_name,
 	                                                                "GaussianBlurPS",
 	                                                                "gaussian_blur.hlsl",

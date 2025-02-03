@@ -9,10 +9,10 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Enumeration of the stencil values used in the render engine.
-enum StencilReference : ut::uint32
+enum class StencilReference : ut::uint32
 {
-	stencilref_opaque = 0x1, // opaque objects
-	stencilref_highlight = 0x2, // highlighted objects
+	opaque = 0x1, // opaque objects
+	highlight = 0x2, // highlighted objects
 };
 
 //----------------------------------------------------------------------------//

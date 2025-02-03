@@ -11,7 +11,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Vulkan image.
-class PlatformImage : public VkRc<vk::image>
+class PlatformImage : public VkRc<vk::Rc::image>
 {
 	friend class Device;
 	friend class PlatformContext;
@@ -45,7 +45,7 @@ public:
 	              VkImageView* cube_faces_arr, // pass nullptr if not a cubemap
 	              VkImageAspectFlags aspect_flags,
 	              const State& image_state,
-	              VkRc<vk::buffer> staging_buffer);
+	              VkRc<vk::Rc::buffer> staging_buffer);
 
 	// Move constructor.
 	PlatformImage(PlatformImage&&) noexcept;
@@ -80,11 +80,11 @@ private:
 	VkImageAspectFlags aspect_mask;
 
 	// shader resource view
-	VkRc<vk::image_view> view;
-	VkRc<vk::image_view> cube_faces[6];
+	VkRc<vk::Rc::image_view> view;
+	VkRc<vk::Rc::image_view> cube_faces[6];
 
 	// staging buffer to read gpu data from cpu
-	VkRc<vk::buffer> staging_gpu_cpu_buffer;
+	VkRc<vk::Rc::buffer> staging_gpu_cpu_buffer;
 
 	// current state (layout)
 	State state;

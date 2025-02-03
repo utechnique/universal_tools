@@ -90,10 +90,10 @@ InputAssemblyState Mesh::CreateIaState(VertexFormat vertex_format,
 	InputAssemblyState ia_state;
 	switch (polygon_mode)
 	{
-		case Mesh::PolygonMode::line: ia_state.topology = primitive::line_list; break;
-		case Mesh::PolygonMode::triangle: ia_state.topology = primitive::triangle_list; break;
-		case Mesh::PolygonMode::triangle_wireframe: ia_state.topology = primitive::triangle_list; break;
-		default: ia_state.topology = primitive::triangle_list;
+		case Mesh::PolygonMode::line: ia_state.topology = primitive::Topology::line_list; break;
+		case Mesh::PolygonMode::triangle: ia_state.topology = primitive::Topology::triangle_list; break;
+		case Mesh::PolygonMode::triangle_wireframe: ia_state.topology = primitive::Topology::triangle_list; break;
+		default: ia_state.topology = primitive::Topology::triangle_list;
 	}
 
 	ut::Optional<ut::Error> init_error = MeshVertexHelper<static_cast<size_t>(VertexFormat::count) - 1>::
@@ -122,10 +122,10 @@ RasterizationState::PolygonMode Mesh::GetRasterizerPolygonMode(PolygonMode polyg
 {
 	switch (polygon_mode)
 	{
-		case Mesh::PolygonMode::line: return RasterizationState::line;
-		case Mesh::PolygonMode::triangle: return RasterizationState::fill;
-		case Mesh::PolygonMode::triangle_wireframe: return RasterizationState::line;
-		default: return RasterizationState::fill;
+		case Mesh::PolygonMode::line: return RasterizationState::PolygonMode::line;
+		case Mesh::PolygonMode::triangle: return RasterizationState::PolygonMode::fill;
+		case Mesh::PolygonMode::triangle_wireframe: return RasterizationState::PolygonMode::line;
+		default: return RasterizationState::PolygonMode::fill;
 	}
 }
 
@@ -249,8 +249,8 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateEyeSpaceRect(con
 	typedef MeshVertex<vertex_format>::Type QuadVertex;
 
 	Buffer::Info buffer_info;
-	buffer_info.type = Buffer::vertex;
-	buffer_info.usage = render::memory::gpu_immutable;
+	buffer_info.type = Buffer::Type::vertex;
+	buffer_info.usage = render::memory::Usage::gpu_immutable;
 	buffer_info.size = QuadVertex::size * 6;
 	buffer_info.stride = QuadVertex::size;
 	buffer_info.data.Resize(buffer_info.size);
@@ -276,7 +276,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateEyeSpaceRect(con
 	Mesh mesh(2, 6,
 	          vertex_buffer.Move(),
 	          ut::Optional<Buffer>(),
-	          index_type_uint32,
+	          IndexType::uint32,
 	          vertex_format,
 	          Mesh::PolygonMode::triangle,
 	          ut::Array<Mesh::Subset>());
@@ -652,8 +652,8 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreatePrimitive(ut::Op
 {
 	// create vertex buffer
 	Buffer::Info vertex_buffer_info;
-	vertex_buffer_info.type = Buffer::vertex;
-	vertex_buffer_info.usage = render::memory::gpu_immutable;
+	vertex_buffer_info.type = Buffer::Type::vertex;
+	vertex_buffer_info.usage = render::memory::Usage::gpu_immutable;
 	vertex_buffer_info.size = geometry_data.vertex_buffer.GetSize();
 	vertex_buffer_info.stride = static_cast<ut::uint32>(vertex_buffer_info.size) / geometry_data.vertex_count;
 	vertex_buffer_info.data = ut::Move(geometry_data.vertex_buffer);
@@ -665,8 +665,8 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreatePrimitive(ut::Op
 
 	// create index buffer
 	Buffer::Info index_buffer_info;
-	index_buffer_info.type = Buffer::index;
-	index_buffer_info.usage = render::memory::gpu_immutable;
+	index_buffer_info.type = Buffer::Type::index;
+	index_buffer_info.usage = render::memory::Usage::gpu_immutable;
 	index_buffer_info.size = sizeof(ut::uint32) * geometry_data.index_count;
 	index_buffer_info.stride = sizeof(ut::uint32);
 	index_buffer_info.data = ut::Move(geometry_data.index_buffer);
@@ -706,7 +706,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreatePrimitive(ut::Op
 	          geometry_data.vertex_count,
 	          vertex_buffer.Move(),
 	          index_buffer.Move(),
-	          index_type_uint32,
+	          IndexType::uint32,
 	          vertex_format,
 	          polygon_mode,
 	          ut::Move(subsets));

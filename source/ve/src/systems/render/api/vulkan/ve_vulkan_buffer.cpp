@@ -9,7 +9,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-PlatformBuffer::PlatformBuffer(VkRc<vk::buffer> buffer_rc) : VkRc<vk::buffer>(ut::Move(buffer_rc))
+PlatformBuffer::PlatformBuffer(VkRc<vk::Rc::buffer> buffer_rc) : VkRc<vk::Rc::buffer>(ut::Move(buffer_rc))
 {}
 
 // Move constructor.

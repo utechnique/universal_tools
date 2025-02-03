@@ -19,8 +19,8 @@ FreeCameraControllerSystem::FreeCameraControllerSystem(ut::SharedPtr<input::Mana
 System::Result FreeCameraControllerSystem::Update(System::Time time_step_ms,
                                                   Base::Access& access)
 {
-	const System::Time seconds = ut::time::Convert<ut::time::milliseconds,
-	                                               ut::time::seconds,
+	const System::Time seconds = ut::time::Convert<ut::time::Unit::millisecond,
+	                                               ut::time::Unit::second,
 	                                               System::Time>(time_step_ms);
 
 	for (Base::Access::EntityIterator entity = access.BeginEntities(); entity != access.EndEntities(); ++entity)

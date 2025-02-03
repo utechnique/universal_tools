@@ -56,7 +56,7 @@ public:
 	// reference to the ve::ComponentAccessGroup object (as an argument) 
 	// providing the access only for the desired components. If the returned
 	// object is empty - the system will receive all component types.
-	virtual ut::Array< ComponentSet<ut::access_full> > DefineComponentSets() const;
+	virtual ut::Array< ComponentSet<ComponentMap::Access::read_write> > DefineComponentSets() const;
 
 	// Returns name of the system.
 	const ut::String& GetName() const;

@@ -12,8 +12,8 @@ START_NAMESPACE(render)
 PlatformCmdBuffer::PlatformCmdBuffer(VkDevice device_handle,
                                      VkCommandPool cmd_pool_handle,
                                      VkCommandBuffer cmd_buffer_handle,
-                                     VkFence fence_handle) : VkRc<vk::cmd_buffer>(cmd_buffer_handle,
-                                                                                  VkDetail<vk::cmd_buffer>(device_handle, cmd_pool_handle))
+                                     VkFence fence_handle) : VkRc<vk::Rc::cmd_buffer>(cmd_buffer_handle,
+                                                                                  VkDetail<vk::Rc::cmd_buffer>(device_handle, cmd_pool_handle))
                                                            , pool(cmd_pool_handle, device_handle)
                                                            , fence(fence_handle, device_handle)
                                                            , descriptor_mgr(device_handle, cmd_buffer_handle)
@@ -23,7 +23,7 @@ PlatformCmdBuffer::PlatformCmdBuffer(VkDevice device_handle,
 PlatformCmdBuffer::~PlatformCmdBuffer()
 {
 	// command buffer must be destroyed before the command pool
-	this->VkRc<vk::cmd_buffer>::Delete();
+	this->VkRc<vk::Rc::cmd_buffer>::Delete();
 }
 
 // Move constructor.

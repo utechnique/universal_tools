@@ -9,14 +9,14 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 START_NAMESPACE(postprocess)
 //----------------------------------------------------------------------------//
-// Highlights an area of viewport marked with stencilref_highlight stencil bit.
+// Highlights an area of viewport marked with StencilReference::highlight stencil bit.
 class GaussianBlur
 {
 public:
-	enum Direction
+	enum class Direction
 	{
-		direction_horizontal,
-		direction_vertical,
+		horizontal,
+		vertical,
 	};
 
 	class ViewData

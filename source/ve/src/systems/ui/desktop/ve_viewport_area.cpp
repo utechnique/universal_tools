@@ -393,7 +393,7 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateProjChoice(int x, int y)
 	}
 
 	// choose a layout
-	choice->value(static_cast<int>(Viewport::perspective));
+	choice->value(static_cast<int>(Viewport::Projection::perspective));
 
 	// success
 	return choice;
@@ -418,7 +418,7 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateResolutionChoice(int x, int y)
 	}
 
 	// choose a layout
-	choice->value(static_cast<int>(Viewport::resolution_auto));
+	choice->value(static_cast<int>(Viewport::Resolution::fit));
 
 	// choose a layout
 	choice->value(0);
@@ -446,7 +446,7 @@ ut::UniquePtr<Fl_Choice> ViewportTab::CreateRenderModeChoice(int x, int y)
 	}
 
 	// choose a layout
-	choice->value(static_cast<int>(Viewport::resolution_auto));
+	choice->value(static_cast<int>(Viewport::Resolution::fit));
 
 	// choose a layout
 	choice->value(0);

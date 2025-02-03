@@ -125,8 +125,8 @@ ut::Result<Material, ut::Error> Material::Generator::CreateFromPrompt(const ut::
 	material.diffuse = diffuse_map.Move();
 	material.normal = normal_map.Move();
 	material.material = material_map.Move();
-	material.alpha = enable_transparency ? Material::alpha_transparent :
-	                                       Material::alpha_opaque;
+	material.alpha = enable_transparency ? Material::Alpha::transparent :
+	                                       Material::Alpha::opaque;
 	material.double_sided = false;
 	material.unlit = unlit;
 

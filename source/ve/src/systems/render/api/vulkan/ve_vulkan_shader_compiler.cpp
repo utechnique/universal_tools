@@ -20,12 +20,12 @@ shaderc_shader_kind ConvertShaderTypeToShaderc(Shader::Stage stage)
 {
 	switch (stage)
 	{
-	case Shader::vertex: return shaderc_glsl_vertex_shader;
-	case Shader::hull: return shaderc_glsl_tess_control_shader;
-	case Shader::domain: return shaderc_glsl_tess_evaluation_shader;
-	case Shader::geometry: return shaderc_glsl_geometry_shader;
-	case Shader::pixel: return shaderc_glsl_fragment_shader;
-	case Shader::compute: return shaderc_glsl_compute_shader;
+	case Shader::Stage::vertex: return shaderc_glsl_vertex_shader;
+	case Shader::Stage::hull: return shaderc_glsl_tess_control_shader;
+	case Shader::Stage::domain: return shaderc_glsl_tess_evaluation_shader;
+	case Shader::Stage::geometry: return shaderc_glsl_geometry_shader;
+	case Shader::Stage::pixel: return shaderc_glsl_fragment_shader;
+	case Shader::Stage::compute: return shaderc_glsl_compute_shader;
 	}
 	return shaderc_glsl_default_vertex_shader;
 }
@@ -200,10 +200,10 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 
 	// initialize separate groups of reflected resources
 	ut::Array<SpirvCrossResources> spirv_resources;
-	spirv_resources.Add(SpirvCrossResources{ Shader::Parameter::uniform_buffer, shader_resources.uniform_buffers });
-	spirv_resources.Add(SpirvCrossResources{ Shader::Parameter::image, shader_resources.separate_images });
-	spirv_resources.Add(SpirvCrossResources{ Shader::Parameter::sampler, shader_resources.separate_samplers });
-	spirv_resources.Add(SpirvCrossResources{ Shader::Parameter::storage_buffer, shader_resources.storage_buffers });
+	spirv_resources.Add(SpirvCrossResources{ Shader::Parameter::Type::uniform_buffer, shader_resources.uniform_buffers });
+	spirv_resources.Add(SpirvCrossResources{ Shader::Parameter::Type::image, shader_resources.separate_images });
+	spirv_resources.Add(SpirvCrossResources{ Shader::Parameter::Type::sampler, shader_resources.separate_samplers });
+	spirv_resources.Add(SpirvCrossResources{ Shader::Parameter::Type::storage_buffer, shader_resources.storage_buffers });
 
 	// initialize shader parameters (name and binding)
 	for (size_t rc_id = 0; rc_id < spirv_resources.Count(); rc_id++)

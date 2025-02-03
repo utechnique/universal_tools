@@ -56,7 +56,7 @@ public:
 	ut::uint32 set_counter = 0;
 
 private:
-	VkRc<vk::descriptor_pool> pool;
+	VkRc<vk::Rc::descriptor_pool> pool;
 	VkDevice device;
 };
 

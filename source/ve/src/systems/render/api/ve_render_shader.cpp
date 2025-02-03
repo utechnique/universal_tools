@@ -19,7 +19,7 @@ void Shader::MacroDefinition::Reflect(ut::meta::Snapshot& snapshot)
 //    @param snapshot - reference to the reflection tree
 void Shader::Parameter::Reflect(ut::meta::Snapshot& snapshot)
 {
-	snapshot.Add(type, "type");
+	snapshot.Add(reinterpret_cast<ut::uint32&>(type), "type");
 	snapshot.Add(name, "name");
 	snapshot.Add(binding, "binding");
 	snapshot.Add(array_dim, "array_dim");
@@ -43,7 +43,7 @@ ut::uint32 Shader::Parameter::GetElementCount() const
 //    @param snapshot - reference to the reflection tree
 void Shader::Info::Reflect(ut::meta::Snapshot& snapshot)
 {
-	snapshot.Add(stage, "stage");
+	snapshot.Add(reinterpret_cast<ut::uint32&>(stage), "stage");
 	snapshot.Add(name, "name");
 	snapshot.Add(entry_point, "entry");
 	snapshot.Add(ut::meta::Binary(bytecode), "bytecode");

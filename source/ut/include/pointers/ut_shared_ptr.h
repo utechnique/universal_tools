@@ -17,7 +17,7 @@ template<class T, thread_safety::Mode> class WeakPtr;
 
 //----------------------------------------------------------------------------//
 // Default thread safety mode for ut::SharedPtr.
-static const thread_safety::Mode skDefaultSharedPtrMode = thread_safety::on;
+static const thread_safety::Mode skDefaultSharedPtrMode = thread_safety::Mode::on;
 
 //----------------------------------------------------------------------------//
 // template class ut::SharedPtr is a smart pointer that retains shared ownership
@@ -309,18 +309,18 @@ inline SharedPtr<T> MakeShared(Args&&...args)
 // The same as ut::MakeShared(), but resulting pointer is guaranteed to have
 // thread safety enabled.
 template<typename T, typename... Args>
-inline SharedPtr<T, thread_safety::on> MakeSafeShared(Args&&...args)
+inline SharedPtr<T, thread_safety::Mode::on> MakeSafeShared(Args&&...args)
 {
-	return SharedPtr<T, thread_safety::on>(new T(Forward<Args>(args)...));
+	return SharedPtr<T, thread_safety::Mode::on>(new T(Forward<Args>(args)...));
 }
 
 //----------------------------------------------------------------------------//
 // The same as ut::MakeShared(), but resulting pointer is guaranteed to have
 // thread safety disabled.
 template<typename T, typename... Args>
-inline SharedPtr<T, thread_safety::off> MakeUnsafeShared(Args&&...args)
+inline SharedPtr<T, thread_safety::Mode::off> MakeUnsafeShared(Args&&...args)
 {
-	return SharedPtr<T, thread_safety::off>(new T(Forward<Args>(args)...));
+	return SharedPtr<T, thread_safety::Mode::off>(new T(Forward<Args>(args)...));
 }
 
 //----------------------------------------------------------------------------//

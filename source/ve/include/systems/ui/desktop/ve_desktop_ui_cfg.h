@@ -15,13 +15,13 @@ START_NAMESPACE(ui)
 class Theme : public ut::meta::Reflective
 {
 public:
-	enum ColorScheme
+	enum class ColorScheme
 	{
-		scheme_dark
+		dark
 	};
 
 	// Constructor, creates a theme with the provided color scheme.
-	Theme(ColorScheme scheme = scheme_dark);
+	Theme(ColorScheme scheme = ColorScheme::dark);
 
 	// Registers data into reflection tree.
 	//    @param snapshot - reference to the reflection tree

@@ -13,7 +13,7 @@ START_NAMESPACE(render)
 // Enumeration of all possible Vulkan resources.
 namespace vk
 {
-	enum Type
+	enum class Rc
 	{
 		instance,
 		device,
@@ -43,25 +43,25 @@ namespace vk
 //----------------------------------------------------------------------------//
 // Use specialization ve::render::VkDetail template to define a type of
 // the Vulkan resource and a way to delete it.
-template<vk::Type type> class VkDetail;
+template<vk::Rc type> class VkDetail;
 
 //----------------------------------------------------------------------------//
 // Instance.
-template<> struct VkDetail<vk::instance>
+template<> struct VkDetail<vk::Rc::instance>
 {
 	typedef VkInstance Handle;
 	static void Destroy(VkInstance handle) { vkDestroyInstance(handle, nullptr); }
 };
 
 // Device.
-template<> struct VkDetail<vk::device>
+template<> struct VkDetail<vk::Rc::device>
 {
 	typedef VkDevice Handle;
 	static void Destroy(VkDevice handle) { vkDestroyDevice(handle, nullptr); };
 };
 
 // Memory.
-template<> struct VkDetail<vk::memory>
+template<> struct VkDetail<vk::Rc::memory>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE,
 	         size_t memory_size = 0) : device(device_handle)
@@ -82,7 +82,7 @@ private:
 };
 
 // Debug messenger.
-template<> struct VkDetail<vk::dbg_messenger>
+template<> struct VkDetail<vk::Rc::dbg_messenger>
 {
 	typedef VkDebugUtilsMessengerEXT Handle;
 
@@ -104,7 +104,7 @@ private:
 };
 
 // Surface.
-template<> struct VkDetail<vk::surface>
+template<> struct VkDetail<vk::Rc::surface>
 {
 	VkDetail(VkInstance instance_handle = VK_NULL_HANDLE) : instance(instance_handle)
 	{}
@@ -117,7 +117,7 @@ private:
 };
 
 // Swap chain.
-template<> struct VkDetail<vk::swap_chain>
+template<> struct VkDetail<vk::Rc::swap_chain>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -130,7 +130,7 @@ private:
 };
 
 // Queue.
-template<> struct VkDetail<vk::queue>
+template<> struct VkDetail<vk::Rc::queue>
 {
 	VkDetail(uint32_t in_queue_id = 0,
 	         uint32_t in_queue_family_id = 0) : queue_id(in_queue_id)
@@ -147,7 +147,7 @@ private:
 };
 
 // Image.
-template<> struct VkDetail<vk::image>
+template<> struct VkDetail<vk::Rc::image>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE,
 	         VmaAllocator allocator_handle = VK_NULL_HANDLE,
@@ -167,7 +167,7 @@ private:
 };
 
 // Image view.
-template<> struct VkDetail<vk::image_view>
+template<> struct VkDetail<vk::Rc::image_view>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -180,7 +180,7 @@ private:
 };
 
 // Sampler.
-template<> struct VkDetail<vk::sampler>
+template<> struct VkDetail<vk::Rc::sampler>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -193,7 +193,7 @@ private:
 };
 
 // Buffer.
-template<> struct VkDetail<vk::buffer>
+template<> struct VkDetail<vk::Rc::buffer>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE,
 	         VmaAllocator allocator_handle = VK_NULL_HANDLE,
@@ -213,7 +213,7 @@ private:
 };
 
 // Semaphore.
-template<> struct VkDetail<vk::semaphore>
+template<> struct VkDetail<vk::Rc::semaphore>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -226,7 +226,7 @@ private:
 };
 
 // Command pool.
-template<> struct VkDetail<vk::cmd_pool>
+template<> struct VkDetail<vk::Rc::cmd_pool>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -239,7 +239,7 @@ private:
 };
 
 // Command buffer.
-template<> struct VkDetail<vk::cmd_buffer>
+template<> struct VkDetail<vk::Rc::cmd_buffer>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE,
 	         VkCommandPool pool_handle = VK_NULL_HANDLE) : device(device_handle)
@@ -259,7 +259,7 @@ private:
 };
 
 // Render pass.
-template<> struct VkDetail<vk::render_pass>
+template<> struct VkDetail<vk::Rc::render_pass>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -272,7 +272,7 @@ private:
 };
 
 // Framebuffer.
-template<> struct VkDetail<vk::framebuffer>
+template<> struct VkDetail<vk::Rc::framebuffer>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -285,7 +285,7 @@ private:
 };
 
 // Fence.
-template<> struct VkDetail<vk::fence>
+template<> struct VkDetail<vk::Rc::fence>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -298,7 +298,7 @@ private:
 };
 
 // Shader module.
-template<> struct VkDetail<vk::shader_module>
+template<> struct VkDetail<vk::Rc::shader_module>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -311,7 +311,7 @@ private:
 };
 
 // Pipeline.
-template<> struct VkDetail<vk::pipeline>
+template<> struct VkDetail<vk::Rc::pipeline>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -324,7 +324,7 @@ private:
 };
 
 // Pipeline layout.
-template<> struct VkDetail<vk::pipeline_layout>
+template<> struct VkDetail<vk::Rc::pipeline_layout>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -337,7 +337,7 @@ private:
 };
 
 // Descriptor set layout.
-template<> struct VkDetail<vk::descriptor_set_layout>
+template<> struct VkDetail<vk::Rc::descriptor_set_layout>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -350,7 +350,7 @@ private:
 };
 
 // Descriptor pool.
-template<> struct VkDetail<vk::descriptor_pool>
+template<> struct VkDetail<vk::Rc::descriptor_pool>
 {
 	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
 	{}
@@ -364,7 +364,7 @@ private:
 
 //----------------------------------------------------------------------------//
 // Helper wrapper for Vulkan resources.
-template<vk::Type type>
+template<vk::Rc type>
 class VkRc
 {
 public:

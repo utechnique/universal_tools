@@ -75,8 +75,8 @@ void Batcher::UpdateBatch(Context& context,
 	MeshInstance::TransformBuffer* transform_memory = reinterpret_cast<MeshInstance::TransformBuffer*>(cache.GetAddress());
 	MeshInstance::MaterialBuffer* material_memory = reinterpret_cast<MeshInstance::MaterialBuffer*>(transform_memory + element_count);
 #else
-	ut::Result<void*, ut::Error> transform_map_result = context.MapBuffer(batch.transform, ut::access_write);
-	ut::Result<void*, ut::Error> material_map_result = context.MapBuffer(batch.material, ut::access_write);
+	ut::Result<void*, ut::Error> transform_map_result = context.MapBuffer(batch.transform, memory::CpuAccess::write);
+	ut::Result<void*, ut::Error> material_map_result = context.MapBuffer(batch.material, memory::CpuAccess::write);
 
 	// copy transform and material data
 	MeshInstance::TransformBuffer* transform_memory = static_cast<MeshInstance::TransformBuffer*>(transform_map_result.MoveOrThrow());
@@ -103,11 +103,11 @@ void Batcher::UpdateBatch(Context& context,
 
 	// finish mapping
 #if UT_LINUX
-	ut::Result<void*, ut::Error> transform_map_result = context.MapBuffer(batch.transform, ut::access_write);
+	ut::Result<void*, ut::Error> transform_map_result = context.MapBuffer(batch.transform, memory::CpuAccess::write);
 	ut::memory::Copy(transform_map_result.MoveOrThrow(), transform_memory, transform_size);
     context.UnmapBuffer(batch.transform);
 
-	ut::Result<void*, ut::Error> material_map_result = context.MapBuffer(batch.material, ut::access_write);
+	ut::Result<void*, ut::Error> material_map_result = context.MapBuffer(batch.material, memory::CpuAccess::write);
 	ut::memory::Copy(material_map_result.MoveOrThrow(), material_memory, material_size);
     context.UnmapBuffer(batch.material);
 #else
@@ -118,7 +118,7 @@ void Batcher::UpdateBatch(Context& context,
 	// update entity-id buffer if needed
 	if (tools.frame_mgr.GetCurrentFrame().info.needs_entity_id_buffer_update)
 	{
-		ut::Result<void*, ut::Error> id_buffer_map_result = context.MapBuffer(batch.entity_id, ut::access_write);
+		ut::Result<void*, ut::Error> id_buffer_map_result = context.MapBuffer(batch.entity_id, memory::CpuAccess::write);
 		MeshInstance::EntityIdBuffer* id_buffer_memory = static_cast<MeshInstance::EntityIdBuffer*>(id_buffer_map_result.MoveOrThrow());
 		for (size_t j = 0; j < element_count; j++)
 		{
@@ -163,8 +163,8 @@ void Batcher::UpdateBuffers(Context& context)
 	{
 		// transform
 		Buffer::Info buffer_info;
-		buffer_info.type = Buffer::uniform;
-		buffer_info.usage = render::memory::gpu_read_cpu_write;
+		buffer_info.type = Buffer::Type::uniform;
+		buffer_info.usage = render::memory::Usage::gpu_read_cpu_write;
 		buffer_info.size = batch_size * sizeof(MeshInstance::TransformBuffer);
 		ut::Result<Buffer, ut::Error> transform_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
 		if (!transform_buffer)
@@ -238,9 +238,9 @@ Buffer Batcher::CreateInstanceBuffer(Device& device)
 	ut::uint32 element_count = CalculateBatchSize(device);
 
 	Buffer::Info buffer_info;
-	buffer_info.type = Buffer::vertex;
+	buffer_info.type = Buffer::Type::vertex;
 	buffer_info.stride = pixel::GetSize(Mesh::skInstanceIdFormat);
-	buffer_info.usage = render::memory::gpu_immutable;
+	buffer_info.usage = render::memory::Usage::gpu_immutable;
 	buffer_info.size = element_count * buffer_info.stride;
 
 	buffer_info.data.Resize(buffer_info.size);

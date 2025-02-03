@@ -9,23 +9,23 @@ START_NAMESPACE(render)
 // Constructor.
 SamplerCache::SamplerCache(Device& dvc_ref) noexcept : device(dvc_ref)
                                                      , linear_wrap(CreateSampler(dvc_ref,
-                                                                                 Sampler::filter_linear,
-                                                                                 Sampler::address_wrap))
+                                                                                 Sampler::Filter::linear,
+                                                                                 Sampler::AddressMode::wrap))
                                                      , linear_clamp(CreateSampler(dvc_ref,
-                                                                                  Sampler::filter_linear,
-                                                                                  Sampler::address_clamp))
+                                                                                  Sampler::Filter::linear,
+                                                                                  Sampler::AddressMode::clamp))
                                                      , linear_mirror(CreateSampler(dvc_ref,
-                                                                                   Sampler::filter_linear,
-                                                                                   Sampler::address_mirror))
+                                                                                   Sampler::Filter::linear,
+                                                                                   Sampler::AddressMode::mirror))
                                                      , point_wrap(CreateSampler(dvc_ref,
-                                                                                Sampler::filter_nearest,
-                                                                                Sampler::address_wrap))
+                                                                                Sampler::Filter::nearest,
+                                                                                Sampler::AddressMode::wrap))
                                                      , point_clamp(CreateSampler(dvc_ref,
-                                                                                 Sampler::filter_nearest,
-                                                                                 Sampler::address_clamp))
+                                                                                 Sampler::Filter::nearest,
+                                                                                 Sampler::AddressMode::clamp))
                                                      , point_mirror(CreateSampler(dvc_ref,
-                                                                                  Sampler::filter_nearest,
-                                                                                  Sampler::address_mirror))
+                                                                                  Sampler::Filter::nearest,
+                                                                                  Sampler::AddressMode::mirror))
 {}
 
 //----------------------------------------------------------------------------->

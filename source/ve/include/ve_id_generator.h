@@ -9,7 +9,7 @@ START_NAMESPACE(ve)
 //----------------------------------------------------------------------------//
 // ve::IdGenerator is a template class that helps to generate unique identifiers
 // for any kind of entities.
-template<typename IdType, ut::thread_safety::Mode mode = ut::thread_safety::off>
+template<typename IdType, ut::thread_safety::Mode mode = ut::thread_safety::Mode::off>
 class IdGenerator
 {
 protected:
@@ -53,9 +53,9 @@ private:
 //----------------------------------------------------------------------------//
 // Thread-safe specialization of the ve::IdGenerator template.
 template<typename IdType>
-class IdGenerator<IdType, ut::thread_safety::on> : public IdGenerator<IdType, ut::thread_safety::off>
+class IdGenerator<IdType, ut::thread_safety::Mode::on> : public IdGenerator<IdType, ut::thread_safety::Mode::off>
 {
-	typedef IdGenerator<IdType, ut::thread_safety::off> Base;
+	typedef IdGenerator<IdType, ut::thread_safety::Mode::off> Base;
 	typedef typename Base::Id Id;
 public:
 	// Constructor.

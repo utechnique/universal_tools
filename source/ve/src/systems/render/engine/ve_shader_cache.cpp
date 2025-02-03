@@ -37,7 +37,7 @@ ut::Optional<ut::Error> ShaderCache::Load()
 
 	// open file for reading
 	ut::File file;
-	ut::Optional<ut::Error> open_error = file.Open(path, ut::file_access_read);
+	ut::Optional<ut::Error> open_error = file.Open(path, ut::File::Access::read);
 	if (open_error)
 	{
 		ut::log.Lock() << "Shader cache: failed to open file " << path << ut::cret;
@@ -61,7 +61,7 @@ ut::Optional<ut::Error> ShaderCache::Save()
 
 	// open file for writing
 	ut::File file;
-	ut::Optional<ut::Error> open_error = file.Open(path, ut::file_access_write);
+	ut::Optional<ut::Error> open_error = file.Open(path, ut::File::Access::write);
 	if (open_error)
 	{
 		ut::log.Lock() << "Shader cache: failed to save file " << path << ut::cret;

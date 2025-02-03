@@ -82,7 +82,7 @@ protected:
 	ut::SparseHashMap<Entity::Id, Entity> entities;
 
 	// This map contains hashmaps of components (a map per component type).
-	ComponentMapCollection<ut::access_full> components;
+	ComponentMapCollection<ComponentMap::Access::read_write> components;
 };
 
 // ve::Environment is a class that contains all information about the virtual
@@ -115,7 +115,7 @@ private:
 	ut::Optional<ut::Error> ExecuteCommands(CmdArray commands);
 
 	// Thread pool that can process multiple tasks simultaneously.
-	ut::ThreadPool<System::Result, ut::pool_sync::cond_var> pool;
+	ut::ThreadPool<System::Result> pool;
 
 	// Commands to be executed in the next tick.
 	ut::Synchronized<CmdArray> commands;

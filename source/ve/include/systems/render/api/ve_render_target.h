@@ -21,37 +21,37 @@ struct TargetData : public PlatformRenderTarget
 	struct Info : public Image::Info
 	{
 		// Enumeration of possible ways how a target can be used.
-		enum Usage
+		enum class Usage
 		{
 			// render target is a view of color image
-			usage_color,
+			color,
 
 			// render target is a view of depth-stencil image
-			usage_depth,
+			depth,
 
 			// render target is a view of one of the buffers in a swap 
 			// chain and is intended to display final image to user
-			usage_present
+			present
 		};
 
 		// Enumeration of possible image states.
-		enum State
+		enum class State
 		{
 			// image can be a render target but can't be bound as a shader resource
-			state_target,
+			target,
 
 			// image can be used as a shader resource but can't be rendered to
-			state_resource,
+			resource,
 
 			// image can be used as a transfer source
-			state_transfer_src,
+			transfer_src,
 
 			// image can be used as a transfer destination
-			state_transfer_dst
+			transfer_dst
 		};
 
-		Usage usage = usage_color;
-		State state = state_resource;
+		Usage usage = Usage::color;
+		State state = State::resource;
 	};
 
 	// Constructor.
@@ -75,7 +75,7 @@ struct TargetData : public PlatformRenderTarget
 	// Information about this target.
 	Info info;
 };
-typedef ut::SharedPtr<TargetData, ut::thread_safety::off> SharedTargetData;
+typedef ut::SharedPtr<TargetData, ut::thread_safety::Mode::off> SharedTargetData;
 
 //----------------------------------------------------------------------------//
 // ut::render::Target is an interface to render data to an image.

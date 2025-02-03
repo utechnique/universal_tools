@@ -68,7 +68,7 @@ ut::int64 Counter::GetCurrent()
 		throw Error(ConvertErrno(result), "clock_gettime");
 	}
 
-	ut::int64 sec_to_ns = Convert<seconds, nanoseconds, ut::int64>(tp.tv_sec);
+	ut::int64 sec_to_ns = Convert<Unit::second, Unit::nanosecond, ut::int64>(tp.tv_sec);
 	return sec_to_ns + static_cast<ut::int64>(tp.tv_nsec);
 #else
 #error ut::TickCounter::GetCurrent() is not implemented

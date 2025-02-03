@@ -63,7 +63,7 @@ ComponentView::ComponentView(ComponentView::Proxy& proxy,
                                            , entity_id(proxy.entity_id)
                                            , type(proxy.type)
                                            , callbacks(ut::Move(cb))
-                                           , expand_state(Button::state_release)
+                                           , expand_state(Button::State::release)
 {
 	// stop initializing Fl_Group elements
 	end();
@@ -197,11 +197,11 @@ void ComponentView::CreateCaption(const Theme& theme,
 	                                             caption->y(),
 	                                             caption->h(),
 	                                             caption->h());
-	expand_button->SetBackgroundColor(Button::state_release,
+	expand_button->SetBackgroundColor(Button::State::release,
 	                                  ConvertToFlColor(cap_color));
-	expand_button->SetBackgroundColor(Button::state_hover,
+	expand_button->SetBackgroundColor(Button::State::hover,
 	                                  ConvertToFlColor(hover_color));
-	expand_button->SetBackgroundColor(Button::state_push,
+	expand_button->SetBackgroundColor(Button::State::push,
 	                                  ConvertToFlColor(hover_color));
 	expand_button->SetOnCallback([&] { callbacks.on_update(); });
 	expand_button->SetOffCallback([&] { callbacks.on_update(); });
@@ -223,11 +223,11 @@ void ComponentView::CreateCaption(const Theme& theme,
 	                                                                        delete_component_button->h(),
 	                                                                        ut::Color<4, ut::byte>(230, 0, 0, 200),
 	                                                                        7)));
-	delete_component_button->SetBackgroundColor(Button::state_release,
+	delete_component_button->SetBackgroundColor(Button::State::release,
 	                                            ConvertToFlColor(cap_color));
-	delete_component_button->SetBackgroundColor(Button::state_hover,
+	delete_component_button->SetBackgroundColor(Button::State::hover,
 	                                            ConvertToFlColor(hover_color));
-	delete_component_button->SetBackgroundColor(Button::state_push,
+	delete_component_button->SetBackgroundColor(Button::State::push,
 	                                            ConvertToFlColor(hover_color));
 	delete_component_button->SetCallback([&] { DeleteThisComponent(); });
 
@@ -576,7 +576,7 @@ EntityView::EntityView(EntityView::Proxy& proxy,
                                                               , theme(ui_theme)
                                                               , component_callbacks(ut::Move(component_cb))
                                                               , is_new(false)
-                                                              , expand_state(Button::state_release)
+                                                              , expand_state(Button::State::release)
 {
 	// stop initializing Fl_Group elements
 	end();
@@ -687,17 +687,17 @@ void EntityView::MarkNew(bool status)
 
 	caption_box->color(bkg_color);
 
-	expand_button->SetBackgroundColor(Button::state_release, bkg_color);
-	expand_button->SetBackgroundColor(Button::state_hover, hover_color);
-	expand_button->SetBackgroundColor(Button::state_push, hover_color);
+	expand_button->SetBackgroundColor(Button::State::release, bkg_color);
+	expand_button->SetBackgroundColor(Button::State::hover, hover_color);
+	expand_button->SetBackgroundColor(Button::State::push, hover_color);
 
-	controls.add_component_button->SetBackgroundColor(Button::state_release, bkg_color);
-	controls.add_component_button->SetBackgroundColor(Button::state_hover, hover_color);
-	controls.add_component_button->SetBackgroundColor(Button::state_push, hover_color);
+	controls.add_component_button->SetBackgroundColor(Button::State::release, bkg_color);
+	controls.add_component_button->SetBackgroundColor(Button::State::hover, hover_color);
+	controls.add_component_button->SetBackgroundColor(Button::State::push, hover_color);
 
-	controls.delete_entity_button->SetBackgroundColor(Button::state_release, bkg_color);
-	controls.delete_entity_button->SetBackgroundColor(Button::state_hover, hover_color);
-	controls.delete_entity_button->SetBackgroundColor(Button::state_push, hover_color);
+	controls.delete_entity_button->SetBackgroundColor(Button::State::release, bkg_color);
+	controls.delete_entity_button->SetBackgroundColor(Button::State::hover, hover_color);
+	controls.delete_entity_button->SetBackgroundColor(Button::State::push, hover_color);
 
 	redraw();
 }
@@ -723,11 +723,11 @@ void EntityView::CreateCaption(const Theme& theme,
 	                                             caption->y(),
 	                                             caption->h(),
 	                                             caption->h());
-	expand_button->SetBackgroundColor(Button::state_release,
+	expand_button->SetBackgroundColor(Button::State::release,
 	                                  ConvertToFlColor(cap_color));
-	expand_button->SetBackgroundColor(Button::state_hover,
+	expand_button->SetBackgroundColor(Button::State::hover,
 	                                  ConvertToFlColor(hover_color));
-	expand_button->SetBackgroundColor(Button::state_push,
+	expand_button->SetBackgroundColor(Button::State::push,
 	                                  ConvertToFlColor(hover_color));
 	expand_button->SetOnCallback([&] { component_callbacks.on_update(); });
 	expand_button->SetOffCallback([&] { component_callbacks.on_update(); });
@@ -778,11 +778,11 @@ void EntityView::InitializeControls(const Theme& theme)
 	                                                                             controls.add_component_button->h(),
 	                                                                             ut::Color<4, ut::byte>(0, 200, 0, 180),
 	                                                                             2, 7)));
-	controls.add_component_button->SetBackgroundColor(Button::state_release,
+	controls.add_component_button->SetBackgroundColor(Button::State::release,
 	                                                  ConvertToFlColor(cap_color));
-	controls.add_component_button->SetBackgroundColor(Button::state_hover,
+	controls.add_component_button->SetBackgroundColor(Button::State::hover,
 	                                                  ConvertToFlColor(hover_color));
-	controls.add_component_button->SetBackgroundColor(Button::state_push,
+	controls.add_component_button->SetBackgroundColor(Button::State::push,
 	                                                  ConvertToFlColor(hover_color));
 	controls.add_component_button->SetCallback(ut::MemberFunction<EntityView, void()>(this, &EntityView::CreateNewComponent));
 
@@ -795,11 +795,11 @@ void EntityView::InitializeControls(const Theme& theme)
 	                                                                              controls.delete_entity_button->h(),
 	                                                                              ut::Color<4, ut::byte>(230, 0, 0, 200),
 	                                                                              7)));
-	controls.delete_entity_button->SetBackgroundColor(Button::state_release,
+	controls.delete_entity_button->SetBackgroundColor(Button::State::release,
 	                                                  ConvertToFlColor(cap_color));
-	controls.delete_entity_button->SetBackgroundColor(Button::state_hover,
+	controls.delete_entity_button->SetBackgroundColor(Button::State::hover,
 	                                                  ConvertToFlColor(hover_color));
-	controls.delete_entity_button->SetBackgroundColor(Button::state_push,
+	controls.delete_entity_button->SetBackgroundColor(Button::State::push,
 	                                                  ConvertToFlColor(hover_color));
 	controls.delete_entity_button->SetCallback([&] { DeleteThisEntity(); });
 
@@ -1005,7 +1005,7 @@ void EntityView::CreateNewComponent()
 	}
 
 	// fix hover bug
-	Fl::awake([](void* ptr) { static_cast<Button*>(ptr)->SetState(Button::state_release); },
+	Fl::awake([](void* ptr) { static_cast<Button*>(ptr)->SetState(Button::State::release); },
 	          controls.add_component_button.Get());
 }
 
@@ -1013,7 +1013,7 @@ void EntityView::CreateNewComponent()
 void EntityView::CreateNewComponentCallback(const ut::Optional<ut::Error>& error)
 {
 	component_callbacks.on_update();
-	controls.add_component_button->SetState(Button::state_release);
+	controls.add_component_button->SetState(Button::State::release);
 
 	if (!error)
 	{
@@ -1131,7 +1131,7 @@ CmdArray EntityBrowser::UpdateEntities(ComponentAccessGroup& group_access)
 	immediate_update.Set(false);
 
 	// there is no sense to update entities every frame
-	const float time_delta = timer.GetTime<ut::time::seconds, float>();
+	const float time_delta = timer.GetTime<ut::time::Unit::second, float>();
 	if (!needs_immediate_update && (!active.Get() || time_delta < skUpdatePeriod))
 	{
 		return CmdArray();
@@ -1248,11 +1248,11 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 	                                                                                 entity_controls.add_entity_button->h(),
 	                                                                                 ut::Color<4, ut::byte>(0, 200, 0, 255),
 	                                                                                 4, 4)));
-	entity_controls.add_entity_button->SetBackgroundColor(Button::state_release,
+	entity_controls.add_entity_button->SetBackgroundColor(Button::State::release,
 	                                                      ConvertToFlColor(theme.background_color));
-	entity_controls.add_entity_button->SetBackgroundColor(Button::state_hover,
+	entity_controls.add_entity_button->SetBackgroundColor(Button::State::hover,
 	                                                      ConvertToFlColor(theme.button_hover_color));
-	entity_controls.add_entity_button->SetBackgroundColor(Button::state_push,
+	entity_controls.add_entity_button->SetBackgroundColor(Button::State::push,
 	                                                      ConvertToFlColor(theme.button_push_color));
 	entity_controls.add_entity_button->SetCallback([&] { AddEntity(); });
 
@@ -1267,11 +1267,11 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 	                                                                                    entity_controls.clear_filter_button->h(),
 	                                                                                    ut::Color<4, ut::byte>(230, 230, 230, 200),
 	                                                                                    6)));
-	entity_controls.clear_filter_button->SetBackgroundColor(Button::state_release,
+	entity_controls.clear_filter_button->SetBackgroundColor(Button::State::release,
 	                                                        ConvertToFlColor(theme.background_color));
-	entity_controls.clear_filter_button->SetBackgroundColor(Button::state_hover,
+	entity_controls.clear_filter_button->SetBackgroundColor(Button::State::hover,
 	                                                        ConvertToFlColor(theme.button_hover_color));
-	entity_controls.clear_filter_button->SetBackgroundColor(Button::state_push,
+	entity_controls.clear_filter_button->SetBackgroundColor(Button::State::push,
 	                                                        ConvertToFlColor(theme.button_push_color));
 	entity_controls.clear_filter_button->SetCallback([&] { ClearFilter(); });
 	
@@ -1300,11 +1300,11 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 	entity_controls.components.expand_bkg_color = entity_controls.components.expand_empty_bkg_color + ut::Color<3, ut::byte>(0, 20, 0);
 	entity_controls.components.expand_bkg_color.R() -= 20;
 	entity_controls.components.expand_bkg_color.B() -= 20;
-	entity_controls.components.expand_button->SetBackgroundColor(Button::state_release,
+	entity_controls.components.expand_button->SetBackgroundColor(Button::State::release,
 	                                                             ConvertToFlColor(entity_controls.components.expand_empty_bkg_color));
-	entity_controls.components.expand_button->SetBackgroundColor(Button::state_hover,
+	entity_controls.components.expand_button->SetBackgroundColor(Button::State::hover,
 	                                                             ConvertToFlColor(entity_controls.components.expand_empty_bkg_color));
-	entity_controls.components.expand_button->SetBackgroundColor(Button::state_push,
+	entity_controls.components.expand_button->SetBackgroundColor(Button::State::push,
 	                                                             ConvertToFlColor(theme.button_push_color));
 
 	// component filter description
@@ -1910,9 +1910,9 @@ void EntityBrowser::UpdateComponentFilterUi()
 	entity_controls.components.counter_text = component_filter.IsEmpty() ? ut::String("") :
 	                                          (ut::String("Filtered components: ") + ut::Print(component_filter.Count()));
 	entity_controls.components.counter_box->label(entity_controls.components.counter_text.GetAddress());
-	entity_controls.components.expand_button->SetBackgroundColor(Button::state_release,
+	entity_controls.components.expand_button->SetBackgroundColor(Button::State::release,
 	                                                             ConvertToFlColor(expand_button_color));
-	entity_controls.components.expand_button->SetBackgroundColor(Button::state_hover,
+	entity_controls.components.expand_button->SetBackgroundColor(Button::State::hover,
 	                                                             ConvertToFlColor(expand_button_color));
 }
 

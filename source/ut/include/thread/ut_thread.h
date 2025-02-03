@@ -44,13 +44,13 @@ namespace this_thread
 {
 	// Blocks the execution of the current thread for at least the specified @time
 	//    @param ms - milliseconds to wait
-	template<time::Units units = time::milliseconds>
+	template<time::Unit unit = time::Unit::millisecond>
 	void Sleep(uint32 time)
 	{
 #if UT_WINDOWS
-		::Sleep(time::Convert<units, time::milliseconds>(time));
+		::Sleep(time::Convert<unit, time::Unit::millisecond>(time));
 #elif UT_UNIX
-		usleep(time::Convert<units, time::microseconds>(time));
+		usleep(time::Convert<unit, time::Unit::microsecond>(time));
 #else
 #error ut::this_thread::Sleep() is not implemented
 #endif

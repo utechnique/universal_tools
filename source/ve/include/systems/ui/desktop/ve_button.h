@@ -16,12 +16,12 @@ START_NAMESPACE(ui)
 class Button : public Fl_Box
 {
 public:
-	enum State
+	enum class State
 	{
-		state_release,
-		state_push,
-		state_hover,
-		state_count
+		release,
+		push,
+		hover,
+		count
 	};
 
 	// Constructor, initializes button position.
@@ -58,7 +58,7 @@ protected:
 	ut::UniquePtr<ut::String> text;
 
 	// Background colors for all states.
-	Fl_Color bkg_color[state_count];
+	Fl_Color bkg_color[static_cast<size_t>(State::count)];
 
 	// Icon data.
 	ut::SharedPtr<Icon> icon;

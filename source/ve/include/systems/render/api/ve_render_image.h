@@ -15,18 +15,18 @@ class Image : public PlatformImage
 {
 public:
 	// Basic dimensionality of an image.
-	enum Type
+	enum class Type
 	{
-		type_1D,
-		type_2D,
-		type_3D,
-		type_cube
+		linear, // 1d
+		planar, // 2d
+		volumetric, // 3d
+		cubic // cubemap
 	};
 
 	// Cubemap traits.
 	struct Cube
 	{
-		enum Face : ut::uint32
+		enum class Face : ut::uint32
 		{
 			positive_x = 0,
 			negative_x = 1,
@@ -50,9 +50,9 @@ public:
 	// information about an image.
 	struct Info
 	{
-		Type type = type_2D;
-		pixel::Format format = pixel::unknown;
-		memory::Usage usage = render::memory::gpu_immutable;
+		Type type = Type::planar;
+		pixel::Format format = pixel::Format::unknown;
+		memory::Usage usage = render::memory::Usage::gpu_immutable;
 		bool has_staging_cpu_read_buffer = false;
 		ut::uint32 mip_count = 1;
 		ut::uint32 width = 1;

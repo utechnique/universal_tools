@@ -13,7 +13,7 @@ START_NAMESPACE(ut)
 // for each of these methods.
 namespace encryption
 {
-	enum Method
+	enum class Method
 	{
 		XOR,
 		AES128

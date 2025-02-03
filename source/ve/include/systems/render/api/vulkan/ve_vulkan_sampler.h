@@ -11,7 +11,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Vulkan sampler.
-class PlatformSampler : public VkRc<vk::sampler>
+class PlatformSampler : public VkRc<vk::Rc::sampler>
 {
 	friend class Device;
 	friend class Context;

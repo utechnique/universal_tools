@@ -30,14 +30,14 @@ public:
 	ut::Vector<3> GetRight(const ut::Quaternion<float>& q) const;
 
 	// Projection types
-	enum Projection
+	enum class Projection
 	{
-		perspective_projection,
-		orthographic_projection
+		perspective,
+		orthographic
 	};
 
 	// view options
-	Projection projection = perspective_projection;
+	Projection projection = Projection::perspective;
 
 	// frustum properties (z-near, z-far, aspect ratio, etc.)
 	float near_plane = 0.1f;

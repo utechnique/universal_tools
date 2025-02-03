@@ -29,8 +29,8 @@ Signal::Discrete Signal::GetDiscreteValue(Signal::Analog sensitivity) const
 {
 	switch (type)
 	{
-	case type_discrete: return signal.discrete;
-	case type_analog: return ut::Abs(signal.analog) >= sensitivity ? 1 : 0;
+	case Type::discrete: return signal.discrete;
+	case Type::analog: return ut::Abs(signal.analog) >= sensitivity ? 1 : 0;
 	default: return false;
 	}
 }
@@ -41,8 +41,8 @@ Signal::Analog Signal::GetAnalogValue() const
 {
 	switch (type)
 	{
-	case type_discrete: return signal.discrete ? 1.0f : 0.0f;
-	case type_analog: return signal.analog;
+	case Type::discrete: return signal.discrete ? 1.0f : 0.0f;
+	case Type::analog: return signal.analog;
 	default: return false;
 	}
 }
@@ -54,13 +54,13 @@ Signal::Type Signal::GetType() const
 }
 
 // Constructor - constructs a discrete signal.
-Signal::Signal(Signal::Discrete button_key) : type(type_discrete)
+Signal::Signal(Signal::Discrete button_key) : type(Type::discrete)
 {
 	signal.discrete = button_key;
 }
 
 // Constructor - constructs an analog signal.
-Signal::Signal(Signal::Analog analog_key) : type(type_analog)
+Signal::Signal(Signal::Analog analog_key) : type(Type::analog)
 {
 	signal.analog = analog_key;
 }

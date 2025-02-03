@@ -47,7 +47,7 @@ void XmlTask::Execute()
 		if (save_to_file)
 		{
 			ut::File file;
-			if (!file.Open("test.xml", ut::file_access_write))
+			if (!file.Open("test.xml", ut::File::Access::write))
 			{
 				file.Write(binary_stream.GetData().Get(), 1, binary_stream.GetSize().Get());
 				file.Close();
@@ -93,7 +93,7 @@ void JsonTask::Execute()
 		if (save_to_file)
 		{
 			ut::File file;
-			if (!file.Open("test.json", ut::file_access_write))
+			if (!file.Open("test.json", ut::File::Access::write))
 			{
 				file.Write(binary_stream.GetData().Get(), 1, binary_stream.GetSize().Get());
 				file.Close();
@@ -109,7 +109,7 @@ void JsonTask::Execute()
 	{
 		report += "Converting json to xml: ";
 		ut::File file;
-		if (!file.Open("conversion_test.xml", ut::file_access_write))
+		if (!file.Open("conversion_test.xml", ut::File::Access::write))
 		{
 			ut::Optional<ut::Error> save_error = xml_doc.Write(file);
 			if (save_error)

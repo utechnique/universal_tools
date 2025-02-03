@@ -34,7 +34,7 @@ ut::Optional<ut::Error> ResourceManager::UpdateBuffer(Context& context,
                                                       Buffer& buffer,
                                                       const void* data)
 {
-	ut::Result<void*, ut::Error> map_result = context.MapBuffer(buffer, ut::access_write);
+	ut::Result<void*, ut::Error> map_result = context.MapBuffer(buffer, memory::CpuAccess::write);
 	if (!map_result)
 	{
 		return map_result.MoveAlt();
@@ -53,7 +53,7 @@ ut::Optional<ut::Error> ResourceManager::UpdateBuffer(Context& context,
 void ResourceManager::DeleteResource(Resource::Id id)
 {
 	// lock resources
-	ut::ScopeRWLock scope_lock(lock, ut::access_write);
+	ut::ScopeRWLock scope_lock(lock, ut::RWLock::Access::write);
 
 	// find desired resource by id
 	ut::Optional<ReferencedResource&> resource = resources.Find(id);
@@ -103,7 +103,7 @@ void ResourceManager::Update()
 		ut::UniquePtr<Resource> rc_to_destroy;
 
 		{ // lock the resources only to take one resource out of garbage container
-			ut::ScopeRWLock scope_lock(lock, ut::access_write);
+			ut::ScopeRWLock scope_lock(lock, ut::RWLock::Access::write);
 
 			// if all resources scheduled for deletion ended,
 			// then we can break the loop

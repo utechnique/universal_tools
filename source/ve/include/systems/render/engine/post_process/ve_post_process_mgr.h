@@ -64,7 +64,7 @@ public:
 		                                                                      time_ms);
 		if (final_slot)
 		{
-			context.SetTargetState(final_slot->color_target, Target::Info::state_resource);
+			context.SetTargetState(final_slot->color_target, Target::Info::State::resource);
 			final_slot->busy = false;
 			return final_slot->color_target.GetImage();
 		}
@@ -105,7 +105,7 @@ private:
 		                                                                time_ms);
 		if (next_slot)
 		{
-			context.SetTargetState(next_slot->color_target, Target::Info::state_resource);
+			context.SetTargetState(next_slot->color_target, Target::Info::State::resource);
 			if (slot)
 			{
 				slot->busy = false;

@@ -193,9 +193,9 @@ void Pipeline::UnregisterEntity(Entity::Id id)
 // access map so that the both maps shared the same source.
 //    @return - a reference to the component map collection to
 //              synchronize @component_access with.
-ComponentMapCollection<ut::access_full> Pipeline::SynchronizeComponents()
+ComponentMapCollection<ComponentMap::Access::read_write> Pipeline::SynchronizeComponents()
 {
-	ComponentMapCollection<ut::access_full> map_collection;
+	ComponentMapCollection<ComponentMap::Access::read_write> map_collection;
 
 	// Create empty component maps from systems demands.
 	CollectComponentMaps(map_collection);
@@ -209,14 +209,14 @@ ComponentMapCollection<ut::access_full> Pipeline::SynchronizeComponents()
 // Collects component maps from all internal systems.
 //    @param map_collection -  reference to the component map collection to
 //                             store component maps in.
-void Pipeline::CollectComponentMaps(ComponentMapCollection<ut::access_full>& map_collection)
+void Pipeline::CollectComponentMaps(ComponentMapCollection<ComponentMap::Access::read_write>& map_collection)
 {
 	// extract component maps from component sets of the current system 
 	if (system)
 	{
-		ut::Array< ComponentSet<ut::access_full> > component_sets = system->DefineComponentSets();
-		ut::Array< ComponentSet<ut::access_full> >::Iterator component_set_iterator;
-		ComponentMapCollection<ut::access_full>::Iterator component_map_iterator;
+		ut::Array< ComponentSet<ComponentMap::Access::read_write> > component_sets = system->DefineComponentSets();
+		ut::Array< ComponentSet<ComponentMap::Access::read_write> >::Iterator component_set_iterator;
+		ComponentMapCollection<ComponentMap::Access::read_write>::Iterator component_map_iterator;
 		for (component_set_iterator = component_sets.Begin();
 		     component_set_iterator != component_sets.End();
 		     ++component_set_iterator)
@@ -250,7 +250,7 @@ void Pipeline::CollectComponentMaps(ComponentMapCollection<ut::access_full>& map
 // internal access map so that the both maps shared the same source.
 //    @param source - a reference to the component map collection to
 //                    synchronize @component_access with.
-void Pipeline::SynchronizeComponents(ComponentMapCollection<ut::access_full>& source)
+void Pipeline::SynchronizeComponents(ComponentMapCollection<ComponentMap::Access::read_write>& source)
 {
 	// synchronize parallel
 	const size_t parallel_count = parallel.Count();
@@ -273,15 +273,15 @@ void Pipeline::SynchronizeComponents(ComponentMapCollection<ut::access_full>& so
 	}
 
 	// generate component sets for system access
-	ut::Array< ComponentSet<ut::access_full> > system_sets = system->DefineComponentSets();
+	ut::Array< ComponentSet<ComponentMap::Access::read_write> > system_sets = system->DefineComponentSets();
 	const bool accept_all_entities = system_sets.IsEmpty();
-	ut::Array< ComponentSet<ut::access_read> > access_sets;
+	ut::Array< ComponentSet<ComponentMap::Access::read> > access_sets;
 	if (accept_all_entities)
 	{
-		ComponentSet<ut::access_read> access_set;
-		access_set.operation = Component::op_union;
+		ComponentSet<ComponentMap::Access::read> access_set;
+		access_set.operation = Component::EntityAssociationOperation::unite;
 
-		ComponentMapCollection<ut::access_full>::Iterator map_iterator;
+		ComponentMapCollection<ComponentMap::Access::read_write>::Iterator map_iterator;
 		for (map_iterator = source.Begin();
 		     map_iterator != source.End();
 		     ++map_iterator)
@@ -293,21 +293,21 @@ void Pipeline::SynchronizeComponents(ComponentMapCollection<ut::access_full>& so
 	}
 	else
 	{
-		ut::Array< ComponentSet<ut::access_full> >::Iterator sys_set_iterator;
+		ut::Array< ComponentSet<ComponentMap::Access::read_write> >::Iterator sys_set_iterator;
 		for (sys_set_iterator = system_sets.Begin();
 		     sys_set_iterator != system_sets.End();
 		     ++sys_set_iterator)
 		{
-			ComponentSet<ut::access_read> access_set;
+			ComponentSet<ComponentMap::Access::read> access_set;
 			access_set.operation = sys_set_iterator->operation;
 			
-			ComponentMapCollection<ut::access_full>::Iterator map_iterator;
+			ComponentMapCollection<ComponentMap::Access::read_write>::Iterator map_iterator;
 			for (map_iterator = sys_set_iterator->component_maps.Begin();
 			     map_iterator != sys_set_iterator->component_maps.End();
 			     ++map_iterator)
 			{
 				const ut::DynamicType::Handle component_type = map_iterator->GetFirst();
-				ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = source.Find(component_type);
+				ut::Optional<SharedComponentMap<ComponentMap::Access::read_write>::Type&> component_map = source.Find(component_type);
 				access_set.component_maps.Insert(component_type, component_map.Get());
 			}
 

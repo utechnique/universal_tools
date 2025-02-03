@@ -21,10 +21,10 @@ public:
 	typedef float Analog;
 
 	// Possible signal types.
-	enum Type
+	enum class Type
 	{
-		type_discrete,
-		type_analog
+		discrete,
+		analog
 	};
 
 	// Creates new discrete signal object.

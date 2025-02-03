@@ -49,7 +49,7 @@ public:
 	                             Batcher& batcher,
 	                             Light::Sources& lights,
 	                             ut::Optional<Image&> ibl_cubemap,
-	                             Image::Cube::Face cubeface = Image::Cube::positive_x);
+	                             Image::Cube::Face cubeface = Image::Cube::Face::positive_x);
 
 private:
 	// Light pass pipeline permutations.
@@ -57,39 +57,39 @@ private:
 	{
 		struct MeshInstRendering
 		{
-			enum AlphaTest
+			enum class AlphaTest
 			{
-				alpha_test_off,
-				alpha_test_on,
-				alpha_test_count
+				off,
+				on,
+				count
 			};
 
-			enum AlphaMode
+			enum class AlphaMode
 			{
-				alpha_blend,
-				alpha_add,
-				alpha_mode_count
+				blend,
+				add,
+				count
 			};
 
-			enum IblPreset
+			enum class IblPreset
 			{
-				ibl_off,
-				ibl_on,
-				ibl_preset_count
+				off,
+				on,
+				count
 			};
 
-			enum CullMode
+			enum class CullMode
 			{
-				cull_front,
-				cull_back,
-				cull_mode_count
+				front,
+				back,
+				count
 			};
 
-			enum StencilMode
+			enum class StencilMode
 			{
-				stencil_none,
-				stencil_highlighted,
-				stencil_mode_count
+				none,
+				highlighted,
+				count
 			};
 
 			static constexpr ut::uint32 vertex_format_column = 0;
@@ -102,18 +102,18 @@ private:
 			static constexpr ut::uint32 polygon_mode_column = 7;
 
 			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-			                 ibl_preset_count,
-			                 Light::source_type_count,
-			                 alpha_test_count,
-			                 alpha_mode_count,
-			                 cull_mode_count,
-			                 stencil_mode_count,
+			                 static_cast<size_t>(IblPreset::count),
+			                 static_cast<size_t>(Light::SourceType::count),
+			                 static_cast<size_t>(AlphaTest::count),
+			                 static_cast<size_t>(AlphaMode::count),
+			                 static_cast<size_t>(CullMode::count),
+			                 static_cast<size_t>(StencilMode::count),
 			                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
 			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-			                 ibl_preset_count,
-			                 Light::source_type_count,
-			                 alpha_test_count> ShaderGrid;
+			                 static_cast<size_t>(IblPreset::count),
+			                 static_cast<size_t>(Light::SourceType::count),
+			                 static_cast<size_t>(AlphaTest::count)> ShaderGrid;
 
 			// Descriptor set for the light pass shaders.
 			struct Descriptors : public DescriptorSet
@@ -140,32 +140,32 @@ private:
 	{
 		struct MeshInstRendering
 		{
-			enum AlphaTest
+			enum class AlphaTest
 			{
-				alpha_test_off,
-				alpha_test_on,
-				alpha_test_count
+				off,
+				on,
+				count
 			};
 
-			enum AlphaMode
+			enum class AlphaMode
 			{
-				alpha_blend,
-				alpha_add,
-				alpha_mode_count
+				blend,
+				add,
+				count
 			};
 
-			enum CullMode
+			enum class CullMode
 			{
-				cull_front,
-				cull_back,
-				cull_mode_count
+				front,
+				back,
+				count
 			};
 
-			enum StencilMode
+			enum class StencilMode
 			{
-				stencil_none,
-				stencil_highlighted,
-				stencil_mode_count
+				none,
+				highlighted,
+				count
 			};
 
 			static constexpr ut::uint32 vertex_format_column = 0;
@@ -176,14 +176,14 @@ private:
 			static constexpr ut::uint32 polygon_mode_column = 5;
 
 			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-			                 alpha_test_count,
-			                 alpha_mode_count,
-			                 cull_mode_count,
-			                 stencil_mode_count,
+			                 static_cast<size_t>(AlphaTest::count),
+			                 static_cast<size_t>(AlphaMode::count),
+			                 static_cast<size_t>(CullMode::count),
+			                 static_cast<size_t>(StencilMode::count),
 			                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
 			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-			                 alpha_test_count> ShaderGrid;
+			                 static_cast<size_t>(AlphaTest::count)> ShaderGrid;
 
 			// Descriptor set for the ibl pass shaders.
 			struct Descriptors : public DescriptorSet

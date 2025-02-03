@@ -20,7 +20,7 @@ Result<Array<String>, Error> GetCmdLine()
 
 	for (int i = 0; i < arg_num; i++)
 	{
-		String argument = StrConvert<ut::wchar, char, ut::cp_utf8>(arg_list[i]);
+		String argument = StrConvert<ut::wchar, char, CodePage::utf8>(arg_list[i]);
 		arguments.Add(Move(argument));
 	}
 #elif UT_UNIX

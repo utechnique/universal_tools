@@ -72,27 +72,25 @@ RWLock::~RWLock(void)
 }
 
 //----------------------------------------------------------------------------->
-// Locks section with 'access_write' access
+// Locks section with 'RWLock::Access::write' access
 void RWLock::Lock(void)
 {
-	Lock(access_write);
+	Lock(Access::write);
 }
 
 //----------------------------------------------------------------------------->
-// Unlocks section with 'access_write' access
+// Unlocks section with 'RWLock::Access::write' access
 void RWLock::Unlock(void)
 {
-	Unlock(access_write);
+	Unlock(Access::write);
 }
 
 //----------------------------------------------------------------------------->
 // Locks section with desired access
-//    @param access - access to lock section with
-//                    see ut::Access for details
 void RWLock::Lock(Access access)
 {
 	UT_ASSERT(data);
-	if (access == access_write)
+	if (access == Access::write)
 	{
 		#if UT_WINDOWS
 			EnterCriticalSection(&data->writer_lock);
@@ -115,7 +113,7 @@ void RWLock::Lock(Access access)
 			#error ut::RWLock::Lock() is not implemented
 		#endif
 	}
-	else if (access == access_read)
+	else if (access == Access::read)
 	{
 		#if UT_WINDOWS
 			bool keep_loop = true;
@@ -155,12 +153,10 @@ void RWLock::Lock(Access access)
 
 //----------------------------------------------------------------------------->
 // Unlocks section with desired access
-//    @param access - access to unlock section with
-//                    see ut::Access for details
 void RWLock::Unlock(Access access)
 {
 	UT_ASSERT(data);
-	if (access == access_write)
+	if (access == Access::write)
 	{
 		#if UT_WINDOWS
 			SetEvent(data->writer_event);
@@ -180,7 +176,7 @@ void RWLock::Unlock(Access access)
 			#error ut::RWLock::Unlock() is not implemented
 		#endif
 	}
-	else if (access == access_read)
+	else if (access == Access::read)
 	{
 		#if UT_WINDOWS
 			DecrementReaderCount();

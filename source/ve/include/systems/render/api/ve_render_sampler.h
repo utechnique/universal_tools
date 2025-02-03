@@ -14,32 +14,32 @@ class Sampler : public PlatformSampler
 {
 public:
 	// Filtering options during texture sampling.
-	enum Filter
+	enum class Filter
 	{
-		filter_nearest,
-		filter_linear
+		nearest,
+		linear
 	};
 
 	// Identifies a technique for resolving texture coordinates that are
 	// outside of the boundaries of a texture.
-	enum AddressMode
+	enum class AddressMode
 	{
-		address_wrap,
-		address_mirror,
-		address_clamp,
-		address_border
+		wrap,
+		mirror,
+		clamp,
+		border
 	};
 
 	// ve::render::Sampler::Info conveniently stores all essential
 	// information about a sampler.
 	struct Info
 	{
-		Filter mag_filter = filter_linear;
-		Filter min_filter = filter_linear;
-		Filter mip_filter = filter_linear;
-		AddressMode address_u = address_wrap;
-		AddressMode address_v = address_wrap;
-		AddressMode address_w = address_wrap;
+		Filter mag_filter = Filter::linear;
+		Filter min_filter = Filter::linear;
+		Filter mip_filter = Filter::linear;
+		AddressMode address_u = AddressMode::wrap;
+		AddressMode address_v = AddressMode::wrap;
+		AddressMode address_w = AddressMode::wrap;
 		ut::Optional<compare::Operation> compare_op;
 		ut::Color<4, float> border_color = ut::Color<4, float>(0.0f);
 		bool anisotropy_enable = false;

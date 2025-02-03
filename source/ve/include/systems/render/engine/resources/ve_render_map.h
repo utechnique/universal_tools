@@ -46,8 +46,8 @@ public:
 	//                  ve::render::ResourceManager::Acquire() function.
 	//    @return - resource reference or ut::Error if failed.
 	ut::Result<RcRef<Map>, ut::Error> CreateFromSolidColor(const ut::Color<4, ut::byte>& color,
-	                                                       Image::Type img_type = Image::type_2D,
-	                                                       pixel::Format format = pixel::r8g8b8a8_unorm,
+	                                                       Image::Type img_type = Image::Type::planar,
+	                                                       pixel::Format format = pixel::Format::r8g8b8a8_unorm,
 	                                                       ut::uint32 width = 1,
 	                                                       ut::uint32 height = 1,
 	                                                       ut::uint32 depth = 1,

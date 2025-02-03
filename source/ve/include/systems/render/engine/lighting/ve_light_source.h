@@ -14,13 +14,13 @@ class Light : public ut::meta::Reflective
 {
 public:
 	// All possible source types.
-	enum SourceType
+	enum class SourceType
 	{
-		source_directional,
-		source_point,
-		source_spot,
-		source_ambient,
-		source_type_count
+		directional,
+		point,
+		spot,
+		ambient,
+		count
 	};
 
 	// Contents of the uniform buffer (common for all source types).

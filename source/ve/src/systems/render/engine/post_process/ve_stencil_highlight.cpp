@@ -50,7 +50,7 @@ StencilHighlight::StencilHighlight(Toolset& toolset,
 // Returns compiled pixel shader filling a surface with solid color.
 Shader StencilHighlight::LoadFillShader()
 {
-	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::pixel,
+	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::Stage::pixel,
 	                                                                "stencil_highlight_fill_ps",
 	                                                                "FillStencilPS",
 	                                                                "highlight.hlsl");
@@ -71,7 +71,7 @@ Shader StencilHighlight::LoadLineShader()
 	macro.value = ut::Print(skLineDistance);
 	macros.Add(ut::Move(macro));
 
-	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::pixel,
+	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::Stage::pixel,
 	                                                                "stencil_highlight_lines_ps",
 	                                                                "DrawLinesPS",
 	                                                                "highlight.hlsl",
@@ -83,7 +83,7 @@ Shader StencilHighlight::LoadLineShader()
 // highlighting mask.
 Shader StencilHighlight::LoadBlendShader()
 {
-	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::pixel,
+	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::Stage::pixel,
 	                                                                "stencil_highlight_blend_ps",
 	                                                                "BlendPS",
 	                                                                "highlight.hlsl");
@@ -97,8 +97,8 @@ ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewDa
 	// create uniform buffers
 	ut::Vector<4> white(1.0f);
 	Buffer::Info buffer_info;
-	buffer_info.type = Buffer::uniform;
-	buffer_info.usage = render::memory::gpu_immutable;
+	buffer_info.type = Buffer::Type::uniform;
+	buffer_info.usage = render::memory::Usage::gpu_immutable;
 	buffer_info.size = sizeof(ut::Vector<4>);
 	buffer_info.data.Resize(buffer_info.size);
 	ut::memory::Copy(buffer_info.data.GetAddress(), white.GetData(), buffer_info.size);
@@ -107,7 +107,7 @@ ut::Result<StencilHighlight::ViewData, ut::Error> StencilHighlight::CreateViewDa
 	{
 		throw ut::Error(white_color_buffer.MoveAlt());
 	}
-	buffer_info.usage = render::memory::gpu_read_cpu_write;
+	buffer_info.usage = render::memory::Usage::gpu_read_cpu_write;
 	ut::Result<Buffer, ut::Error> lines_color_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
 	if (!lines_color_buffer)
 	{
@@ -201,7 +201,7 @@ ut::Optional<SwapSlot&> StencilHighlight::Apply(SwapManager& swap_mgr,
 	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
 	context.EndRenderPass();
-	context.SetTargetState(fill_slot->color_target, Target::Info::state_resource);
+	context.SetTargetState(fill_slot->color_target, Target::Info::State::resource);
 
 	// blur image to extend object borders
 	ut::Optional<SwapSlot&> hblur_slot = swap_mgr.Swap();
@@ -211,8 +211,8 @@ ut::Optional<SwapSlot&> StencilHighlight::Apply(SwapManager& swap_mgr,
 	           hblur_slot->color_only_framebuffer,
 	           color_only_pass,
 	           fill_slot->color_target.GetImage(),
-	           GaussianBlur::direction_horizontal);
-	context.SetTargetState(hblur_slot->color_target, Target::Info::state_resource);
+	           GaussianBlur::Direction::horizontal);
+	context.SetTargetState(hblur_slot->color_target, Target::Info::State::resource);
 	fill_slot->busy = false;
 	ut::Optional<SwapSlot&> vblur_slot = swap_mgr.Swap();
 	UT_ASSERT(hblur_slot.HasValue());
@@ -221,7 +221,7 @@ ut::Optional<SwapSlot&> StencilHighlight::Apply(SwapManager& swap_mgr,
 	           vblur_slot->color_only_framebuffer,
 	           color_only_pass,
 	           hblur_slot->color_target.GetImage(),
-	           GaussianBlur::direction_vertical);
+	           GaussianBlur::Direction::vertical);
 	hblur_slot->busy = false;
 
 	// update line buffer
@@ -248,7 +248,7 @@ ut::Optional<SwapSlot&> StencilHighlight::Apply(SwapManager& swap_mgr,
 	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
 	context.Draw(6, 0);
 	context.EndRenderPass();
-	context.SetTargetState(vblur_slot->color_target, Target::Info::state_resource);
+	context.SetTargetState(vblur_slot->color_target, Target::Info::State::resource);
 
 	// update blend color buffer
 	update_ub_error = tools.rc_mgr.UpdateBuffer(context,
@@ -327,22 +327,22 @@ float StencilHighlight::CalculateLineOffset(const Parameters& parameters,
 PipelineState StencilHighlight::CreateFillPassPipelineState()
 {
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = tools.shaders.quad_vs;
-	info.stages[Shader::pixel] = fill_shader;
+	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::pixel, fill_shader);
 	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::never;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::never;
 	info.depth_stencil_state.stencil_test_enable = true;
-	info.depth_stencil_state.back.compare_op = compare::equal;
-	info.depth_stencil_state.back.fail_op = StencilOpState::keep;
-	info.depth_stencil_state.back.pass_op = StencilOpState::keep;
-	info.depth_stencil_state.back.compare_mask = stencilref_highlight;
+	info.depth_stencil_state.back.compare_op = compare::Operation::equal;
+	info.depth_stencil_state.back.fail_op = StencilOpState::Operation::keep;
+	info.depth_stencil_state.back.pass_op = StencilOpState::Operation::keep;
+	info.depth_stencil_state.back.compare_mask = static_cast<ut::uint32>(StencilReference::highlight);
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0x0;
-	info.depth_stencil_state.stencil_reference = stencilref_highlight;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.depth_stencil_state.stencil_reference = static_cast<ut::uint32>(StencilReference::highlight);
+	info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
+	info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
 	return tools.device.CreatePipelineState(info, clear_color_and_ds_pass).MoveOrThrow();
 }
@@ -352,22 +352,22 @@ PipelineState StencilHighlight::CreateFillPassPipelineState()
 PipelineState StencilHighlight::CreateLinePassPipelineState()
 {
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = tools.shaders.quad_vs;
-	info.stages[Shader::pixel] = line_shader;
+	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::pixel, line_shader);
 	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::never;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::never;
 	info.depth_stencil_state.stencil_test_enable = true;
-	info.depth_stencil_state.back.compare_op = compare::equal;
-	info.depth_stencil_state.back.fail_op = StencilOpState::keep;
-	info.depth_stencil_state.back.pass_op = StencilOpState::keep;
-	info.depth_stencil_state.back.compare_mask = stencilref_highlight;
+	info.depth_stencil_state.back.compare_op = compare::Operation::equal;
+	info.depth_stencil_state.back.fail_op = StencilOpState::Operation::keep;
+	info.depth_stencil_state.back.pass_op = StencilOpState::Operation::keep;
+	info.depth_stencil_state.back.compare_mask = static_cast<ut::uint32>(StencilReference::highlight);
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0x0;
-	info.depth_stencil_state.stencil_reference = stencilref_highlight;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.depth_stencil_state.stencil_reference = static_cast<ut::uint32>(StencilReference::highlight);
+	info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
+	info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
 	return tools.device.CreatePipelineState(info, color_and_ds_pass).MoveOrThrow();
 }
@@ -377,22 +377,22 @@ PipelineState StencilHighlight::CreateLinePassPipelineState()
 PipelineState StencilHighlight::CreateBlendPasPipelineState()
 {
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = tools.shaders.quad_vs;
-	info.stages[Shader::pixel] = blend_shader;
+	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::pixel, blend_shader);
 	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::never;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::never;
 	info.depth_stencil_state.stencil_test_enable = true;
-	info.depth_stencil_state.back.compare_op = compare::equal;
-	info.depth_stencil_state.back.fail_op = StencilOpState::keep;
-	info.depth_stencil_state.back.pass_op = StencilOpState::keep;
-	info.depth_stencil_state.back.compare_mask = stencilref_highlight;
+	info.depth_stencil_state.back.compare_op = compare::Operation::equal;
+	info.depth_stencil_state.back.fail_op = StencilOpState::Operation::keep;
+	info.depth_stencil_state.back.pass_op = StencilOpState::Operation::keep;
+	info.depth_stencil_state.back.compare_mask = static_cast<ut::uint32>(StencilReference::highlight);
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0x0;
-	info.depth_stencil_state.stencil_reference = stencilref_highlight;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.depth_stencil_state.stencil_reference = static_cast<ut::uint32>(StencilReference::highlight);
+	info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
+	info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
 	return tools.device.CreatePipelineState(info, color_only_pass).MoveOrThrow();
 }

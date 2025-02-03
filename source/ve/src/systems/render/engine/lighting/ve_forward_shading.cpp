@@ -57,8 +57,8 @@ ut::Result<ForwardShading::ViewData, ut::Error> ForwardShading::CreateViewData(T
 	for (ut::uint32 i = 0; i < secondary_buffer_count; i++)
 	{
 		CmdBuffer::Info cmd_buffer_info;
-		cmd_buffer_info.usage = CmdBuffer::usage_dynamic | CmdBuffer::usage_inside_render_pass;
-		cmd_buffer_info.level = CmdBuffer::level_secondary;
+		cmd_buffer_info.usage = CmdBuffer::Usage::dynamic_inside_render_pass;
+		cmd_buffer_info.level = CmdBuffer::Level::secondary;
 
 		ut::Result<CmdBuffer, ut::Error> cmd_buffer = tools.device.CreateCmdBuffer(cmd_buffer_info);
 		if (!cmd_buffer)
@@ -101,12 +101,12 @@ void ForwardShading::DrawTransparentGeometry(Context& context,
 	secondary_buffer_cache.Reset();
 	for (ut::uint32 i = 0; i < thread_count; i++)
 	{
-		secondary_buffer_cache.Add(data.lightpass_cmd[cubeface * thread_count + i]);
+		secondary_buffer_cache.Add(data.lightpass_cmd[static_cast<ut::uint32>(cubeface) * thread_count + i]);
 		tools.device.ResetCmdBuffer(secondary_buffer_cache.GetLast().Get());
 	}
 
 	// begin a render pass
-	Framebuffer& framebuffer = data.light_framebuffer[cubeface];
+	Framebuffer& framebuffer = data.light_framebuffer[static_cast<ut::uint32>(cubeface)];
 	const Framebuffer::Info& fb_info = framebuffer.GetInfo();
 	ut::Rect<ut::uint32> render_area(0, 0, fb_info.width, fb_info.height);
 	context.BeginRenderPass(lightpass, framebuffer, render_area, ut::Color<4>(0), 1.0f, 0, true);
@@ -164,8 +164,8 @@ void ForwardShading::RenderTransparentMeshInstancesJob(Context& context,
 		return;
 	}
 
-	const LightPass::MeshInstRendering::IblPreset ibl_preset = ibl_cubemap ? LightPass::MeshInstRendering::ibl_on :
-	                                                                         LightPass::MeshInstRendering::ibl_off;
+	const LightPass::MeshInstRendering::IblPreset ibl_preset = ibl_cubemap ? LightPass::MeshInstRendering::IblPreset::on :
+	                                                                         LightPass::MeshInstRendering::IblPreset::off;
 	const ut::uint32 last_element = offset + count - 1;
 	for (ut::uint32 i = offset; i <= last_element; i++)
 	{
@@ -174,7 +174,7 @@ void ForwardShading::RenderTransparentMeshInstancesJob(Context& context,
 		MeshInstance::DrawCall& dc = batcher.draw_calls[sorted_id];
 		Mesh::Subset& subset = dc.instance.mesh->subsets[dc.subset_id];
 		Material& material = subset.material;
-		if (material.alpha != Material::alpha_transparent)
+		if (material.alpha != Material::Alpha::transparent)
 		{
 			continue;
 		}
@@ -190,11 +190,11 @@ void ForwardShading::RenderTransparentMeshInstancesJob(Context& context,
 			if (ibl_cubemap)
 			{
 				const IblPass::MeshInstRendering::CullMode ibl_cull_mode = cull_mode == front_culling ?
-				                                                           IblPass::MeshInstRendering::cull_front :
-				                                                           IblPass::MeshInstRendering::cull_back;
+				                                                           IblPass::MeshInstRendering::CullMode::front :
+				                                                           IblPass::MeshInstRendering::CullMode::back;
 				const IblPass::MeshInstRendering::AlphaMode ibl_alpha_mode = first_pass ?
-				                                                             IblPass::MeshInstRendering::alpha_blend :
-				                                                             IblPass::MeshInstRendering::alpha_add;
+				                                                             IblPass::MeshInstRendering::AlphaMode::blend :
+				                                                             IblPass::MeshInstRendering::AlphaMode::add;
 				RenderTransparentMeshInstanceIbl(context,
 				                                 data,
 				                                 ibl_cubemap.Get(),
@@ -209,11 +209,11 @@ void ForwardShading::RenderTransparentMeshInstancesJob(Context& context,
 
 			// direct light pass
 			const LightPass::MeshInstRendering::CullMode lightpass_cull_mode = cull_mode == front_culling ?
-			                                                                   LightPass::MeshInstRendering::cull_front :
-			                                                                   LightPass::MeshInstRendering::cull_back;
+			                                                                   LightPass::MeshInstRendering::CullMode::front :
+			                                                                   LightPass::MeshInstRendering::CullMode::back;
 			const LightPass::MeshInstRendering::AlphaMode lightpass_alpha_mode = first_pass ?
-			                                                                     LightPass::MeshInstRendering::alpha_blend :
-			                                                                     LightPass::MeshInstRendering::alpha_add;
+			                                                                     LightPass::MeshInstRendering::AlphaMode::blend :
+			                                                                     LightPass::MeshInstRendering::AlphaMode::add;
 			RenderTransparentMeshInstanceLights(context,
 			                                    data,
 			                                    lights,
@@ -250,14 +250,14 @@ void ForwardShading::RenderTransparentMeshInstanceLights(Context& context,
 	Mesh& mesh = dc.instance.mesh.Get();
 	Mesh::Subset& subset = mesh.subsets[dc.subset_id];
 	Material& material = subset.material;
-	const LightPass::MeshInstRendering::AlphaTest alpha_test = material.alpha == Material::alpha_masked ?
-	                                                           LightPass::MeshInstRendering::alpha_test_on :
-	                                                           LightPass::MeshInstRendering::alpha_test_off;
+	const LightPass::MeshInstRendering::AlphaTest alpha_test = material.alpha == Material::Alpha::masked ?
+	                                                           LightPass::MeshInstRendering::AlphaTest::on :
+	                                                           LightPass::MeshInstRendering::AlphaTest::off;
 
 	// get stencil mode
 	const LightPass::MeshInstRendering::StencilMode stencil_mode = dc.instance.highlighted ?
-	                                                               LightPass::MeshInstRendering::stencil_highlighted :
-	                                                               LightPass::MeshInstRendering::stencil_none;
+	                                                               LightPass::MeshInstRendering::StencilMode::highlighted :
+	                                                               LightPass::MeshInstRendering::StencilMode::none;
 
 	// accumulate light from all sources
 	const size_t ambient_count = lights.ambient.Count();
@@ -268,32 +268,32 @@ void ForwardShading::RenderTransparentMeshInstanceLights(Context& context,
 	for (size_t light_id = 0; light_id < light_count; light_id++)
 	{
 		// figure out source type
-		const Light::SourceType light_type = light_id < ambient_count ? Light::source_ambient :
-		                                     light_id < (ambient_count + directional_count) ? Light::source_directional :
+		const Light::SourceType light_type = light_id < ambient_count ? Light::SourceType::ambient :
+		                                     light_id < (ambient_count + directional_count) ? Light::SourceType::directional :
 		                                     light_id < (ambient_count + directional_count + point_count) ?
-		                                     Light::source_point : Light::source_spot;
+		                                     Light::SourceType::point : Light::SourceType::spot;
 
 		// extract light data
 		ut::Optional<Buffer&> light_ub;
-		if (light_type == Light::source_ambient)
+		if (light_type == Light::SourceType::ambient)
 		{
 			AmbientLight& light = lights.ambient[light_id];
 			AmbientLight::FrameData& light_data = light.data->frames[current_frame_id];
 			light_ub = light_data.uniform_buffer;
 		}
-		else if (light_type == Light::source_directional)
+		else if (light_type == Light::SourceType::directional)
 		{
 			DirectionalLight& light = lights.directional[light_id - ambient_count];
 			DirectionalLight::FrameData& light_data = light.data->frames[current_frame_id];
 			light_ub = light_data.uniform_buffer;
 		}
-		else if (light_type == Light::source_point)
+		else if (light_type == Light::SourceType::point)
 		{
 			PointLight& light = lights.point[light_id - ambient_count - directional_count];
 			PointLight::FrameData& light_data = light.data->frames[current_frame_id];
 			light_ub = light_data.uniform_buffer;
 		}
-		else if (light_type == Light::source_spot)
+		else if (light_type == Light::SourceType::spot)
 		{
 			SpotLight& light = lights.spot[light_id - ambient_count - directional_count - point_count];
 			SpotLight::FrameData& light_data = light.data->frames[current_frame_id];
@@ -307,7 +307,7 @@ void ForwardShading::RenderTransparentMeshInstanceLights(Context& context,
 		// blending mode is used only for the first pass
 		if (light_id > 0)
 		{
-			alpha_mode = LightPass::MeshInstRendering::alpha_add;
+			alpha_mode = LightPass::MeshInstRendering::AlphaMode::add;
 		}
 
 		// calculate batch id
@@ -318,12 +318,12 @@ void ForwardShading::RenderTransparentMeshInstanceLights(Context& context,
 		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
 		const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
 		const size_t pipeline_state_id = LightPass::MeshInstRendering::PipelineGrid::GetId(static_cast<size_t>(vertex_format),
-		                                                                                   ibl_preset,
-		                                                                                   light_type,
-		                                                                                   alpha_test,
-		                                                                                   alpha_mode,
-		                                                                                   cull_mode,
-		                                                                                   stencil_mode,
+		                                                                                   static_cast<size_t>(ibl_preset),
+		                                                                                   static_cast<size_t>(light_type),
+		                                                                                   static_cast<size_t>(alpha_test),
+		                                                                                   static_cast<size_t>(alpha_mode),
+		                                                                                   static_cast<size_t>(cull_mode),
+		                                                                                   static_cast<size_t>(stencil_mode),
 		                                                                                   static_cast<size_t>(polygon_mode));
 
 		// bind uniforms
@@ -370,14 +370,14 @@ void ForwardShading::RenderTransparentMeshInstanceIbl(Context& context,
 	Mesh& mesh = dc.instance.mesh.Get();
 	Mesh::Subset& subset = mesh.subsets[dc.subset_id];
 	Material& material = subset.material;
-	const IblPass::MeshInstRendering::AlphaTest alpha_test = material.alpha == Material::alpha_masked ?
-	                                                         IblPass::MeshInstRendering::alpha_test_on :
-	                                                         IblPass::MeshInstRendering::alpha_test_off;
+	const IblPass::MeshInstRendering::AlphaTest alpha_test = material.alpha == Material::Alpha::masked ?
+	                                                         IblPass::MeshInstRendering::AlphaTest::on :
+	                                                         IblPass::MeshInstRendering::AlphaTest::off;
 
 	// get stencil mode
 	const IblPass::MeshInstRendering::StencilMode stencil_mode = dc.instance.highlighted ?
-	                                                             IblPass::MeshInstRendering::stencil_highlighted :
-	                                                             IblPass::MeshInstRendering::stencil_none;
+	                                                             IblPass::MeshInstRendering::StencilMode::highlighted :
+	                                                             IblPass::MeshInstRendering::StencilMode::none;
 
 	// calculate batch id
 	const ut::uint32 batch_id = drawcall_id / batch_size;
@@ -387,10 +387,10 @@ void ForwardShading::RenderTransparentMeshInstanceIbl(Context& context,
 	const Mesh::VertexFormat vertex_format = mesh.vertex_format;
 	const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
 	const size_t pipeline_state_id = IblPass::MeshInstRendering::PipelineGrid::GetId(static_cast<size_t>(vertex_format),
-	                                                                                 alpha_test,
-	                                                                                 alpha_mode,
-	                                                                                 cull_mode,
-	                                                                                 stencil_mode,
+	                                                                                 static_cast<size_t>(alpha_test),
+	                                                                                 static_cast<size_t>(alpha_mode),
+	                                                                                 static_cast<size_t>(cull_mode),
+	                                                                                 static_cast<size_t>(stencil_mode),
 	                                                                                 static_cast<size_t>(polygon_mode));
 
 	// bind uniforms
@@ -482,7 +482,7 @@ ut::Array<BoundShader> ForwardShading::CreateMeshInstLightPassShader()
 		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
 		// ibl preset
-		const bool ibl_enabled = ibl_preset == LightPass::MeshInstRendering::ibl_on;
+		const bool ibl_enabled = ibl_preset == static_cast<size_t>(LightPass::MeshInstRendering::IblPreset::on);
 		shader_name_suffix += ibl_enabled ? "_ibl" : "_noibl";
 		macro.name = "IBL";
 		macro.value = ibl_enabled ? "1" : "0";
@@ -490,21 +490,21 @@ ut::Array<BoundShader> ForwardShading::CreateMeshInstLightPassShader()
 
 		// light type
 		const char* light_type_str;
-		switch (source_type)
+		switch (static_cast<Light::SourceType>(source_type))
 		{
-		case Light::source_directional:
+		case Light::SourceType::directional:
 			light_type_str = "DIRECTIONAL_LIGHT";
 			shader_name_suffix += "_directional";
 			break;
-		case Light::source_point:
+		case Light::SourceType::point:
 			light_type_str = "POINT_LIGHT";
 			shader_name_suffix += "_point";
 			break;
-		case Light::source_spot:
+		case Light::SourceType::spot:
 			light_type_str = "SPOT_LIGHT";
 			shader_name_suffix += "_spot";
 			break;
-		case Light::source_ambient:
+		case Light::SourceType::ambient:
 			light_type_str = "AMBIENT_LIGHT";
 			shader_name_suffix += "_ambient";
 			break;
@@ -515,19 +515,19 @@ ut::Array<BoundShader> ForwardShading::CreateMeshInstLightPassShader()
 		macros.Add(ut::Move(macro));
 
 		// alpha test
-		const bool alpha_test_enabled = alpha_test == LightPass::MeshInstRendering::alpha_test_on;
+		const bool alpha_test_enabled = alpha_test == static_cast<size_t>(LightPass::MeshInstRendering::AlphaTest::on);
 		macro.name = "ALPHA_TEST";
 		macro.value = alpha_test_enabled ? "1" : "0";
 		macros.Add(macro);
 		shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
 
-		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::vertex,
+		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
 		                                                            ut::String("forward_mesh_lp_vs") + shader_name_suffix,
 		                                                            "VS",
 		                                                            "mesh.hlsl",
 		                                                            macros);
 
-		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::pixel,
+		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
 		                                                            ut::String("forward_mesh_lp_ps") + shader_name_suffix,
 		                                                            "PS",
 		                                                            "mesh.hlsl",
@@ -585,19 +585,19 @@ ut::Array<BoundShader> ForwardShading::CreateMeshInstIblShader(ut::uint32 ibl_mi
 		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
 		// alpha test
-		const bool alpha_test_enabled = alpha_test == IblPass::MeshInstRendering::alpha_test_on;
+		const bool alpha_test_enabled = alpha_test == static_cast<size_t>(IblPass::MeshInstRendering::AlphaTest::on);
 		macro.name = "ALPHA_TEST";
 		macro.value = alpha_test_enabled ? "1" : "0";
 		macros.Add(macro);
 		shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
 
-		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::vertex,
+		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
 		                                                            ut::String("forward_mesh_ibl_vs") + shader_name_suffix,
 		                                                            "VS",
 		                                                            "mesh.hlsl",
 		                                                            macros);
 
-		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::pixel,
+		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
 		                                                            ut::String("forward_mesh_ibl_ps") + shader_name_suffix,
 		                                                            "PS",
 		                                                            "mesh.hlsl",
@@ -616,8 +616,14 @@ ut::Array<BoundShader> ForwardShading::CreateMeshInstIblShader(ut::uint32 ibl_mi
 // Creates a render pass for the shading techniques.
 RenderPass ForwardShading::CreateLightPass()
 {
-	RenderTargetSlot depth_slot(tools.formats.depth_stencil, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
-	RenderTargetSlot color_slot(tools.formats.light_buffer, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	RenderTargetSlot depth_slot(tools.formats.depth_stencil,
+	                            RenderTargetSlot::LoadOperation::extract,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
+	RenderTargetSlot color_slot(tools.formats.light_buffer,
+	                            RenderTargetSlot::LoadOperation::extract,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
 	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot).MoveOrThrow();
@@ -635,54 +641,58 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstLightPassPipe
 {
 	PipelineState::Info info;
 	const size_t shader_id = LightPass::MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format),
-	                                                                         ibl_preset,
-	                                                                         source_type,
-	                                                                         alpha_test);
-	UT_ASSERT(light_shader[shader_id].stages[Shader::vertex]);
-	UT_ASSERT(light_shader[shader_id].stages[Shader::pixel]);
+	                                                                         static_cast<size_t>(ibl_preset),
+	                                                                         static_cast<size_t>(source_type),
+	                                                                         static_cast<size_t>(alpha_test));
+	UT_ASSERT(light_shader[shader_id].GetShader(Shader::Stage::vertex));
+	UT_ASSERT(light_shader[shader_id].GetShader(Shader::Stage::pixel));
 
-	const ut::uint32 stencil_mask = stencil_mode == LightPass::MeshInstRendering::stencil_highlighted ?
-	                                                stencilref_highlight : 0x0;
+	const ut::uint32 stencil_mask = stencil_mode == LightPass::MeshInstRendering::StencilMode::highlighted ?
+	                                                static_cast<ut::uint32>(StencilReference::highlight) : 0x0;
 
-	info.stages[Shader::vertex] = light_shader[shader_id].stages[Shader::vertex].Get();
-	info.stages[Shader::pixel] = light_shader[shader_id].stages[Shader::pixel].Get();
-	info.input_assembly_state = Mesh::CreateIaState(vertex_format, polygon_mode, Mesh::Instancing::on);
+	info.SetShader(Shader::Stage::vertex,
+	               light_shader[shader_id].GetShader(Shader::Stage::vertex));
+	info.SetShader(Shader::Stage::pixel,
+	               light_shader[shader_id].GetShader(Shader::Stage::pixel));
+	info.input_assembly_state = Mesh::CreateIaState(vertex_format,
+	                                                polygon_mode,
+	                                                Mesh::Instancing::on);
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::less_or_equal;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::less_or_equal;
 	info.depth_stencil_state.stencil_test_enable = true;
-	info.depth_stencil_state.back.compare_op = compare::always;
-	info.depth_stencil_state.back.fail_op = StencilOpState::replace;
-	info.depth_stencil_state.back.pass_op = StencilOpState::replace;
+	info.depth_stencil_state.back.compare_op = compare::Operation::always;
+	info.depth_stencil_state.back.fail_op = StencilOpState::Operation::replace;
+	info.depth_stencil_state.back.pass_op = StencilOpState::Operation::replace;
 	info.depth_stencil_state.back.compare_mask = 0xffffffff;
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0xffffffff;
 	info.depth_stencil_state.stencil_reference = stencil_mask;
 	info.rasterization_state.polygon_mode = Mesh::GetRasterizerPolygonMode(polygon_mode);
-	info.rasterization_state.cull_mode = cull_mode == LightPass::MeshInstRendering::cull_back ?
-	                                                  RasterizationState::back_culling :
-	                                                  RasterizationState::no_culling;
-	if (alpha_mode == LightPass::MeshInstRendering::alpha_blend)
+	info.rasterization_state.cull_mode = cull_mode == LightPass::MeshInstRendering::CullMode::back ?
+	                                                  RasterizationState::CullMode::back :
+	                                                  RasterizationState::CullMode::off;
+	if (alpha_mode == LightPass::MeshInstRendering::AlphaMode::blend)
 	{
 		Blending blending(true,
-		                  Blending::src_alpha,
-		                  Blending::inverted_src_alpha,
-		                  Blending::add,
-		                  Blending::one,
-		                  Blending::one,
-		                  Blending::max,
+		                  Blending::Factor::src_alpha,
+		                  Blending::Factor::inverted_src_alpha,
+		                  Blending::Operation::add,
+		                  Blending::Factor::one,
+		                  Blending::Factor::one,
+		                  Blending::Operation::max,
 		                  0xf);
 		info.blend_state.attachments.Add(blending);
 	}
-	else if (alpha_mode == LightPass::MeshInstRendering::alpha_add)
+	else if (alpha_mode == LightPass::MeshInstRendering::AlphaMode::add)
 	{
 		Blending blending(true,
-		                  Blending::src_alpha,
-		                  Blending::one,
-		                  Blending::add,
-		                  Blending::one,
-		                  Blending::one,
-		                  Blending::max,
+		                  Blending::Factor::src_alpha,
+		                  Blending::Factor::one,
+		                  Blending::Operation::add,
+		                  Blending::Factor::one,
+		                  Blending::Factor::one,
+		                  Blending::Operation::max,
 		                  0xf);
 		info.blend_state.attachments.Add(blending);
 	}
@@ -699,55 +709,60 @@ ut::Result<PipelineState, ut::Error> ForwardShading::CreateMeshInstIblPassPipeli
                                                                                    IblPass::MeshInstRendering::StencilMode stencil_mode)
 {
 	PipelineState::Info info;
-	const size_t shader_id = IblPass::MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format), alpha_test);
-	UT_ASSERT(ibl_shader[shader_id].stages[Shader::vertex]);
-	UT_ASSERT(ibl_shader[shader_id].stages[Shader::pixel]);
+	const size_t shader_id = IblPass::MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format),
+	                                                                       static_cast<size_t>(alpha_test));
+	UT_ASSERT(ibl_shader[shader_id].GetShader(Shader::Stage::vertex));
+	UT_ASSERT(ibl_shader[shader_id].GetShader(Shader::Stage::pixel));
 
-	const ut::uint32 stencil_mask = stencil_mode == LightPass::MeshInstRendering::stencil_highlighted ?
-	                                                stencilref_highlight : 0x0;
+	const ut::uint32 stencil_mask = stencil_mode == IblPass::MeshInstRendering::StencilMode::highlighted ?
+	                                                static_cast<ut::uint32>(StencilReference::highlight) : 0x0;
 
-	info.stages[Shader::vertex] = ibl_shader[shader_id].stages[Shader::vertex].Get();
-	info.stages[Shader::pixel] = ibl_shader[shader_id].stages[Shader::pixel].Get();
-	info.input_assembly_state = Mesh::CreateIaState(vertex_format, polygon_mode, Mesh::Instancing::on);
+	info.SetShader(Shader::Stage::vertex,
+	               ibl_shader[shader_id].GetShader(Shader::Stage::vertex));
+	info.SetShader(Shader::Stage::pixel,
+	               ibl_shader[shader_id].GetShader(Shader::Stage::pixel));
+	info.input_assembly_state = Mesh::CreateIaState(vertex_format,
+	                                                polygon_mode,
+	                                                Mesh::Instancing::on);
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::less_or_equal;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::less_or_equal;
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::less_or_equal;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::less_or_equal;
 	info.depth_stencil_state.stencil_test_enable = true;
-	info.depth_stencil_state.back.compare_op = compare::always;
-	info.depth_stencil_state.back.fail_op = StencilOpState::replace;
-	info.depth_stencil_state.back.pass_op = StencilOpState::replace;
+	info.depth_stencil_state.back.compare_op = compare::Operation::always;
+	info.depth_stencil_state.back.fail_op = StencilOpState::Operation::replace;
+	info.depth_stencil_state.back.pass_op = StencilOpState::Operation::replace;
 	info.depth_stencil_state.back.compare_mask = 0xffffffff;
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0xffffffff;
 	info.depth_stencil_state.stencil_reference = stencil_mask;
 	info.rasterization_state.polygon_mode = Mesh::GetRasterizerPolygonMode(polygon_mode);
-	info.rasterization_state.cull_mode = cull_mode == IblPass::MeshInstRendering::cull_back ?
-	                                                  RasterizationState::back_culling :
-	                                                  RasterizationState::no_culling;
-	if (alpha_mode == IblPass::MeshInstRendering::alpha_blend)
+	info.rasterization_state.cull_mode = cull_mode == IblPass::MeshInstRendering::CullMode::back ?
+	                                                  RasterizationState::CullMode::back :
+	                                                  RasterizationState::CullMode::off;
+	if (alpha_mode == IblPass::MeshInstRendering::AlphaMode::blend)
 	{
 		Blending blending(true,
-		                  Blending::one,
-		                  Blending::inverted_src_alpha,
-		                  Blending::add,
-		                  Blending::one,
-		                  Blending::one,
-		                  Blending::max,
+		                  Blending::Factor::one,
+		                  Blending::Factor::inverted_src_alpha,
+		                  Blending::Operation::add,
+		                  Blending::Factor::one,
+		                  Blending::Factor::one,
+		                  Blending::Operation::max,
 		                  0xf);
 		info.blend_state.attachments.Add(blending);
 	}
-	else if (alpha_mode == IblPass::MeshInstRendering::alpha_add)
+	else if (alpha_mode == IblPass::MeshInstRendering::AlphaMode::add)
 	{
 		Blending blending(true,
-		                  Blending::one,
-		                  Blending::one,
-		                  Blending::add,
-		                  Blending::one,
-		                  Blending::one,
-		                  Blending::max,
+		                  Blending::Factor::one,
+		                  Blending::Factor::one,
+		                  Blending::Operation::add,
+		                  Blending::Factor::one,
+		                  Blending::Factor::one,
+		                  Blending::Operation::max,
 		                  0xf);
 		info.blend_state.attachments.Add(blending);
 	}
@@ -908,7 +923,7 @@ void ForwardShading::SortTransparentDrawCalls(const ut::Vector<3>& view_position
 		const MeshInstance::DrawCall& dc = draw_list[dc_index];
 		const Mesh::Subset& subset = dc.instance.mesh->subsets[dc.subset_id];
 		const Material& material = subset.material;
-		if (material.unlit || material.alpha != Material::alpha_transparent)
+		if (material.unlit || material.alpha != Material::Alpha::transparent)
 		{
 			continue;
 		}

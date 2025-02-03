@@ -11,7 +11,7 @@ START_NAMESPACE(render)
 // Supported primitive topologies.
 namespace primitive
 {
-	enum Topology
+	enum class Topology
 	{
 		point_list,
 		line_list,

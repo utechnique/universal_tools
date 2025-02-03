@@ -48,11 +48,11 @@ public:
 	};	
 
 	// Supported transparency modes.
-	enum Alpha
+	enum class Alpha
 	{
-		alpha_opaque,
-		alpha_masked,
-		alpha_transparent,
+		opaque,
+		masked,
+		transparent,
 	};
 
 	// Map resources.
@@ -61,7 +61,7 @@ public:
 	RcRef<Map> material;
 
 	// Transparency mode.
-	Alpha alpha = alpha_opaque;
+	Alpha alpha = Alpha::opaque;
 
 	// Indicates if the surface is visible from both sides.
 	bool double_sided = false;

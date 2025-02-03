@@ -52,7 +52,7 @@ public:
 	ut::Result<RcRef<ResourceType>, ut::Error> Find(const ut::String& name)
 	{
 		// lock resources
-		ut::ScopeRWLock scope_lock(lock, ut::access_read);
+		ut::ScopeRWLock scope_lock(lock, ut::RWLock::Access::read);
 
 		// find resource id by name
 		ut::Optional<Resource::Id&> id = names.Find(name);
@@ -186,7 +186,7 @@ public:
 	RcRef<ResourceType> AddResource(ResourceType resource, ut::Optional<ut::String> name = ut::Optional<ut::String>())
 	{
 		// lock resources
-		ut::ScopeRWLock scope_lock(lock, ut::access_write);
+		ut::ScopeRWLock scope_lock(lock, ut::RWLock::Access::write);
 
 		// wrap resource into unique pointer to the base class
 		ut::UniquePtr<Resource> rc_unique_ptr = ut::MakeUnique<ResourceType>(ut::Move(resource));

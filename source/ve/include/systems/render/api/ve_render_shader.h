@@ -18,7 +18,7 @@ public:
 	static const ut::uint32 skStageCount = 6;
 
 	// Shader stage type.
-	enum Stage : ut::uint32
+	enum class Stage : ut::uint32
 	{
 		vertex   = 0,
 		hull     = 1,
@@ -42,7 +42,7 @@ public:
 	{
 	public:
 		// Type of a shader parameter.
-		enum Type : ut::uint32
+		enum class Type : ut::uint32
 		{
 			uniform_buffer,
 			image,
@@ -52,7 +52,7 @@ public:
 		};
 
 		// Constructor.
-		Parameter(Type in_type = Parameter::unknown,
+		Parameter(Type in_type = Type::unknown,
 				  ut::String in_name = ut::String(),
 				  ut::uint32 in_binding = 0,
 		          ut::Array<ut::uint32> in_arr =
@@ -103,7 +103,7 @@ public:
 
 	private:
 		// type of the parameter, see ve::render::Shader::Parameter::Type
-		ut::uint32 type;
+		Type type;
 
 		// name of the parameter how it's defined in a shader code
 		ut::String name;
@@ -125,7 +125,7 @@ public:
 		void Reflect(ut::meta::Snapshot& snapshot);
 
 		// shader stage
-		ut::uint32 stage;
+		Stage stage;
 
 		// unique shader name
 		ut::String name;
@@ -179,8 +179,8 @@ public:
 	BoundShader(Shader vs,
 	            Shader ps)
 	{
-		stages[Shader::vertex] = ut::Move(vs);
-		stages[Shader::pixel] = ut::Move(ps);
+		stages[static_cast<size_t>(Shader::Stage::vertex)] = ut::Move(vs);
+		stages[static_cast<size_t>(Shader::Stage::pixel)] = ut::Move(ps);
 	}
 
 	// Constructor (vs->>hs->ds->gs->ps)
@@ -190,11 +190,23 @@ public:
 	            Shader gs,
 	            Shader ps)
 	{
-		stages[Shader::vertex] = ut::Move(vs);
-		stages[Shader::hull] = ut::Move(hs);
-		stages[Shader::domain] = ut::Move(ds);
-		stages[Shader::geometry] = ut::Move(gs);
-		stages[Shader::pixel] = ut::Move(ps);
+		stages[static_cast<size_t>(Shader::Stage::vertex)] = ut::Move(vs);
+		stages[static_cast<size_t>(Shader::Stage::hull)] = ut::Move(hs);
+		stages[static_cast<size_t>(Shader::Stage::domain)] = ut::Move(ds);
+		stages[static_cast<size_t>(Shader::Stage::geometry)] = ut::Move(gs);
+		stages[static_cast<size_t>(Shader::Stage::pixel)] = ut::Move(ps);
+	}
+
+	// Returns a reference to the shader bound to the corresponding
+	// shader stage.
+	ut::Optional<Shader&> GetShader(Shader::Stage stage)
+	{
+		ut::Optional<Shader>& shader = stages[static_cast<size_t>(stage)];
+		if (shader)
+		{
+			return shader.Get();
+		}
+		return ut::Optional<Shader&>();
 	}
 
 	ut::Optional<Shader> stages[Shader::skStageCount];

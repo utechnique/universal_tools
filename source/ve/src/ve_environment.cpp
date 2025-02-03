@@ -64,7 +64,7 @@ ut::Optional<ut::Error> CmdAccessibleEnvironment::AddComponent(Entity::Id entity
 
 	// find appropriate component hashmap
 	const ut::DynamicType::Handle component_type = component->Identify().GetHandle();
-	ut::Optional<SharedComponentMap<ut::access_full>::Type&> map_find_result = components.Find(component_type);
+	ut::Optional<SharedComponentMap<ComponentMap::Access::read_write>::Type&> map_find_result = components.Find(component_type);
 	if (!map_find_result)
 	{
 		return ut::Error(ut::error::not_supported,
@@ -86,7 +86,7 @@ ut::Optional<ut::Error> CmdAccessibleEnvironment::AddComponent(Entity::Id entity
 	}
 
 	// add component
-	SharedComponentMap<ut::access_full>::Type& map = map_find_result.Get();
+	SharedComponentMap<ComponentMap::Access::read_write>::Type& map = map_find_result.Get();
 	UT_ASSERT(map.Get() != nullptr);
 	const ut::Optional<Component&> existing_component = map->Insert(entity_id, ut::Move(component));
 	if (existing_component)
@@ -124,7 +124,7 @@ ut::Optional<ut::Error> CmdAccessibleEnvironment::DeleteEntity(Entity::Id entity
 	for (size_t i = 0; i < component_count; i++)
 	{
 		const ut::DynamicType::Handle component_type = entity.GetComponentByIndex(i);
-		ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = components.Find(component_type);
+		ut::Optional<SharedComponentMap<ComponentMap::Access::read_write>::Type&> component_map = components.Find(component_type);
 		UT_ASSERT(component_map.HasValue());
 		const bool remove_component_result = component_map.Get()->Remove(entity_id);
 		UT_ASSERT(remove_component_result);
@@ -166,7 +166,7 @@ ut::Optional<ut::Error> CmdAccessibleEnvironment::DeleteComponent(Entity::Id ent
 	pipeline.UnregisterEntity(entity_id);
 
 	// remove the component
-	ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = components.Find(component_type);
+	ut::Optional<SharedComponentMap<ComponentMap::Access::read_write>::Type&> component_map = components.Find(component_type);
 	UT_ASSERT(component_map.HasValue());
 	const bool remove_component_result = component_map.Get()->Remove(entity_id);
 	UT_ASSERT(remove_component_result);
@@ -194,7 +194,7 @@ ut::Optional<ut::Error> CmdAccessibleEnvironment::UpdateComponent(Entity::Id ent
 	UT_ASSERT(callback.IsValid());
 	
 	// find the component map
-	ut::Optional<SharedComponentMap<ut::access_full>::Type&> component_map = components.Find(component_type);
+	ut::Optional<SharedComponentMap<ComponentMap::Access::read_write>::Type&> component_map = components.Find(component_type);
 	if (!component_map)
 	{
 		return ut::Error(ut::error::not_found, "Desired component map was not found.");
@@ -242,7 +242,7 @@ ut::Optional<ut::Error> Environment::Run()
 	// main loop
 	while (!exit.Read())
 	{
-		System::Time prev_frame_time_ms = timer.GetTime<ut::time::milliseconds, System::Time>();
+		System::Time prev_frame_time_ms = timer.GetTime<ut::time::Unit::millisecond, System::Time>();
 		timer.Start();
 
 		// move pending commands to temporary buffer

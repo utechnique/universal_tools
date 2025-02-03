@@ -68,21 +68,21 @@ namespace vertex_traits
 	pixel::Format GenerateFormat()
 	{
 		static_assert(sizeof(S) != 0, "Unsupported vertex vector component format.");
-		return pixel::unknown;
+		return pixel::Format::unknown;
 	}
 
-	template<> inline pixel::Format GenerateFormat<ut::int32, 1>() { return pixel::r32_sint; }
-	template<> inline pixel::Format GenerateFormat<ut::int32, 2>() { return pixel::r32g32_sint; }
-	template<> inline pixel::Format GenerateFormat<ut::int32, 3>() { return pixel::r32g32b32_sint; }
-	template<> inline pixel::Format GenerateFormat<ut::int32, 4>() { return pixel::r32g32b32a32_sint; }
-	template<> inline pixel::Format GenerateFormat<ut::uint32, 1>() { return pixel::r32_uint; }
-	template<> inline pixel::Format GenerateFormat<ut::uint32, 2>() { return pixel::r32g32_uint; }
-	template<> inline pixel::Format GenerateFormat<ut::uint32, 3>() { return pixel::r32g32b32_uint; }
-	template<> inline pixel::Format GenerateFormat<ut::uint32, 4>() { return pixel::r32g32b32a32_uint; }
-	template<> inline pixel::Format GenerateFormat<float, 1>() { return pixel::r32_float; }
-	template<> inline pixel::Format GenerateFormat<float, 2>() { return pixel::r32g32_float; }
-	template<> inline pixel::Format GenerateFormat<float, 3>() { return pixel::r32g32b32_float; }
-	template<> inline pixel::Format GenerateFormat<float, 4>() { return pixel::r32g32b32a32_float; }
+	template<> inline pixel::Format GenerateFormat<ut::int32, 1>() { return pixel::Format::r32_sint; }
+	template<> inline pixel::Format GenerateFormat<ut::int32, 2>() { return pixel::Format::r32g32_sint; }
+	template<> inline pixel::Format GenerateFormat<ut::int32, 3>() { return pixel::Format::r32g32b32_sint; }
+	template<> inline pixel::Format GenerateFormat<ut::int32, 4>() { return pixel::Format::r32g32b32a32_sint; }
+	template<> inline pixel::Format GenerateFormat<ut::uint32, 1>() { return pixel::Format::r32_uint; }
+	template<> inline pixel::Format GenerateFormat<ut::uint32, 2>() { return pixel::Format::r32g32_uint; }
+	template<> inline pixel::Format GenerateFormat<ut::uint32, 3>() { return pixel::Format::r32g32b32_uint; }
+	template<> inline pixel::Format GenerateFormat<ut::uint32, 4>() { return pixel::Format::r32g32b32a32_uint; }
+	template<> inline pixel::Format GenerateFormat<float, 1>() { return pixel::Format::r32_float; }
+	template<> inline pixel::Format GenerateFormat<float, 2>() { return pixel::Format::r32g32_float; }
+	template<> inline pixel::Format GenerateFormat<float, 3>() { return pixel::Format::r32g32b32_float; }
+	template<> inline pixel::Format GenerateFormat<float, 4>() { return pixel::Format::r32g32b32a32_float; }
 
 	// Returns a reference to the VertexElement object if desired
     // component is present in the provided input assembly state.

@@ -224,7 +224,9 @@ public:
 		TreeType& tree = *static_cast<TreeType*>(ptr);
 		typename TreeType::Iterator riterator;
 		int previous_key = 0;
-		for (riterator = tree.Begin(ut::iterator::first); riterator != tree.End(ut::iterator::last); ++riterator)
+		for (riterator = tree.Begin(ut::iterator::Position::first);
+		     riterator != tree.End(ut::iterator::Position::last);
+		     ++riterator)
 		{
 			Pair<const Key, Value>& node = *riterator;
 			if (reinterpret_cast<ut::uptr>(&node) == reinterpret_cast<ut::uptr>(element_address) ||

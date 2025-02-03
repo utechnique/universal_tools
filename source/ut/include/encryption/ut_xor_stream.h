@@ -7,10 +7,10 @@
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
-// ut::EncryptionStream<encryption::XOR> is a specialized EncryptionStream<>
+// ut::EncryptionStream<encryption::Method::XOR> is a specialized EncryptionStream<>
 // template for the XOR method of encryption.
 template<>
-class EncryptionStream<encryption::XOR> : public EncryptionStreamBase
+class EncryptionStream<encryption::Method::XOR> : public EncryptionStreamBase
 {
 public:
 	// Encrypts stream buffer using provided password.

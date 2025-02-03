@@ -10,7 +10,7 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformSampler::PlatformSampler(VkDevice device_handle,
-                                 VkSampler sampler_handle) : VkRc<vk::sampler>(sampler_handle, device_handle)
+                                 VkSampler sampler_handle) : VkRc<vk::Rc::sampler>(sampler_handle, device_handle)
 {}
 
 // Move constructor.

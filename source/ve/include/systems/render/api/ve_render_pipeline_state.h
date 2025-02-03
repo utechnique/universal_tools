@@ -75,7 +75,7 @@ struct Viewport
 struct RasterizationState
 {
 	// Polygon rendering mode
-	enum PolygonMode
+	enum class PolygonMode
 	{
 		fill,
 		line,
@@ -83,24 +83,24 @@ struct RasterizationState
 	};
 
 	// Polygon facing direction used for primitive culling.
-	enum CullMode
+	enum class CullMode
 	{
-		no_culling,
-		front_culling,
-		back_culling
+		off,
+		front,
+		back
 	};
 
 	// Specifies the front-facing triangle orientation to be used for culling.
-	enum FrontFace
+	enum class FrontFace
 	{
 		counter_clockwise,
 		clockwise
 	};
 
 	// Constructor.
-	RasterizationState(PolygonMode in_polygon_mode = fill,
-	                   CullMode in_cull_mode = no_culling,
-	                   FrontFace in_front_face = clockwise,
+	RasterizationState(PolygonMode in_polygon_mode = PolygonMode::fill,
+	                   CullMode in_cull_mode = CullMode::off,
+	                   FrontFace in_front_face = FrontFace::clockwise,
 	                   float in_line_width = 1.0f,
 	                   bool in_discard_enable = false,
 	                   bool in_depth_bias_enable = false,
@@ -133,7 +133,7 @@ struct RasterizationState
 struct StencilOpState
 {
 	// Operation type.
-	enum Operation
+	enum class Operation
 	{
 		keep,
 		zero,
@@ -146,10 +146,10 @@ struct StencilOpState
 	};
 
 	// Constructor.
-	StencilOpState(compare::Operation in_compare_op = compare::always,
-	               Operation in_fail_op = keep,
-	               Operation in_pass_op = keep,
-	               Operation in_depth_fail_op = keep,
+	StencilOpState(compare::Operation in_compare_op = compare::Operation::always,
+	               Operation in_fail_op = Operation::keep,
+	               Operation in_pass_op = Operation::keep,
+	               Operation in_depth_fail_op = Operation::keep,
 	               ut::uint32 in_compare_mask = 0,
 	               ut::uint32 in_write_mask = 0,
 	               ut::uint32 in_reference = 0) : compare_op(in_compare_op)
@@ -175,7 +175,7 @@ struct DepthStencilState
 	DepthStencilState(bool in_depth_test_enable = false,
 	                  bool in_stencil_test_enable = false,
 	                  bool in_depth_write_enable = false,
-	                  compare::Operation in_depth_compare_op = compare::always,
+	                  compare::Operation in_depth_compare_op = compare::Operation::always,
 	                  StencilOpState in_front = StencilOpState(),
 	                  StencilOpState in_back = StencilOpState()) : depth_test_enable(in_depth_test_enable)
 	                                                             , stencil_test_enable(in_stencil_test_enable)
@@ -203,7 +203,7 @@ struct Blending
 {
 	// Blend factor, which modulates values for the pixel shader
 	// and render target.
-	enum Factor
+	enum class Factor
 	{
 		zero,
 		one,
@@ -222,7 +222,7 @@ struct Blending
 	};
 
 	// RGB or alpha blending operation.
-	enum Operation
+	enum class Operation
 	{
 		add,
 		subtract,
@@ -231,20 +231,14 @@ struct Blending
 		max,
 	};
 
-	enum Type
-	{
-		alpha,
-		additive
-	};
-
 	// Constructor
 	Blending(bool in_blend_enable = false,
-	         Factor in_src_blend = src_alpha,
-	         Factor in_dst_blend = inverted_src_alpha,
-	         Operation in_color_op = add,
-	         Factor in_src_blend_alpha = one,
-	         Factor in_dst_blend_alpha = one,
-	         Operation in_alpha_op = max,
+	         Factor in_src_blend = Factor::src_alpha,
+	         Factor in_dst_blend = Factor::inverted_src_alpha,
+	         Operation in_color_op = Operation::add,
+	         Factor in_src_blend_alpha = Factor::one,
+	         Factor in_dst_blend_alpha = Factor::one,
+	         Operation in_alpha_op = Operation::max,
 	         ut::uint8 in_write_mask = 0xf) : blend_enable(in_blend_enable)
 	                                        , src_blend(in_src_blend)
 	                                        , dst_blend(in_dst_blend)
@@ -284,34 +278,34 @@ struct BlendState
 	static Blending CreateNoBlending()
 	{
 		return Blending(false,
-		                Blending::src_alpha,
-		                Blending::inverted_src_alpha,
-		                Blending::add,
-		                Blending::one,
-		                Blending::one,
-		                Blending::max,
+		                Blending::Factor::src_alpha,
+		                Blending::Factor::inverted_src_alpha,
+		                Blending::Operation::add,
+		                Blending::Factor::one,
+		                Blending::Factor::one,
+		                Blending::Operation::max,
 		                0xf);
 	}
 	static Blending CreateAlphaBlending()
 	{
 		return Blending(true,
-		                Blending::src_alpha,
-		                Blending::inverted_src_alpha,
-		                Blending::add,
-		                Blending::one,
-		                Blending::one,
-		                Blending::max,
+		                Blending::Factor::src_alpha,
+		                Blending::Factor::inverted_src_alpha,
+		                Blending::Operation::add,
+		                Blending::Factor::one,
+		                Blending::Factor::one,
+		                Blending::Operation::max,
 		                0xf);
 	}
 	static Blending CreateAdditiveBlending()
 	{
 		return Blending(true,
-		                Blending::one,
-		                Blending::one,
-		                Blending::add,
-		                Blending::one,
-		                Blending::one,
-		                Blending::add,
+		                Blending::Factor::one,
+		                Blending::Factor::one,
+		                Blending::Operation::add,
+		                Blending::Factor::one,
+		                Blending::Factor::one,
+		                Blending::Operation::add,
 		                0xf);
 	}
 
@@ -332,6 +326,12 @@ public:
 		// Constructor.
 		Info() : tessellation_enable(false)
 		{}
+
+		// Assigns provided shader to the corresponding pipeline stage.
+		void SetShader(Shader::Stage stage, ut::Optional<Shader&> shader)
+		{
+			stages[static_cast<size_t>(stage)] = ut::Move(shader);
+		}
 
 		// shaders bound to the pipeline
 		ut::Optional<Shader&> stages[Shader::skStageCount];

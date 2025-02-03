@@ -10,7 +10,7 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformFramebuffer::PlatformFramebuffer(VkDevice device_handle,
-                                         VkFramebuffer framebuffer_handle) : VkRc<vk::framebuffer>(framebuffer_handle,
+                                         VkFramebuffer framebuffer_handle) : VkRc<vk::Rc::framebuffer>(framebuffer_handle,
                                                                                                    device_handle)
 {}
 

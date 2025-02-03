@@ -25,9 +25,9 @@ ut::Result<HitMask::ViewData, ut::Error> HitMask::CreateViewData(Target& depth_s
 	const pixel::Format depth_stencil_format = depth_stencil.GetInfo().format;
 
 	Target::Info info;
-	info.type = Image::type_2D;
+	info.type = Image::Type::planar;
 	info.format = tools.formats.hitmask;
-	info.usage = Target::Info::usage_color;
+	info.usage = Target::Info::Usage::color;
 	info.has_staging_cpu_read_buffer = true;
 	info.mip_count = 1;
 	info.width = width;
@@ -69,7 +69,7 @@ void HitMask::Draw(Context& context,
                    Buffer& view_uniform_buffer,
                    Batcher& batcher)
 {
-	context.SetTargetState(data.target, Target::Info::state_target);
+	context.SetTargetState(data.target, Target::Info::State::target);
 
 	// begin a render pass
 	Framebuffer& framebuffer = data.framebuffer;
@@ -90,7 +90,7 @@ void HitMask::Draw(Context& context,
 	context.EndRenderPass();
 
 	// copy to the staging buffer
-	context.SetTargetState(data.target, Target::Info::state_transfer_src);
+	context.SetTargetState(data.target, Target::Info::State::transfer_src);
 	context.CopyImageToStagingCpuReadBuffer(data.target.GetImage());
 
 	// mark this frame as submitted to gpu
@@ -105,7 +105,7 @@ void HitMask::Read(Context& context,
 	Image& hitmask_img = gpu_data.target.GetImage();
 	const Image::Info& hitmask_info = hitmask_img.GetInfo();
 
-	ut::Result<Image::MappedResource, ut::Error> mapped_hitmask_rc = context.MapImage(hitmask_img, ut::access_read);
+	ut::Result<Image::MappedResource, ut::Error> mapped_hitmask_rc = context.MapImage(hitmask_img, memory::CpuAccess::read);
 	if (!mapped_hitmask_rc)
 	{
 		throw ut::Error(ut::error::fail, "Failed to map the hitmask image.");
@@ -125,7 +125,7 @@ void HitMask::Read(Context& context,
 		hitmask_data += mapped_hitmask_rc->row_pitch;
 	}
 
-	context.UnmapImage(hitmask_img, ut::access_read);
+	context.UnmapImage(hitmask_img, memory::CpuAccess::read);
 }
 
 // Encodes the provided entity identifier into the hitmask compatible value.
@@ -211,8 +211,8 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 	// variables tracking if something changes between iterations
 	Mesh::VertexFormat prev_vertex_format = Mesh::VertexFormat::count;
 	Mesh::PolygonMode prev_polygon_mode = Mesh::PolygonMode::count;
-	MeshInstRendering::AlphaMode prev_alpha_mode = MeshInstRendering::alpha_mode_count;
-	MeshInstRendering::CullMode prev_cull_mode = MeshInstRendering::cull_mode_count;
+	MeshInstRendering::AlphaMode prev_alpha_mode = MeshInstRendering::AlphaMode::count;
+	MeshInstRendering::CullMode prev_cull_mode = MeshInstRendering::CullMode::count;
 	Map* prev_diffuse_ptr = nullptr;
 	Buffer* prev_vertex_buffer = nullptr;
 	Buffer* prev_index_buffer = nullptr;
@@ -233,8 +233,8 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 		Mesh& mesh = dc.instance.mesh.Get();
 		Mesh::Subset& subset = mesh.subsets[dc.subset_id];
 		Material& material = subset.material;
-		const bool is_transparent = material.alpha == Material::alpha_transparent;
-		const bool alpha_test_on = material.alpha == Material::alpha_masked;
+		const bool is_transparent = material.alpha == Material::Alpha::transparent;
+		const bool alpha_test_on = material.alpha == Material::Alpha::masked;
 
 		// calculate batch id
 		const ut::uint32 batch_id = i / batch_size;
@@ -254,12 +254,12 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 		// check pipeline state
 		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
 		const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
-		const MeshInstRendering::AlphaMode alpha_mode = material.alpha == Material::alpha_masked ?
-		                                                MeshInstRendering::alpha_test :
-		                                                MeshInstRendering::alpha_opaque;
+		const MeshInstRendering::AlphaMode alpha_mode = material.alpha == Material::Alpha::masked ?
+		                                                MeshInstRendering::AlphaMode::alpha_test :
+		                                                MeshInstRendering::AlphaMode::opaque;
 		const MeshInstRendering::CullMode cull_mode = material.double_sided ?
-		                                              MeshInstRendering::cull_none :
-		                                              MeshInstRendering::cull_back;
+		                                              MeshInstRendering::CullMode::none :
+		                                              MeshInstRendering::CullMode::back;
 		const bool alpha_mode_changed = prev_alpha_mode != alpha_mode;
 		bool pipeline_changed = prev_vertex_format != vertex_format ||
 		                        prev_polygon_mode != polygon_mode ||
@@ -301,8 +301,8 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 		if (pipeline_changed)
 		{
 			const size_t pipeline_state_id = MeshInstRendering::PipelineGrid::GetId(static_cast<size_t>(vertex_format),
-			                                                                        alpha_mode,
-			                                                                        cull_mode,
+			                                                                        static_cast<size_t>(alpha_mode),
+			                                                                        static_cast<size_t>(cull_mode),
 			                                                                        static_cast<size_t>(polygon_mode));
 			context.BindPipelineState(mesh_inst_pipeline[pipeline_state_id]);
 
@@ -397,7 +397,7 @@ ut::Array<BoundShader> HitMask::CreateMeshInstShader()
 		macros.Add(macro);
 
 		// alpha test
-		const bool alpha_test_enabled = alpha_mode == MeshInstRendering::alpha_test;
+		const bool alpha_test_enabled = alpha_mode == static_cast<size_t>(MeshInstRendering::AlphaMode::alpha_test);
 		macro.name = "ALPHA_TEST";
 		macro.value = alpha_test_enabled ? "1" : "0";
 		macros.Add(macro);
@@ -407,13 +407,13 @@ ut::Array<BoundShader> HitMask::CreateMeshInstShader()
 		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
 		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
-		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::vertex,
+		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
 		                                                            ut::String("hitmask_mesh_vs") + shader_name_suffix,
 		                                                            "VS",
 		                                                            "mesh.hlsl",
 		                                                            macros);
 
-		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::pixel,
+		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
 		                                                            ut::String("hitmask_mesh_ps") + shader_name_suffix,
 		                                                            "PS",
 		                                                            "mesh.hlsl",
@@ -432,8 +432,14 @@ ut::Array<BoundShader> HitMask::CreateMeshInstShader()
 // Creates the hitmask render pass.
 RenderPass HitMask::CreateRenderPass()
 {
-	RenderTargetSlot depth_slot(tools.formats.depth_stencil, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
-	RenderTargetSlot color_slot(tools.formats.hitmask, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
+	RenderTargetSlot depth_slot(tools.formats.depth_stencil,
+	                            RenderTargetSlot::LoadOperation::clear,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
+	RenderTargetSlot color_slot(tools.formats.hitmask,
+	                            RenderTargetSlot::LoadOperation::clear,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
 
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot); // hitmask itself
@@ -447,28 +453,29 @@ ut::Result<PipelineState, ut::Error> HitMask::CreateMeshInstPipeline(Mesh::Verte
                                                                      MeshInstRendering::AlphaMode alpha_mode,
                                                                      MeshInstRendering::CullMode cull_mode)
 {
-	const size_t shader_id = MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format), alpha_mode);
+	const size_t shader_id = MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format),
+	                                                              static_cast<size_t>(alpha_mode));
 	BoundShader& shader = mesh_inst_shader[shader_id];
 
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = shader.stages[Shader::vertex].Get();
-	info.stages[Shader::pixel] = shader.stages[Shader::pixel].Get();
+	info.SetShader(Shader::Stage::vertex, shader.GetShader(Shader::Stage::vertex));
+	info.SetShader(Shader::Stage::pixel, shader.GetShader(Shader::Stage::pixel));
 	info.input_assembly_state = Mesh::CreateIaState(vertex_format, polygon_mode, Mesh::Instancing::on);
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = true;
-	info.depth_stencil_state.depth_compare_op = compare::less;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::less;
 	info.depth_stencil_state.stencil_test_enable = true;
-	info.depth_stencil_state.back.compare_op = compare::always;
-	info.depth_stencil_state.back.fail_op = StencilOpState::replace;
-	info.depth_stencil_state.back.pass_op = StencilOpState::replace;
+	info.depth_stencil_state.back.compare_op = compare::Operation::always;
+	info.depth_stencil_state.back.fail_op = StencilOpState::Operation::replace;
+	info.depth_stencil_state.back.pass_op = StencilOpState::Operation::replace;
 	info.depth_stencil_state.back.compare_mask = 0x0;
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0xff;
 	info.depth_stencil_state.stencil_reference = 0x0;
 	info.rasterization_state.polygon_mode = Mesh::GetRasterizerPolygonMode(polygon_mode);
-	info.rasterization_state.cull_mode = cull_mode == MeshInstRendering::cull_back ?
-	                                                  RasterizationState::back_culling :
-	                                                  RasterizationState::no_culling;
+	info.rasterization_state.cull_mode = cull_mode == MeshInstRendering::CullMode::back ?
+	                                                  RasterizationState::CullMode::back :
+	                                                  RasterizationState::CullMode::off;
 	info.rasterization_state.line_width = 1.0f;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
 	return tools.device.CreatePipelineState(ut::Move(info), pass);
@@ -510,10 +517,10 @@ void HitMask::ConnectDescriptors()
 {
 	const size_t at_off_shader_id = MeshInstRendering::ShaderGrid::GetId(
 		static_cast<size_t>(Mesh::VertexFormat::pos3_texcoord2_normal3_tangent3_float),
-		MeshInstRendering::alpha_opaque);
+		static_cast<size_t>(MeshInstRendering::AlphaMode::opaque));
 	const size_t at_on_shader_id = MeshInstRendering::ShaderGrid::GetId(
 		static_cast<size_t>(Mesh::VertexFormat::pos3_texcoord2_normal3_tangent3_float),
-		MeshInstRendering::alpha_test);
+		static_cast<size_t>(MeshInstRendering::AlphaMode::alpha_test));
 	mesh_inst_at_off_desc_set.Connect(mesh_inst_shader[at_off_shader_id]);
 	mesh_inst_at_on_desc_set.Connect(mesh_inst_shader[at_on_shader_id]);
 }

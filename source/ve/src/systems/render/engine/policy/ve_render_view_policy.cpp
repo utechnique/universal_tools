@@ -66,7 +66,7 @@ void Policy<View>::Initialize(View& view)
 		ut::Result<postprocess::ViewData, ut::Error> post_process_data = post_process_mgr.CreateViewData(scene_buffer->depth_stencil,
 		                                                                                                 view.width,
 		                                                                                                 view.height,
-		                                                                                                 pixel::r8g8b8a8_unorm);
+		                                                                                                 pixel::Format::r8g8b8a8_unorm);
 		if (!post_process_data)
 		{
 			throw ut::Error(post_process_data.MoveAlt());
@@ -86,7 +86,7 @@ void Policy<View>::Initialize(View& view)
 	}
 
 	ut::log.Lock() << "Render engine initialized view #" << view.viewport_id
-	               << " in "<< timer.GetTime<ut::time::seconds>() << "s." << ut::cret;
+	               << " in "<< timer.GetTime<ut::time::Unit::second>() << "s." << ut::cret;
 
 	View::GpuData gpu_data;
 	gpu_data.frames = ut::Move(frames);
@@ -167,7 +167,7 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 
 	// image based lighting
 	ut::Optional<Image&> ibl_cubemap;
-	if (tools.config.ibl_enabled && view.light_pass_mode == View::light_pass_complete)
+	if (tools.config.ibl_enabled && view.light_pass_mode == View::LightPassMode::complete)
 	{
 		RenderIblCubemap(context, view, lights);
 		ibl_cubemap = frame.ibl.filtered_cubemap.GetImage();
@@ -200,7 +200,7 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 	                                        mesh_instance_policy.batcher);
 
 	// make color buffer accessible as a resource
-	context.SetTargetState(color_buffer->color_target, Target::Info::state_resource);
+	context.SetTargetState(color_buffer->color_target, Target::Info::State::resource);
 
 	// postprocess
 	frame.final_img = post_process_mgr.ApplyEffects
@@ -225,8 +225,8 @@ ut::Result<View::SceneBuffer, ut::Error> Policy<View>::CreateSceneBuffer(ut::uin
 	for (ut::uint32 i = 0; i < ub_count; i++)
 	{
 		Buffer::Info buffer_info;
-		buffer_info.type = Buffer::uniform;
-		buffer_info.usage = render::memory::gpu_read_cpu_write;
+		buffer_info.type = Buffer::Type::uniform;
+		buffer_info.usage = render::memory::Usage::gpu_read_cpu_write;
 		buffer_info.size = sizeof(View::Uniforms);
 		ut::Result<Buffer, ut::Error> uniform_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
 		if (!uniform_buffer)
@@ -238,9 +238,9 @@ ut::Result<View::SceneBuffer, ut::Error> Policy<View>::CreateSceneBuffer(ut::uin
 
 	// depth stencil
 	Target::Info info;
-	info.type = is_cube ? Image::type_cube : Image::type_2D;
+	info.type = is_cube ? Image::Type::cubic : Image::Type::planar;
 	info.format = tools.formats.depth_stencil;
-	info.usage = Target::Info::usage_depth;
+	info.usage = Target::Info::Usage::depth;
 	info.mip_count = 1;
 	info.width = width;
 	info.height = height;
@@ -285,28 +285,28 @@ Image& Policy<View>::RenderLightPass(Context& context,
 	lighting_mgr.deferred_shading.BakeOpaqueGeometry(context,
 	                                                 scene.depth_stencil,
 	                                                 scene.lighting.deferred_shading,
-	                                                 scene.view_ub[face],
+	                                                 scene.view_ub[static_cast<ut::uint32>(face)],
 	                                                 mesh_instance_policy.batcher,
 	                                                 face);
 
 	// exit if the view mode is set to show one of the g-buffer targets
-	if (light_pass_mode == View::light_pass_deferred_diffuse)
+	if (light_pass_mode == View::LightPassMode::deferred_diffuse)
 	{
 		context.SetTargetState(scene.lighting.deferred_shading.diffuse,
-		                       Target::Info::state_resource);
+		                       Target::Info::State::resource);
 		return scene.lighting.deferred_shading.diffuse.GetImage(); // exit
 	}
-	else if (light_pass_mode == View::light_pass_deferred_normal)
+	else if (light_pass_mode == View::LightPassMode::deferred_normal)
 	{
 		context.SetTargetState(scene.lighting.deferred_shading.normal,
-		                       Target::Info::state_resource);
+		                       Target::Info::State::resource);
 		return scene.lighting.deferred_shading.normal.GetImage(); // exit
 	}
 
 	// perform deferred shading
 	lighting_mgr.deferred_shading.Shade(context,
 	                                    scene.lighting.deferred_shading,
-	                                    scene.view_ub[face],
+	                                    scene.view_ub[static_cast<ut::uint32>(face)],
 	                                    lights,
 	                                    ibl_cubemap,
 	                                    face);
@@ -315,14 +315,14 @@ Image& Policy<View>::RenderLightPass(Context& context,
 	// can't be rendered in deferred pass
 	lighting_mgr.forward_shading.DrawTransparentGeometry(context,
 	                                                     scene.lighting.forward_shading,
-	                                                     scene.view_ub[face],
+	                                                     scene.view_ub[static_cast<ut::uint32>(face)],
 	                                                     view_position,
 	                                                     mesh_instance_policy.batcher,
 	                                                     lights,
 	                                                     ibl_cubemap,
 	                                                     face);
 
-	context.SetTargetState(scene.lighting.light_buffer, Target::Info::state_resource);
+	context.SetTargetState(scene.lighting.light_buffer, Target::Info::State::resource);
 	return scene.lighting.light_buffer.GetImage();
 }
 
@@ -341,7 +341,7 @@ void Policy<View>::RenderIblCubemap(Context& context,
 	{
 		context.ClearTarget(frame.ibl.filtered_cubemap, ut::Color<4>(0));
 	}
-	context.SetTargetState(frame.ibl.filtered_cubemap, Target::Info::state_resource);
+	context.SetTargetState(frame.ibl.filtered_cubemap, Target::Info::State::resource);
 
 	// draw ibl faces
 	for (ut::uint32 i = frame.ibl.face_id; i < frame.ibl.face_id + faces_to_update; i++)
@@ -352,13 +352,13 @@ void Policy<View>::RenderIblCubemap(Context& context,
 		                lighting_mgr.ibl.CreateFaceViewMatrix(static_cast<Image::Cube::Face>(i), view.camera_position),
 		                lighting_mgr.ibl.CreateFaceProjectionMatrix(view.znear, view.zfar),
 		                view.camera_position,
-		                View::light_pass_complete,
+		                View::LightPassMode::complete,
 		                frame.ibl.filtered_cubemap.GetImage(),
 		                static_cast<Image::Cube::Face>(i));
 	}
 
 	// ibl source must have full set of mips
-	context.GenerateMips(frame.environment_map.lighting.light_buffer, Target::Info::state_resource);
+	context.GenerateMips(frame.environment_map.lighting.light_buffer, Target::Info::State::resource);
 
 	// filter the source to retrieve final ibl cubemap
 	for (ut::uint32 i = frame.ibl.face_id; i < frame.ibl.face_id + faces_to_update; i++)
@@ -368,7 +368,7 @@ void Policy<View>::RenderIblCubemap(Context& context,
 		                               frame.environment_map.lighting.light_buffer.GetImage(),
 		                               static_cast<Image::Cube::Face>(i));
 	}
-	context.SetTargetState(frame.ibl.filtered_cubemap, Target::Info::state_resource);
+	context.SetTargetState(frame.ibl.filtered_cubemap, Target::Info::State::resource);
 
 	// update face iterator
 	frame.ibl.face_id += faces_to_update;
@@ -401,7 +401,9 @@ void Policy<View>::UpdateViewUniforms(Context& context,
 		view_uniforms.camera_position.Y() = view_position.Y();
 		view_uniforms.camera_position.Z() = view_position.Z();
 	}
-	tools.rc_mgr.UpdateBuffer(context, scene.view_ub[face], &view_uniforms);
+	tools.rc_mgr.UpdateBuffer(context,
+	                          scene.view_ub[static_cast<ut::uint32>(face)],
+	                          &view_uniforms);
 }
 
 //----------------------------------------------------------------------------//

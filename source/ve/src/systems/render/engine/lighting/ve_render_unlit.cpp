@@ -31,8 +31,8 @@ ut::Result<UnlitRenderer::ViewData, ut::Error> UnlitRenderer::CreateViewData(Tar
 	for (ut::uint32 i = 0; i < thread_count; i++)
 	{
 		CmdBuffer::Info cmd_buffer_info;
-		cmd_buffer_info.usage = CmdBuffer::usage_dynamic | CmdBuffer::usage_inside_render_pass;
-		cmd_buffer_info.level = CmdBuffer::level_secondary;
+		cmd_buffer_info.usage = CmdBuffer::Usage::dynamic_inside_render_pass;
+		cmd_buffer_info.level = CmdBuffer::Level::secondary;
 
 		ut::Result<CmdBuffer, ut::Error> cmd_buffer = tools.device.CreateCmdBuffer(cmd_buffer_info);
 		if (!cmd_buffer)
@@ -177,9 +177,9 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 	// variables tracking if something changes between iterations
 	Mesh::VertexFormat prev_vertex_format = Mesh::VertexFormat::count;
 	Mesh::PolygonMode prev_polygon_mode = Mesh::PolygonMode::count;
-	MeshInstRendering::AlphaMode prev_alpha_mode = MeshInstRendering::alpha_mode_count;
-	MeshInstRendering::CullMode prev_cull_mode = MeshInstRendering::cull_mode_count;
-	MeshInstRendering::StencilMode prev_stencil_mode = MeshInstRendering::stencil_mode_count;
+	MeshInstRendering::AlphaMode prev_alpha_mode = MeshInstRendering::AlphaMode::count;
+	MeshInstRendering::CullMode prev_cull_mode = MeshInstRendering::CullMode::count;
+	MeshInstRendering::StencilMode prev_stencil_mode = MeshInstRendering::StencilMode::count;
 	Map* prev_diffuse_ptr = nullptr;
 	Buffer* prev_vertex_buffer = nullptr;
 	Buffer* prev_index_buffer = nullptr;
@@ -229,15 +229,19 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 		// check pipeline state
 		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
 		const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
-		const MeshInstRendering::AlphaMode alpha_mode = material.alpha == Material::alpha_masked ? MeshInstRendering::alpha_test :
-		                                                                  Material::alpha_transparent ? MeshInstRendering::alpha_blend :
-		                                                                  MeshInstRendering::alpha_opaque;
+		MeshInstRendering::AlphaMode alpha_mode = MeshInstRendering::AlphaMode::opaque;
+		switch (material.alpha)
+		{
+		case Material::Alpha::masked: alpha_mode = MeshInstRendering::AlphaMode::alpha_test; break;
+		case Material::Alpha::transparent: alpha_mode = MeshInstRendering::AlphaMode::blend; break;
+		case Material::Alpha::opaque: alpha_mode = MeshInstRendering::AlphaMode::opaque; break;
+		}
 		const MeshInstRendering::CullMode cull_mode = material.double_sided ?
-		                                              MeshInstRendering::cull_none :
-		                                              MeshInstRendering::cull_back;
+		                                              MeshInstRendering::CullMode::none :
+		                                              MeshInstRendering::CullMode::back;
 		const MeshInstRendering::StencilMode stencil_mode = dc.instance.highlighted ?
-		                                                    MeshInstRendering::stencil_highlighted :
-		                                                    MeshInstRendering::stencil_none;
+		                                                    MeshInstRendering::StencilMode::highlighted :
+		                                                    MeshInstRendering::StencilMode::none;
 		bool pipeline_changed = prev_vertex_format != vertex_format ||
 		                        prev_polygon_mode != polygon_mode ||
 		                        prev_cull_mode != cull_mode ||
@@ -277,9 +281,9 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 		if (pipeline_changed)
 		{
 			const size_t pipeline_state_id = MeshInstRendering::PipelineGrid::GetId(static_cast<size_t>(vertex_format),
-			                                                                        alpha_mode,
-			                                                                        cull_mode,
-			                                                                        stencil_mode,
+			                                                                        static_cast<size_t>(alpha_mode),
+			                                                                        static_cast<size_t>(cull_mode),
+			                                                                        static_cast<size_t>(stencil_mode),
 			                                                                        static_cast<size_t>(polygon_mode));
 			context.BindPipelineState(mesh_inst_pipeline[pipeline_state_id]);
 
@@ -370,7 +374,7 @@ ut::Array<BoundShader> UnlitRenderer::CreateMeshInstShaders()
 		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
 		// alpha mode
-		const bool alpha_test_enabled = alpha_mode == MeshInstRendering::alpha_test;
+		const bool alpha_test_enabled = alpha_mode == static_cast<size_t>(MeshInstRendering::AlphaMode::alpha_test);
 		macro.name = "ALPHA_TEST";
 		macro.value = alpha_test_enabled ? "1" : "0";
 		macros.Add(macro);
@@ -378,18 +382,18 @@ ut::Array<BoundShader> UnlitRenderer::CreateMeshInstShaders()
 		{
 			shader_name_suffix += "_at";
 		}
-		else if (alpha_mode == MeshInstRendering::alpha_blend)
+		else if (alpha_mode == static_cast<size_t>(MeshInstRendering::MeshInstRendering::AlphaMode::blend))
 		{
 			shader_name_suffix += "_alpha_blend";
 		}
 
-		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::vertex,
+		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
 		                                                            ut::String("unlit_mesh_vs") + shader_name_suffix,
 		                                                            "VS",
 		                                                            "mesh.hlsl",
 		                                                            macros);
 
-		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::pixel,
+		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
 		                                                            ut::String("unlit_mesh_ps") + shader_name_suffix,
 		                                                            "PS",
 		                                                            "mesh.hlsl",
@@ -408,8 +412,14 @@ ut::Array<BoundShader> UnlitRenderer::CreateMeshInstShaders()
 // Creates unlit render pass.
 RenderPass UnlitRenderer::CreatePass()
 {
-	RenderTargetSlot depth_slot(tools.formats.depth_stencil, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
-	RenderTargetSlot color_slot(tools.formats.ldr, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	RenderTargetSlot depth_slot(tools.formats.depth_stencil,
+	                            RenderTargetSlot::LoadOperation::extract,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
+	RenderTargetSlot color_slot(tools.formats.ldr,
+	                            RenderTargetSlot::LoadOperation::extract,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
 	return tools.device.CreateRenderPass(ut::Move(color_slots), depth_slot).MoveOrThrow();
@@ -423,40 +433,45 @@ ut::Result<PipelineState, ut::Error> UnlitRenderer::CreateMeshInstPipeline(Mesh:
                                                                            MeshInstRendering::StencilMode stencil_mode)
 {
 	PipelineState::Info info;
-	const size_t shader_id = MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format), alpha_mode);
-	UT_ASSERT(mesh_inst_shader[shader_id].stages[Shader::vertex]);
-	UT_ASSERT(mesh_inst_shader[shader_id].stages[Shader::pixel]);
+	const size_t shader_id = MeshInstRendering::ShaderGrid::GetId(static_cast<size_t>(vertex_format),
+	                                                              static_cast<size_t>(alpha_mode));
+	UT_ASSERT(mesh_inst_shader[shader_id].GetShader(Shader::Stage::vertex));
+	UT_ASSERT(mesh_inst_shader[shader_id].GetShader(Shader::Stage::pixel));
 
-	const ut::uint32 stencil_mask = stencil_mode == MeshInstRendering::stencil_highlighted ?
-	                                                stencilref_highlight : 0x0;
+	const ut::uint32 stencil_mask = stencil_mode == MeshInstRendering::StencilMode::highlighted ?
+	                                                static_cast<ut::uint32>(StencilReference::highlight) : 0x0;
 
-	info.stages[Shader::vertex] = mesh_inst_shader[shader_id].stages[Shader::vertex].Get();
-	info.stages[Shader::pixel] = mesh_inst_shader[shader_id].stages[Shader::pixel].Get();
-	info.input_assembly_state = Mesh::CreateIaState(vertex_format, polygon_mode, Mesh::Instancing::on);
+	info.SetShader(Shader::Stage::vertex,
+	               mesh_inst_shader[shader_id].GetShader(Shader::Stage::vertex));
+	info.SetShader(Shader::Stage::pixel,
+	               mesh_inst_shader[shader_id].GetShader(Shader::Stage::pixel));
+	info.input_assembly_state = Mesh::CreateIaState(vertex_format,
+	                                                polygon_mode,
+	                                                Mesh::Instancing::on);
 	info.depth_stencil_state.depth_test_enable = true;
 	info.depth_stencil_state.depth_write_enable = true;
-	info.depth_stencil_state.depth_compare_op = compare::less_or_equal;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::less_or_equal;
 	info.depth_stencil_state.stencil_test_enable = true;
-	info.depth_stencil_state.back.compare_op = compare::always;
-	info.depth_stencil_state.back.fail_op = StencilOpState::replace;
-	info.depth_stencil_state.back.pass_op = StencilOpState::replace;
+	info.depth_stencil_state.back.compare_op = compare::Operation::always;
+	info.depth_stencil_state.back.fail_op = StencilOpState::Operation::replace;
+	info.depth_stencil_state.back.pass_op = StencilOpState::Operation::replace;
 	info.depth_stencil_state.back.compare_mask = 0xffffffff;
 	info.depth_stencil_state.front = info.depth_stencil_state.back;
 	info.depth_stencil_state.stencil_write_mask = 0xffffffff;
 	info.depth_stencil_state.stencil_reference = stencil_mask;
 	info.rasterization_state.polygon_mode = Mesh::GetRasterizerPolygonMode(polygon_mode);
-	info.rasterization_state.cull_mode = cull_mode == MeshInstRendering::cull_back ?
-	                                                  RasterizationState::back_culling :
-	                                                  RasterizationState::no_culling;
-	if (alpha_mode == MeshInstRendering::alpha_blend)
+	info.rasterization_state.cull_mode = cull_mode == MeshInstRendering::CullMode::back ?
+	                                                  RasterizationState::CullMode::back :
+	                                                  RasterizationState::CullMode::off;
+	if (alpha_mode == MeshInstRendering::AlphaMode::blend)
 	{
 		Blending blending(true,
-		                  Blending::src_alpha,
-		                  Blending::inverted_src_alpha,
-		                  Blending::add,
-		                  Blending::one,
-		                  Blending::one,
-		                  Blending::max,
+		                  Blending::Factor::src_alpha,
+		                  Blending::Factor::inverted_src_alpha,
+		                  Blending::Operation::add,
+		                  Blending::Factor::one,
+		                  Blending::Factor::one,
+		                  Blending::Operation::max,
 		                  0xf);
 		info.blend_state.attachments.Add(blending);
 	}

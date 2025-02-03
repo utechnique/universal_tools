@@ -17,8 +17,8 @@ PlatformImage::PlatformImage(VkDevice device_handle,
                              VkImageView* cube_faces_arr,
                              VkImageAspectFlags aspect_flags,
                              const State& image_state,
-                             VkRc<vk::buffer> in_staging_gpu_cpu_buffer) : VkRc<vk::image>(image_handle,
-                                                                                           VkDetail<vk::image>(device_handle,
+                             VkRc<vk::Rc::buffer> in_staging_gpu_cpu_buffer) : VkRc<vk::Rc::image>(image_handle,
+                                                                                           VkDetail<vk::Rc::image>(device_handle,
                                                                                                                allocator,
                                                                                                                allocation))
                                                                          , view(image_view, device_handle)
@@ -30,7 +30,7 @@ PlatformImage::PlatformImage(VkDevice device_handle,
 	{
 		for (ut::uint32 i = 0; i < 6; i++)
 		{
-			VkRc<vk::image_view> face(cube_faces_arr[i], device_handle);
+			VkRc<vk::Rc::image_view> face(cube_faces_arr[i], device_handle);
 			cube_faces[i] = ut::Move(face);
 		}
 	}

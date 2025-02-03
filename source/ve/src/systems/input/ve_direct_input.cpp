@@ -12,7 +12,7 @@ START_NAMESPACE(input)
 //----------------------------------------------------------------------------//
 // Map to find corresponding DirectInput key of the ve::input::keyboard::Button
 // enumeration.
-static const size_t skDIKeyboardMap[keyboard::button_count] =
+static const size_t skDIKeyboardMap[static_cast<size_t>(keyboard::Button::count)] =
 {
 	DIK_ESCAPE,      DIK_1,        DIK_2,            DIK_3,
 	DIK_4,           DIK_5,        DIK_6,            DIK_7,
@@ -206,7 +206,7 @@ ut::Result<Device, ut::Error> DirectInputHandler::CreateKeyboard()
 	Device keyboard_device(keyboard_id);
 
 	// create keys
-	for (size_t i = 0; i < keyboard::button_count; i++)
+	for (size_t i = 0; i < static_cast<size_t>(keyboard::Button::count); i++)
 	{
 		ut::Optional<ut::Error> error = keyboard_device.AddSignal(Signal::CreateDiscrete(0),
 		                                                          keyboard::skKeyNames[i]);
@@ -229,7 +229,7 @@ ut::Result<Device, ut::Error> DirectInputHandler::CreateMouse()
 	Device mouse_device(mouse_id);
 
 	// create buttons
-	for (size_t i = 0; i < mouse::button_count; i++)
+	for (size_t i = 0; i < static_cast<size_t>(mouse::Button::count); i++)
 	{
 		ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateDiscrete(0),
 		                                                       mouse::skButtonNames[i]);
@@ -240,7 +240,7 @@ ut::Result<Device, ut::Error> DirectInputHandler::CreateMouse()
 	}
 
 	// XY movement and wheel
-	for (size_t i = 0; i < mouse::movement_count; i++)
+	for (size_t i = 0; i < static_cast<size_t>(mouse::Movement::count); i++)
 	{
 		ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateAnalog(0.0f),
 		                                                       mouse::skMovementNames[i]);
@@ -339,7 +339,7 @@ void DirectInputHandler::UpdateKeyboard(Device& keyboard)
 	}
 
 	// copy keyboard state data
-	for (size_t i = 0; i < keyboard::button_count; i++)
+	for (size_t i = 0; i < static_cast<size_t>(keyboard::Button::count); i++)
 	{
 		const size_t signal_id = skDIKeyboardMap[i];
 		keyboard.UpdateDiscreteSignal(i, (keyboard_state.keys[signal_id] & 0x80) ? 1 : 0);
@@ -378,24 +378,27 @@ void DirectInputHandler::UpdateMouse(Device& mouse)
 		return;
 	}
 
-	mouse.UpdateDiscreteSignal(mouse::button_lbutton, (mouse_state.lmb & 0x80) ? 1 : 0);
-	mouse.UpdateDiscreteSignal(mouse::button_rbutton, (mouse_state.rmb & 0x80) ? 1 : 0);
-	mouse.UpdateDiscreteSignal(mouse::button_mbutton, (mouse_state.mmb & 0x80) ? 1 : 0);
+	mouse.UpdateDiscreteSignal(static_cast<size_t>(mouse::Button::lbutton),
+	                           (mouse_state.lmb & 0x80) ? 1 : 0);
+	mouse.UpdateDiscreteSignal(static_cast<size_t>(mouse::Button::rbutton),
+	                           (mouse_state.rmb & 0x80) ? 1 : 0);
+	mouse.UpdateDiscreteSignal(static_cast<size_t>(mouse::Button::mbutton),
+	                           (mouse_state.mmb & 0x80) ? 1 : 0);
 
 	if (prev_mouse_state)
 	{
 		const float offset_x = static_cast<float>(mouse_state.x - prev_mouse_state->x);
 		const float offset_y = static_cast<float>(mouse_state.y - prev_mouse_state->y);
 		const float offset_z = static_cast<float>(mouse_state.z - prev_mouse_state->z);
-		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_x, offset_x);
-		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_y, offset_y);
-		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_wheel, offset_z);
+		mouse.UpdateAnalogSignal(static_cast<size_t>(mouse::Button::count) + static_cast<size_t>(mouse::Movement::x), offset_x);
+		mouse.UpdateAnalogSignal(static_cast<size_t>(mouse::Button::count) + static_cast<size_t>(mouse::Movement::y), offset_y);
+		mouse.UpdateAnalogSignal(static_cast<size_t>(mouse::Button::count) + static_cast<size_t>(mouse::Movement::wheel), offset_z);
 	}
 	else
 	{
-		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_x, 0.0f);
-		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_y, 0.0f);
-		mouse.UpdateAnalogSignal(mouse::button_count + mouse::movement_wheel, 0.0f);
+		mouse.UpdateAnalogSignal(static_cast<size_t>(mouse::Button::count) + static_cast<size_t>(mouse::Movement::x), 0.0f);
+		mouse.UpdateAnalogSignal(static_cast<size_t>(mouse::Button::count) + static_cast<size_t>(mouse::Movement::y), 0.0f);
+		mouse.UpdateAnalogSignal(static_cast<size_t>(mouse::Button::count) + static_cast<size_t>(mouse::Movement::wheel), 0.0f);
 	}
 
 	prev_mouse_state = mouse_state;

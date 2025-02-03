@@ -82,11 +82,11 @@ public:
 // Creates a box with random color and scale.
 ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& position, size_t id)
 {
-	enum PrimitiveType
+	enum class PrimitiveType
 	{
-		primitive_box,
-		primitive_sphere,
-		primitive_torus,
+		box,
+		sphere,
+		torus,
 	};
 
 	// random values
@@ -94,15 +94,15 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& p
 	const float r2 = static_cast<float>(300 + rand() % 800);
 	const float r3 = static_cast<float>(300 + rand() % 800);
 
-	PrimitiveType primitive_type = primitive_box;
+	PrimitiveType primitive_type = PrimitiveType::box;
 
 	if (rand() % 4 == 0)
 	{
-		primitive_type = primitive_torus;
+		primitive_type = PrimitiveType::torus;
 	}
 	else if (rand() % 3 == 0)
 	{
-		primitive_type = primitive_sphere;
+		primitive_type = PrimitiveType::sphere;
 	}
 
 	// transform
@@ -115,11 +115,11 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateRandomBox(const ut::Vector<3>& p
 	// mesh resource name
 	const ut::String gen_starter = ve::render::Resource::GeneratorPrompt::skStarter;
 	ut::String mesh_name = ve::render::ResourceCreator<ve::render::Mesh>::skTypeBox;
-	if (primitive_type == primitive_sphere)
+	if (primitive_type == PrimitiveType::sphere)
 	{
 		mesh_name = ve::render::ResourceCreator<ve::render::Mesh>::skTypeSphere;
 	}
-	else if (primitive_type == primitive_torus)
+	else if (primitive_type == PrimitiveType::torus)
 	{
 		mesh_name = ve::render::ResourceCreator<ve::render::Mesh>::skTypeTorus;
 	}
@@ -169,7 +169,7 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateLight(ve::render::Light::SourceT
 	ut::UniquePtr<ve::render::Unit> light;
 	switch (type)
 	{
-		case ve::render::Light::source_ambient:
+		case ve::render::Light::SourceType::ambient:
 		{
 			name = ut::GetPolymorphicName<ve::render::AmbientLight>();
 			const ut::Vector<3> light_direction = ut::Vector<3>(-1, -1, 1).Normalize();
@@ -182,7 +182,7 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateLight(ve::render::Light::SourceT
 			light = ut::MakeUnique<ve::render::AmbientLight>(ut::Move(light_unit));
 		} break;
 
-		case ve::render::Light::source_directional:
+		case ve::render::Light::SourceType::directional:
 		{
 			name = ut::GetPolymorphicName<ve::render::DirectionalLight>();
 			const ut::Vector<3> light_direction = ut::Vector<3>(1, -1, 1).Normalize();
@@ -194,7 +194,7 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateLight(ve::render::Light::SourceT
 			light = ut::MakeUnique<ve::render::DirectionalLight>(ut::Move(light_unit));
 		} break;
 
-		case ve::render::Light::source_point:
+		case ve::render::Light::SourceType::point:
 		{
 			name = ut::GetPolymorphicName<ve::render::PointLight>();
 			ve::render::PointLight light_unit;
@@ -204,7 +204,7 @@ ut::Array< ut::UniquePtr<ve::Component> > CreateLight(ve::render::Light::SourceT
 			light = ut::MakeUnique<ve::render::PointLight>(ut::Move(light_unit));
 		} break;
 
-		case ve::render::Light::source_spot:
+		case ve::render::Light::SourceType::spot:
 		{
 			name = ut::GetPolymorphicName<ve::render::SpotLight>();
 			transform.rotation = ut::Quaternion<float>::MakeFromAngles(ut::Vector<3>(0, 0, -60));
@@ -239,11 +239,11 @@ ut::Array< ut::Array< ut::UniquePtr<ve::Component> > > CreateTestScene()
 
 	// ambient light
     size_t ambient_light_id = 0;
-	out.Add(CreateLight(ve::render::Light::source_ambient, ut::Vector<3>(x_offset, 0, 0), ambient_light_id++));
+	out.Add(CreateLight(ve::render::Light::SourceType::ambient, ut::Vector<3>(x_offset, 0, 0), ambient_light_id++));
 
 	// directional light
 	size_t dir_light_id = 0;
-	out.Add(CreateLight(ve::render::Light::source_directional, ut::Vector<3>(0), dir_light_id++));
+	out.Add(CreateLight(ve::render::Light::SourceType::directional, ut::Vector<3>(0), dir_light_id++));
 
 	// point and spot lights
 	size_t point_light_id = 0;
@@ -252,10 +252,10 @@ ut::Array< ut::Array< ut::UniquePtr<ve::Component> > > CreateTestScene()
 	for (int i = -point_light_count; i <= point_light_count; i++)
 	{
 		const ut::Vector<3> point_position(x_offset - 25.0f, 40.0f, static_cast<float>(i) * 90.0f);
-		out.Add(CreateLight(ve::render::Light::source_point, point_position, point_light_id++));
+		out.Add(CreateLight(ve::render::Light::SourceType::point, point_position, point_light_id++));
 
 		const ut::Vector<3> spot_position(x_offset - 35.0f, -20.0f, static_cast<float>(i) * 90.0f);
-		out.Add(CreateLight(ve::render::Light::source_spot, spot_position, spot_light_id++));
+		out.Add(CreateLight(ve::render::Light::SourceType::spot, spot_position, spot_light_id++));
 	}
 
 	// boxes

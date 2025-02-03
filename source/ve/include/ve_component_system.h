@@ -19,7 +19,7 @@ struct ComponentMapStaticIterator
 		ComponentMapStaticIterator<id + 1, depth, PtrTuple>::Initialize(access, tuple);
 	}
 
-	static void GenerateComponentMaps(ComponentMapCollection<ut::access_full>& component_maps)
+	static void GenerateComponentMaps(ComponentMapCollection<ComponentMap::Access::read_write>& component_maps)
 	{
 		ComponentMapStaticIterator<id, id, PtrTuple>::GenerateComponentMaps(component_maps);
 		ComponentMapStaticIterator<id + 1, depth, PtrTuple>::GenerateComponentMaps(component_maps);
@@ -48,9 +48,10 @@ struct ComponentMapStaticIterator<id, id, PtrTuple>
 		tuple.template Get<id>() = static_cast<ComponentMapImpl<ComponentType>*>(&map.Get());
 	}
 
-	static void GenerateComponentMaps(ComponentMapCollection<ut::access_full>& component_maps)
+	static void GenerateComponentMaps(ComponentMapCollection<ComponentMap::Access::read_write>& component_maps)
 	{
-		component_maps.Insert(ut::GetPolymorphicHandle<ComponentType>(), ut::MakeUnsafeShared< ComponentMapImpl<ComponentType> >());
+		component_maps.Insert(ut::GetPolymorphicHandle<ComponentType>(),
+		                      ut::MakeUnsafeShared< ComponentMapImpl<ComponentType> >());
 	}
 };
 
@@ -176,11 +177,12 @@ protected:
 	// the returned types of components, the @Update method will receive a
 	// reference to the ve::ComponentAccess object (as an argument) providing
 	// the access only for the desired components.
-	virtual ut::Array< ComponentSet<ut::access_full> > DefineComponentSets() const override
+	virtual ut::Array< ComponentSet<ComponentMap::Access::read_write> > DefineComponentSets() const override
 	{
-		ut::Array< ComponentSet<ut::access_full> > sets(1);
-		sets.GetFirst().operation = Component::op_intersection;
-		ComponentMapStaticIterator<0, ComponentTuple::size - 1, ComponentTuple>::GenerateComponentMaps(sets.GetFirst().component_maps);
+		ut::Array< ComponentSet<ComponentMap::Access::read_write> > sets(1);
+		sets.GetFirst().operation = Component::EntityAssociationOperation::intersect;
+		ComponentMapStaticIterator<0, ComponentTuple::size - 1, ComponentTuple>::
+			GenerateComponentMaps(sets.GetFirst().component_maps);
 		return sets;
 	}
 

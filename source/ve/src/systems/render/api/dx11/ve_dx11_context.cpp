@@ -37,14 +37,14 @@ void PlatformContext::SetUniformBuffer(ut::uint32 slot, ID3D11Buffer* buffer)
 			continue;
 		}
 
-		switch (i)
+		switch (static_cast<Shader::Stage>(i))
 		{
-		case Shader::vertex:   d3d11_context->VSSetConstantBuffers(slot, 1, &buffer); break;
-		case Shader::hull:     d3d11_context->HSSetConstantBuffers(slot, 1, &buffer); break;
-		case Shader::domain:   d3d11_context->DSSetConstantBuffers(slot, 1, &buffer); break;
-		case Shader::geometry: d3d11_context->GSSetConstantBuffers(slot, 1, &buffer); break;
-		case Shader::pixel:    d3d11_context->PSSetConstantBuffers(slot, 1, &buffer); break;
-		case Shader::compute:  d3d11_context->CSSetConstantBuffers(slot, 1, &buffer); break;
+		case Shader::Stage::vertex:   d3d11_context->VSSetConstantBuffers(slot, 1, &buffer); break;
+		case Shader::Stage::hull:     d3d11_context->HSSetConstantBuffers(slot, 1, &buffer); break;
+		case Shader::Stage::domain:   d3d11_context->DSSetConstantBuffers(slot, 1, &buffer); break;
+		case Shader::Stage::geometry: d3d11_context->GSSetConstantBuffers(slot, 1, &buffer); break;
+		case Shader::Stage::pixel:    d3d11_context->PSSetConstantBuffers(slot, 1, &buffer); break;
+		case Shader::Stage::compute:  d3d11_context->CSSetConstantBuffers(slot, 1, &buffer); break;
 		}
 	}
 }
@@ -59,14 +59,14 @@ void PlatformContext::SetImage(ut::uint32 slot, ID3D11ShaderResourceView* srv)
 			continue;
 		}
 
-		switch (i)
+		switch (static_cast<Shader::Stage>(i))
 		{
-		case Shader::vertex:   d3d11_context->VSSetShaderResources(slot, 1, &srv); break;
-		case Shader::hull:     d3d11_context->HSSetShaderResources(slot, 1, &srv); break;
-		case Shader::domain:   d3d11_context->DSSetShaderResources(slot, 1, &srv); break;
-		case Shader::geometry: d3d11_context->GSSetShaderResources(slot, 1, &srv); break;
-		case Shader::pixel:    d3d11_context->PSSetShaderResources(slot, 1, &srv); break;
-		case Shader::compute:  d3d11_context->CSSetShaderResources(slot, 1, &srv); break;
+		case Shader::Stage::vertex:   d3d11_context->VSSetShaderResources(slot, 1, &srv); break;
+		case Shader::Stage::hull:     d3d11_context->HSSetShaderResources(slot, 1, &srv); break;
+		case Shader::Stage::domain:   d3d11_context->DSSetShaderResources(slot, 1, &srv); break;
+		case Shader::Stage::geometry: d3d11_context->GSSetShaderResources(slot, 1, &srv); break;
+		case Shader::Stage::pixel:    d3d11_context->PSSetShaderResources(slot, 1, &srv); break;
+		case Shader::Stage::compute:  d3d11_context->CSSetShaderResources(slot, 1, &srv); break;
 		}
 	}
 }
@@ -81,14 +81,14 @@ void PlatformContext::SetSampler(ut::uint32 slot, ID3D11SamplerState* sampler_st
 			continue;
 		}
 
-		switch (i)
+		switch (static_cast<Shader::Stage>(i))
 		{
-		case Shader::vertex:   d3d11_context->VSSetSamplers(slot, 1, &sampler_state); break;
-		case Shader::hull:     d3d11_context->HSSetSamplers(slot, 1, &sampler_state); break;
-		case Shader::domain:   d3d11_context->DSSetSamplers(slot, 1, &sampler_state); break;
-		case Shader::geometry: d3d11_context->GSSetSamplers(slot, 1, &sampler_state); break;
-		case Shader::pixel:    d3d11_context->PSSetSamplers(slot, 1, &sampler_state); break;
-		case Shader::compute:  d3d11_context->CSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::Stage::vertex:   d3d11_context->VSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::Stage::hull:     d3d11_context->HSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::Stage::domain:   d3d11_context->DSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::Stage::geometry: d3d11_context->GSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::Stage::pixel:    d3d11_context->PSSetSamplers(slot, 1, &sampler_state); break;
+		case Shader::Stage::compute:  d3d11_context->CSSetSamplers(slot, 1, &sampler_state); break;
 		}
 	}
 }
@@ -98,12 +98,12 @@ ID3D11Resource* PlatformContext::GetDX11ImageResource(PlatformImage& image,
                                                       ut::uint32 type,
                                                       bool staging)
 {
-	switch (type)
+	switch (static_cast<Image::Type>(type))
 	{
-	case Image::type_1D: return staging ? image.tex1d_staging.Get() : image.tex1d.Get();
-	case Image::type_2D: return staging ? image.tex2d_staging.Get() : image.tex2d.Get();
-	case Image::type_cube: return staging ? image.tex2d_staging.Get() : image.tex2d.Get();
-	case Image::type_3D: return staging ? image.tex3d_staging.Get() : image.tex3d.Get();
+	case Image::Type::linear: return staging ? image.tex1d_staging.Get() : image.tex1d.Get();
+	case Image::Type::planar: return staging ? image.tex2d_staging.Get() : image.tex2d.Get();
+	case Image::Type::cubic: return staging ? image.tex2d_staging.Get() : image.tex2d.Get();
+	case Image::Type::volumetric: return staging ? image.tex3d_staging.Get() : image.tex3d.Get();
 	}
 	return nullptr;
 }
@@ -117,25 +117,25 @@ Context::Context(PlatformContext platform_context) : PlatformContext(ut::Move(pl
 // into application address space. Note that buffer must be created with
 // ve::render::Buffer::gpu_cpu flag to be compatible with this function.
 //    @param buffer - reference to the ve::render::Buffer object to be mapped.
-//    @param access - ut::Access value specifying purpose of the mapping
-//                    operation - read, write or both.
+//    @param access - ve::render::memory::CpuAccess value specifying purpose
+//                    of the mapping operation - read, write or both.
 //    @return - pointer to the mapped area or error if failed.
-ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access access)
+ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, memory::CpuAccess access)
 {
 	D3D11_MAP map_type;
-	if (access == ut::access_full)
+	if (access == memory::CpuAccess::read_write)
 	{
 		map_type = D3D11_MAP_READ_WRITE;
 	}
-	else if (access == ut::access_read)
+	else if (access == memory::CpuAccess::read)
 	{
 		map_type = D3D11_MAP_READ;
 	}
-	else if (access == ut::access_write)
+	else if (access == memory::CpuAccess::write)
 	{
-		if (buffer.info.usage == render::memory::gpu_read_cpu_write)
+		if (buffer.info.usage == render::memory::Usage::gpu_read_cpu_write)
 		{
-			if (buffer.info.type == Buffer::uniform)
+			if (buffer.info.type == Buffer::Type::uniform)
 			{
 				map_type = D3D11_MAP_WRITE_DISCARD;
 			}
@@ -172,10 +172,10 @@ void Context::UnmapBuffer(Buffer& buffer)
 //    @param image - reference to the ve::render::Image object to be mapped.
 //    @param mip_level - id of the mip to be mapped.
 //    @param array_layer - id of the layer to be mapped.
-//    @param access - ut::Access value specifying purpose of the mapping
-//                    operation - read, write or both.
+//    @param access - ve::render::memory::CpuAccess value specifying purpose
+//                    of the mapping operation - read, write or both.
 ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
-                                                               ut::Access access,
+                                                               memory::CpuAccess access,
                                                                ut::uint32 mip_level,
                                                                ut::uint32 array_layer)
 {
@@ -186,29 +186,29 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 
 	bool staging = false;
 
-	if (info.usage == render::memory::gpu_read_write &&
-	    access == ut::access_read &&
+	if (info.usage == render::memory::Usage::gpu_read_write &&
+	    access == memory::CpuAccess::read &&
 	    info.has_staging_cpu_read_buffer)
 	{
 		map_type = D3D11_MAP_READ;
 		staging = true;
 	}
-	else if (access == ut::access_read)
+	else if (access == memory::CpuAccess::read)
 	{
-		UT_ASSERT(info.usage != render::memory::gpu_read_cpu_write);
+		UT_ASSERT(info.usage != render::memory::Usage::gpu_read_cpu_write);
 		map_type = D3D11_MAP_READ;
 	}
-	else if (access == ut::access_write)
+	else if (access == memory::CpuAccess::write)
 	{
 		map_type = D3D11_MAP_WRITE_DISCARD;
 	}
 	else
 	{
-		UT_ASSERT(info.usage != render::memory::gpu_read_cpu_write);
+		UT_ASSERT(info.usage != render::memory::Usage::gpu_read_cpu_write);
 		map_type = D3D11_MAP_READ_WRITE;
 	}
 
-	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, info.type, staging);
+	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, static_cast<ut::uint32>(info.type), staging);
 	UT_ASSERT(rc_ptr != nullptr);
 	
 	D3D11_MAPPED_SUBRESOURCE mapped_subrc;
@@ -227,15 +227,15 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 }
 
 // Unmaps a previously mapped memory object associated with provided image.
-void Context::UnmapImage(Image& image, ut::Access access)
+void Context::UnmapImage(Image& image, memory::CpuAccess access)
 {
 	const Image::Info& info = image.GetInfo();
 
-	const bool staging = info.usage == render::memory::gpu_read_write &&
-	                                   access == ut::access_read &&
+	const bool staging = info.usage == render::memory::Usage::gpu_read_write &&
+	                                   access == memory::CpuAccess::read &&
 	                                   info.has_staging_cpu_read_buffer;
 
-	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, info.type, staging);
+	ID3D11Resource* rc_ptr = GetDX11ImageResource(image, static_cast<ut::uint32>(info.type), staging);
 	UT_ASSERT(rc_ptr != nullptr);
 	d3d11_context->Unmap(rc_ptr, 0);
 }
@@ -265,13 +265,17 @@ ut::Optional<ut::Error> Context::CopyImageToStagingCpuReadBuffer(Image& image,
 	const Image::Info& img_info = image.GetInfo();
 
 	// get resource
-	ID3D11Resource* src_rc_ptr = GetDX11ImageResource(image, img_info.type, false);
+	ID3D11Resource* src_rc_ptr = GetDX11ImageResource(image,
+	                                                  static_cast<ut::uint32>(img_info.type),
+	                                                  false);
 	UT_ASSERT(src_rc_ptr != nullptr);
-	ID3D11Resource* dst_rc_ptr = GetDX11ImageResource(image, img_info.type, true);
+	ID3D11Resource* dst_rc_ptr = GetDX11ImageResource(image,
+	                                                  static_cast<ut::uint32>(img_info.type),
+	                                                  true);
 	UT_ASSERT(dst_rc_ptr != nullptr);
 
 	// calculate the number of subresources
-	const ut::uint32 img_slice_count = img_info.type == Image::type_cube ? 6 : 1;
+	const ut::uint32 img_slice_count = img_info.type == Image::Type::cubic ? 6 : 1;
 	const ut::uint32 slice_end = slice_count == 0 ? img_slice_count : (first_slice + slice_count);
 	const ut::uint32 mip_end = mip_count == 0 ? img_info.mip_count : (first_mip + mip_count);
 
@@ -330,7 +334,7 @@ void Context::CopyTarget(Target& dst,
 
 	const UINT min_mip_count = ut::Min(src_info.mip_count, dst_info.mip_count);
 	const UINT subrc_mip_count = mip_count == 0 ? (min_mip_count - first_mip) : mip_count;
-	const UINT cube_slices = src_info.type == Image::type_cube ? 6 : 1;
+	const UINT cube_slices = src_info.type == Image::Type::cubic ? 6 : 1;
 	const UINT array_slices = slice_count == 0 ? cube_slices : slice_count;
 	for (ut::uint32 slice = 0; slice < array_slices; slice++)
 	{
@@ -359,7 +363,7 @@ void Context::ClearTarget(Target& target,
 {
 	const Target::Info& info = target.GetInfo();
 
-	const ut::uint32 target_slice_count = info.type == Image::type_cube ? 6 : 1;
+	const ut::uint32 target_slice_count = info.type == Image::Type::cubic ? 6 : 1;
 	const ut::uint32 target_mip_count = info.mip_count;
 	const ut::uint32 last_slice = slice_count == 0 ? target_slice_count : (first_slice + slice_count);
 	const ut::uint32 last_mip = mip_count == 0 ? target_mip_count : (first_mip + mip_count);
@@ -445,7 +449,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 		rtv[i] = target.slice_target_views[attachment.array_slice].mips[attachment.mip].rtv.Get();
 
 		// clear color target
-		if (!is_deferred && render_pass.color_slots[i].load_op == RenderTargetSlot::load_clear)
+		if (!is_deferred && render_pass.color_slots[i].load_op == RenderTargetSlot::LoadOperation::clear)
 		{
 			const float* color_ptr = clear_color ? clear_color->GetData() :
 			                                       clear_color.GetAlt()[i].GetData();
@@ -462,7 +466,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 		dsv = target.slice_target_views[attachment.array_slice].mips[attachment.mip].dsv.Get();
 
 		// clear depth and stencil
-		if (!is_deferred && render_pass.depth_stencil_slot->load_op == RenderTargetSlot::load_clear)
+		if (!is_deferred && render_pass.depth_stencil_slot->load_op == RenderTargetSlot::LoadOperation::clear)
 		{
 			d3d11_context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
 			                                     depth_clear_value, stencil_clear_value);
@@ -577,12 +581,18 @@ void Context::BindPipelineState(PipelineState& state,
 	}
 
 	// set shaders
-	d3d11_context->VSSetShader(stage_bound[Shader::vertex]   ? state.info.stages[Shader::vertex]->vs.Get()   : nullptr, nullptr, 0);
-	d3d11_context->GSSetShader(stage_bound[Shader::geometry] ? state.info.stages[Shader::geometry]->gs.Get() : nullptr, nullptr, 0);
-	d3d11_context->HSSetShader(stage_bound[Shader::hull]     ? state.info.stages[Shader::hull]->hs.Get()     : nullptr, nullptr, 0);
-	d3d11_context->DSSetShader(stage_bound[Shader::domain]   ? state.info.stages[Shader::domain]->ds.Get()   : nullptr, nullptr, 0);
-	d3d11_context->PSSetShader(stage_bound[Shader::pixel]    ? state.info.stages[Shader::pixel]->ps.Get()    : nullptr, nullptr, 0);
-	d3d11_context->CSSetShader(stage_bound[Shader::compute]  ? state.info.stages[Shader::compute]->cs.Get()  : nullptr, nullptr, 0);
+	d3d11_context->VSSetShader(stage_bound[static_cast<ut::uint32>(Shader::Stage::vertex)] ?
+		state.info.stages[static_cast<ut::uint32>(Shader::Stage::vertex)]->vs.Get() : nullptr, nullptr, 0);
+	d3d11_context->GSSetShader(stage_bound[static_cast<ut::uint32>(Shader::Stage::geometry)] ?
+		state.info.stages[static_cast<ut::uint32>(Shader::Stage::geometry)]->gs.Get() : nullptr, nullptr, 0);
+	d3d11_context->HSSetShader(stage_bound[static_cast<ut::uint32>(Shader::Stage::hull)] ?
+		state.info.stages[static_cast<ut::uint32>(Shader::Stage::hull)]->hs.Get() : nullptr, nullptr, 0);
+	d3d11_context->DSSetShader(stage_bound[static_cast<ut::uint32>(Shader::Stage::domain)] ?
+		state.info.stages[static_cast<ut::uint32>(Shader::Stage::domain)]->ds.Get() : nullptr, nullptr, 0);
+	d3d11_context->PSSetShader(stage_bound[static_cast<ut::uint32>(Shader::Stage::pixel)] ?
+		state.info.stages[static_cast<ut::uint32>(Shader::Stage::pixel)]->ps.Get() : nullptr, nullptr, 0);
+	d3d11_context->CSSetShader(stage_bound[static_cast<ut::uint32>(Shader::Stage::compute)] ?
+		state.info.stages[static_cast<ut::uint32>(Shader::Stage::compute)]->cs.Get() : nullptr, nullptr, 0);
 }
 
 // Binds provided descriptor set to the current pipeline.
@@ -611,22 +621,22 @@ void Context::BindDescriptorSet(DescriptorSet& descriptor_set)
 
 			const ut::uint32 binding_id = binding->id + slot->array_id;
 
-			if (binding->type == Shader::Parameter::uniform_buffer)
+			if (binding->type == Shader::Parameter::Type::uniform_buffer)
 			{
 				SetUniformBuffer(binding_id, slot->uniform_buffer->d3d11_buffer.Get());
 			}
-			else if (binding->type == Shader::Parameter::image)
+			else if (binding->type == Shader::Parameter::Type::image)
 			{
 				if (slot->cube_face)
 				{
-					SetImage(binding_id, slot->image->cube_faces[slot->cube_face.Get()].Get());
+					SetImage(binding_id, slot->image->cube_faces[static_cast<ut::uint32>(slot->cube_face.Get())].Get());
 				}
 				else
 				{
 					SetImage(binding_id, slot->image->srv.Get());
 				}
 			}
-			else if (binding->type == Shader::Parameter::sampler)
+			else if (binding->type == Shader::Parameter::Type::sampler)
 			{
 				SetSampler(binding_id, slot->sampler->sampler_state.Get());
 			}
@@ -684,7 +694,7 @@ void Context::BindIndexBuffer(Buffer& buffer,
                               IndexType index_type)
 {
 	d3d11_context->IASetIndexBuffer(buffer.d3d11_buffer.Get(),
-	                                index_type == index_type_uint32 ?
+	                                index_type == IndexType::uint32 ?
 	                                DXGI_FORMAT_R32_UINT :
 	                                DXGI_FORMAT_R16_UINT,
 	                                static_cast<UINT>(offset));

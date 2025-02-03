@@ -98,24 +98,24 @@ Info::Info(Version in_version,
 // Getter for endianness order flag, see 
 // ut::meta::serialization_flags::kLittleEndian for details.
 //    @return - current endianness order.
-endian::order Info::GetEndianness() const
+endianness::Order Info::GetEndianness() const
 {
 	if (flags & serialization_flags::kLittleEndian)
 	{
-		return endian::little;
+		return endianness::Order::little;
 	}
 	else
 	{
-		return endian::big;
+		return endianness::Order::big;
 	}
 }
 
 // Setter for endianness order flag, see 
 // ut::meta::serialization_flags::kLittleEndian for details.
 //    @param endianness - endianness to be set.
-void Info::SetEndianness(endian::order endianness)
+void Info::SetEndianness(endianness::Order endianness)
 {
-	if (endianness == endian::little)
+	if (endianness == endianness::Order::little)
 	{
 		flags |= serialization_flags::kLittleEndian;
 	}

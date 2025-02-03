@@ -20,11 +20,11 @@ class View : public Unit
 {
 public:
 	// Available light pass modes.
-	enum LightPassMode
+	enum class LightPassMode
 	{
-		light_pass_complete,
-		light_pass_deferred_diffuse,
-		light_pass_deferred_normal,
+		complete,
+		deferred_diffuse,
+		deferred_normal,
 	};
 
 	// Per-view uniform buffer representation.
@@ -70,7 +70,7 @@ public:
 	void Reflect(ut::meta::Snapshot& snapshot);
 
 	// Current mode.
-	LightPassMode light_pass_mode = light_pass_complete;
+	LightPassMode light_pass_mode = LightPassMode::complete;
 
 	// View matrices.
 	ut::Matrix<4, 4, float> view_matrix;
@@ -80,7 +80,7 @@ public:
 	ut::Vector<3> camera_position;
 
 	// Final image format
-	pixel::Format format = pixel::r8g8b8a8_srgb;
+	pixel::Format format = pixel::Format::r8g8b8a8_srgb;
 
 	// View metrics in pixels.
 	ut::uint32 width = 640;

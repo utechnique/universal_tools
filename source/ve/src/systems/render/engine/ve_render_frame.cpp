@@ -24,7 +24,7 @@ Frame& Frame::operator =(Frame&&) noexcept = default;
 InputAssemblyState Frame::CreateInputAssemblyState()
 {
 	InputAssemblyState input_assembly;
-	input_assembly.topology = primitive::triangle_list;
+	input_assembly.topology = primitive::Topology::triangle_list;
 	input_assembly.elements = QuadVertex::CreateLayout();
 	input_assembly.vertex_stride = QuadVertex::size;
 	return input_assembly;
@@ -53,7 +53,7 @@ ut::Optional<ut::Error> FrameManager::AllocateFrames(ut::uint32 frame_count,
 	{
 		// initialize command buffer info
 		CmdBuffer::Info cmd_buffer_info;
-		cmd_buffer_info.usage = CmdBuffer::usage_dynamic;
+		cmd_buffer_info.usage = CmdBuffer::Usage::dynamic;
 
 		// create command buffer
 		ut::Result<CmdBuffer, ut::Error> cmd_buffer = device.CreateCmdBuffer(cmd_buffer_info);
@@ -64,8 +64,8 @@ ut::Optional<ut::Error> FrameManager::AllocateFrames(ut::uint32 frame_count,
 
 		// create display uniform buffer
 		Buffer::Info buffer_info;
-		buffer_info.type = Buffer::uniform;
-		buffer_info.usage = render::memory::gpu_read_cpu_write;
+		buffer_info.type = Buffer::Type::uniform;
+		buffer_info.usage = render::memory::Usage::gpu_read_cpu_write;
 		buffer_info.size = sizeof(Frame::DisplayUB);
 		ut::Result<Buffer, ut::Error> display_ub = device.CreateBuffer(ut::Move(buffer_info));
 		if (!display_ub)

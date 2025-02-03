@@ -38,13 +38,13 @@ void Profiler::DrawInfo(Context& context, Frame& frame, ut::uint32 display_width
 {
 	// calculate fps
 	fps_counter.Stop();
-	double frequency = fps_counter.GetTime<ut::time::seconds, double>();
+	double frequency = fps_counter.GetTime<ut::time::Unit::second, double>();
 	double fps = 1.0 / frequency;
 	fps_counter.Start();
 	
 	// update happens 2 times per second
 	ut::uint32 symbols_to_draw = 0;
-	bool needs_update = timer.GetTime<ut::time::seconds, double>() > 0.5;
+	bool needs_update = timer.GetTime<ut::time::Unit::second, double>() > 0.5;
 	if (needs_update)
 	{
 		// restart timer
@@ -96,8 +96,8 @@ Buffer Profiler::CreateTextBuffer()
 	const ut::uint32 stride = display_input_assembly.vertex_stride;
 
 	Buffer::Info buffer_info;
-	buffer_info.type = Buffer::vertex;
-	buffer_info.usage = render::memory::gpu_read_cpu_write;
+	buffer_info.type = Buffer::Type::vertex;
+	buffer_info.usage = render::memory::Usage::gpu_read_cpu_write;
 	buffer_info.size = skTextBufferCapacity * 6 * stride;
 	buffer_info.stride = stride;
 	ut::Result<Buffer, ut::Error> buffer_result = tools.device.CreateBuffer(ut::Move(buffer_info));
@@ -109,8 +109,8 @@ Buffer Profiler::CreateTextBuffer()
 Buffer Profiler::CreateUniformBuffer()
 {
 	Buffer::Info buffer_info;
-	buffer_info.type = Buffer::uniform;
-	buffer_info.usage = render::memory::gpu_read_cpu_write;
+	buffer_info.type = Buffer::Type::uniform;
+	buffer_info.usage = render::memory::Usage::gpu_read_cpu_write;
 	buffer_info.size = sizeof(Frame::DisplayUB);
 	ut::Result<Buffer, ut::Error> buffer_result = tools.device.CreateBuffer(ut::Move(buffer_info));
 	return buffer_result.MoveOrThrow();
@@ -159,7 +159,7 @@ ut::uint32 Profiler::UpdateTextBuffer(Context& context,
 	const float tex_width = 1.0f / static_cast<float>(skFontSize);
 
 	// map text vertex buffer
-	ut::Result<void*, ut::Error> map_result = context.MapBuffer(text_buffer, ut::access_write);
+	ut::Result<void*, ut::Error> map_result = context.MapBuffer(text_buffer, memory::CpuAccess::write);
 	if (!map_result)
 	{
 		throw map_result.MoveAlt();

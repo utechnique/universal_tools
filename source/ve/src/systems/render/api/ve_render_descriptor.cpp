@@ -56,7 +56,7 @@ void Descriptor::BindUniformBuffer(Buffer& uniform_buffer, ut::uint32 array_id)
 		return;
 	}
 
-	if (uniform_buffer.GetInfo().type != Buffer::uniform)
+	if (uniform_buffer.GetInfo().type != Buffer::Type::uniform)
 	{
 		ut::log.Lock() << "Warning! Attempt to bind non-uniform buffer " << 
 		                  "as an uniform buffer: \"" << name << "\"" << ut::cret;
@@ -81,7 +81,7 @@ void Descriptor::BindImage(Image& image, ut::uint32 array_id)
 // Binds provided cube face to this descriptor.
 void Descriptor::BindCubeFace(Image& cube_image, Image::Cube::Face face, ut::uint32 array_id)
 {
-	if (cube_image.GetInfo().type != Image::type_cube)
+	if (cube_image.GetInfo().type != Image::Type::cubic)
 	{
 		ut::log.Lock() << "Warning! Attempt to bind non-cubic image " <<
 		                  "as a cube face image: \"" << name << "\"" << ut::cret;
@@ -227,10 +227,10 @@ void DescriptorSet::UpdateResourceCount()
 
 		switch (binding->type)
 		{
-		case Shader::Parameter::uniform_buffer: resource_count.uniform_buffers++; break;
-		case Shader::Parameter::image:          resource_count.images++;          break;
-		case Shader::Parameter::sampler:        resource_count.samplers++;        break;
-		case Shader::Parameter::storage_buffer: resource_count.storage_buffers++; break;
+		case Shader::Parameter::Type::uniform_buffer: resource_count.uniform_buffers++; break;
+		case Shader::Parameter::Type::image:          resource_count.images++;          break;
+		case Shader::Parameter::Type::sampler:        resource_count.samplers++;        break;
+		case Shader::Parameter::Type::storage_buffer: resource_count.storage_buffers++; break;
 		}
 	}
 }

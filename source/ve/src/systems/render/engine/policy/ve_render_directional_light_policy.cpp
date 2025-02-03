@@ -19,8 +19,8 @@ void Policy<DirectionalLight>::Initialize(DirectionalLight& light)
 	for (ut::uint32 i = 0; i < tools.config.frames_in_flight; i++)
 	{
 		Buffer::Info buffer_info;
-		buffer_info.type = Buffer::uniform;
-		buffer_info.usage = render::memory::gpu_read_cpu_write;
+		buffer_info.type = Buffer::Type::uniform;
+		buffer_info.usage = render::memory::Usage::gpu_read_cpu_write;
 		buffer_info.size = sizeof(Light::Uniforms);
 		ut::Result<Buffer, ut::Error> uniform_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
 		if (!uniform_buffer)

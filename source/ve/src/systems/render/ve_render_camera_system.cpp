@@ -49,11 +49,11 @@ System::Result CameraSystem::Update(System::Time time_step_ms,
 			UpdateView(transform, camera, view);
 
 			// projection
-			if (camera.projection == CameraComponent::perspective_projection)
+			if (camera.projection == CameraComponent::Projection::perspective)
 			{
 				UpdatePerspectiveProjection(camera, view);
 			}
-			else if (camera.projection == CameraComponent::orthographic_projection)
+			else if (camera.projection == CameraComponent::Projection::orthographic)
 			{
 				UpdateOrthographicProjection(camera, view);
 			}

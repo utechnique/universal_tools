@@ -13,7 +13,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Vulkan command buffer.
-class PlatformCmdBuffer : public VkRc<vk::cmd_buffer>
+class PlatformCmdBuffer : public VkRc<vk::Rc::cmd_buffer>
 {
 	friend class Device;
 	friend class Context;
@@ -41,8 +41,8 @@ private:
 	// Resets this command buffer.
 	void Reset();
 
-	VkRc<vk::cmd_pool> pool;
-	VkRc<vk::fence> fence;
+	VkRc<vk::Rc::cmd_pool> pool;
+	VkRc<vk::Rc::fence> fence;
 	DescriptorManager descriptor_mgr;
 	ut::Optional<PlatformPipelineState&> bound_pipeline;
 };

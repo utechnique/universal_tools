@@ -19,7 +19,7 @@ ClampToneMapper::ClampToneMapper(Toolset& toolset,
 // Returns compiled mapping pixel shader.
 Shader ClampToneMapper::LoadShader()
 {
-	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::pixel,
+	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::Stage::pixel,
 	                                                                "tone_map_linear",
 	                                                                "ToneMapClamp",
 	                                                                "tone_mapping.hlsl");
@@ -30,14 +30,14 @@ Shader ClampToneMapper::LoadShader()
 PipelineState ClampToneMapper::CreatePipelineState()
 {
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = tools.shaders.quad_vs;
-	info.stages[Shader::pixel] = pixel_shader;
+	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::pixel, pixel_shader);
 	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::never;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::never;
+	info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
+	info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
 	return tools.device.CreatePipelineState(ut::Move(info), pass).MoveOrThrow();
 }

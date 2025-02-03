@@ -44,10 +44,10 @@ public:
 	// into application address space. Note that buffer must be created with
 	// appropriate usage flag to be compatible with this function.
 	//    @param buffer - reference to the ve::render::Buffer object to be mapped.
-	//    @param access - ut::Access value specifying purpose of the mapping
-	//                    operation - read, write or both.
+	//    @param access - ve::render::memory::CpuAccess value specifying purpose
+	//                    of the mapping operation - read, write or both.
 	//    @return - pointer to the mapped area or error if failed.
-	ut::Result<void*, ut::Error> MapBuffer(Buffer& buffer, ut::Access access);
+	ut::Result<void*, ut::Error> MapBuffer(Buffer& buffer, memory::CpuAccess access);
 
 	// Unmaps a previously mapped memory object associated with provided buffer.
 	void UnmapBuffer(Buffer& buffer);
@@ -58,15 +58,15 @@ public:
 	//    @param image - reference to the ve::render::Image object to be mapped.
 	//    @param mip_level - id of the mip to be mapped.
 	//    @param array_layer - id of the layer to be mapped.
-	//    @param access - ut::Access value specifying purpose of the mapping
-	//                    operation - read, write or both.
+	//    @param access - ve::render::memory::CpuAccess value specifying purpose
+	//                    of the mapping operation - read, write or both.
 	ut::Result<Image::MappedResource, ut::Error> MapImage(Image& image,
-	                                                      ut::Access access,
+	                                                      memory::CpuAccess access,
 	                                                      ut::uint32 mip_level = 0,
 	                                                      ut::uint32 array_layer = 0);
 
 	// Unmaps a previously mapped memory object associated with provided image.
-	void UnmapImage(Image& image, ut::Access access);
+	void UnmapImage(Image& image, memory::CpuAccess access);
 
 	// Copies the provided image to the staging buffer that could be read from
 	// the cpu. The image must be created with the

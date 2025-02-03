@@ -37,17 +37,17 @@ public:
 	PlatformDevice& operator =(const PlatformDevice&) = delete;
 
 protected:
-	VkRc<vk::instance> instance;
-	VkRc<vk::dbg_messenger> dbg_messenger;
-	VkRc<vk::device> device;
+	VkRc<vk::Rc::instance> instance;
+	VkRc<vk::Rc::dbg_messenger> dbg_messenger;
+	VkRc<vk::Rc::device> device;
 
 	// main queue must support all types of commands:
 	// graphics, compute, transfer and present
-	VkRc<vk::queue> main_queue;
+	VkRc<vk::Rc::queue> main_queue;
 
 	// command pool for all command buffers created with CmdBufferInfo::usage_once
 	// flag and that must be reset every frame by calling ResetCmdPool() method.
-	VkRc<vk::cmd_pool> dynamic_cmd_pool;
+	VkRc<vk::Rc::cmd_pool> dynamic_cmd_pool;
 
 	// synchronization primitives to make sure BeginImmediateCmdBuffer() won't be
 	// used simultaneously
@@ -87,7 +87,7 @@ protected:
 	//    @param memory_usage - buffer memory usage flags.
 	//    @param memory_property_flags - buffer memory property flags.
 	//    @return - buffer resource or error if failed.
-	ut::Result<VkRc<vk::buffer>, ut::Error> CreateVulkanBuffer(VkDeviceSize size,
+	ut::Result<VkRc<vk::Rc::buffer>, ut::Error> CreateVulkanBuffer(VkDeviceSize size,
 	                                                           VkBufferUsageFlags usage,
 	                                                           VmaMemoryUsage memory_usage,
 	                                                           VkMemoryPropertyFlags memory_property_flags);
@@ -96,14 +96,14 @@ protected:
 	//    @param buffer - buffer handle.
 	//    @param properties - memory properties.
 	//    @return - memory resource object or error if failed.
-	ut::Result<VkRc<vk::memory>, ut::Error> AllocateImageMemory(VkImage image,
+	ut::Result<VkRc<vk::Rc::memory>, ut::Error> AllocateImageMemory(VkImage image,
 	                                                            VkMemoryPropertyFlags properties);
 
 	// Allocates gpu memory for the specified buffer.
 	//    @param buffer - buffer handle.
 	//    @param properties - memory properties.
 	//    @return - memory resource object or error if failed.
-	ut::Result<VkRc<vk::memory>, ut::Error> AllocateBufferMemory(VkBuffer buffer,
+	ut::Result<VkRc<vk::Rc::memory>, ut::Error> AllocateBufferMemory(VkBuffer buffer,
 	                                                             VkMemoryPropertyFlags properties);
 
 	// Creates staging buffer for initializing gpu resources.
@@ -216,7 +216,7 @@ private:
 	VkDevice CreateVulkanDevice(const ut::String& gpu_name);
 
 	// Creates desired queue.
-	VkRc<vk::queue> CreateQueue(vulkan_queue::FamilyType family_type, uint32_t id);
+	VkRc<vk::Rc::queue> CreateQueue(vulkan_queue::FamilyType family_type, uint32_t id);
 };
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)

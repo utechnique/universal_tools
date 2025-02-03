@@ -35,13 +35,13 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 {
 	// inremediate buffers
 	Target::Info info;
-	info.type = Image::type_2D;
+	info.type = Image::Type::planar;
 	info.format = format;
 	info.mip_count = 1;
 	info.width = width;
 	info.height = height;
 	info.depth = 1;
-	info.usage = Target::Info::usage_color;
+	info.usage = Target::Info::Usage::color;
 	ut::Array<Target> swap_targets;
 	for (ut::uint32 i = 0; i < SwapManager::skSlotCount; i++)
 	{
@@ -54,7 +54,10 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 	}
 
 	// color-only render pass
-	RenderTargetSlot color_slot(format, RenderTargetSlot::load_dont_care, RenderTargetSlot::store_save, false);
+	RenderTargetSlot color_slot(format,
+	                            RenderTargetSlot::LoadOperation::dont_care,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
 	ut::Result<RenderPass, ut::Error> color_only_pass = tools.device.CreateRenderPass(ut::Move(color_slots));
@@ -66,7 +69,10 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 	// color and depth-stencil render pass
 	color_slots.Add(color_slot);
 	const pixel::Format depth_stencil_format = depth_stencil.GetInfo().format;
-	RenderTargetSlot ds_slot(depth_stencil_format, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	RenderTargetSlot ds_slot(depth_stencil_format,
+	                         RenderTargetSlot::LoadOperation::extract,
+	                         RenderTargetSlot::StoreOperation::save,
+	                         false);
 	ut::Result<RenderPass, ut::Error> color_and_ds_pass = tools.device.CreateRenderPass(ut::Move(color_slots), ds_slot);
 	if (!color_and_ds_pass)
 	{
@@ -74,7 +80,10 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 	}
 
 	// clear color and depth-stencil render pass
-	RenderTargetSlot clean_color_slot(format, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
+	RenderTargetSlot clean_color_slot(format,
+	                                  RenderTargetSlot::LoadOperation::clear,
+	                                  RenderTargetSlot::StoreOperation::save,
+	                                  false);
 	color_slots.Add(clean_color_slot);
 	ut::Result<RenderPass, ut::Error> clear_color_and_ds_pass = tools.device.CreateRenderPass(ut::Move(color_slots), ds_slot);
 	if (!clear_color_and_ds_pass)
@@ -199,7 +208,10 @@ ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::fxaa>(Context& context,
 // Creates a render pass with only one attached color slot.
 RenderPass Manager::CreateColorOnlyRenderPass()
 {
-	RenderTargetSlot color_slot(tools.formats.ldr, RenderTargetSlot::load_dont_care, RenderTargetSlot::store_save, false);
+	RenderTargetSlot color_slot(tools.formats.ldr,
+	                            RenderTargetSlot::LoadOperation::dont_care,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
 	return tools.device.CreateRenderPass(ut::Move(color_slots)).MoveOrThrow();
@@ -208,8 +220,14 @@ RenderPass Manager::CreateColorOnlyRenderPass()
 // Creates a render pass with one color slot and one depth-stencil slot.
 RenderPass Manager::CreateColorAndDepthStencilRenderPass()
 {
-	RenderTargetSlot color_slot(tools.formats.ldr, RenderTargetSlot::load_dont_care, RenderTargetSlot::store_save, false);
-	RenderTargetSlot ds_slot(tools.formats.depth_stencil, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	RenderTargetSlot color_slot(tools.formats.ldr,
+	                            RenderTargetSlot::LoadOperation::dont_care,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
+	RenderTargetSlot ds_slot(tools.formats.depth_stencil,
+	                            RenderTargetSlot::LoadOperation::extract,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
 	return tools.device.CreateRenderPass(ut::Move(color_slots), ds_slot).MoveOrThrow();
@@ -219,8 +237,14 @@ RenderPass Manager::CreateColorAndDepthStencilRenderPass()
 // Color slot is cleared when the renderpass begins.
 RenderPass Manager::CreateClearColorAndDepthStencilRenderPass()
 {
-	RenderTargetSlot clean_color_slot(tools.formats.ldr, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, false);
-	RenderTargetSlot ds_slot(tools.formats.depth_stencil, RenderTargetSlot::load_extract, RenderTargetSlot::store_save, false);
+	RenderTargetSlot clean_color_slot(tools.formats.ldr,
+	                                  RenderTargetSlot::LoadOperation::clear,
+		                              RenderTargetSlot::StoreOperation::save,
+	                                  false);
+	RenderTargetSlot ds_slot(tools.formats.depth_stencil,
+	                         RenderTargetSlot::LoadOperation::extract,
+	                         RenderTargetSlot::StoreOperation::save,
+	                         false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(clean_color_slot);
 	return tools.device.CreateRenderPass(ut::Move(color_slots), ds_slot).MoveOrThrow();

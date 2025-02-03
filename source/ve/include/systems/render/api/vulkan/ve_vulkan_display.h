@@ -35,10 +35,10 @@ public:
 	PlatformDisplay& operator =(const PlatformDisplay&) = delete;
 
 protected:
-	VkRc<vk::surface> surface;
-	VkRc<vk::swap_chain> swap_chain;
-	ut::Array< VkRc<vk::semaphore> > availability_semaphores;
-	ut::Array< VkRc<vk::semaphore> > present_ready_semaphores;
+	VkRc<vk::Rc::surface> surface;
+	VkRc<vk::Rc::swap_chain> swap_chain;
+	ut::Array< VkRc<vk::Rc::semaphore> > availability_semaphores;
+	ut::Array< VkRc<vk::Rc::semaphore> > present_ready_semaphores;
 	VkDevice device;
 	ut::uint32 swap_count;
 

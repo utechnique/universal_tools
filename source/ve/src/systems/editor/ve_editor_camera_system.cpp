@@ -28,8 +28,8 @@ System::Result ViewportCameraSystem::Update(System::Time time_step_ms,
 
 	for (ui::Viewport& viewport : viewports)
 	{
-		const System::Time seconds = ut::time::Convert<ut::time::milliseconds,
-		                                               ut::time::seconds,
+		const System::Time seconds = ut::time::Convert<ut::time::Unit::millisecond,
+		                                               ut::time::Unit::second,
 		                                               System::Time>(time_step_ms);
 		out_commands += ProcessViewport(access, viewport, static_cast<float>(seconds));
 	}
@@ -119,7 +119,7 @@ CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
 	// update camera position and direction
 	ut::Optional< ut::Vector<2> > cursor_position = viewport.GetCursorPosition();
 	const bool observation_allowed = observation_mode && cursor_position;
-	if (camera.projection == CameraComponent::perspective_projection)
+	if (camera.projection == CameraComponent::Projection::perspective)
 	{
 		ProcessPerspectiveCameraInput(transform,
 		                              camera,
@@ -127,7 +127,7 @@ CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
 		                              time_step,
 		                              observation_allowed);
 	}
-	else if (camera.projection == CameraComponent::orthographic_projection)
+	else if (camera.projection == CameraComponent::Projection::orthographic)
 	{
 		ProcessOrthographicCameraInput(transform,
 		                               camera,
@@ -160,16 +160,16 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 	// update mode
 	switch (mode.render_mode)
 	{
-		case ui::Viewport::render_mode_complete: render_view.light_pass_mode = render::View::light_pass_complete; break;
-		case ui::Viewport::render_mode_diffuse: render_view.light_pass_mode = render::View::light_pass_deferred_diffuse; break;
-		case ui::Viewport::render_mode_normal: render_view.light_pass_mode = render::View::light_pass_deferred_normal; break;
+		case ui::Viewport::RenderMode::complete: render_view.light_pass_mode = render::View::LightPassMode::complete; break;
+		case ui::Viewport::RenderMode::diffuse: render_view.light_pass_mode = render::View::LightPassMode::deferred_diffuse; break;
+		case ui::Viewport::RenderMode::normal: render_view.light_pass_mode = render::View::LightPassMode::deferred_normal; break;
 	}
 
 	// update resolution
 	ut::uint32 desired_width, desired_height;
 	switch (mode.resolution)
 	{
-	case ui::Viewport::resolution_auto:
+	case ui::Viewport::Resolution::fit:
 		{
 			// do not update resolution immediately due to performance reasons
 			// (very low fps because of framebuffer recreation)
@@ -190,23 +190,23 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 			}
 		}
 		break;
-	case ui::Viewport::resolution_4k:
+	case ui::Viewport::Resolution::ultra_hd_4k:
 		desired_width = 3840;
 		desired_height = 2160;
 		break;
-	case ui::Viewport::resolution_full_hd:
+	case ui::Viewport::Resolution::full_hd_1080p:
 		desired_width = 1920;
 		desired_height = 1080;
 		break;
-	case ui::Viewport::resolution_hd:
+	case ui::Viewport::Resolution::hd_720p:
 		desired_width = 1280;
 		desired_height = 720;
 		break;
-	case ui::Viewport::resolution_480p:
+	case ui::Viewport::Resolution::sd_480p:
 		desired_width = 854;
 		desired_height = 480;
 		break;
-	case ui::Viewport::resolution_320p:
+	case ui::Viewport::Resolution::ld_320p:
 		desired_width = 568;
 		desired_height = 320;
 		break;
@@ -227,16 +227,16 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 	                      static_cast<float>(mode.height);
 
 	// update projection
-	if (mode.projection == ui::Viewport::perspective)
+	if (mode.projection == ui::Viewport::Projection::perspective)
 	{
 		// position can be too far after orthographic projection
-		if (camera.projection != CameraComponent::perspective_projection)
+		if (camera.projection != CameraComponent::Projection::perspective)
 		{
 			transform.translation = ut::Vector<3>(0);
 			transform.rotation = ut::Quaternion<float>();
 		}
 
-		camera.projection = CameraComponent::perspective_projection;
+		camera.projection = CameraComponent::Projection::perspective;
 	}
 	else
 	{
@@ -247,12 +247,12 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 		ut::Vector<3> euler(0);
 		switch (mode.projection)
 		{
-		case ui::Viewport::orthographic_negative_x: euler.Y() = 180.0f; break;
-		case ui::Viewport::orthographic_positive_x: break;
-		case ui::Viewport::orthographic_negative_y: euler.Z() = -90.0f; break;
-		case ui::Viewport::orthographic_positive_y: euler.Z() = 90.0f; break;
-		case ui::Viewport::orthographic_negative_z: euler.Y() = 90.0f; break;
-		case ui::Viewport::orthographic_positive_z: euler.Y() = -90.0f; break;
+		case ui::Viewport::Projection::orthographic_negative_x: euler.Y() = 180.0f; break;
+		case ui::Viewport::Projection::orthographic_positive_x: break;
+		case ui::Viewport::Projection::orthographic_negative_y: euler.Z() = -90.0f; break;
+		case ui::Viewport::Projection::orthographic_positive_y: euler.Z() = 90.0f; break;
+		case ui::Viewport::Projection::orthographic_negative_z: euler.Y() = 90.0f; break;
+		case ui::Viewport::Projection::orthographic_positive_z: euler.Y() = -90.0f; break;
 		}
 		transform.rotation = ut::Quaternion<float>();
 		transform.rotation *= ut::Quaternion<float>::MakeFromAngleAndAxis(euler.Y(), ut::Vector<3>(0, 1, 0));
@@ -261,24 +261,24 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 
 		// set camera back to 0 if projection has changed
 		const ut::Vector<3> new_direction = camera.GetDirection(transform.rotation);
-		if (camera.projection != CameraComponent::orthographic_projection || new_direction != old_direction)
+		if (camera.projection != CameraComponent::Projection::orthographic || new_direction != old_direction)
 		{
 			transform.translation = ut::Vector<3>(0);
 		}
 
 		// set correct projection
-		camera.projection = CameraComponent::orthographic_projection;
+		camera.projection = CameraComponent::Projection::orthographic;
 
 		// set maximum possible camera distance
 		const float d = (camera.far_plane - camera.near_plane) / 2.0f;
 		switch (mode.projection)
 		{
-		case ui::Viewport::orthographic_negative_x: transform.translation.X() = d; break;
-		case ui::Viewport::orthographic_positive_x: transform.translation.X() = -d; break;
-		case ui::Viewport::orthographic_negative_y: transform.translation.Y() = d; break;
-		case ui::Viewport::orthographic_positive_y: transform.translation.Y() = -d; break;
-		case ui::Viewport::orthographic_negative_z: transform.translation.Z() = d; break;
-		case ui::Viewport::orthographic_positive_z: transform.translation.Z() = -d; break;
+		case ui::Viewport::Projection::orthographic_negative_x: transform.translation.X() = d; break;
+		case ui::Viewport::Projection::orthographic_positive_x: transform.translation.X() = -d; break;
+		case ui::Viewport::Projection::orthographic_negative_y: transform.translation.Y() = d; break;
+		case ui::Viewport::Projection::orthographic_positive_y: transform.translation.Y() = -d; break;
+		case ui::Viewport::Projection::orthographic_negative_z: transform.translation.Z() = d; break;
+		case ui::Viewport::Projection::orthographic_positive_z: transform.translation.Z() = -d; break;
 		}
 	}
 }

@@ -32,8 +32,8 @@ ut::Result<Fxaa::ViewData, ut::Error> Fxaa::CreateViewData()
 {
 	// create uniform buffer
 	Buffer::Info buffer_info;
-	buffer_info.type = Buffer::uniform;
-	buffer_info.usage = render::memory::gpu_read_cpu_write;
+	buffer_info.type = Buffer::Type::uniform;
+	buffer_info.usage = render::memory::Usage::gpu_read_cpu_write;
 	buffer_info.size = sizeof(ViewData::FxaaUB);
 	ut::Result<Buffer, ut::Error> uniform_buffer = tools.device.CreateBuffer(ut::Move(buffer_info));
 	if (!uniform_buffer)
@@ -113,7 +113,7 @@ ut::Optional<SwapSlot&> Fxaa::Apply(SwapManager& swap_mgr,
 // Returns compiled fxaa pixel shader.
 Shader Fxaa::LoadFxaaShader()
 {
-	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::pixel,
+	ut::Result<Shader, ut::Error> shader = tools.shader_loader.Load(Shader::Stage::pixel,
 	                                                                "fxaa_ps",
 	                                                                "PS",
 	                                                                "fxaa.hlsl",
@@ -125,14 +125,14 @@ Shader Fxaa::LoadFxaaShader()
 PipelineState Fxaa::CreatePipelineState(RenderPass& postprocess_pass)
 {
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = tools.shaders.quad_vs;
-	info.stages[Shader::pixel] = pixel_shader;
+	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::pixel, pixel_shader);
 	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
-	info.depth_stencil_state.depth_compare_op = compare::never;
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.depth_stencil_state.depth_compare_op = compare::Operation::never;
+	info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
+	info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
 	info.blend_state.attachments.Add(BlendState::CreateNoBlending());
 	return tools.device.CreatePipelineState(ut::Move(info), postprocess_pass).MoveOrThrow();
 }

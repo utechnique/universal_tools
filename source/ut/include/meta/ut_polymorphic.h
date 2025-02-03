@@ -366,7 +366,7 @@ private:
 	// There is only one instance per dynamic type, and it's shared between
 	// different factories. Thread safety is disabled for this shared pointer
 	// because only one type can be registered simultaneously.
-	typedef SharedPtr<DynamicType, thread_safety::off> DynamicTypePtr;
+	typedef SharedPtr<DynamicType, thread_safety::Mode::off> DynamicTypePtr;
 
 	// Every type must be registered in all factories that are parents of the
 	// current one. That is done by calling a registration callback of the
@@ -403,7 +403,9 @@ private:
 		// note that Register() function below registers a type into all parent factories too
 		Map& map = Factory<Derived>::GetMap();
 		Map::ConstIterator it;
-		for (it = map.Begin(iterator::first); it != map.End(iterator::last); ++it)
+		for (it = map.Begin(iterator::Position::first);
+		     it != map.End(iterator::Position::last);
+		     ++it)
 		{
 			const Pair<const String, DynamicTypePtr>& element = *it;
 			Register(element.GetFirst(), element.second);

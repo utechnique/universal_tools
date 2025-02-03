@@ -18,7 +18,7 @@ START_NAMESPACE(text)
 // Consider that only ut::node::general is common for all formats.
 namespace node
 {
-	enum Type
+	enum class Type
 	{
 		general,
 		comment,
@@ -37,7 +37,7 @@ class Node
 public:
 	// Constructor, takes node type as an argument
 	//    @param node_type - type of the node
-	Node(node::Type node_type = node::general);
+	Node(node::Type node_type = node::Type::general);
 
 	// Returns a type of the node
 	node::Type GetType() const;

@@ -534,11 +534,11 @@ public:
 	}
 
 	// Returns constant read / write iterator that points to the first element
-	ConstIterator Begin(iterator::Position position = iterator::first) const
+	ConstIterator Begin(iterator::Position position = iterator::Position::first) const
 	{
 		if (root != nullptr)
 		{
-			return ConstIterator(position == iterator::first ? root->GetDeepestLeftChild() : root->GetDeepestRightChild());
+			return ConstIterator(position == iterator::Position::first ? root->GetDeepestLeftChild() : root->GetDeepestRightChild());
 		}
 		else
 		{
@@ -547,17 +547,19 @@ public:
 	}
 
 	// Returns constant read / write iterator that points to the last element
-	ConstIterator End(iterator::Position position = iterator::last) const
+	ConstIterator End(iterator::Position position = iterator::Position::last) const
 	{
 		return ConstIterator(nullptr);
 	}
 
 	// Returns constant read / write iterator that points to the first element
-	Iterator Begin(iterator::Position position = iterator::first)
+	Iterator Begin(iterator::Position position = iterator::Position::first)
 	{
 		if (root != nullptr)
 		{
-			return Iterator(position == iterator::first ? root->GetDeepestLeftChild() : root->GetDeepestRightChild());
+			return Iterator(position == iterator::Position::first ?
+			                            root->GetDeepestLeftChild() :
+			                            root->GetDeepestRightChild());
 		}
 		else
 		{
@@ -566,7 +568,7 @@ public:
 	}
 
 	// Returns constant read / write iterator that points to the last element
-	Iterator End(iterator::Position position = iterator::last)
+	Iterator End(iterator::Position position = iterator::Position::last)
 	{
 		return Iterator(nullptr);
 	}

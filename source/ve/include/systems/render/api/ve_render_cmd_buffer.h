@@ -19,26 +19,29 @@ class CmdBuffer : public PlatformCmdBuffer
 public:
 	// Enumeration of flags specifying if the command buffer is primary or
 	// secondary command buffer.
-	enum Level
+	enum class Level
 	{
-		level_primary,
-		level_secondary
+		primary,
+		secondary
 	};
 
 	// Enumeration of possible bits specifying usage of the command buffer.
-	enum Usage : ut::uint32
+	enum class Usage : ut::uint32
 	{
 		// Normal usage.
-		usage_normal = 0x00000000,
+		normal,
 
 		// Specifies that this command buffer will be reset after the call to
 		// Device::WaitCmdBuffer() function.
-		usage_dynamic = 0x00000001,
+		dynamic,
 
 		// Makes sense only for secondary buffers. Specifies that a secondary
 		// command buffer is considered to be entirely inside a render pass.
 		// If this is a primary command buffer, then this bit is ignored.
-		usage_inside_render_pass = 0x00000002
+		inside_render_pass,
+
+		// Combines @dynamic and @inside_render_pass usage.
+		dynamic_inside_render_pass
 	};
 
 	// ve::render::CmdBuffer::Info conveniently stores all essential
@@ -47,12 +50,12 @@ public:
 	{
 	public:
 		// Constructor.
-		Info() : level(level_primary)
-		       , usage(usage_normal)
+		Info() : level(Level::primary)
+		       , usage(Usage::normal)
 		{}
 
 		Level level;
-		ut::uint32 usage;
+		Usage usage;
 	};
 
 	// Constructor.

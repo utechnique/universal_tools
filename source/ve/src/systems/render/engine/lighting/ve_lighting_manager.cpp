@@ -33,9 +33,9 @@ ut::Result<lighting::ViewData, ut::Error> Manager::CreateViewData(Target& depth_
 {
 	// light buffer
 	Target::Info info;
-	info.type = is_cube ? Image::type_cube : Image::type_2D;
+	info.type = is_cube ? Image::Type::cubic : Image::Type::planar;
 	info.format = tools.formats.light_buffer;
-	info.usage = Target::Info::usage_color;
+	info.usage = Target::Info::Usage::color;
 	info.mip_count = light_buffer_mip_count;
 	info.width = width;
 	info.height = height;

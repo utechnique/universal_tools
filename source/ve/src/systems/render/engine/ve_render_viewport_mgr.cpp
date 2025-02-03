@@ -131,7 +131,10 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 
 	// initialize render pass info
 	pixel::Format format = display_result.Get().GetTarget(0).GetImage().GetInfo().format;
-	RenderTargetSlot color_slot(format, RenderTargetSlot::load_clear, RenderTargetSlot::store_save, true);
+	RenderTargetSlot color_slot(format,
+	                            RenderTargetSlot::LoadOperation::clear,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            true);
 	ut::Array<RenderTargetSlot> slots;
 	slots.Add(color_slot);
 
@@ -167,11 +170,11 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 	
 	// create pipeline state for displaying images to user
 	PipelineState::Info info;
-	info.stages[Shader::vertex] = display_quad_vs.Get();
-	info.stages[Shader::pixel] = display_quad_ps.Get();
+	info.SetShader(Shader::Stage::vertex, display_quad_vs.Get());
+	info.SetShader(Shader::Stage::pixel, display_quad_ps.Get());
 	info.input_assembly_state = Frame::CreateInputAssemblyState();
-	info.rasterization_state.polygon_mode = RasterizationState::fill;
-	info.rasterization_state.cull_mode = RasterizationState::no_culling;
+	info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
+	info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
 	info.blend_state.attachments.Add(BlendState::CreateAlphaBlending());
 	ut::Result<PipelineState, ut::Error> pipeline = device.CreatePipelineState(info, rp_result.Get());
 	if (!pipeline)
@@ -189,7 +192,7 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 
 	// pipeline with rgb->srgb conversion
 	info.blend_state.attachments.GetFirst() = BlendState::CreateAlphaBlending();
-	info.stages[Shader::pixel] = display_quad_rgb2srgb_ps.Get();
+	info.SetShader(Shader::Stage::pixel, display_quad_rgb2srgb_ps.Get());
 	ut::Result<PipelineState, ut::Error> rgb2srgb_pipeline = device.CreatePipelineState(info, rp_result.Get());
 	if (!rgb2srgb_pipeline)
 	{
@@ -206,7 +209,7 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 
 	// pipeline with srgb->rgb conversion
 	info.blend_state.attachments.GetFirst() = BlendState::CreateAlphaBlending();
-	info.stages[Shader::pixel] = display_quad_srgb2rgb_ps.Get();
+	info.SetShader(Shader::Stage::pixel, display_quad_srgb2rgb_ps.Get());
 	ut::Result<PipelineState, ut::Error> srgb2rgb_pipeline = device.CreatePipelineState(info, rp_result.Get());
 	if (!srgb2rgb_pipeline)
 	{

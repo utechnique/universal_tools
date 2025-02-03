@@ -10,7 +10,7 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
 PlatformRenderPass::PlatformRenderPass(VkDevice device_handle,
-                                       VkRenderPass render_pass_handle) : VkRc<vk::render_pass>(render_pass_handle,
+                                       VkRenderPass render_pass_handle) : VkRc<vk::Rc::render_pass>(render_pass_handle,
                                                                                                 device_handle)
 {}
 

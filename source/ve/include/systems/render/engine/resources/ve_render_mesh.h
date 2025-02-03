@@ -100,7 +100,7 @@ public:
 	// Instance id is a per-instance vertex element to
 	// identify current instance in shader.
 	static const char* skInstanceIdSemantic;
-	static constexpr pixel::Format skInstanceIdFormat = pixel::r32_uint;
+	static constexpr pixel::Format skInstanceIdFormat = pixel::Format::r32_uint;
 
 	// Number of polygons.
 	ut::uint32 polygon_count;

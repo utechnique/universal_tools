@@ -13,7 +13,7 @@ START_NAMESPACE(ve)
 template<int id, int depth, typename CompoundAccessTuple>
 struct CompoundAccessStaticIterator
 {
-	static void GenerateComponentSets(ut::Array< ComponentSet<ut::access_full> >& component_sets)
+	static void GenerateComponentSets(ut::Array< ComponentSet<ComponentMap::Access::read_write> >& component_sets)
 	{
 		CompoundAccessStaticIterator<id, id, CompoundAccessTuple>::GenerateComponentSets(component_sets);
 		CompoundAccessStaticIterator<id + 1, depth, CompoundAccessTuple>::GenerateComponentSets(component_sets);
@@ -24,14 +24,14 @@ struct CompoundAccessStaticIterator
 template<int id, typename CompoundAccessTuple>
 struct CompoundAccessStaticIterator<id, id, CompoundAccessTuple>
 {
-	static void GenerateComponentSets(ut::Array< ComponentSet<ut::access_full> >& component_sets)
+	static void GenerateComponentSets(ut::Array< ComponentSet<ComponentMap::Access::read_write> >& component_sets)
 	{
         typedef typename CompoundAccessTuple::template Item<id>::Type AccessType;
 
-		component_sets.Add(ComponentSet<ut::access_full>());
+		component_sets.Add(ComponentSet<ComponentMap::Access::read_write>());
 		ComponentMapStaticIterator<0, AccessType::size - 1,
 		                           AccessType>::GenerateComponentMaps(component_sets.GetLast().component_maps);
-		component_sets.GetLast().operation = Component::op_intersection;
+		component_sets.GetLast().operation = Component::EntityAssociationOperation::intersect;
 	}
 };
 
@@ -109,9 +109,9 @@ public:
 
 protected:
 	// Creates component maps specific to the current system.
-	virtual ut::Array< ComponentSet<ut::access_full> > DefineComponentSets() const override
+	virtual ut::Array< ComponentSet<ComponentMap::Access::read_write> > DefineComponentSets() const override
 	{
-		ut::Array< ComponentSet<ut::access_full> > sets;
+		ut::Array< ComponentSet<ComponentMap::Access::read_write> > sets;
 		CompoundAccessStaticIterator<0, CompoundAccessTuple::size - 1,
 		                             CompoundAccessTuple>::GenerateComponentSets(sets);
 		return sets;

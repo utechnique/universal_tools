@@ -32,10 +32,10 @@ public:
 };
 
 // Type of index buffer indices.
-enum IndexType
+enum class IndexType
 {
-	index_type_uint16,
-	index_type_uint32
+	uint16,
+	uint32
 };
 
 //----------------------------------------------------------------------------//

@@ -37,20 +37,20 @@ Toolset::Toolset(Device& dvc_ref) : device(dvc_ref)
                                   , sampler_cache(dvc_ref)
                                   , frame_mgr(dvc_ref)
                                   , shaders {
-                                                shader_loader.Load(Shader::vertex,
+                                                shader_loader.Load(Shader::Stage::vertex,
                                                                    "quad_vs",
                                                                    "VS",
                                                                    "quad_vs.hlsl").MoveOrThrow(),
-                                                shader_loader.Load(Shader::pixel,
+                                                shader_loader.Load(Shader::Stage::pixel,
                                                                    "img_quad_ps",
                                                                    "PS",
                                                                    "img_quad_ps.hlsl").MoveOrThrow(),
-                                                shader_loader.Load(Shader::pixel,
+                                                shader_loader.Load(Shader::Stage::pixel,
                                                                    "img_quad_rgb2srgb_ps",
                                                                    "PS",
                                                                    "img_quad_ps.hlsl",
                                                                    GenQuadShaderConversionMacros(true)).MoveOrThrow(),
-                                                shader_loader.Load(Shader::pixel,
+                                                shader_loader.Load(Shader::Stage::pixel,
                                                                    "img_quad_srgb2rgb_ps",
                                                                    "PS",
                                                                    "img_quad_ps.hlsl",
@@ -59,8 +59,8 @@ Toolset::Toolset(Device& dvc_ref) : device(dvc_ref)
 {
     // check supported depth-stencil formats
     const Device::Info& device_info = device.GetInfo();
-    const bool supports_preferred_depth_format = device_info.supports_2d_render_target_format[formats.preferred_depth_stencil];
-    const bool supports_alternative_depth_format = device_info.supports_2d_render_target_format[formats.alternative_depth_stencil];
+    const bool supports_preferred_depth_format = device_info.supports_2d_render_target_format[static_cast<size_t>(formats.preferred_depth_stencil)];
+    const bool supports_alternative_depth_format = device_info.supports_2d_render_target_format[static_cast<size_t>(formats.alternative_depth_stencil)];
     if (!supports_preferred_depth_format && !supports_alternative_depth_format)
     {
         throw ut::Error(ut::error::not_supported, "Depth-stencil format is not supported.");
@@ -72,13 +72,13 @@ Toolset::Toolset(Device& dvc_ref) : device(dvc_ref)
                             formats.alternative_depth_stencil;
 
     // check supported G-Buffer format
-    if (!device_info.supports_2d_render_target_format[formats.gbuffer])
+    if (!device_info.supports_2d_render_target_format[static_cast<size_t>(formats.gbuffer)])
     {
         throw ut::Error(ut::error::not_supported, "G-Buffer format is not supported.");
     }
 
     // check supported light-buffer format
-    if (!device_info.supports_2d_render_target_format[formats.light_buffer])
+    if (!device_info.supports_2d_render_target_format[static_cast<size_t>(formats.light_buffer)])
     {
         throw ut::Error(ut::error::not_supported, "Light buffer format is not supported.");
     }

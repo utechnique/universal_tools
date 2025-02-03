@@ -20,7 +20,7 @@ public:
 
 		// open file for writing
 		ut::File cfg_file;
-		ut::Optional<ut::Error> open_error = cfg_file.Open(GetPath(), ut::file_access_write);
+		ut::Optional<ut::Error> open_error = cfg_file.Open(GetPath(), ut::File::Access::write);
 		if (open_error)
 		{
 			return open_error;
@@ -46,7 +46,7 @@ public:
 		// open file
 		ut::File cfg_file;
 		ut::Optional<ut::Error> open_cfg_error = cfg_file.Open(GetPath(),
-		                                                       ut::file_access_read);
+		                                                       ut::File::Access::read);
 		if (open_cfg_error)
 		{
 			return ut::Error(ut::error::no_such_file);

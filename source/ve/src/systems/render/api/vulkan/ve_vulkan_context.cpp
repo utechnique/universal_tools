@@ -16,9 +16,9 @@ const ut::uint32 skMaxClearValues = 16;
 PlatformImage::State CreateTargetImageState(Target::Info target_info,
                                             Target::Info::State state)
 {
-	if (state == Target::Info::state_target)
+	if (state == Target::Info::State::target)
 	{
-		if (target_info.usage == Target::Info::usage_depth)
+		if (target_info.usage == Target::Info::Usage::depth)
 		{
 			return PlatformImage::State::CreateForDepthStencilTarget();
 		}
@@ -27,11 +27,11 @@ PlatformImage::State CreateTargetImageState(Target::Info target_info,
 			return PlatformImage::State::CreateForColorTarget();
 		}
 	}
-	else if (state == Target::Info::state_transfer_src)
+	else if (state == Target::Info::State::transfer_src)
 	{
 		return PlatformImage::State::CreateForTransferSrc();
 	}
-	else if (state == Target::Info::state_transfer_dst)
+	else if (state == Target::Info::State::transfer_dst)
 	{
 		return PlatformImage::State::CreateForTransferDst();
 	}
@@ -131,12 +131,12 @@ Context::Context(PlatformContext platform_context) : PlatformContext(ut::Move(pl
 // into application address space. Note that buffer must be created with
 // ve::render::Buffer::gpu_cpu flag to be compatible with this function.
 //    @param buffer - reference to the ve::render::Buffer object to be mapped.
-//    @param access - ut::Access value specifying purpose of the mapping
-//                    operation - read, write or both.
+//    @param access - ve::render::memory::CpuAccess value specifying purpose
+//                    of the mapping operation - read, write or both.
 //    @return - pointer to the mapped area or error if failed.
-ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, ut::Access access)
+ut::Result<void*, ut::Error> Context::MapBuffer(Buffer& buffer, memory::CpuAccess access)
 {
-	if (buffer.info.usage != render::memory::gpu_read_cpu_write)
+	if (buffer.info.usage != render::memory::Usage::gpu_read_cpu_write)
 	{
 		return ut::MakeError(ut::Error(ut::error::invalid_arg,
 			"Vulkan: Attempt to map buffer that wasn\'t created with gpu_read_cpu_write flag"));
@@ -166,10 +166,10 @@ void Context::UnmapBuffer(Buffer& buffer)
 //    @param image - reference to the ve::render::Image object to be mapped.
 //    @param mip_level - id of the mip to be mapped.
 //    @param array_layer - id of the layer to be mapped.
-//    @param access - ut::Access value specifying purpose of the mapping
-//                    operation - read, write or both.
+//    @param access - ve::render::memory::CpuAccess value specifying purpose
+//                    of the mapping operation - read, write or both.
 ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
-                                                               ut::Access access,
+                                                               memory::CpuAccess access,
                                                                ut::uint32 mip_level,
                                                                ut::uint32 array_layer)
 {
@@ -179,7 +179,7 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 
 	// only images created with gpu_read_cpu_write flag have linear layout
 	// and can be accessed without staging buffer
-	if(info.usage == render::memory::gpu_read_cpu_write)
+	if(info.usage == render::memory::Usage::gpu_read_cpu_write)
 	{
 		VkSubresourceLayout layout;
 		VkImageSubresource subrc;
@@ -200,8 +200,8 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 		mapped_rc.depth_pitch = layout.depthPitch;
 		mapped_rc.array_pitch = layout.arrayPitch;
 	}
-	else if (info.usage == render::memory::gpu_read_write &&
-	         access == ut::access_read &&
+	else if (info.usage == render::memory::Usage::gpu_read_write &&
+	         access == memory::CpuAccess::read &&
 	         info.has_staging_cpu_read_buffer)
 	{
 		void* address;
@@ -247,15 +247,15 @@ ut::Result<Image::MappedResource, ut::Error> Context::MapImage(Image& image,
 }
 
 // Unmaps a previously mapped memory object associated with provided image.
-void Context::UnmapImage(Image& image, ut::Access access)
+void Context::UnmapImage(Image& image, memory::CpuAccess access)
 {
 	const Image::Info& info = image.GetInfo();
-	if (info.usage == render::memory::gpu_read_cpu_write)
+	if (info.usage == render::memory::Usage::gpu_read_cpu_write)
 	{
 		vmaUnmapMemory(allocator, image.GetDetail().GetAllocation());
 	}
-	else if (info.usage == render::memory::gpu_read_write &&
-	         access == ut::access_read &&
+	else if (info.usage == render::memory::Usage::gpu_read_write &&
+	         access == memory::CpuAccess::read &&
 	         info.has_staging_cpu_read_buffer)
 	{
 		vmaUnmapMemory(allocator, image.staging_gpu_cpu_buffer.GetDetail().GetAllocation());
@@ -287,7 +287,7 @@ ut::Optional<ut::Error> Context::CopyImageToStagingCpuReadBuffer(Image& image,
 	const Image::Info& img_info = image.GetInfo();
 
 	// calculate the number of subresources
-	const ut::uint32 img_slice_count = img_info.type == Image::type_cube ? 6 : 1;
+	const ut::uint32 img_slice_count = img_info.type == Image::Type::cubic ? 6 : 1;
 	const ut::uint32 slice_end = slice_count == 0 ? img_slice_count : (first_slice + slice_count);
 	const ut::uint32 mip_end = mip_count == 0 ? img_info.mip_count : (first_mip + mip_count);
 
@@ -368,7 +368,7 @@ void Context::CopyTarget(Target& dst,
 	const ut::uint32 depth = ut::Min(src_info.depth, dst_info.depth);
 
 	// calculate the number of subresources
-	const ut::uint32 img_slice_count = type == Image::type_cube ? 6 : 1;
+	const ut::uint32 img_slice_count = type == Image::Type::cubic ? 6 : 1;
 	const ut::uint32 img_mip_count = ut::Min(src_info.mip_count, dst_info.mip_count);
 	const ut::uint32 slice_end = slice_count == 0 ? img_slice_count : (first_slice + slice_count);
 	const ut::uint32 mip_end = mip_count == 0 ? img_mip_count : (first_mip + mip_count);
@@ -446,7 +446,7 @@ void Context::ClearTarget(Target& target,
 	Image& img = target.GetImage();
 
 	// clear requires transfer_dst state
-	SetTargetState(target, Target::Info::state_transfer_dst);
+	SetTargetState(target, Target::Info::State::transfer_dst);
 
 	VkClearColorValue clear_color;
 	clear_color.float32[0] = color.R();
@@ -488,7 +488,7 @@ void Context::GenerateMips(Target& target,
 
 	// get the number of array layers
 	Image& image = target.GetImage();
-	const ut::uint32 slice_count = info.type == Image::type_cube ? 6 : 1;
+	const ut::uint32 slice_count = info.type == Image::Type::cubic ? 6 : 1;
 
 	// mips must have different layouts in order to perform vkCmdBlitImage:
 	// 1) source mip must have VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
@@ -660,7 +660,7 @@ void Context::BeginRenderPass(RenderPass& render_pass,
 	}
 
 	// all attachments must be in 'target' state before render pass begins
-	SetTargetState(attachments, total_attachment_count, Target::Info::state_target);
+	SetTargetState(attachments, total_attachment_count, Target::Info::State::target);
 
 	// initialize render pass begin info
 	VkRenderPassBeginInfo rp_begin;
@@ -828,7 +828,7 @@ void Context::BindIndexBuffer(Buffer& buffer,
 	vkCmdBindIndexBuffer(cmd_buffer.GetVkHandle(),
 	                     buffer.GetVkHandle(),
 	                     offset,
-	                     index_type == index_type_uint32 ?
+	                     index_type == IndexType::uint32 ?
 	                     VK_INDEX_TYPE_UINT32 :
 	                     VK_INDEX_TYPE_UINT16);
 }

@@ -65,14 +65,6 @@ void Mutex::Unlock()
 }
 
 //----------------------------------------------------------------------------->
-// Just calls Lock() and then Unlock()
-void Mutex::Sync()
-{
-	Lock();
-	Unlock();
-}
-
-//----------------------------------------------------------------------------->
 // Creates platform-specific 'mutex' object
 Optional<Error> Mutex::Create()
 {

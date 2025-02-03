@@ -12,7 +12,7 @@ START_NAMESPACE(ut)
 
 namespace thread_safety
 {
-	enum Mode
+	enum class Mode
 	{
 		off = 0,
 		on = 1

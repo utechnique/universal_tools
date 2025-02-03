@@ -14,25 +14,25 @@ START_NAMESPACE(render)
 class RenderTargetSlot
 {
 public:
-	enum LoadOperation
+	enum class LoadOperation
 	{
 		// extract previous value from memory
-		load_extract,
+		extract,
 
 		// all contents will be cleared
-		load_clear,
+		clear,
 
 		// nothing to do
-		load_dont_care
+		dont_care
 	};
 
-	enum StoreOperation
+	enum class StoreOperation
 	{
 		// final value will be stored in memory
-		store_save,
+		save,
 
 		// nothing to do
-		store_dont_care
+		dont_care
 	};
 
 	// Constructor

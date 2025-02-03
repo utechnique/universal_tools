@@ -57,7 +57,7 @@ public:
 	                        DeferredShading::ViewData& data,
 	                        Buffer& view_uniform_buffer,
 	                        Batcher& batcher,
-	                        Image::Cube::Face cubeface = Image::Cube::positive_x);
+	                        Image::Cube::Face cubeface = Image::Cube::Face::positive_x);
 
 	// Applies lighting techniques to the provided target.
 	void Shade(Context& context,
@@ -65,23 +65,24 @@ public:
 	           Buffer& view_uniform_buffer,
 	           Light::Sources& lights,
 	           ut::Optional<Image&> ibl_cubemap,
-	           Image::Cube::Face cubeface = Image::Cube::positive_x);
+	           Image::Cube::Face cubeface = Image::Cube::Face::positive_x);
 
 private:
 	// Light pass pipeline permutations.
 	struct LightPass
 	{
-		enum IblPreset
+		enum class IblPreset
 		{
-			ibl_off,
-			ibl_on,
-			ibl_preset_count
+			off,
+			on,
+			count
 		};
 
 		static constexpr ut::uint32 ibl_column = 0;
 		static constexpr ut::uint32 light_type_column = 1;
 
-		typedef ut::Grid<ibl_preset_count, Light::source_type_count> Grid;
+		typedef ut::Grid<static_cast<size_t>(IblPreset::count),
+		                 static_cast<size_t>(Light::SourceType::count)> Grid;
 	};
 
 	// Geometry pass pipeline and shaders permutations.
@@ -89,25 +90,25 @@ private:
 	{
 		struct MeshInstRendering
 		{
-			enum CullMode
+			enum class CullMode
 			{
-				cull_none,
-				cull_back,
-				cull_mode_count
+				none,
+				back,
+				count
 			};
 
-			enum AlphaMode
+			enum class AlphaMode
 			{
-				alpha_opaque,
+				opaque,
 				alpha_test,
-				alpha_mode_count
+				count
 			};
 
-			enum StencilMode
+			enum class StencilMode
 			{
-				stencil_opaque,
-				stencil_opaque_and_highlighted,
-				stencil_mode_count
+				opaque,
+				opaque_and_highlighted,
+				count
 			};
 
 			static constexpr ut::uint32 vertex_format_column = 0;
@@ -117,13 +118,13 @@ private:
 			static constexpr ut::uint32 polygon_mode_column = 4;
 
 			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-			                 GeometryPass::MeshInstRendering::alpha_mode_count,
-			                 GeometryPass::MeshInstRendering::cull_mode_count,
-			                 GeometryPass::MeshInstRendering::stencil_mode_count,
+			                 static_cast<size_t>(GeometryPass::MeshInstRendering::AlphaMode::count),
+			                 static_cast<size_t>(GeometryPass::MeshInstRendering::CullMode::count),
+			                 static_cast<size_t>(GeometryPass::MeshInstRendering::StencilMode::count),
 			                 static_cast<size_t>(Mesh::PolygonMode::count)> PipelineGrid;
 
 			typedef ut::Grid<static_cast<size_t>(Mesh::VertexFormat::count),
-			                 GeometryPass::MeshInstRendering::alpha_mode_count> ShaderGrid;
+			                 static_cast<size_t>(GeometryPass::MeshInstRendering::AlphaMode::count)> ShaderGrid;
 
 			// Descriptor set to render mesh with geometry pass shaders.
 			struct Descriptors : public DescriptorSet

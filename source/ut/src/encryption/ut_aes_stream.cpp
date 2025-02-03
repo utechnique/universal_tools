@@ -12,7 +12,7 @@ START_NAMESPACE(ut)
 //    @param initialization_vector - 16-byte array to perform AES128
 //                                   encryption. Ignore this parameter to use
 //                                   default initialization vector.
-EncryptionStream<encryption::AES128>::EncryptionStream(const byte initialization_vector[16])
+EncryptionStream<encryption::Method::AES128>::EncryptionStream(const byte initialization_vector[16])
 {
 	memory::Copy(iv, initialization_vector, 16);
 }
@@ -24,8 +24,8 @@ EncryptionStream<encryption::AES128>::EncryptionStream(const byte initialization
 //                               to generate encryption key from the provided
 //                               password.
 //    @return  - error if failed.
-Optional<Error> EncryptionStream<encryption::AES128>::Encrypt(const String& password,
-	                                                          uint32 pbkdf2_iterations)
+Optional<Error> EncryptionStream<encryption::Method::AES128>::Encrypt(const String& password,
+	                                                                  uint32 pbkdf2_iterations)
 {
 	// calculate aligned (16 byte) size of the encrypted data
 	uint32 encrypted_size = static_cast<uint32>(data.Count());
@@ -71,8 +71,8 @@ Optional<Error> EncryptionStream<encryption::AES128>::Encrypt(const String& pass
 //                               to generate decryption key from the provided
 //                               password.
 //    @return  - error if failed.
-Optional<Error> EncryptionStream<encryption::AES128>::Decrypt(const String& password,
-	                                                          uint32 pbkdf2_iterations)
+Optional<Error> EncryptionStream<encryption::Method::AES128>::Decrypt(const String& password,
+	                                                                  uint32 pbkdf2_iterations)
 {
 	// check current (encrypted) data size - it must contain
 	// at least 4 bytes for data size
@@ -151,10 +151,10 @@ Optional<Error> EncryptionStream<encryption::AES128>::Decrypt(const String& pass
 
 // Default initialization vector for AES128 encryption.
 // Represents 0x01, 0x02, 0x03 ... 0x0f sequence.
-const byte EncryptionStream<encryption::AES128>::skIv[16] = { 0x00, 0x01, 0x02, 0x03,
-                                                              0x04, 0x05, 0x06, 0x07,
-                                                              0x08, 0x09, 0x0a, 0x0b,
-                                                              0x0c, 0x0d, 0x0e, 0x0f };
+const byte EncryptionStream<encryption::Method::AES128>::skIv[16] = { 0x00, 0x01, 0x02, 0x03,
+                                                                      0x04, 0x05, 0x06, 0x07,
+                                                                      0x08, 0x09, 0x0a, 0x0b,
+                                                                      0x0c, 0x0d, 0x0e, 0x0f };
 
 //----------------------------------------------------------------------------//
 END_NAMESPACE(ut)

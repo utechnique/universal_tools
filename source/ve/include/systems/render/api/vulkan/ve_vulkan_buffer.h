@@ -11,11 +11,11 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Vulkan buffer.
-class PlatformBuffer : public VkRc<vk::buffer>
+class PlatformBuffer : public VkRc<vk::Rc::buffer>
 {
 	friend class Context;
 public:
-	PlatformBuffer(VkRc<vk::buffer> buffer_rc);
+	PlatformBuffer(VkRc<vk::Rc::buffer> buffer_rc);
 
 	// Move constructor.
 	PlatformBuffer(PlatformBuffer&&) noexcept;

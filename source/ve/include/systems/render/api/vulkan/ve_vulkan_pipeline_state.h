@@ -33,9 +33,9 @@ public:
 	PlatformPipelineState& operator =(const PlatformPipelineState&) = delete;
 
 private:
-	VkRc<vk::pipeline> pipeline;
-	VkRc<vk::pipeline_layout> layout;
-	VkRc<vk::descriptor_set_layout> dsl;
+	VkRc<vk::Rc::pipeline> pipeline;
+	VkRc<vk::Rc::pipeline_layout> layout;
+	VkRc<vk::Rc::descriptor_set_layout> dsl;
 };
 
 //----------------------------------------------------------------------------//

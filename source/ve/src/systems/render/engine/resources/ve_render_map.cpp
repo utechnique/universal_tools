@@ -71,20 +71,20 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::CreateFromSolidColor(con
                                                                              ut::Optional<ut::String> name)
 {
 	Image::Info img_info;
-	img_info.format = pixel::r8g8b8a8_unorm;
-	img_info.usage = render::memory::gpu_immutable;
+	img_info.format = pixel::Format::r8g8b8a8_unorm;
+	img_info.usage = render::memory::Usage::gpu_immutable;
 	img_info.width = width;
 	img_info.height = height;
 	img_info.depth = depth;
 	img_info.mip_count = mip_count;
 
 	// validate texture type
-	const bool is_cubemap = img_type == Image::type_cube;
-	if (is_cubemap || img_info.type == Image::type_2D)
+	const bool is_cubemap = img_type == Image::Type::cubic;
+	if (is_cubemap || img_info.type == Image::Type::planar)
 	{
 		img_info.depth = 1;
 	}
-	else if (img_info.type == Image::type_1D)
+	else if (img_info.type == Image::Type::linear)
 	{
 		img_info.height = 1;
 		img_info.depth = 1;
@@ -109,14 +109,14 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::CreateFromSolidColor(con
 
 		mip_width /= 2;
 
-		if (img_info.type != Image::type_1D)
+		if (img_info.type != Image::Type::linear)
 		{
 			mip_height /= 2;
 		}
 
-		if (img_info.type != Image::type_1D &&
-			img_info.type != Image::type_2D &&
-			img_info.type != Image::type_cube)
+		if (img_info.type != Image::Type::linear &&
+			img_info.type != Image::Type::planar &&
+			img_info.type != Image::Type::cubic)
 		{
 			mip_depth /= 2;
 		}
@@ -242,16 +242,16 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Generate(const ut::Strin
 
 	// get texture type
 	const bool is_cubemap = type == "cube";
-	Image::Type img_type = is_cubemap ? Image::type_cube :
-	                       type == "1d" ? Image::type_1D :
-	                       type == "2d" ? Image::type_2D :
-	                       type == "3d" ? Image::type_3D :
-	                       Image::type_2D;
+	Image::Type img_type = is_cubemap ? Image::Type::cubic :
+	                       type == "1d" ? Image::Type::linear :
+	                       type == "2d" ? Image::Type::planar :
+	                       type == "3d" ? Image::Type::volumetric :
+	                       Image::Type::planar;
 
 	// generate final resource
 	return CreateFromSolidColor(color,
 	                            img_type,
-	                            pixel::r8g8b8a8_unorm,
+	                            pixel::Format::r8g8b8a8_unorm,
 	                            width,
 	                            height,
 	                            depth,

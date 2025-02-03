@@ -11,7 +11,7 @@ START_NAMESPACE(render)
 // Comparison operations.
 namespace compare
 {
-	enum Operation
+	enum class Operation
 	{
 		never,
 		less,

@@ -45,7 +45,7 @@ Optional<Error> Log::Start(const String& filename, bool console_mirror)
 	else
 	{
 		console_reflection = console_mirror;
-		return file.Open(filename, file_access_write);
+		return file.Open(filename, File::Access::write);
 	}
 }
 

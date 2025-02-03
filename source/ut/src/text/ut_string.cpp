@@ -9,7 +9,7 @@
 START_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 // StrConvert spec for utf8: wchar -> char
-template<> String StrConvert<wchar, char, cp_utf8>(const wchar* src)
+template<> String StrConvert<wchar, char, CodePage::utf8>(const wchar* src)
 {
 #if UT_WINDOWS
 	// check length
@@ -42,7 +42,7 @@ template<> String StrConvert<wchar, char, cp_utf8>(const wchar* src)
 }
 
 // StrConvert spec for utf8: char -> wchar
-template<> WString StrConvert<char, wchar, cp_utf8>(const char* src)
+template<> WString StrConvert<char, wchar, CodePage::utf8>(const char* src)
 {
 #if UT_WINDOWS
 	// check length

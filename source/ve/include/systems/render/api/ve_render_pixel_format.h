@@ -12,7 +12,7 @@ START_NAMESPACE(render)
 // of one pixel.
 namespace pixel
 {
-	enum Format
+	enum class Format
 	{
 		unknown,
 		r8g8b8a8_unorm,
@@ -50,88 +50,88 @@ namespace pixel
 		d24_unorm_s8_uint,
 		d32_float,
 		d32_float_s8_uint,
-		format_count
+		count
 	};
 
 	// Returns size of one pixel of the specified format in bytes.
 	constexpr ut::uint32 GetSize(Format format)
 	{
-		return format == r8g8b8a8_unorm     ? 4 :
-		       format == b8g8r8a8_unorm     ? 4 :
-		       format == r8g8b8a8_srgb      ? 4 :
-		       format == b8g8r8a8_srgb      ? 4 :
-		       format == r16_float          ? 2 :
-		       format == r16_sint           ? 2 :
-		       format == r16_uint           ? 2 :
-		       format == r16_snorm          ? 2 :
-		       format == r16_unorm          ? 2 :
-		       format == r16g16_float       ? 4 :
-		       format == r16g16_sint        ? 4 :
-		       format == r16g16_uint        ? 4 :
-		       format == r16g16_snorm       ? 4 :
-		       format == r16g16_unorm       ? 4 :
-		       format == r16g16b16a16_float ? 8 :
-		       format == r16g16b16a16_sint  ? 8 :
-		       format == r16g16b16a16_uint  ? 8 :
-		       format == r16g16b16a16_snorm ? 8 :
-		       format == r16g16b16a16_unorm ? 8 :
-		       format == r32_float          ? 4 :
-		       format == r32_sint           ? 4 :
-		       format == r32_uint           ? 4 :
-		       format == r32g32_float       ? 8 :
-		       format == r32g32_sint        ? 8 :
-		       format == r32g32_uint        ? 8 :
-		       format == r32g32b32_float    ? 12 :
-		       format == r32g32b32_sint     ? 12 :
-		       format == r32g32b32_uint     ? 12 :
-		       format == r32g32b32a32_float ? 16 :
-		       format == r32g32b32a32_sint  ? 16 :
-		       format == r32g32b32a32_uint  ? 16 :
-		       format == d16_unorm          ? 2 :
-		       format == d24_unorm_s8_uint  ? 4 :
-		       format == d32_float          ? 4 :
-		       format == d32_float_s8_uint  ? 8 :
+		return format == Format::r8g8b8a8_unorm     ? 4 :
+		       format == Format::b8g8r8a8_unorm     ? 4 :
+		       format == Format::r8g8b8a8_srgb      ? 4 :
+		       format == Format::b8g8r8a8_srgb      ? 4 :
+		       format == Format::r16_float          ? 2 :
+		       format == Format::r16_sint           ? 2 :
+		       format == Format::r16_uint           ? 2 :
+		       format == Format::r16_snorm          ? 2 :
+		       format == Format::r16_unorm          ? 2 :
+		       format == Format::r16g16_float       ? 4 :
+		       format == Format::r16g16_sint        ? 4 :
+		       format == Format::r16g16_uint        ? 4 :
+		       format == Format::r16g16_snorm       ? 4 :
+		       format == Format::r16g16_unorm       ? 4 :
+		       format == Format::r16g16b16a16_float ? 8 :
+		       format == Format::r16g16b16a16_sint  ? 8 :
+		       format == Format::r16g16b16a16_uint  ? 8 :
+		       format == Format::r16g16b16a16_snorm ? 8 :
+		       format == Format::r16g16b16a16_unorm ? 8 :
+		       format == Format::r32_float          ? 4 :
+		       format == Format::r32_sint           ? 4 :
+		       format == Format::r32_uint           ? 4 :
+		       format == Format::r32g32_float       ? 8 :
+		       format == Format::r32g32_sint        ? 8 :
+		       format == Format::r32g32_uint        ? 8 :
+		       format == Format::r32g32b32_float    ? 12 :
+		       format == Format::r32g32b32_sint     ? 12 :
+		       format == Format::r32g32b32_uint     ? 12 :
+		       format == Format::r32g32b32a32_float ? 16 :
+		       format == Format::r32g32b32a32_sint  ? 16 :
+		       format == Format::r32g32b32a32_uint  ? 16 :
+		       format == Format::d16_unorm          ? 2 :
+		       format == Format::d24_unorm_s8_uint  ? 4 :
+		       format == Format::d32_float          ? 4 :
+		       format == Format::d32_float_s8_uint  ? 8 :
 		       0;
 	}
 
 	// Returns a number of channels for the specified pixel format.
 	constexpr ut::uint32 GetChannelCount(Format format)
 	{
-		return format == r8g8b8a8_unorm     ? 4 :
-		       format == b8g8r8a8_unorm     ? 4 :
-		       format == r8g8b8a8_srgb      ? 4 :
-		       format == b8g8r8a8_srgb      ? 4 :
-		       format == r16_float          ? 1 :
-		       format == r16_sint           ? 1 :
-		       format == r16_uint           ? 1 :
-		       format == r16_snorm          ? 1 :
-		       format == r16_unorm          ? 1 :
-		       format == r16g16_float       ? 2 :
-		       format == r16g16_sint        ? 2 :
-		       format == r16g16_uint        ? 2 :
-		       format == r16g16_snorm       ? 2 :
-		       format == r16g16_unorm       ? 2 :
-		       format == r16g16b16a16_float ? 4 :
-		       format == r16g16b16a16_sint  ? 4 :
-		       format == r16g16b16a16_uint  ? 4 :
-		       format == r16g16b16a16_snorm ? 4 :
-		       format == r16g16b16a16_unorm ? 4 :
-		       format == r32_float          ? 1 :
-		       format == r32_sint           ? 1 :
-		       format == r32_uint           ? 1 :
-		       format == r32g32_float       ? 2 :
-		       format == r32g32_sint        ? 2 :
-		       format == r32g32_uint        ? 2 :
-		       format == r32g32b32_float    ? 3 :
-		       format == r32g32b32_sint     ? 3 :
-		       format == r32g32b32_uint     ? 3 :
-		       format == r32g32b32a32_float ? 4 :
-		       format == r32g32b32a32_sint  ? 4 :
-		       format == r32g32b32a32_uint  ? 4 :
-		       format == d16_unorm          ? 1 :
-		       format == d24_unorm_s8_uint  ? 2 :
-		       format == d32_float          ? 1 :
-		       format == d32_float_s8_uint  ? 2 :
+		return format == Format::r8g8b8a8_unorm     ? 4 :
+		       format == Format::b8g8r8a8_unorm     ? 4 :
+		       format == Format::r8g8b8a8_srgb      ? 4 :
+		       format == Format::b8g8r8a8_srgb      ? 4 :
+		       format == Format::r16_float          ? 1 :
+		       format == Format::r16_sint           ? 1 :
+		       format == Format::r16_uint           ? 1 :
+		       format == Format::r16_snorm          ? 1 :
+		       format == Format::r16_unorm          ? 1 :
+		       format == Format::r16g16_float       ? 2 :
+		       format == Format::r16g16_sint        ? 2 :
+		       format == Format::r16g16_uint        ? 2 :
+		       format == Format::r16g16_snorm       ? 2 :
+		       format == Format::r16g16_unorm       ? 2 :
+		       format == Format::r16g16b16a16_float ? 4 :
+		       format == Format::r16g16b16a16_sint  ? 4 :
+		       format == Format::r16g16b16a16_uint  ? 4 :
+		       format == Format::r16g16b16a16_snorm ? 4 :
+		       format == Format::r16g16b16a16_unorm ? 4 :
+		       format == Format::r32_float          ? 1 :
+		       format == Format::r32_sint           ? 1 :
+		       format == Format::r32_uint           ? 1 :
+		       format == Format::r32g32_float       ? 2 :
+		       format == Format::r32g32_sint        ? 2 :
+		       format == Format::r32g32_uint        ? 2 :
+		       format == Format::r32g32b32_float    ? 3 :
+		       format == Format::r32g32b32_sint     ? 3 :
+		       format == Format::r32g32b32_uint     ? 3 :
+		       format == Format::r32g32b32a32_float ? 4 :
+		       format == Format::r32g32b32a32_sint  ? 4 :
+		       format == Format::r32g32b32a32_uint  ? 4 :
+		       format == Format::d16_unorm          ? 1 :
+		       format == Format::d24_unorm_s8_uint  ? 2 :
+		       format == Format::d32_float          ? 1 :
+		       format == Format::d32_float_s8_uint  ? 2 :
 		       0;
 	}
 
@@ -140,60 +140,60 @@ namespace pixel
 	// if this type is not supported by ut (like float16).
 	constexpr ut::TypeId GetChannelType(Format format)
 	{
-		return format == r8g8b8a8_unorm     ? ut::Type<ut::uint8>::Id()  :
-		       format == b8g8r8a8_unorm     ? ut::Type<ut::uint8>::Id()  :
-		       format == r8g8b8a8_srgb      ? ut::Type<ut::uint8>::Id()  :
-		       format == b8g8r8a8_srgb      ? ut::Type<ut::uint8>::Id()  :
-		       format == r16_sint           ? ut::Type<ut::int16>::Id()  :
-		       format == r16_uint           ? ut::Type<ut::uint16>::Id() :
-		       format == r16_snorm          ? ut::Type<ut::uint16>::Id() :
-		       format == r16_unorm          ? ut::Type<ut::uint16>::Id() :
-		       format == r16g16_sint        ? ut::Type<ut::int16>::Id()  :
-		       format == r16g16_uint        ? ut::Type<ut::uint16>::Id() :
-		       format == r16g16_snorm       ? ut::Type<ut::uint16>::Id() :
-		       format == r16g16_unorm       ? ut::Type<ut::uint16>::Id() :
-		       format == r16g16b16a16_sint  ? ut::Type<ut::int16>::Id()  :
-		       format == r16g16b16a16_uint  ? ut::Type<ut::uint16>::Id() :
-		       format == r16g16b16a16_snorm ? ut::Type<ut::uint16>::Id() :
-		       format == r16g16b16a16_unorm ? ut::Type<ut::uint16>::Id() :
-		       format == r32_float          ? ut::Type<float>::Id()      :
-		       format == r32_sint           ? ut::Type<ut::int32>::Id()  :
-		       format == r32_uint           ? ut::Type<ut::uint32>::Id() :
-		       format == r32g32_float       ? ut::Type<float>::Id()      :
-		       format == r32g32_sint        ? ut::Type<ut::int32>::Id()  :
-		       format == r32g32_uint        ? ut::Type<ut::uint32>::Id() :
-		       format == r32g32b32_float    ? ut::Type<float>::Id()      :
-		       format == r32g32b32_sint     ? ut::Type<ut::int32>::Id()  :
-		       format == r32g32b32_uint     ? ut::Type<ut::uint32>::Id() :
-		       format == r32g32b32a32_float ? ut::Type<float>::Id()      :
-		       format == r32g32b32a32_sint  ? ut::Type<ut::int32>::Id()  :
-		       format == r32g32b32a32_uint  ? ut::Type<ut::uint32>::Id() :
-		       format == d16_unorm          ? ut::Type<ut::uint16>::Id() :
-		       format == d32_float          ? ut::Type<float>::Id()      :
+		return format == Format::r8g8b8a8_unorm     ? ut::Type<ut::uint8>::Id()  :
+		       format == Format::b8g8r8a8_unorm     ? ut::Type<ut::uint8>::Id()  :
+		       format == Format::r8g8b8a8_srgb      ? ut::Type<ut::uint8>::Id()  :
+		       format == Format::b8g8r8a8_srgb      ? ut::Type<ut::uint8>::Id()  :
+		       format == Format::r16_sint           ? ut::Type<ut::int16>::Id()  :
+		       format == Format::r16_uint           ? ut::Type<ut::uint16>::Id() :
+		       format == Format::r16_snorm          ? ut::Type<ut::uint16>::Id() :
+		       format == Format::r16_unorm          ? ut::Type<ut::uint16>::Id() :
+		       format == Format::r16g16_sint        ? ut::Type<ut::int16>::Id()  :
+		       format == Format::r16g16_uint        ? ut::Type<ut::uint16>::Id() :
+		       format == Format::r16g16_snorm       ? ut::Type<ut::uint16>::Id() :
+		       format == Format::r16g16_unorm       ? ut::Type<ut::uint16>::Id() :
+		       format == Format::r16g16b16a16_sint  ? ut::Type<ut::int16>::Id()  :
+		       format == Format::r16g16b16a16_uint  ? ut::Type<ut::uint16>::Id() :
+		       format == Format::r16g16b16a16_snorm ? ut::Type<ut::uint16>::Id() :
+		       format == Format::r16g16b16a16_unorm ? ut::Type<ut::uint16>::Id() :
+		       format == Format::r32_float          ? ut::Type<float>::Id()      :
+		       format == Format::r32_sint           ? ut::Type<ut::int32>::Id()  :
+		       format == Format::r32_uint           ? ut::Type<ut::uint32>::Id() :
+		       format == Format::r32g32_float       ? ut::Type<float>::Id()      :
+		       format == Format::r32g32_sint        ? ut::Type<ut::int32>::Id()  :
+		       format == Format::r32g32_uint        ? ut::Type<ut::uint32>::Id() :
+		       format == Format::r32g32b32_float    ? ut::Type<float>::Id()      :
+		       format == Format::r32g32b32_sint     ? ut::Type<ut::int32>::Id()  :
+		       format == Format::r32g32b32_uint     ? ut::Type<ut::uint32>::Id() :
+		       format == Format::r32g32b32a32_float ? ut::Type<float>::Id()      :
+		       format == Format::r32g32b32a32_sint  ? ut::Type<ut::int32>::Id()  :
+		       format == Format::r32g32b32a32_uint  ? ut::Type<ut::uint32>::Id() :
+		       format == Format::d16_unorm          ? ut::Type<ut::uint16>::Id() :
+		       format == Format::d32_float          ? ut::Type<float>::Id()      :
 		       0;
 	}
 
 	// Checks if provided pixel format is intended to be used by depth buffer.
 	constexpr bool IsDepthFormat(Format format)
 	{
-		return format == d16_unorm ||
-		       format == d24_unorm_s8_uint ||
-		       format == d32_float ||
-		       format == d32_float_s8_uint;
+		return format == Format::d16_unorm ||
+		       format == Format::d24_unorm_s8_uint ||
+		       format == Format::d32_float ||
+		       format == Format::d32_float_s8_uint;
 	}
 
 	// Checks if provided pixel format is intended to be used by stencil buffer.
 	constexpr bool IsStencilFormat(Format format)
 	{
-		return format == d24_unorm_s8_uint ||
-		       format == d32_float_s8_uint;
+		return format == Format::d24_unorm_s8_uint ||
+		       format == Format::d32_float_s8_uint;
 	}
 
 	// Checks if provided pixel format is in srgb color space.
 	constexpr bool IsSrgb(Format format)
 	{
-		return format == r8g8b8a8_srgb ||
-		       format == b8g8r8a8_srgb;
+		return format == Format::r8g8b8a8_srgb ||
+		       format == Format::b8g8r8a8_srgb;
 	}
 }
 

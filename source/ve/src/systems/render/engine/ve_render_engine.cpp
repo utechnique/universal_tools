@@ -116,7 +116,7 @@ void Engine::ProcessNextFrame(System::Time time_step_ms)
 
 // Returns a reference to the rendering thread pool, 
 // use it to parallelize cpu work.
-ut::ThreadPool<void, ut::pool_sync::cond_var>& Engine::GetThreadPool()
+ut::ThreadPool<void>& Engine::GetThreadPool()
 {
 	return tools.pool;
 }

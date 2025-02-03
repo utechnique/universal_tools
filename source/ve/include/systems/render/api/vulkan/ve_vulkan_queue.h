@@ -13,7 +13,7 @@ START_NAMESPACE(render)
 // Graphics engine works with fixed types of queue.
 namespace vulkan_queue
 {
-	enum FamilyType
+	enum class FamilyType
 	{
 		main, // general-purpose queue (graphics+compute+transfer)
 		compute, // compute-only queue

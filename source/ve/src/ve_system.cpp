@@ -45,9 +45,9 @@ System::Result System::Update(Time time_step, ComponentAccessGroup& access)
 // reference to the ve::ComponentAccess object (as an argument) providing
 // the access only for the desired components. If the returned object is
 // empty - the system will receive all component types.
-ut::Array< ComponentSet<ut::access_full> > System::DefineComponentSets() const
+ut::Array< ComponentSet<ComponentMap::Access::read_write> > System::DefineComponentSets() const
 {
-	return ut::Array< ComponentSet<ut::access_full> >();
+	return ut::Array< ComponentSet<ComponentMap::Access::read_write> >();
 }
 
 // Returns name of the system.

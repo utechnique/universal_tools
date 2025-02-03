@@ -118,7 +118,7 @@ void StrCatTask::Execute()
 	ut::StrCat<ut::wchar>(wcs3, wcs0, 16);
 	ut::StrCat<ut::wchar>(wcs3, wcs1, 16);
 	ut::StrCat<ut::wchar>(wcs3, wcs2, 16);
-	ut::String cv_str = ut::StrConvert<ut::wchar, char, ut::cp_ascii>(wcs3);
+	ut::String cv_str = ut::StrConvert<ut::wchar, char, ut::CodePage::ascii>(wcs3);
 	report += "concatenation test: ";
 	report += cv_str;
 	if (!ut::StrCmp<ut::wchar>(wcs3, L"one two three 0"))
@@ -425,8 +425,8 @@ StrASCIITask::StrASCIITask() : TestTask("ASCII convertion")
 void StrASCIITask::Execute()
 {
 	ut::String str_0 = "french cookies";
-	ut::WString wstr_0 = ut::StrConvert<char, ut::wchar, ut::cp_ascii>(str_0);
-	ut::String cv_str = ut::StrConvert<ut::wchar, char, ut::cp_ascii>(wstr_0);
+	ut::WString wstr_0 = ut::StrConvert<char, ut::wchar, ut::CodePage::ascii>(str_0);
+	ut::String cv_str = ut::StrConvert<ut::wchar, char, ut::CodePage::ascii>(wstr_0);
 	report += ut::String("converting: ") + cv_str;
 	if (wstr_0 != L"french cookies")
 	{
@@ -447,9 +447,9 @@ StrUTF8Task::StrUTF8Task() : TestTask("UTF8 convertion")
 void StrUTF8Task::Execute()
 {
 	ut::WString wstr_0 = L"french cookies è áóëî÷êè. ABCDEF!";
-	ut::String str_0 = ut::StrConvert<ut::wchar, char, ut::cp_utf8>(wstr_0);
-	wstr_0 = ut::StrConvert<char, ut::wchar, ut::cp_utf8>(str_0);
-	ut::String cv_str = ut::StrConvert<ut::wchar, char, ut::cp_ascii>(wstr_0);
+	ut::String str_0 = ut::StrConvert<ut::wchar, char, ut::CodePage::utf8>(wstr_0);
+	wstr_0 = ut::StrConvert<char, ut::wchar, ut::CodePage::utf8>(str_0);
+	ut::String cv_str = ut::StrConvert<ut::wchar, char, ut::CodePage::ascii>(wstr_0);
 	report += cv_str;
 	if (wstr_0 != L"french cookies è áóëî÷êè. ABCDEF!")
 	{

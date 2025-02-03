@@ -10,7 +10,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 START_NAMESPACE(postprocess)
 //----------------------------------------------------------------------------//
-// Highlights an area of viewport marked with stencilref_highlight stencil bit.
+// Highlights an area of viewport marked with StencilReference::highlight stencil bit.
 class StencilHighlight
 {
 	static const ut::uint32 skHighlightRadius;

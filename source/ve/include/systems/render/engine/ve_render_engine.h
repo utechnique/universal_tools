@@ -39,7 +39,7 @@ public:
 	
 	// Returns a reference to the rendering thread pool, 
 	// use it to parallelize cpu work.
-	ut::ThreadPool<void, ut::pool_sync::cond_var>& GetThreadPool();
+	ut::ThreadPool<void>& GetThreadPool();
 
 private:
 	// Updates the information about the current frame and returns the

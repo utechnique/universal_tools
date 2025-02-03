@@ -17,7 +17,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(input)
 //----------------------------------------------------------------------------//
 // This map is used to find corresponding Linux keyboard key.
-static const size_t skLinuxKeyboardMap[keyboard::button_count] =
+static const size_t skLinuxKeyboardMap[static_cast<size_t>(keyboard::Button::count)] =
 {
 	KEY_ESC,          KEY_1,            KEY_2,          KEY_3,
 	KEY_4,            KEY_5,            KEY_6,          KEY_7,
@@ -55,116 +55,116 @@ ut::Optional<ut::uint32> MapLinuxKeyboardKey(ut::uint32 key)
 {
     switch(key)
     {
-    case KEY_ESC: return keyboard::button_escape;
-    case KEY_1: return keyboard::button_1;
-    case KEY_2: return keyboard::button_2;
-    case KEY_3: return keyboard::button_3;
-	case KEY_4: return keyboard::button_4;
-	case KEY_5: return keyboard::button_5;
-	case KEY_6: return keyboard::button_6;
-	case KEY_7: return keyboard::button_7;
-	case KEY_8: return keyboard::button_8;
-	case KEY_9: return keyboard::button_9;
-	case KEY_0: return keyboard::button_0;
-	case KEY_MINUS: return keyboard::button_minus;
-	case KEY_EQUAL: return keyboard::button_equals;
-	case KEY_BACK: return keyboard::button_back;
-	case KEY_TAB: return keyboard::button_tab;
-	case KEY_Q: return keyboard::button_q;
-	case KEY_W: return keyboard::button_w;
-	case KEY_E: return keyboard::button_e;
-	case KEY_R: return keyboard::button_r;
-	case KEY_T: return keyboard::button_t;
-	case KEY_Y: return keyboard::button_y;
-	case KEY_U: return keyboard::button_u;
-	case KEY_I: return keyboard::button_i;
-	case KEY_O: return keyboard::button_o;
-	case KEY_P: return keyboard::button_p;
-	case KEY_LEFTBRACE: return keyboard::button_lbracket;
-	case KEY_RIGHTBRACE: return keyboard::button_rbracket;
-	case KEY_ENTER: return keyboard::button_enter;
-	case KEY_LEFTCTRL: return keyboard::button_lcontrol;
-	case KEY_A: return keyboard::button_a;
-	case KEY_S: return keyboard::button_s;
-	case KEY_D: return keyboard::button_d;
-	case KEY_F: return keyboard::button_f;
-	case KEY_G: return keyboard::button_g;
-	case KEY_H: return keyboard::button_h;
-	case KEY_J: return keyboard::button_j;
-	case KEY_K: return keyboard::button_k;
-	case KEY_L: return keyboard::button_l;
-	case KEY_SEMICOLON: return keyboard::button_semicolon;
-	case KEY_APOSTROPHE: return keyboard::button_apostrophe;
-	case KEY_GRAVE: return keyboard::button_grave;
-	case KEY_LEFTSHIFT: return keyboard::button_lshift;
-	case KEY_BACKSLASH: return keyboard::button_backslash;
-	case KEY_Z: return keyboard::button_z;
-	case KEY_X: return keyboard::button_x;
-	case KEY_C: return keyboard::button_c;
-	case KEY_V: return keyboard::button_v;
-	case KEY_B: return keyboard::button_b;
-	case KEY_N: return keyboard::button_n;
-	case KEY_M: return keyboard::button_m;
-	case KEY_COMMA: return keyboard::button_comma;
-	case KEY_DOT: return keyboard::button_dot;
-	case KEY_SLASH: return keyboard::button_slash;
-	case KEY_RIGHTSHIFT: return keyboard::button_rshift;
-	case KEY_KPASTERISK: return keyboard::button_multiply;
-	case KEY_LEFTALT: return keyboard::button_lalt;
-	case KEY_SPACE: return keyboard::button_space;
-	case KEY_CAPSLOCK: return keyboard::button_capslock;
-	case KEY_F1: return keyboard::button_f1;
-	case KEY_F2: return keyboard::button_f2;
-	case KEY_F3: return keyboard::button_f3;
-	case KEY_F4: return keyboard::button_f4;
-	case KEY_F5: return keyboard::button_f5;
-	case KEY_F6: return keyboard::button_f6;
-	case KEY_F7: return keyboard::button_f7;
-	case KEY_F8: return keyboard::button_f8;
-	case KEY_F9: return keyboard::button_f9;
-	case KEY_F10: return keyboard::button_f10;
-	case KEY_NUMLOCK: return keyboard::button_numlock;
-	case KEY_SCROLLLOCK: return keyboard::button_scroll;
-	case KEY_KP7: return keyboard::button_numpad7;
-	case KEY_KP8: return keyboard::button_numpad8;
-	case KEY_KP9: return keyboard::button_numpad9;
-	case KEY_KPMINUS: return keyboard::button_numpad_minus;
-	case KEY_KP4: return keyboard::button_numpad4;
-	case KEY_KP5: return keyboard::button_numpad5;
-	case KEY_KP6: return keyboard::button_numpad6;
-	case KEY_KPPLUS: return keyboard::button_numpad_plus;
-	case KEY_KP1: return keyboard::button_numpad1;
-	case KEY_KP2: return keyboard::button_numpad2;
-	case KEY_KP3: return keyboard::button_numpad3;
-	case KEY_KP0: return keyboard::button_numpad0;
-	case KEY_KPDOT: return keyboard::button_numpad_dot;
-	case KEY_F11: return keyboard::button_F11;
-	case KEY_F12: return keyboard::button_F12;
-	case KEY_F13: return keyboard::button_F13;
-	case KEY_F14: return keyboard::button_F14;
-	case KEY_F15: return keyboard::button_F15;
-	case KEY_KATAKANA: return keyboard::button_kana;
-	case KEY_YEN: return keyboard::button_yen;
-	case KEY_KPEQUAL: return keyboard::button_numpad_equals;
-	case KEY_STOP: return keyboard::button_stop;
-	case KEY_KPENTER: return keyboard::button_numpad_enter;
-	case KEY_RIGHTCTRL: return keyboard::button_rcontrol;
-	case KEY_KPCOMMA: return keyboard::button_numpad_comma;
-	case KEY_KPSLASH: return keyboard::button_numpad_slash;
-	case KEY_SYSRQ: return keyboard::button_sysrq;
-	case KEY_RIGHTALT: return keyboard::button_ralt;
-	case KEY_HOME: return keyboard::button_home;
-	case KEY_UP: return keyboard::button_up;
-	case KEY_PREVIOUS: return keyboard::button_previous;
-	case KEY_LEFT: return keyboard::button_left;
-	case KEY_RIGHT: return keyboard::button_right;
-	case KEY_END: return keyboard::button_end;
-    case KEY_DOWN: return keyboard::button_down;
-    case KEY_NEXT: return keyboard::button_next;
-    case KEY_INSERT: return keyboard::button_insert;
-    case KEY_DELETE: return keyboard::button_delete;
-    case KEY_CYCLEWINDOWS: return keyboard::button_lwin;
-    case KEY_PAUSE: return keyboard::button_pause;
+    case KEY_ESC: return static_cast<ut::uint32>(keyboard::Button::escape);
+    case KEY_1: return static_cast<ut::uint32>(keyboard::Button::one);
+    case KEY_2: return static_cast<ut::uint32>(keyboard::Button::two);
+    case KEY_3: return static_cast<ut::uint32>(keyboard::Button::three);
+	case KEY_4: return static_cast<ut::uint32>(keyboard::Button::four);
+	case KEY_5: return static_cast<ut::uint32>(keyboard::Button::five);
+	case KEY_6: return static_cast<ut::uint32>(keyboard::Button::six);
+	case KEY_7: return static_cast<ut::uint32>(keyboard::Button::seven);
+	case KEY_8: return static_cast<ut::uint32>(keyboard::Button::eight);
+	case KEY_9: return static_cast<ut::uint32>(keyboard::Button::nine);
+	case KEY_0: return static_cast<ut::uint32>(keyboard::Button::zero);
+	case KEY_MINUS: return static_cast<ut::uint32>(keyboard::Button::minus);
+	case KEY_EQUAL: return static_cast<ut::uint32>(keyboard::Button::equals);
+	case KEY_BACK: return static_cast<ut::uint32>(keyboard::Button::back);
+	case KEY_TAB: return static_cast<ut::uint32>(keyboard::Button::tab);
+	case KEY_Q: return static_cast<ut::uint32>(keyboard::Button::q);
+	case KEY_W: return static_cast<ut::uint32>(keyboard::Button::w);
+	case KEY_E: return static_cast<ut::uint32>(keyboard::Button::e);
+	case KEY_R: return static_cast<ut::uint32>(keyboard::Button::r);
+	case KEY_T: return static_cast<ut::uint32>(keyboard::Button::t);
+	case KEY_Y: return static_cast<ut::uint32>(keyboard::Button::y);
+	case KEY_U: return static_cast<ut::uint32>(keyboard::Button::u);
+	case KEY_I: return static_cast<ut::uint32>(keyboard::Button::i);
+	case KEY_O: return static_cast<ut::uint32>(keyboard::Button::o);
+	case KEY_P: return static_cast<ut::uint32>(keyboard::Button::p);
+	case KEY_LEFTBRACE: return static_cast<ut::uint32>(keyboard::Button::lbracket);
+	case KEY_RIGHTBRACE: return static_cast<ut::uint32>(keyboard::Button::rbracket);
+	case KEY_ENTER: return static_cast<ut::uint32>(keyboard::Button::enter);
+	case KEY_LEFTCTRL: return static_cast<ut::uint32>(keyboard::Button::lcontrol);
+	case KEY_A: return static_cast<ut::uint32>(keyboard::Button::a);
+	case KEY_S: return static_cast<ut::uint32>(keyboard::Button::s);
+	case KEY_D: return static_cast<ut::uint32>(keyboard::Button::d);
+	case KEY_F: return static_cast<ut::uint32>(keyboard::Button::f);
+	case KEY_G: return static_cast<ut::uint32>(keyboard::Button::g);
+	case KEY_H: return static_cast<ut::uint32>(keyboard::Button::h);
+	case KEY_J: return static_cast<ut::uint32>(keyboard::Button::j);
+	case KEY_K: return static_cast<ut::uint32>(keyboard::Button::k);
+	case KEY_L: return static_cast<ut::uint32>(keyboard::Button::l);
+	case KEY_SEMICOLON: return static_cast<ut::uint32>(keyboard::Button::semicolon);
+	case KEY_APOSTROPHE: return static_cast<ut::uint32>(keyboard::Button::apostrophe);
+	case KEY_GRAVE: return static_cast<ut::uint32>(keyboard::Button::grave);
+	case KEY_LEFTSHIFT: return static_cast<ut::uint32>(keyboard::Button::lshift);
+	case KEY_BACKSLASH: return static_cast<ut::uint32>(keyboard::Button::backslash);
+	case KEY_Z: return static_cast<ut::uint32>(keyboard::Button::z);
+	case KEY_X: return static_cast<ut::uint32>(keyboard::Button::x);
+	case KEY_C: return static_cast<ut::uint32>(keyboard::Button::c);
+	case KEY_V: return static_cast<ut::uint32>(keyboard::Button::v);
+	case KEY_B: return static_cast<ut::uint32>(keyboard::Button::b);
+	case KEY_N: return static_cast<ut::uint32>(keyboard::Button::n);
+	case KEY_M: return static_cast<ut::uint32>(keyboard::Button::m);
+	case KEY_COMMA: return static_cast<ut::uint32>(keyboard::Button::comma);
+	case KEY_DOT: return static_cast<ut::uint32>(keyboard::Button::dot);
+	case KEY_SLASH: return static_cast<ut::uint32>(keyboard::Button::slash);
+	case KEY_RIGHTSHIFT: return static_cast<ut::uint32>(keyboard::Button::rshift);
+	case KEY_KPASTERISK: return static_cast<ut::uint32>(keyboard::Button::multiply);
+	case KEY_LEFTALT: return static_cast<ut::uint32>(keyboard::Button::lalt);
+	case KEY_SPACE: return static_cast<ut::uint32>(keyboard::Button::space);
+	case KEY_CAPSLOCK: return static_cast<ut::uint32>(keyboard::Button::capslock);
+	case KEY_F1: return static_cast<ut::uint32>(keyboard::Button::f1);
+	case KEY_F2: return static_cast<ut::uint32>(keyboard::Button::f2);
+	case KEY_F3: return static_cast<ut::uint32>(keyboard::Button::f3);
+	case KEY_F4: return static_cast<ut::uint32>(keyboard::Button::f4);
+	case KEY_F5: return static_cast<ut::uint32>(keyboard::Button::f5);
+	case KEY_F6: return static_cast<ut::uint32>(keyboard::Button::f6);
+	case KEY_F7: return static_cast<ut::uint32>(keyboard::Button::f7);
+	case KEY_F8: return static_cast<ut::uint32>(keyboard::Button::f8);
+	case KEY_F9: return static_cast<ut::uint32>(keyboard::Button::f9);
+	case KEY_F10: return static_cast<ut::uint32>(keyboard::Button::f10);
+	case KEY_NUMLOCK: return static_cast<ut::uint32>(keyboard::Button::numlock);
+	case KEY_SCROLLLOCK: return static_cast<ut::uint32>(keyboard::Button::scroll);
+	case KEY_KP7: return static_cast<ut::uint32>(keyboard::Button::numpad7);
+	case KEY_KP8: return static_cast<ut::uint32>(keyboard::Button::numpad8);
+	case KEY_KP9: return static_cast<ut::uint32>(keyboard::Button::numpad9);
+	case KEY_KPMINUS: return static_cast<ut::uint32>(keyboard::Button::numpad_minus);
+	case KEY_KP4: return static_cast<ut::uint32>(keyboard::Button::numpad4);
+	case KEY_KP5: return static_cast<ut::uint32>(keyboard::Button::numpad5);
+	case KEY_KP6: return static_cast<ut::uint32>(keyboard::Button::numpad6);
+	case KEY_KPPLUS: return static_cast<ut::uint32>(keyboard::Button::numpad_plus);
+	case KEY_KP1: return static_cast<ut::uint32>(keyboard::Button::numpad1);
+	case KEY_KP2: return static_cast<ut::uint32>(keyboard::Button::numpad2);
+	case KEY_KP3: return static_cast<ut::uint32>(keyboard::Button::numpad3);
+	case KEY_KP0: return static_cast<ut::uint32>(keyboard::Button::numpad0);
+	case KEY_KPDOT: return static_cast<ut::uint32>(keyboard::Button::numpad_dot);
+	case KEY_F11: return static_cast<ut::uint32>(keyboard::Button::F11);
+	case KEY_F12: return static_cast<ut::uint32>(keyboard::Button::F12);
+	case KEY_F13: return static_cast<ut::uint32>(keyboard::Button::F13);
+	case KEY_F14: return static_cast<ut::uint32>(keyboard::Button::F14);
+	case KEY_F15: return static_cast<ut::uint32>(keyboard::Button::F15);
+	case KEY_KATAKANA: return static_cast<ut::uint32>(keyboard::Button::kana);
+	case KEY_YEN: return static_cast<ut::uint32>(keyboard::Button::yen);
+	case KEY_KPEQUAL: return static_cast<ut::uint32>(keyboard::Button::numpad_equals);
+	case KEY_STOP: return static_cast<ut::uint32>(keyboard::Button::stop);
+	case KEY_KPENTER: return static_cast<ut::uint32>(keyboard::Button::numpad_enter);
+	case KEY_RIGHTCTRL: return static_cast<ut::uint32>(keyboard::Button::rcontrol);
+	case KEY_KPCOMMA: return static_cast<ut::uint32>(keyboard::Button::numpad_comma);
+	case KEY_KPSLASH: return static_cast<ut::uint32>(keyboard::Button::numpad_slash);
+	case KEY_SYSRQ: return static_cast<ut::uint32>(keyboard::Button::sysrq);
+	case KEY_RIGHTALT: return static_cast<ut::uint32>(keyboard::Button::ralt);
+	case KEY_HOME: return static_cast<ut::uint32>(keyboard::Button::home);
+	case KEY_UP: return static_cast<ut::uint32>(keyboard::Button::up);
+	case KEY_PREVIOUS: return static_cast<ut::uint32>(keyboard::Button::previous);
+	case KEY_LEFT: return static_cast<ut::uint32>(keyboard::Button::left);
+	case KEY_RIGHT: return static_cast<ut::uint32>(keyboard::Button::right);
+	case KEY_END: return static_cast<ut::uint32>(keyboard::Button::end);
+    case KEY_DOWN: return static_cast<ut::uint32>(keyboard::Button::down);
+    case KEY_NEXT: return static_cast<ut::uint32>(keyboard::Button::next);
+    case KEY_INSERT: return static_cast<ut::uint32>(keyboard::Button::insert);
+    case KEY_DELETE: return static_cast<ut::uint32>(keyboard::Button::del);
+    case KEY_CYCLEWINDOWS: return static_cast<ut::uint32>(keyboard::Button::lwin);
+    case KEY_PAUSE: return static_cast<ut::uint32>(keyboard::Button::pause);
     }
     return ut::Optional<ut::uint32>();
 }
@@ -175,9 +175,9 @@ ut::Optional<ut::uint32> MapLinuxMouseKey(ut::uint32 key)
 {
     switch(key)
     {
-    case BTN_LEFT: return mouse::button_lbutton;
-    case BTN_RIGHT: return mouse::button_rbutton;
-    case BTN_MIDDLE: return mouse::button_mbutton;
+    case BTN_LEFT: return static_cast<ut::uint32>(mouse::Button::lbutton);
+    case BTN_RIGHT: return static_cast<ut::uint32>(mouse::Button::rbutton);
+    case BTN_MIDDLE: return static_cast<ut::uint32>(mouse::Button::mbutton);
     }
     return ut::Optional<ut::uint32>();
 }
@@ -403,9 +403,9 @@ void LinuxInputHandler::UpdateMouse(DeviceFile& mouse)
     }
 
     // update relative offset
-    device.UpdateAnalogSignal(mouse::button_count + mouse::movement_x, rel_x);
-    device.UpdateAnalogSignal(mouse::button_count + mouse::movement_y, rel_y);
-	device.UpdateAnalogSignal(mouse::button_count + mouse::movement_wheel, rel_wheel);
+    device.UpdateAnalogSignal(static_cast<ut::uint32>(mouse::Button::count) + static_cast<ut::uint32>(mouse::Movement::x), rel_x);
+    device.UpdateAnalogSignal(static_cast<ut::uint32>(mouse::Button::count) + static_cast<ut::uint32>(mouse::Movement::y), rel_y);
+	device.UpdateAnalogSignal(static_cast<ut::uint32>(mouse::Button::count) + static_cast<ut::uint32>(mouse::Movement::wheel), rel_wheel);
 }
 
 //----------------------------------------------------------------------------->
@@ -470,7 +470,7 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateKeyboards(const DeviceFileMap& 
         Device keyboard_device(ut::Move(keyboard_id));
 
         // create keys
-        for (size_t i = 0; i < keyboard::button_count; i++)
+        for (size_t i = 0; i < static_cast<size_t>(keyboard::Button::count); i++)
         {
             ut::Optional<ut::Error> error = keyboard_device.AddSignal(Signal::CreateDiscrete(0),
                                                                       keyboard::skKeyNames[i]);
@@ -534,7 +534,7 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateMice(const DeviceFileMap& devic
         Device mouse_device(ut::Move(mouse_id));
 
         // create buttons
-        for (size_t i = 0; i < mouse::button_count; i++)
+        for (size_t i = 0; i < static_cast<size_t>(mouse::Button::count); i++)
         {
             ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateDiscrete(0),
                                                                    mouse::skButtonNames[i]);
@@ -546,7 +546,7 @@ ut::Optional<ut::Error> LinuxInputHandler::CreateMice(const DeviceFileMap& devic
         }
 
         // XY movement and wheel
-        for (size_t i = 0; i < mouse::movement_count; i++)
+        for (size_t i = 0; i < static_cast<size_t>(mouse::Movement::count); i++)
         {
             ut::Optional<ut::Error> error = mouse_device.AddSignal(Signal::CreateAnalog(0.0f),
                                                                    mouse::skMovementNames[i]);

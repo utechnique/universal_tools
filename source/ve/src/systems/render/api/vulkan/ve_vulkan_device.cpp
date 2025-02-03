@@ -20,14 +20,14 @@ VkCompareOp ConvertCompareOpToVulkan(compare::Operation op)
 {
 	switch (op)
 	{
-	case compare::never:            return VK_COMPARE_OP_NEVER;
-	case compare::less:             return VK_COMPARE_OP_LESS;
-	case compare::equal:            return VK_COMPARE_OP_EQUAL;
-	case compare::less_or_equal:    return VK_COMPARE_OP_LESS_OR_EQUAL;
-	case compare::greater:          return VK_COMPARE_OP_GREATER;
-	case compare::not_equal:        return VK_COMPARE_OP_NOT_EQUAL;
-	case compare::greater_or_equal: return VK_COMPARE_OP_GREATER_OR_EQUAL;
-	case compare::always:           return VK_COMPARE_OP_ALWAYS;
+	case compare::Operation::never:            return VK_COMPARE_OP_NEVER;
+	case compare::Operation::less:             return VK_COMPARE_OP_LESS;
+	case compare::Operation::equal:            return VK_COMPARE_OP_EQUAL;
+	case compare::Operation::less_or_equal:    return VK_COMPARE_OP_LESS_OR_EQUAL;
+	case compare::Operation::greater:          return VK_COMPARE_OP_GREATER;
+	case compare::Operation::not_equal:        return VK_COMPARE_OP_NOT_EQUAL;
+	case compare::Operation::greater_or_equal: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+	case compare::Operation::always:           return VK_COMPARE_OP_ALWAYS;
 	}
 	return VK_COMPARE_OP_ALWAYS;
 }
@@ -37,14 +37,14 @@ VkStencilOp ConvertStencilOpToVulkan(StencilOpState::Operation op)
 {
 	switch (op)
 	{
-	case StencilOpState::keep:                return VK_STENCIL_OP_KEEP;
-	case StencilOpState::zero:                return VK_STENCIL_OP_ZERO;
-	case StencilOpState::replace:             return VK_STENCIL_OP_REPLACE;
-	case StencilOpState::increment_and_clamp: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-	case StencilOpState::decrement_and_clamp: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
-	case StencilOpState::invert:              return VK_STENCIL_OP_INVERT;
-	case StencilOpState::increment_and_wrap:  return VK_STENCIL_OP_INCREMENT_AND_WRAP;
-	case StencilOpState::decrement_and_wrap:  return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+	case StencilOpState::Operation::keep:                return VK_STENCIL_OP_KEEP;
+	case StencilOpState::Operation::zero:                return VK_STENCIL_OP_ZERO;
+	case StencilOpState::Operation::replace:             return VK_STENCIL_OP_REPLACE;
+	case StencilOpState::Operation::increment_and_clamp: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+	case StencilOpState::Operation::decrement_and_clamp: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+	case StencilOpState::Operation::invert:              return VK_STENCIL_OP_INVERT;
+	case StencilOpState::Operation::increment_and_wrap:  return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+	case StencilOpState::Operation::decrement_and_wrap:  return VK_STENCIL_OP_DECREMENT_AND_WRAP;
 	}
 	return VK_STENCIL_OP_KEEP;
 }
@@ -54,11 +54,11 @@ VkBlendOp ConvertBlendOpToVulkan(Blending::Operation op)
 {
 	switch (op)
 	{
-	case Blending::add:              return VK_BLEND_OP_ADD;
-	case Blending::subtract:         return VK_BLEND_OP_SUBTRACT;
-	case Blending::reverse_subtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
-	case Blending::min:              return VK_BLEND_OP_MIN;
-	case Blending::max:              return VK_BLEND_OP_MAX;
+	case Blending::Operation::add:              return VK_BLEND_OP_ADD;
+	case Blending::Operation::subtract:         return VK_BLEND_OP_SUBTRACT;
+	case Blending::Operation::reverse_subtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
+	case Blending::Operation::min:              return VK_BLEND_OP_MIN;
+	case Blending::Operation::max:              return VK_BLEND_OP_MAX;
 	}
 	return VK_BLEND_OP_MAX;
 }
@@ -68,20 +68,20 @@ VkBlendFactor ConvertBlendFactorToVulkan(Blending::Factor op)
 {
 	switch (op)
 	{
-	case Blending::zero:                return VK_BLEND_FACTOR_ZERO;
-	case Blending::one:                 return VK_BLEND_FACTOR_ONE;
-	case Blending::src_color:           return VK_BLEND_FACTOR_SRC_COLOR;
-	case Blending::inverted_src_color:  return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-	case Blending::dst_color:           return VK_BLEND_FACTOR_DST_COLOR;
-	case Blending::inverted_dst_color:  return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-	case Blending::src_alpha:           return VK_BLEND_FACTOR_SRC_ALPHA;
-	case Blending::inverted_src_alpha:  return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	case Blending::dst_alpha:           return VK_BLEND_FACTOR_DST_ALPHA;
-	case Blending::inverted_dst_alpha:  return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-	case Blending::src1_color:          return VK_BLEND_FACTOR_SRC1_COLOR;
-	case Blending::inverted_src1_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
-	case Blending::src1_alpha:          return VK_BLEND_FACTOR_SRC1_ALPHA;
-	case Blending::inverted_src1_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+	case Blending::Factor::zero:                return VK_BLEND_FACTOR_ZERO;
+	case Blending::Factor::one:                 return VK_BLEND_FACTOR_ONE;
+	case Blending::Factor::src_color:           return VK_BLEND_FACTOR_SRC_COLOR;
+	case Blending::Factor::inverted_src_color:  return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+	case Blending::Factor::dst_color:           return VK_BLEND_FACTOR_DST_COLOR;
+	case Blending::Factor::inverted_dst_color:  return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+	case Blending::Factor::src_alpha:           return VK_BLEND_FACTOR_SRC_ALPHA;
+	case Blending::Factor::inverted_src_alpha:  return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	case Blending::Factor::dst_alpha:           return VK_BLEND_FACTOR_DST_ALPHA;
+	case Blending::Factor::inverted_dst_alpha:  return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+	case Blending::Factor::src1_color:          return VK_BLEND_FACTOR_SRC1_COLOR;
+	case Blending::Factor::inverted_src1_color: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+	case Blending::Factor::src1_alpha:          return VK_BLEND_FACTOR_SRC1_ALPHA;
+	case Blending::Factor::inverted_src1_alpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
 	}
 	return VK_BLEND_FACTOR_ONE;
 }
@@ -91,9 +91,9 @@ VkPolygonMode ConvertPolygonModeToVulkan(RasterizationState::PolygonMode mode)
 {
 	switch (mode)
 	{
-	case RasterizationState::fill:  return VK_POLYGON_MODE_FILL;
-	case RasterizationState::line:  return VK_POLYGON_MODE_LINE;
-	case RasterizationState::point: return VK_POLYGON_MODE_POINT;
+	case RasterizationState::PolygonMode::fill:  return VK_POLYGON_MODE_FILL;
+	case RasterizationState::PolygonMode::line:  return VK_POLYGON_MODE_LINE;
+	case RasterizationState::PolygonMode::point: return VK_POLYGON_MODE_POINT;
 	}
 	return VK_POLYGON_MODE_FILL;
 }
@@ -103,9 +103,9 @@ VkCullModeFlagBits ConvertCullModeToVulkan(RasterizationState::CullMode mode)
 {
 	switch (mode)
 	{
-	case RasterizationState::no_culling:    return VK_CULL_MODE_NONE;
-	case RasterizationState::front_culling: return VK_CULL_MODE_FRONT_BIT;
-	case RasterizationState::back_culling:  return VK_CULL_MODE_BACK_BIT;
+	case RasterizationState::CullMode::off:    return VK_CULL_MODE_NONE;
+	case RasterizationState::CullMode::front: return VK_CULL_MODE_FRONT_BIT;
+	case RasterizationState::CullMode::back:  return VK_CULL_MODE_BACK_BIT;
 	}
 	return VK_CULL_MODE_NONE;
 }
@@ -115,8 +115,8 @@ VkFrontFace ConvertFrontFaceToVulkan(RasterizationState::FrontFace face)
 {
 	switch (face)
 	{
-	case RasterizationState::clockwise: return VK_FRONT_FACE_CLOCKWISE;
-	case RasterizationState::counter_clockwise: return VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	case RasterizationState::FrontFace::clockwise: return VK_FRONT_FACE_CLOCKWISE;
+	case RasterizationState::FrontFace::counter_clockwise: return VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	}
 	return VK_FRONT_FACE_CLOCKWISE;
 }
@@ -126,14 +126,14 @@ VmaMemoryUsage ConvertMemoryUsageToVma(memory::Usage usage)
 	switch (usage)
 	{
 	// accessible only by the GPU (full access), fast
-	case memory::gpu_read_write: return VMA_MEMORY_USAGE_GPU_ONLY;
+	case memory::Usage::gpu_read_write: return VMA_MEMORY_USAGE_GPU_ONLY;
 
 	// accessible by both the GPU (read only) and the CPU (write only),
 	// slow, but better than staging
-	case memory::gpu_read_cpu_write: return VMA_MEMORY_USAGE_CPU_TO_GPU;
+	case memory::Usage::gpu_read_cpu_write: return VMA_MEMORY_USAGE_CPU_TO_GPU;
 
 	// can't be modified after creation, cpu has no access, fast
-	case memory::gpu_immutable: return VMA_MEMORY_USAGE_GPU_ONLY;
+	case memory::Usage::gpu_immutable: return VMA_MEMORY_USAGE_GPU_ONLY;
 	}
 	return VMA_MEMORY_USAGE_GPU_ONLY;
 }
@@ -143,10 +143,10 @@ VkBufferUsageFlagBits ConvertBufferTypeToVulkan(Buffer::Type type)
 {
 	switch (type)
 	{
-	case Buffer::vertex: return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	case Buffer::index: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-	case Buffer::uniform: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	case Buffer::storage: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	case Buffer::Type::vertex: return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	case Buffer::Type::index: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	case Buffer::Type::uniform: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	case Buffer::Type::storage: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
 	return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 }
@@ -156,10 +156,10 @@ VkImageType ConvertImageTypeToVulkan(Image::Type type)
 {
 	switch (type)
 	{
-	case Image::type_1D: return VK_IMAGE_TYPE_1D;
-	case Image::type_2D: return VK_IMAGE_TYPE_2D;
-	case Image::type_cube: return VK_IMAGE_TYPE_2D;
-	case Image::type_3D: return VK_IMAGE_TYPE_3D;
+	case Image::Type::linear: return VK_IMAGE_TYPE_1D;
+	case Image::Type::planar: return VK_IMAGE_TYPE_2D;
+	case Image::Type::cubic: return VK_IMAGE_TYPE_2D;
+	case Image::Type::volumetric: return VK_IMAGE_TYPE_3D;
 	}
 	return VK_IMAGE_TYPE_2D;
 }
@@ -169,10 +169,10 @@ VkImageViewType ConvertImageViewTypeToVulkan(Image::Type type)
 {
 	switch (type)
 	{
-	case Image::type_1D: return VK_IMAGE_VIEW_TYPE_1D;
-	case Image::type_2D: return VK_IMAGE_VIEW_TYPE_2D;
-	case Image::type_cube: return VK_IMAGE_VIEW_TYPE_CUBE;
-	case Image::type_3D: return VK_IMAGE_VIEW_TYPE_3D;
+	case Image::Type::linear: return VK_IMAGE_VIEW_TYPE_1D;
+	case Image::Type::planar: return VK_IMAGE_VIEW_TYPE_2D;
+	case Image::Type::cubic: return VK_IMAGE_VIEW_TYPE_CUBE;
+	case Image::Type::volumetric: return VK_IMAGE_VIEW_TYPE_3D;
 	}
 	return VK_IMAGE_VIEW_TYPE_2D;
 }
@@ -182,8 +182,8 @@ VkFilter ConvertFilterToVulkan(Sampler::Filter filter)
 {
 	switch (filter)
 	{
-	case Sampler::filter_nearest: return VK_FILTER_NEAREST;
-	case Sampler::filter_linear: return VK_FILTER_LINEAR;
+	case Sampler::Filter::nearest: return VK_FILTER_NEAREST;
+	case Sampler::Filter::linear: return VK_FILTER_LINEAR;
 	}
 	return  VK_FILTER_NEAREST;
 }
@@ -193,8 +193,8 @@ VkSamplerMipmapMode ConvertMipmapModeToVulkan(Sampler::Filter filter)
 {
 	switch (filter)
 	{
-	case Sampler::filter_nearest: return VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	case Sampler::filter_linear: return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	case Sampler::Filter::nearest: return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	case Sampler::Filter::linear: return VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	}
 	return  VK_SAMPLER_MIPMAP_MODE_NEAREST;
 }
@@ -204,10 +204,10 @@ VkSamplerAddressMode ConvertAddressModeToVulkan(Sampler::AddressMode mode)
 {
 	switch (mode)
 	{
-	case Sampler::address_wrap: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	case Sampler::address_mirror: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-	case Sampler::address_clamp: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	case Sampler::address_border: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	case Sampler::AddressMode::wrap: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	case Sampler::AddressMode::mirror: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	case Sampler::AddressMode::clamp: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	case Sampler::AddressMode::border: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 	}
 	return  VK_SAMPLER_ADDRESS_MODE_REPEAT;
 }
@@ -220,18 +220,18 @@ PlatformDevice::PlatformDevice(const ut::String& gpu_name) : instance(CreateVulk
 	// create dbg messenger
 	if (skEnableVulkanValidationLayer)
 	{
-		dbg_messenger = VkRc<vk::dbg_messenger>(CreateDbgMessenger(), instance.GetVkHandle());
+		dbg_messenger = VkRc<vk::Rc::dbg_messenger>(CreateDbgMessenger(), instance.GetVkHandle());
 	}
 
 	// create device
-	device = VkRc<vk::device>(CreateVulkanDevice(gpu_name));
+	device = VkRc<vk::Rc::device>(CreateVulkanDevice(gpu_name));
 
 	// create queues
-	main_queue = CreateQueue(vulkan_queue::main, 0);
+	main_queue = CreateQueue(vulkan_queue::FamilyType::main, 0);
 
 	// command pools
 	ut::Result<VkCommandPool, ut::Error> pool_result = CreateCmdPool(VK_COMMAND_POOL_CREATE_TRANSIENT_BIT);
-	dynamic_cmd_pool = VkRc<vk::cmd_pool>(pool_result.Get(), device.GetVkHandle());
+	dynamic_cmd_pool = VkRc<vk::Rc::cmd_pool>(pool_result.Get(), device.GetVkHandle());
 
 	// memory properties
 	vkGetPhysicalDeviceMemoryProperties(gpu, &memory_properties);
@@ -284,7 +284,7 @@ ut::Optional<uint32_t> PlatformDevice::FindMemoryTypeFromProperties(uint32_t typ
 //    @param memory_usage - buffer memory usage flags.
 //    @param memory_property_flags - buffer memory property flags.
 //    @return - buffer resource or error if failed.
-ut::Result<VkRc<vk::buffer>, ut::Error> PlatformDevice::CreateVulkanBuffer(VkDeviceSize size,
+ut::Result<VkRc<vk::Rc::buffer>, ut::Error> PlatformDevice::CreateVulkanBuffer(VkDeviceSize size,
 	                                                                       VkBufferUsageFlags usage,
 	                                                                       VmaMemoryUsage memory_usage,
                                                                            VkMemoryPropertyFlags memory_property_flags)
@@ -315,15 +315,15 @@ ut::Result<VkRc<vk::buffer>, ut::Error> PlatformDevice::CreateVulkanBuffer(VkDev
 	}
 
 	// success
-	VkDetail<vk::buffer> detail(device.GetVkHandle(), allocator, allocation);
-	return VkRc<vk::buffer>(buffer, ut::Move(detail));
+	VkDetail<vk::Rc::buffer> detail(device.GetVkHandle(), allocator, allocation);
+	return VkRc<vk::Rc::buffer>(buffer, ut::Move(detail));
 }
 
 // Allocates gpu memory for the specified image.
 //    @param buffer - buffer handle.
 //    @param properties - memory properties.
 //    @return - memory resource object or error if failed.
-ut::Result<VkRc<vk::memory>, ut::Error> PlatformDevice::AllocateImageMemory(VkImage image,
+ut::Result<VkRc<vk::Rc::memory>, ut::Error> PlatformDevice::AllocateImageMemory(VkImage image,
                                                                             VkMemoryPropertyFlags properties)
 {
 	// get memory requirements
@@ -356,15 +356,15 @@ ut::Result<VkRc<vk::memory>, ut::Error> PlatformDevice::AllocateImageMemory(VkIm
 	vkBindImageMemory(device.GetVkHandle(), image, image_memory, 0);
 
 	// success
-	VkDetail<vk::memory> detail(device.GetVkHandle(), alloc_info.allocationSize);
-	return VkRc<vk::memory>(image_memory, detail);
+	VkDetail<vk::Rc::memory> detail(device.GetVkHandle(), alloc_info.allocationSize);
+	return VkRc<vk::Rc::memory>(image_memory, detail);
 }
 
 // Allocates gpu memory for the specified buffer.
 //    @param buffer - buffer handle.
 //    @param properties - memory properties.
 //    @return - memory resource object or error if failed.
-ut::Result<VkRc<vk::memory>, ut::Error> PlatformDevice::AllocateBufferMemory(VkBuffer buffer,
+ut::Result<VkRc<vk::Rc::memory>, ut::Error> PlatformDevice::AllocateBufferMemory(VkBuffer buffer,
                                                                              VkMemoryPropertyFlags properties)
 {
 	// get memory requirements
@@ -397,8 +397,8 @@ ut::Result<VkRc<vk::memory>, ut::Error> PlatformDevice::AllocateBufferMemory(VkB
 	vkBindBufferMemory(device.GetVkHandle(), buffer, buffer_memory, 0);
 
 	// success
-	VkDetail<vk::memory> detail(device.GetVkHandle(), alloc_info.allocationSize);
-	return VkRc<vk::memory>(buffer_memory, detail);
+	VkDetail<vk::Rc::memory> detail(device.GetVkHandle(), alloc_info.allocationSize);
+	return VkRc<vk::Rc::memory>(buffer_memory, detail);
 }
 
 // Creates staging buffer for initializing gpu resources.
@@ -409,14 +409,14 @@ ut::Result<PlatformBuffer, ut::Error> PlatformDevice::CreateInitializationStagin
                                                                                         ut::Optional<const ut::Array<ut::byte>&> ini_data)
 {
 	// create staging buffer
-	ut::Result<VkRc<vk::buffer>, ut::Error> staging_buffer_result = CreateVulkanBuffer(size,
+	ut::Result<VkRc<vk::Rc::buffer>, ut::Error> staging_buffer_result = CreateVulkanBuffer(size,
 	                                                                                   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 	                                                                                   VMA_MEMORY_USAGE_CPU_ONLY, 0);
 	if (!staging_buffer_result)
 	{
 		return ut::MakeError(staging_buffer_result.MoveAlt());
 	}
-	VkRc<vk::buffer> staging_buffer(staging_buffer_result.Move());
+	VkRc<vk::Rc::buffer> staging_buffer(staging_buffer_result.Move());
 
 	// copy data to the staging buffer
 	if(ini_data)
@@ -931,19 +931,19 @@ ut::HashMap<vulkan_queue::FamilyType, vulkan_queue::Family> PlatformDevice::GetQ
 		    properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT &&
 		    properties[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
 		{
-			out_map.Insert(vulkan_queue::main, ut::Move(family));
+			out_map.Insert(vulkan_queue::FamilyType::main, ut::Move(family));
 		} // compute
 		else if (properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT &&
 		         !(properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
 		         !(properties[i].queueFlags & VK_QUEUE_TRANSFER_BIT))
 		{
-			out_map.Insert(vulkan_queue::compute, ut::Move(family));
+			out_map.Insert(vulkan_queue::FamilyType::compute, ut::Move(family));
 		} // transfer
 		else if (properties[i].queueFlags & VK_QUEUE_TRANSFER_BIT &&
 		         !(properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
 		         !(properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT))
 		{
-			out_map.Insert(vulkan_queue::compute, ut::Move(family));
+			out_map.Insert(vulkan_queue::FamilyType::compute, ut::Move(family));
 		}
 	}
 
@@ -1000,7 +1000,7 @@ VkDevice PlatformDevice::CreateVulkanDevice(const ut::String& gpu_name)
 	queue_families = PlatformDevice::GetQueueFamilies(gpu);
 
 	// find graphics queue id
-	ut::Optional<vulkan_queue::Family&> main_queue_family  = queue_families.Find(vulkan_queue::main);
+	ut::Optional<vulkan_queue::Family&> main_queue_family  = queue_families.Find(vulkan_queue::FamilyType::main);
 
 	// validate graphics queue family
 	if (!main_queue_family)
@@ -1057,7 +1057,7 @@ VkDevice PlatformDevice::CreateVulkanDevice(const ut::String& gpu_name)
 }
 
 // Creates desired queue.
-VkRc<vk::queue> PlatformDevice::CreateQueue(vulkan_queue::FamilyType family_type, uint32_t queue_id)
+VkRc<vk::Rc::queue> PlatformDevice::CreateQueue(vulkan_queue::FamilyType family_type, uint32_t queue_id)
 {
 	ut::Optional<vulkan_queue::Family&> family = queue_families.Find(family_type);
 	if (!family)
@@ -1070,14 +1070,14 @@ VkRc<vk::queue> PlatformDevice::CreateQueue(vulkan_queue::FamilyType family_type
 	VkQueue queue;
 	vkGetDeviceQueue(device.GetVkHandle(), family_id, queue_id, &queue);
 
-	VkDetail<vk::queue> detail(queue_id, family_id);
-	return VkRc<vk::queue>(queue, detail);
+	VkDetail<vk::Rc::queue> detail(queue_id, family_id);
+	return VkRc<vk::Rc::queue>(queue, detail);
 }
 
 // Creates command pool.
 ut::Result<VkCommandPool, ut::Error> PlatformDevice::CreateCmdPool(VkCommandPoolCreateFlags flags)
 {
-	ut::Optional<vulkan_queue::Family&> main_queue_family = queue_families.Find(vulkan_queue::main);
+	ut::Optional<vulkan_queue::Family&> main_queue_family = queue_families.Find(vulkan_queue::FamilyType::main);
 	if (!main_queue_family)
 	{
 		return ut::MakeError(ut::Error(ut::error::not_supported, "Vulkan: General purpose queue is not supported."));
@@ -1105,9 +1105,9 @@ VkAttachmentLoadOp ConvertLoadOpToVulkan(RenderTargetSlot::LoadOperation load_op
 {
 	switch (load_op)
 	{
-		case RenderTargetSlot::load_extract: return VK_ATTACHMENT_LOAD_OP_LOAD;
-		case RenderTargetSlot::load_clear: return VK_ATTACHMENT_LOAD_OP_CLEAR;
-		case RenderTargetSlot::load_dont_care: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		case RenderTargetSlot::LoadOperation::extract: return VK_ATTACHMENT_LOAD_OP_LOAD;
+		case RenderTargetSlot::LoadOperation::clear: return VK_ATTACHMENT_LOAD_OP_CLEAR;
+		case RenderTargetSlot::LoadOperation::dont_care: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	}
 	return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 }
@@ -1117,8 +1117,8 @@ VkAttachmentStoreOp ConvertStoreOpToVulkan(RenderTargetSlot::StoreOperation stor
 {
 	switch (store_op)
 	{
-		case RenderTargetSlot::store_save: return VK_ATTACHMENT_STORE_OP_STORE;
-		case RenderTargetSlot::store_dont_care: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		case RenderTargetSlot::StoreOperation::save: return VK_ATTACHMENT_STORE_OP_STORE;
+		case RenderTargetSlot::StoreOperation::dont_care: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	}
 	return VK_ATTACHMENT_STORE_OP_DONT_CARE;
 }
@@ -1142,7 +1142,7 @@ Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend,
 	info.supports_sv_instance_offset = true;
 
 	// check supported render target formats
-	for (ut::uint32 i = 0; i < pixel::format_count; i++)
+	for (ut::uint32 i = 0; i < static_cast<ut::uint32>(pixel::Format::count); i++)
 	{
 		pixel::Format format = static_cast<pixel::Format>(i);
 		VkImageUsageFlags usage = pixel::IsDepthFormat(format) ?
@@ -1177,10 +1177,10 @@ Device& Device::operator =(Device&&) noexcept = default;
 ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 {
 	// dimensions
-	bool is_1d = info.type == Image::type_1D;
-	bool is_2d = info.type == Image::type_2D || info.type == Image::type_cube;
-	bool is_3d = info.type == Image::type_3D;
-	bool is_cube = info.type == Image::type_cube;
+	bool is_1d = info.type == Image::Type::linear;
+	bool is_2d = info.type == Image::Type::planar || info.type == Image::Type::cubic;
+	bool is_3d = info.type == Image::Type::volumetric;
+	bool is_cube = info.type == Image::Type::cubic;
 
 	// pixel format
 	const VkFormat pixel_format = ConvertPixelFormatToVulkan(info.format);
@@ -1195,12 +1195,12 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	// check if staging is required
 	const size_t ini_size = info.data.GetSize();
 	const bool must_be_initialized = ini_size != 0;
-	const bool must_have_cpu_write_access = info.usage == render::memory::gpu_read_cpu_write;
+	const bool must_have_cpu_write_access = info.usage == render::memory::Usage::gpu_read_cpu_write;
 	const bool tiling_must_be_linear = must_have_cpu_write_access;
-	const bool needs_staging = info.usage != render::memory::gpu_read_cpu_write;
+	const bool needs_staging = info.usage != render::memory::Usage::gpu_read_cpu_write;
 
 	// check if image is used as a render target
-	const bool is_render_target = info.usage == render::memory::gpu_read_write;
+	const bool is_render_target = info.usage == render::memory::Usage::gpu_read_write;
 
 	// check if gpu supports linear tiling
 	if (tiling_must_be_linear)
@@ -1526,7 +1526,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 	}
 
 	// create staging buffer
-	VkRc<vk::buffer> staging_gpu_cpu_buffer;
+	VkRc<vk::Rc::buffer> staging_gpu_cpu_buffer;
 	if (info.has_staging_cpu_read_buffer)
 	{
 		ut::uint32 img_size = 0;
@@ -1545,7 +1545,7 @@ ut::Result<Image, ut::Error> Device::CreateImage(Image::Info info)
 			mipDepth = ut::Max<ut::uint32>(mipDepth / 2, 1u);
 		}
 
-		ut::Result<VkRc<vk::buffer>, ut::Error> staging_buffer_result = CreateVulkanBuffer(img_size,
+		ut::Result<VkRc<vk::Rc::buffer>, ut::Error> staging_buffer_result = CreateVulkanBuffer(img_size,
 		                                                                                   VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		                                                                                   VMA_MEMORY_USAGE_GPU_TO_CPU,
 		                                                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -1614,7 +1614,7 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 	Image::Info img_info;
 	img_info.type = info.type;
 	img_info.format = info.format;
-	img_info.usage = render::memory::gpu_read_write;
+	img_info.usage = render::memory::Usage::gpu_read_write;
 	img_info.has_staging_cpu_read_buffer = info.has_staging_cpu_read_buffer;
 	img_info.mip_count = info.mip_count;
 	img_info.width = info.width;
@@ -1630,11 +1630,11 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 	Target::Info target_info(info);
 
 	// target is always created in the 'target' state
-	target_info.state = Target::Info::state_target;
+	target_info.state = Target::Info::State::target;
 
 	// create a render target view for all mips
 	const VkFormat format = ConvertPixelFormatToVulkan(img_info.format);
-	const ut::uint32 slice_count = info.type == Image::type_cube ? 6 : 1;
+	const ut::uint32 slice_count = info.type == Image::Type::cubic ? 6 : 1;
 	ut::Array<PlatformRenderTarget::SliceView> slice_views;
 	for (ut::uint32 slice = 0; slice < slice_count; slice++)
 	{
@@ -1665,7 +1665,7 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 				return ut::MakeError(VulkanError(res, "vkCreateImageView(render target)"));
 			}
 
-			slice_view.mips.Add(VkRc<vk::image_view>(target_view_handle, device.GetVkHandle()));
+			slice_view.mips.Add(VkRc<vk::Rc::image_view>(target_view_handle, device.GetVkHandle()));
 		}
 
 		slice_views.Add(ut::Move(slice_view));
@@ -1965,16 +1965,16 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		{
 			return ut::MakeError(VulkanError(res, "vkCreateImageView(swapchain)"));
 		}
-		target_views.GetFirst().mips.Add(VkRc<vk::image_view>(view, device.GetVkHandle()));
+		target_views.GetFirst().mips.Add(VkRc<vk::Rc::image_view>(view, device.GetVkHandle()));
 
 		// stub texture
 		Image::Info info;
 		switch (surface_format)
 		{
-		case VK_FORMAT_R8G8B8A8_SRGB: info.format = pixel::r8g8b8a8_srgb; break;
-		case VK_FORMAT_B8G8R8A8_SRGB: info.format = pixel::b8g8r8a8_srgb; break;
-		case VK_FORMAT_R8G8B8A8_UNORM: info.format = pixel::r8g8b8a8_unorm; break;
-		case VK_FORMAT_B8G8R8A8_UNORM: info.format = pixel::b8g8r8a8_unorm; break;
+		case VK_FORMAT_R8G8B8A8_SRGB: info.format = pixel::Format::r8g8b8a8_srgb; break;
+		case VK_FORMAT_B8G8R8A8_SRGB: info.format = pixel::Format::b8g8r8a8_srgb; break;
+		case VK_FORMAT_R8G8B8A8_UNORM: info.format = pixel::Format::r8g8b8a8_unorm; break;
+		case VK_FORMAT_B8G8R8A8_UNORM: info.format = pixel::Format::b8g8r8a8_unorm; break;
 		default: return ut::MakeError(VulkanError(res, "Unsupported surface format."));
 		}
 		info.width = swapchain_extent.width;
@@ -1993,14 +1993,14 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 			                    nullptr, // cube faces
 		                        VK_IMAGE_ASPECT_COLOR_BIT, // aspect_mask
 		                        img_state,
-		                        VkRc<vk::buffer>());
+		                        VkRc<vk::Rc::buffer>());
 		Image image(ut::Move(empty_img), info);
 
 		// initialize render target info
 		Target::Info target_info;
 		target_info.format = info.format;
-		target_info.usage = Target::Info::usage_present;
-		target_info.state = Target::Info::state_target;
+		target_info.usage = Target::Info::Usage::present;
+		target_info.state = Target::Info::State::target;
 
 		// create final target for the current buffer
 		Target target(PlatformRenderTarget(ut::Move(target_views)),
@@ -2027,8 +2027,9 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 //                             the command buffer to be created.
 ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBuffer::Info& cmd_buffer_info)
 {
-	bool is_dynamic = (cmd_buffer_info.usage & CmdBuffer::usage_dynamic) ? true : false;
-	bool is_primary = cmd_buffer_info.level == CmdBuffer::level_primary;
+	bool is_dynamic = cmd_buffer_info.usage == CmdBuffer::Usage::dynamic ||
+	                  cmd_buffer_info.usage == CmdBuffer::Usage::dynamic_inside_render_pass;
+	bool is_primary = cmd_buffer_info.level == CmdBuffer::Level::primary;
 
 	ut::Result<VkCommandPool, ut::Error> cmd_pool = CreateCmdPool(is_dynamic ?
 	                                                              VK_COMMAND_POOL_CREATE_TRANSIENT_BIT :
@@ -2334,7 +2335,7 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 
 	// find valid usage for the buffer
 	int usage = ConvertBufferTypeToVulkan(info.type);
-	if (info.usage == render::memory::gpu_immutable)
+	if (info.usage == render::memory::Usage::gpu_immutable)
 	{
 		usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	}
@@ -2343,17 +2344,17 @@ ut::Result<Buffer, ut::Error> Device::CreateBuffer(Buffer::Info info)
 	VmaMemoryUsage memory_usage = ConvertMemoryUsageToVma(info.usage);
 
 	// create buffer
-	ut::Result<VkRc<vk::buffer>, ut::Error> buffer_result = CreateVulkanBuffer(info.size, usage, memory_usage, 0);
+	ut::Result<VkRc<vk::Rc::buffer>, ut::Error> buffer_result = CreateVulkanBuffer(info.size, usage, memory_usage, 0);
 	if (!buffer_result)
 	{
 		return ut::MakeError(buffer_result.MoveAlt());
 	}
-	VkRc<vk::buffer> buffer(buffer_result.Move());
+	VkRc<vk::Rc::buffer> buffer(buffer_result.Move());
 
 	// copy memory
 	if (ini_size > 0)
 	{
-		if (info.usage == render::memory::gpu_immutable)
+		if (info.usage == render::memory::Usage::gpu_immutable)
 		{
 			// create staging buffer
 			ut::Result<PlatformBuffer, ut::Error> staging_buffer = CreateInitializationStagingBuffer(info.size, info.data);
@@ -2424,7 +2425,7 @@ ut::Result<Shader, ut::Error> Device::CreateShader(Shader::Info info)
 	shader_stage.pNext = nullptr;
 	shader_stage.pSpecializationInfo = nullptr;
 	shader_stage.flags = 0;
-	shader_stage.stage = PlatformShader::ConvertTypeToVkStage(info.stage);
+	shader_stage.stage = PlatformShader::ConvertTypeToVkStage(static_cast<ut::uint32>(info.stage));
 	shader_stage.module = shader_module;
 	shader_stage.pName = info.entry_point.GetAddress();
 
@@ -2658,7 +2659,7 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 			// create a new dsl binding otherwise
 			if (binding_slot)
 			{
-				binding_slot->stageFlags |= PlatformShader::ConvertTypeToVkStage(shader.info.stage);
+				binding_slot->stageFlags |= PlatformShader::ConvertTypeToVkStage(static_cast<ut::uint32>(shader.info.stage));
 			}
 			else
 			{
@@ -2666,8 +2667,8 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 				dslb.binding = binding_id;
 				dslb.descriptorCount = parameter.GetElementCount();
 				dslb.pImmutableSamplers = nullptr;
-				dslb.stageFlags = PlatformShader::ConvertTypeToVkStage(shader.info.stage);
-				dslb.descriptorType = ConvertShaderParameterTypeToVulkan(parameter.GetType());
+				dslb.stageFlags = PlatformShader::ConvertTypeToVkStage(static_cast<ut::uint32>(shader.info.stage));
+				dslb.descriptorType = ConvertShaderParameterTypeToVulkan(static_cast<ut::uint32>(parameter.GetType()));
 
 				if (!layout_bindings.Add(dslb))
 				{
@@ -2757,7 +2758,9 @@ ut::Result<PipelineState, ut::Error> Device::CreatePipelineState(PipelineState::
 //    @param cmd_buffer - reference to the buffer to be reset.
 void Device::ResetCmdBuffer(CmdBuffer& cmd_buffer)
 {
-	if (cmd_buffer.info.usage & CmdBuffer::usage_dynamic)
+	const bool is_dynamic = cmd_buffer.info.usage == CmdBuffer::Usage::dynamic ||
+	                        cmd_buffer.info.usage == CmdBuffer::Usage::dynamic_inside_render_pass;
+	if (is_dynamic)
 	{
 		UT_ASSERT(!cmd_buffer.pending);
 		VkResult res = vkResetCommandPool(device.GetVkHandle(), cmd_buffer.pool.GetVkHandle(), 0);
@@ -2791,12 +2794,17 @@ void Device::Record(CmdBuffer& cmd_buffer,
 {
 	VkCommandBufferUsageFlags flags = 0;
 
-	if (cmd_buffer.info.usage & CmdBuffer::usage_dynamic)
+	const bool is_dynamic = cmd_buffer.info.usage == CmdBuffer::Usage::dynamic ||
+	                        cmd_buffer.info.usage == CmdBuffer::Usage::dynamic_inside_render_pass;
+	const bool used_inside_render_pass = cmd_buffer.info.usage == CmdBuffer::Usage::inside_render_pass ||
+	                                     cmd_buffer.info.usage == CmdBuffer::Usage::dynamic_inside_render_pass;
+
+	if (is_dynamic)
 	{
 		flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	}
 
-	if (cmd_buffer.info.usage & CmdBuffer::usage_inside_render_pass)
+	if (used_inside_render_pass)
 	{
 		flags |= VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
 	}
@@ -2808,7 +2816,7 @@ void Device::Record(CmdBuffer& cmd_buffer,
 
 	// inheritance must be set for secondary buffers
 	VkCommandBufferInheritanceInfo cmd_buf_inheritance_info = {};
-	if (cmd_buffer.info.level == CmdBuffer::level_secondary)
+	if (cmd_buffer.info.level == CmdBuffer::Level::secondary)
 	{
 		cmd_buf_inheritance_info.pNext = nullptr;
 		cmd_buf_inheritance_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -2819,7 +2827,7 @@ void Device::Record(CmdBuffer& cmd_buffer,
 
 		// render pass and framebuffer must be set for secondary buffers
 		// with CmdBufferInfo::usage_inside_render_pass flag enabled
-		if (cmd_buffer.info.usage & CmdBuffer::usage_inside_render_pass)
+		if (used_inside_render_pass)
 		{
 			if (render_pass && framebuffer)
 			{
@@ -2914,14 +2922,16 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 	}
 
 	// check if cmd buffer is a primary buffer
-	if (cmd_buffer.info.level != CmdBuffer::level_primary)
+	if (cmd_buffer.info.level != CmdBuffer::Level::primary)
 	{
 		throw ut::Error(ut::error::invalid_arg, "Render: secondary buffers can't be submit.");
 	}
 
 	// if present queue isn't empty - check if cmd buffer is a dynamic buffer
+	const bool is_dynamic_cmd_buffer = cmd_buffer.info.usage == CmdBuffer::Usage::dynamic ||
+	                                   cmd_buffer.info.usage == CmdBuffer::Usage::dynamic_inside_render_pass;
 	const ut::uint32 display_count = static_cast<ut::uint32>(present_queue.Count());
-	if (display_count != 0 && !(cmd_buffer.info.usage & CmdBuffer::usage_dynamic))
+	if (display_count != 0 && !is_dynamic_cmd_buffer)
 	{
 		throw ut::Error(ut::error::invalid_arg, "Render: only dynamic command buffers support present.");
 	}

@@ -24,9 +24,9 @@ ut::Result<IBL::ViewData, ut::Error> IBL::CreateViewData()
 {
 	// cubemap
 	Target::Info info;
-	info.type = Image::type_cube;
+	info.type = Image::Type::cubic;
 	info.format = tools.formats.ibl;
-	info.usage = Target::Info::usage_color;
+	info.usage = Target::Info::Usage::color;
 	info.mip_count = mip_count;
 	info.width = tools.config.ibl_size;
 	info.height = tools.config.ibl_size;
@@ -79,11 +79,14 @@ void IBL::FilterCubemap(Context& context,
 	ut::uint32 mip_size = tools.config.ibl_size;
 	for (ut::uint32 mip = 0; mip < mip_count; mip++)
 	{
-		filter_desc_set.filter_ub.BindUniformBuffer(filter_ub[face][mip]);
+		filter_desc_set.filter_ub.BindUniformBuffer(filter_ub[static_cast<ut::uint32>(face)][mip]);
 			
 
 		ut::Rect<ut::uint32> render_area(0, 0, mip_size, mip_size);
-		context.BeginRenderPass(filter_pass, data.filter_framebuffer[face][mip], render_area, ut::Color<4>(0));
+		context.BeginRenderPass(filter_pass,
+		                        data.filter_framebuffer[static_cast<ut::uint32>(face)][mip],
+		                        render_area,
+		                        ut::Color<4>(0));
 		context.BindPipelineState(filter_pipeline[mip]);
 		context.BindDescriptorSet(filter_desc_set);
 		context.BindVertexBuffer(mesh.vertex_buffer, 0);
@@ -126,32 +129,32 @@ ut::Matrix<4> IBL::CreateFaceViewMatrix(Image::Cube::Face face,
 	ut::Vector<3> direction, up, right;
 	switch (face)
 	{
-		case Image::Cube::positive_x:
+		case Image::Cube::Face::positive_x:
 			direction = ut::Vector<3>(1, 0, 0);
 			up = ut::Vector<3>(0, 1, 0);
 			right = ut::Vector<3>(0, 0, -1);
 			break;
-		case Image::Cube::positive_y:
+		case Image::Cube::Face::positive_y:
 			direction = ut::Vector<3>(0, 1, 0);
 			up = ut::Vector<3>(0, 0, -1);
 			right = ut::Vector<3>(1, 0, 0);
 			break;
-		case Image::Cube::positive_z:
+		case Image::Cube::Face::positive_z:
 			direction = ut::Vector<3>(0, 0, 1);
 			up = ut::Vector<3>(0, 1, 0);
 			right = ut::Vector<3>(1, 0, 0);
 			break;
-		case Image::Cube::negative_x:
+		case Image::Cube::Face::negative_x:
 			direction = ut::Vector<3>(-1, 0, 0);
 			up = ut::Vector<3>(0, 1, 0);
 			right = ut::Vector<3>(0, 0, 1);
 			break;
-		case Image::Cube::negative_y:
+		case Image::Cube::Face::negative_y:
 			direction = ut::Vector<3>(0, -1, 0);
 			up = ut::Vector<3>(0, 0, 1);
 			right = ut::Vector<3>(1, 0, 0);
 			break;
-		case Image::Cube::negative_z:
+		case Image::Cube::Face::negative_z:
 			direction = ut::Vector<3>(0, 0, -1);
 			up = ut::Vector<3>(0, 1, 0);
 			right = ut::Vector<3>(-1, 0, 0);
@@ -174,15 +177,18 @@ BoundShader IBL::CreateFilterShader()
 	mip_count_macro.value = ut::Print(mip_count);
 	macros.Add(ut::Move(mip_count_macro));
 
-	ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::vertex, "ibl_filter_vs", "FilterVS", "ibl.hlsl");
-	ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::pixel, "ibl_filter_ps", "FilterPS", "ibl.hlsl", macros);
+	ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex, "ibl_filter_vs", "FilterVS", "ibl.hlsl");
+	ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel, "ibl_filter_ps", "FilterPS", "ibl.hlsl", macros);
 	return BoundShader(vs.MoveOrThrow(), ps.MoveOrThrow());
 }
 
 // Creates a render pass for the IBL filtering.
 RenderPass IBL::CreateFilterPass()
 {
-	RenderTargetSlot color_slot(tools.formats.ibl, RenderTargetSlot::load_dont_care, RenderTargetSlot::store_save, false);
+	RenderTargetSlot color_slot(tools.formats.ibl,
+	                            RenderTargetSlot::LoadOperation::dont_care,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            false);
 	ut::Array<RenderTargetSlot> color_slots;
 	color_slots.Add(color_slot);
 	return tools.device.CreateRenderPass(ut::Move(color_slots)).MoveOrThrow();
@@ -198,15 +204,18 @@ ut::Array<PipelineState> IBL::CreateFilterPipelines()
 	{
 		// create pipeline for the current mip
 		PipelineState::Info info;
-		info.stages[Shader::vertex] = filter_shader.stages[Shader::vertex].Get();
-		info.stages[Shader::pixel] = filter_shader.stages[Shader::pixel].Get();
+		info.SetShader(Shader::Stage::vertex,
+		               filter_shader.GetShader(Shader::Stage::vertex));
+		info.SetShader(Shader::Stage::pixel,
+		               filter_shader.GetShader(Shader::Stage::pixel));
 		info.input_assembly_state = cube->CreateIaState();
 		info.depth_stencil_state.depth_test_enable = false;
 		info.depth_stencil_state.depth_write_enable = false;
-		info.rasterization_state.polygon_mode = RasterizationState::fill;
-		info.rasterization_state.cull_mode = RasterizationState::no_culling;
+		info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
+		info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
 		info.blend_state.attachments.Add(BlendState::CreateNoBlending());
-		ut::Result<PipelineState, ut::Error> filter_pipeline = tools.device.CreatePipelineState(ut::Move(info), filter_pass);
+		ut::Result<PipelineState, ut::Error> filter_pipeline =
+			tools.device.CreatePipelineState(ut::Move(info), filter_pass);
 		if (!filter_pipeline)
 		{
 			throw ut::Error(filter_pipeline.MoveAlt());
@@ -233,8 +242,8 @@ ut::Array< ut::Array<Buffer> > IBL::CreateFilterUniformBuffers()
 		for (ut::uint32 mip_id = 0; mip_id < mip_count; mip_id++)
 		{
 			Buffer::Info buffer_info;
-			buffer_info.type = Buffer::uniform;
-			buffer_info.usage = render::memory::gpu_immutable;
+			buffer_info.type = Buffer::Type::uniform;
+			buffer_info.usage = render::memory::Usage::gpu_immutable;
 			buffer_info.size = sizeof(IBL::FilterUniforms);
 			buffer_info.data.Resize(buffer_info.size);
 			FilterUniforms& uniforms = *(reinterpret_cast<FilterUniforms*>(buffer_info.data.GetAddress()));
@@ -263,8 +272,8 @@ ut::Result<RcRef<Mesh>, ut::Error> IBL::CreateCube()
 
 	// create vertex buffer
 	Buffer::Info vertex_buffer_info;
-	vertex_buffer_info.type = Buffer::vertex;
-	vertex_buffer_info.usage = render::memory::gpu_immutable;
+	vertex_buffer_info.type = Buffer::Type::vertex;
+	vertex_buffer_info.usage = render::memory::Usage::gpu_immutable;
 	vertex_buffer_info.size = cube_data.vertex_buffer.GetSize();
 	vertex_buffer_info.stride = static_cast<ut::uint32>(vertex_buffer_info.size) / cube_data.vertex_count;
 	vertex_buffer_info.data = ut::Move(cube_data.vertex_buffer);
@@ -276,8 +285,8 @@ ut::Result<RcRef<Mesh>, ut::Error> IBL::CreateCube()
 
 	// create index buffer
 	Buffer::Info index_buffer_info;
-	index_buffer_info.type = Buffer::index;
-	index_buffer_info.usage = render::memory::gpu_immutable;
+	index_buffer_info.type = Buffer::Type::index;
+	index_buffer_info.usage = render::memory::Usage::gpu_immutable;
 	index_buffer_info.size = sizeof(ut::uint32) * cube_data.index_count;
 	index_buffer_info.stride = sizeof(ut::uint32);
 	index_buffer_info.data = ut::Move(cube_data.index_buffer);
@@ -292,7 +301,7 @@ ut::Result<RcRef<Mesh>, ut::Error> IBL::CreateCube()
 	          cube_data.vertex_count,
 	          vertex_buffer.Move(),
 	          index_buffer.Move(),
-	          index_type_uint32,
+	          IndexType::uint32,
 	          vertex_format,
 	          polygon_mode,
 	          ut::Array<Mesh::Subset>());

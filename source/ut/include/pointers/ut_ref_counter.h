@@ -51,7 +51,7 @@ template <thread_safety::Mode mode>
 class ReferenceController;
 
 // Thread-safe variant of a reference controller.
-template<> class ReferenceController<thread_safety::on> : public RefControllerBase
+template<> class ReferenceController<thread_safety::Mode::on> : public RefControllerBase
 {
 public:
 	// SharedReferencer and WeakReferencer are made friends, so that
@@ -140,7 +140,7 @@ private:
 };
 
 // Unsafe variant of a reference controller.
-template<> class ReferenceController<thread_safety::off> : public RefControllerBase
+template<> class ReferenceController<thread_safety::Mode::off> : public RefControllerBase
 {
 public:
 	// SharedReferencer and WeakReferencer are made friends, so that

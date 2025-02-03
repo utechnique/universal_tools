@@ -31,7 +31,7 @@ PlatformDisplay::PlatformDisplay(VkInstance instance_handle,
 			throw VulkanError(res, "vkCreateSemaphore(display)");
 		}
 		
-		if (!availability_semaphores.Add(VkRc<vk::semaphore>(semaphore, device)))
+		if (!availability_semaphores.Add(VkRc<vk::Rc::semaphore>(semaphore, device)))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
@@ -42,7 +42,7 @@ PlatformDisplay::PlatformDisplay(VkInstance instance_handle,
 			throw VulkanError(res, "vkCreateSemaphore(display)");
 		}
 
-		if (!present_ready_semaphores.Add(VkRc<vk::semaphore>(semaphore, device)))
+		if (!present_ready_semaphores.Add(VkRc<vk::Rc::semaphore>(semaphore, device)))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}

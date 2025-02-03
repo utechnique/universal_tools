@@ -16,15 +16,15 @@ class Component : public ut::Polymorphic, public ut::meta::Reflective
 public:
 	// These operation types define how component sets (in analogy to
 	// mathematic set theory) are associated with a particular entity.
-	enum EntityAssociationOperation
+	enum class EntityAssociationOperation
 	{
 		// Entities associated with AT LEAST ONE component from a list
 		// are registered:
-		op_union,
+		unite,
 
 		// Only entities associated with ALL components from a list
 		// are registered:
-		op_intersection
+		intersect
 	};
 
 	// Identify() method must be implemented for the polymorphic types.
@@ -44,6 +44,17 @@ public:
 class ComponentMap
 {
 public:
+	// Describes what type of access a component map provides for its components.
+	enum class Access
+	{
+		// Components can only be read.
+		read,
+
+		// Components can be both read and modified.
+		read_write
+	};
+
+
 	// Finds a component by associated entity id.
 	//    @param entity_id - entity identifier.
 	//    @return - optional reference to the desired component.
@@ -164,39 +175,43 @@ private:
 
 //----------------------------------------------------------------------------->
 // Helper template classes for the ve::ComponentMapCollection alias template.
-template<ut::Access access = ut::access_read>
-struct SharedComponentMap { typedef ut::SharedPtr<ComponentMap, ut::thread_safety::off> Type; };
-template<> struct SharedComponentMap<ut::access_full> { typedef ut::SharedPtr<MutableComponentMap, ut::thread_safety::off> Type; };
+template<ComponentMap::Access access = ComponentMap::Access::read>
+struct SharedComponentMap
+{
+	typedef ut::SharedPtr<ComponentMap, ut::thread_safety::Mode::off> Type;
+};
+
+template<> struct SharedComponentMap<ComponentMap::Access::read_write>
+{
+	typedef ut::SharedPtr<MutableComponentMap, ut::thread_safety::Mode::off> Type;
+};
 
 // Depending on the provided template argument the ve::ComponentMapCollection
 // alias template provides either full or read-only access to the managed
 // component maps.
-template<ut::Access access = ut::access_read>
+template<ComponentMap::Access access = ComponentMap::Access::read>
 using ComponentMapCollection = ut::DenseHashMap<ut::DynamicType::Handle, typename SharedComponentMap<access>::Type >;
 
 //----------------------------------------------------------------------------->
 // ve::ComponentSet represents a set of entities where every entity
 // is guaranteed to be associated with components from the @component_maps.
-template<ut::Access access>
+template<ComponentMap::Access access>
 struct ComponentSet
 {
-	static_assert(access != ut::access_write,
-		"ut::access_write is not allowed, use ut::access_read or ut::access_full.");
-
 	// This map contains hashmaps of components (one map per component type).
 	ComponentMapCollection<access> component_maps;
 
 	// The type of this set, can be 'union' or 'intersection' in analogy to the
 	// mathematic set theory
-	Component::EntityAssociationOperation operation = Component::op_intersection;
+	Component::EntityAssociationOperation operation = Component::EntityAssociationOperation::intersect;
 };
 
-// The same as ve::ComponentSet<ut::access_read> but also provides an interface
+// The same as ve::ComponentSet<ComponentMap::Access::read> but also provides an interface
 // to iterate entities associated with desired components.
-struct IterativeComponentSet : public ComponentSet<ut::access_read>
+struct IterativeComponentSet : public ComponentSet<ComponentMap::Access::read>
                              , public ut::DenseHashMap<Entity::Id, Entity>
 {
-	typedef ComponentSet<ut::access_read> Base;
+	typedef ComponentSet<ComponentMap::Access::read> Base;
 	IterativeComponentSet(Base&& base) : Base(ut::Move(base)) {}
 };
 
@@ -224,14 +239,16 @@ public:
 	template<typename ComponentType>
 	inline ut::Optional<ComponentMap&> GetMap() const
 	{
-		ut::Optional<SharedComponentMap<ut::access_read>::Type&> map = component_set.component_maps.Find(ut::GetPolymorphicHandle<ComponentType>());
+		ut::Optional<SharedComponentMap<ComponentMap::Access::read>::Type&> map =
+			component_set.component_maps.Find(ut::GetPolymorphicHandle<ComponentType>());
 		return map ? ut::Optional<ComponentMap&>(map->GetRef()) : ut::Optional<ComponentMap&>();
 	}
 
 	// Returns the component map of the desired type or nothing if not found.
 	inline ut::Optional<ComponentMap&> GetMap(ut::DynamicType::Handle component_type) const
 	{
-		ut::Optional<SharedComponentMap<ut::access_read>::Type&> map = component_set.component_maps.Find(component_type);
+		ut::Optional<SharedComponentMap<ComponentMap::Access::read>::Type&> map =
+			component_set.component_maps.Find(component_type);
 		return map ? ut::Optional<ComponentMap&>(map->GetRef()) : ut::Optional<ComponentMap&>();
 	}
 
@@ -359,7 +376,7 @@ protected:
 class SynchronizableComponentAccessGroup : public ComponentAccessGroup
 {
 public:
-	typedef ut::Array< ComponentSet<ut::access_read> > SyncSource;
+	typedef ut::Array< ComponentSet<ComponentMap::Access::read> > SyncSource;
 
 	// Default constructor initializes child ve::ComponentAccessGroup
 	// class to have access to the managed component maps.
@@ -395,11 +412,11 @@ public:
 		{
 			IterativeComponentSet& set = component_sets[i];
 			
-			if (set.operation == Component::op_intersection)
+			if (set.operation == Component::EntityAssociationOperation::intersect)
 			{
 				bool has_all_components = true;
 
-				ComponentMapCollection<ut::access_read>::ConstIterator component_map_iterator;
+				ComponentMapCollection<ComponentMap::Access::read>::ConstIterator component_map_iterator;
 				for (component_map_iterator = set.component_maps.Begin();
 				     component_map_iterator != set.component_maps.End();
 				     ++component_map_iterator)

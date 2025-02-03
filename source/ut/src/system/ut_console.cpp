@@ -125,7 +125,7 @@ Console::~Console()
 bool Console::Open()
 {
 	// lock @allocated variable
-	ScopeSyncRWLock<bool> lock(allocated, access_write);
+	ScopeSyncRWLock<bool> lock(allocated, RWLock::Access::write);
 
 	// allocate console only once
 	if (!lock.Get())
@@ -147,7 +147,7 @@ bool Console::Open()
 void Console::Close()
 {
 	// lock @allocated variable
-	ScopeSyncRWLock<bool> lock(allocated, access_write);
+	ScopeSyncRWLock<bool> lock(allocated, RWLock::Access::write);
 
 	// deallocate console
 	if (lock.Get())
@@ -168,7 +168,7 @@ void Console::Close()
 Optional<Error> Console::Read(void* ptr, size_t size, size_t count)
 {
 	// exit if console is not allocated
-	ScopeSyncRWLock<bool> lock(allocated, access_read);
+	ScopeSyncRWLock<bool> lock(allocated, RWLock::Access::read);
 	if (!lock.Get())
 	{
 		return Optional<Error>();
@@ -183,7 +183,7 @@ Optional<Error> Console::Read(void* ptr, size_t size, size_t count)
 	{
 		this_thread::Sleep(UT_INPUT_RECOVERY);
 
-		ScopeRWLock lock(data->input_lock, access_write);
+		ScopeRWLock lock(data->input_lock, RWLock::Access::write);
 
 		size_t buffer_size = data->input_buffer.GetSize();
 		if (buffer_size >= requested_size)
@@ -216,7 +216,7 @@ Optional<Error> Console::Read(void* ptr, size_t size, size_t count)
 Optional<Error> Console::Write(const void* ptr, size_t size, size_t count)
 {
 	// exit if console is not allocated
-	ScopeSyncRWLock<bool> lock(allocated, access_read);
+	ScopeSyncRWLock<bool> lock(allocated, RWLock::Access::read);
 	if (!lock.Get())
 	{
 		return Optional<Error>();
@@ -227,7 +227,7 @@ Optional<Error> Console::Write(const void* ptr, size_t size, size_t count)
 	bool loop_out = false;
 	while (!loop_out)
 	{
-		data->output_lock.Lock(access_read);
+		data->output_lock.Lock(RWLock::Access::read);
 		if (data->output_locked)
 		{
 			if (data->locked_thread_id == thread_id)
@@ -239,7 +239,7 @@ Optional<Error> Console::Write(const void* ptr, size_t size, size_t count)
 		{
 			loop_out = true;
 		}
-		data->output_lock.Unlock(access_read);
+		data->output_lock.Unlock(RWLock::Access::read);
 		ut::this_thread::Sleep(1);
 	}
 
@@ -255,7 +255,7 @@ Optional<Error> Console::Write(const void* ptr, size_t size, size_t count)
 #else
 
 	// lock input_buffer for reading
-	data->uncommitted_input_lock.Lock(access_read);
+	data->uncommitted_input_lock.Lock(RWLock::Access::read);
 
 	// erase string, typed by user
 	for (size_t i = 0; i < data->uncommitted_input.Count(); i++) std::cout << '\b';
@@ -273,7 +273,7 @@ Optional<Error> Console::Write(const void* ptr, size_t size, size_t count)
 	}
 
 	// lock input_buffer for reading
-	data->uncommitted_input_lock.Unlock(access_read);
+	data->uncommitted_input_lock.Unlock(RWLock::Access::read);
 
 	// flush std::cout stream
 	std::cout.flush();
@@ -292,11 +292,11 @@ Optional<Error> Console::Write(const void* ptr, size_t size, size_t count)
 //    @param status - use 'true' to lock and 'false' to unlock output
 void Console::LockOutputSequence(bool status)
 {
-	ScopeSyncRWLock<bool> lock(allocated, access_read);
+	ScopeSyncRWLock<bool> lock(allocated, RWLock::Access::read);
 	if (lock.Get())
 	{
 		ThreadId thread_id = ut::this_thread::GetId();
-		ScopeRWLock scope_lock(data->output_lock, access_write);
+		ScopeRWLock scope_lock(data->output_lock, RWLock::Access::write);
 		if (status && !data->output_locked)
 		{
 			data->output_locked = true;
@@ -316,7 +316,7 @@ void Console::LockOutputSequence(bool status)
 String Console::FlushOutput()
 {
 	// exit if console is not allocated
-	ScopeSyncRWLock<bool> lock(allocated, access_read);
+	ScopeSyncRWLock<bool> lock(allocated, RWLock::Access::read);
 	if (!lock.Get())
 	{
 		return String();
@@ -338,16 +338,16 @@ String Console::FlushOutput()
 #if UT_NO_NATIVE_CONSOLE
 void Console::SetInput(const String& str)
 {
-	ScopeSyncRWLock<bool> lock(allocated, access_read);
+	ScopeSyncRWLock<bool> lock(allocated, RWLock::Access::read);
 	if (allocated.Get())
 	{
 		const String copy = str + CarriageReturn<char>();
 		const size_t len = copy.Length();
-		data->input_lock.Lock(access_write);
+		data->input_lock.Lock(RWLock::Access::write);
 		data->input_buffer.Reset();
 		data->input_buffer.Resize(len);
 		memory::Copy(data->input_buffer.GetAddress(), copy.GetAddress(), len);
-		data->input_lock.Unlock(access_write);
+		data->input_lock.Unlock(RWLock::Access::write);
 	}
 }
 #endif
@@ -360,7 +360,7 @@ void Console::PopBackInput(void)
 	Lock();
 
 	// lock console input buffer for writing
-	data->uncommitted_input_lock.Lock(access_write);
+	data->uncommitted_input_lock.Lock(RWLock::Access::write);
 
 	// erase string typed by user from output
 	// and remove the last symbol of the @ibuf
@@ -374,7 +374,7 @@ void Console::PopBackInput(void)
 	}
 
 	// unlock console input buffer for writing
-	data->uncommitted_input_lock.Unlock(access_write);
+	data->uncommitted_input_lock.Unlock(RWLock::Access::write);
 
 	// end of the critical section
 	Unlock();
@@ -384,17 +384,17 @@ void Console::PopBackInput(void)
 // Moves uncommited (visible) input buffer to the final input buffer
 Optional<Error> Console::Sync()
 {
-	ScopeSyncRWLock<bool> lock(allocated, access_read);
+	ScopeSyncRWLock<bool> lock(allocated, RWLock::Access::read);
 	if (allocated.Get())
 	{
 		// lock output
 		Lock();
 
 		// copy uncommited input
-		data->uncommitted_input_lock.Lock(access_write);
+		data->uncommitted_input_lock.Lock(RWLock::Access::write);
 		Array<char> temp_input = data->uncommitted_input;
 		data->uncommitted_input.Reset();
-		data->uncommitted_input_lock.Unlock(access_write);
+		data->uncommitted_input_lock.Unlock(RWLock::Access::write);
 
 		// erase input string from output
 		for (size_t i = 0; i < temp_input.Count(); i++) std::cout << '\b';
@@ -409,14 +409,14 @@ Optional<Error> Console::Sync()
 		Unlock();
 
 		// save final input
-		data->input_lock.Lock(access_write);
+		data->input_lock.Lock(RWLock::Access::write);
 		data->input_buffer = temp_input;
 		String cret = CarriageReturn<char>();
 		for (uint32 i = 0; i < cret.Length(); i++)
 		{
 			data->input_buffer.Add(cret[i]);
 		}
-		data->input_lock.Unlock(access_write);
+		data->input_lock.Unlock(RWLock::Access::write);
 	}
 
 	return Optional<Error>();
@@ -430,9 +430,9 @@ void Console::PutChar(const char c)
 	std::cout << c;
 	Unlock();
 
-	data->uncommitted_input_lock.Lock(access_write);
+	data->uncommitted_input_lock.Lock(RWLock::Access::write);
 	data->uncommitted_input.Add(c);
-	data->uncommitted_input_lock.Unlock(access_write);
+	data->uncommitted_input_lock.Unlock(RWLock::Access::write);
 }
 
 //----------------------------------------------------------------------------->

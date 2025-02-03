@@ -17,7 +17,7 @@ class Buffer : public PlatformBuffer
 	friend class Context;
 public:
 	// Type of the buffer.
-	enum Type
+	enum class Type
 	{
 		vertex,
 		index,

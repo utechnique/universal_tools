@@ -38,7 +38,7 @@ struct BaseIterator
 // Enumeration of noteworthy iterator positions.
 namespace iterator
 {
-	enum Position
+	enum class Position
 	{
 		first = 0,
 		last = 1,

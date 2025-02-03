@@ -28,9 +28,8 @@ public:
 	Device& device;
 
 	// parallelizes cpu work
-	typedef ut::Scheduler<void, ut::DefaultCombiner<void>,
-	                      ut::pool_sync::cond_var> DefaultScheduler;
-	ut::ThreadPool<void, ut::pool_sync::cond_var> pool;
+	typedef ut::Scheduler<void, ut::DefaultCombiner<void> > DefaultScheduler;
+	ut::ThreadPool<void> pool;
 	DefaultScheduler scheduler;
 
 	// tools
@@ -54,13 +53,13 @@ public:
 	struct Formats
 	{
 		pixel::Format depth_stencil;
-		pixel::Format preferred_depth_stencil = pixel::d24_unorm_s8_uint;
-		pixel::Format alternative_depth_stencil = pixel::d32_float_s8_uint;
-		pixel::Format light_buffer = pixel::r16g16b16a16_float;
-		pixel::Format ibl = pixel::r16g16b16a16_float;
-		pixel::Format gbuffer = pixel::r16g16b16a16_float;
-		pixel::Format hitmask = pixel::r8g8b8a8_unorm;
-		pixel::Format ldr = pixel::r8g8b8a8_unorm;
+		pixel::Format preferred_depth_stencil = pixel::Format::d24_unorm_s8_uint;
+		pixel::Format alternative_depth_stencil = pixel::Format::d32_float_s8_uint;
+		pixel::Format light_buffer = pixel::Format::r16g16b16a16_float;
+		pixel::Format ibl = pixel::Format::r16g16b16a16_float;
+		pixel::Format gbuffer = pixel::Format::r16g16b16a16_float;
+		pixel::Format hitmask = pixel::Format::r8g8b8a8_unorm;
+		pixel::Format ldr = pixel::Format::r8g8b8a8_unorm;
 	} formats;
 
 private:

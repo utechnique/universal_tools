@@ -52,12 +52,12 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 	LPCSTR target = nullptr;
 	switch (stage)
 	{
-	case Shader::vertex:   target = "vs_5_0"; break;
-	case Shader::hull:     target = "hs_5_0"; break;
-	case Shader::domain:   target = "ds_5_0"; break;
-	case Shader::geometry: target = "gs_5_0"; break;
-	case Shader::pixel:    target = "ps_5_0"; break;
-	case Shader::compute:  target = "cs_5_0"; break;
+	case Shader::Stage::vertex:   target = "vs_5_0"; break;
+	case Shader::Stage::hull:     target = "hs_5_0"; break;
+	case Shader::Stage::domain:   target = "ds_5_0"; break;
+	case Shader::Stage::geometry: target = "gs_5_0"; break;
+	case Shader::Stage::pixel:    target = "ps_5_0"; break;
+	case Shader::Stage::compute:  target = "cs_5_0"; break;
 	}
 
 	// compile
@@ -129,7 +129,7 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 		D3D11_SHADER_INPUT_BIND_DESC bind_desc;
 		Reflector->GetResourceBindingDesc(i, &bind_desc);
 
-		Shader::Parameter::Type parameter_type = Shader::Parameter::unknown;
+		Shader::Parameter::Type parameter_type = Shader::Parameter::Type::unknown;
 		ut::String parameter_name = bind_desc.Name;
 		ut::uint32 bind_id = bind_desc.BindPoint;
 
@@ -138,14 +138,14 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 			ID3D11ShaderReflectionConstantBuffer* ConstantBuffer = Reflector->GetConstantBufferByName(bind_desc.Name);
 			D3D11_SHADER_BUFFER_DESC cb_desc;
 			ConstantBuffer->GetDesc(&cb_desc);
-			parameter_type = Shader::Parameter::uniform_buffer;
+			parameter_type = Shader::Parameter::Type::uniform_buffer;
 			parameter_name = cb_desc.Name;
 		}
 		else if (bind_desc.Type == D3D10_SIT_TEXTURE)
 		{
 			char desc_name[128];
 			ut::memory::Copy(desc_name, bind_desc.Name, ut::StrLen<char>(bind_desc.Name) + 1);
-			parameter_type = Shader::Parameter::image;
+			parameter_type = Shader::Parameter::Type::image;
 
 			// bracket character means that there is a texture array, in that case
 			// we should find first element and include only this first element
@@ -162,15 +162,15 @@ ut::Result<Shader::Info, ut::Error> ShaderCompiler::Compile(Shader::Stage stage,
 		}
 		else if (bind_desc.Type == D3D10_SIT_SAMPLER)
 		{
-			parameter_type = Shader::Parameter::sampler;
+			parameter_type = Shader::Parameter::Type::sampler;
 		}
 		else if (bind_desc.Type == D3D11_SIT_STRUCTURED)
 		{
-			parameter_type = Shader::Parameter::storage_buffer;
+			parameter_type = Shader::Parameter::Type::storage_buffer;
 		}
 		else if (bind_desc.Type == D3D11_SIT_UAV_RWSTRUCTURED)
 		{
-			parameter_type = Shader::Parameter::storage_buffer;
+			parameter_type = Shader::Parameter::Type::storage_buffer;
 		}
 		else
 		{

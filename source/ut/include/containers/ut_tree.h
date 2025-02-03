@@ -467,49 +467,49 @@ public:
 	}
 
 	// Returns constant read / write iterator that points to the first element
-	typename Array<NodeType>::ConstIterator BeginLeaves(iterator::Position position = iterator::first) const
+	typename Array<NodeType>::ConstIterator BeginLeaves(iterator::Position position = iterator::Position::first) const
 	{
 		return child_nodes.Begin(position);
 	}
 
 	// Returns constant read / write iterator that points to the last element
-	typename Array<NodeType>::ConstIterator EndLeaves(iterator::Position position = iterator::last) const
+	typename Array<NodeType>::ConstIterator EndLeaves(iterator::Position position = iterator::Position::last) const
 	{
 		return child_nodes.End(position);
 	}
 
 	// Returns a read / write iterator that points to the first element
-	typename Array<NodeType>::Iterator BeginLeaves(iterator::Position position = iterator::first)
+	typename Array<NodeType>::Iterator BeginLeaves(iterator::Position position = iterator::Position::first)
 	{
 		return child_nodes.Begin(position);
 	}
 
 	// Returns a read / write iterator that points to the last element
-	typename Array<NodeType>::Iterator EndLeaves(iterator::Position position = iterator::last)
+	typename Array<NodeType>::Iterator EndLeaves(iterator::Position position = iterator::Position::last)
 	{
 		return child_nodes.End(position);
 	}
 
 	// Returns constant read / write iterator that points to the first element
-	ConstIterator Begin(iterator::Position position = iterator::first) const
+	ConstIterator Begin(iterator::Position position = iterator::Position::first) const
 	{
-		return position == iterator::first ? ConstIterator(static_cast<NodeType*>(this)) : ConstIterator(GetLastNode());
+		return position == iterator::Position::first ? ConstIterator(static_cast<NodeType*>(this)) : ConstIterator(GetLastNode());
 	}
 
 	// Returns constant read / write iterator that points to the last element
-	ConstIterator End(iterator::Position position = iterator::last) const
+	ConstIterator End(iterator::Position position = iterator::Position::last) const
 	{
 		return ConstIterator(nullptr);
 	}
 
 	// Returns constant read / write iterator that points to the first element
-	Iterator Begin(iterator::Position position = iterator::first)
+	Iterator Begin(iterator::Position position = iterator::Position::first)
 	{
-		return position == iterator::first ? Iterator(static_cast<NodeType*>(this)) : Iterator(GetLastNode());
+		return position == iterator::Position::first ? Iterator(static_cast<NodeType*>(this)) : Iterator(GetLastNode());
 	}
 
 	// Returns constant read / write iterator that points to the last element
-	Iterator End(iterator::Position position = iterator::last)
+	Iterator End(iterator::Position position = iterator::Position::last)
 	{
 		return Iterator(nullptr);
 	}

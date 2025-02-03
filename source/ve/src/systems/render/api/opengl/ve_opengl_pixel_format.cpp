@@ -34,7 +34,7 @@ pixel::Format ConvertPixelFormatFromOpenGL(GLenum format)
 	case GL_BGRA: return pixel::b8g8r8a8;
 	case GL_SRGB_ALPHA: return pixel::r8g8b8a8_srgb;
 	}
-	return pixel::unknown;
+	return pixel::Format::unknown;
 }
 
 //----------------------------------------------------------------------------//

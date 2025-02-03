@@ -10,30 +10,30 @@ START_NAMESPACE(input)
 START_NAMESPACE(mouse)
 //----------------------------------------------------------------------------//
 
-enum Button
+enum class Button
 {
-	button_lbutton,
-	button_rbutton,
-	button_mbutton,
-	button_count
+	lbutton,
+	rbutton,
+	mbutton,
+	count
 };
 
-enum Movement
+enum class Movement
 {
-	movement_x,
-	movement_y,
-	movement_wheel,
-	movement_count,
+	x,
+	y,
+	wheel,
+	count
 };
 
-static const char* skButtonNames[button_count] =
+static const char* skButtonNames[static_cast<size_t>(Button::count)] =
 {
 	"LMB",
 	"RMB",
 	"MMB",
 };
 
-static const char* skMovementNames[movement_count] =
+static const char* skMovementNames[static_cast<size_t>(Movement::count)] =
 {
 	"MouseX",
 	"MouseY",
