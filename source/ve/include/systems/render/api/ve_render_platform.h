@@ -10,8 +10,6 @@
 //----------------------------------------------------------------------------//
 #if VE_VULKAN
 #include "systems/render/api/vulkan/ve_vulkan.h"
-#elif VE_OPENGL
-#include "systems/render/api/opengl/ve_opengl.h"
 #elif VE_DX11
 #include "systems/render/api/dx11/ve_dx11.h"
 #endif
