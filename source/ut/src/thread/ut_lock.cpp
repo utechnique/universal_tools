@@ -87,8 +87,6 @@ void RWLock::Unlock(void)
 
 //----------------------------------------------------------------------------->
 // Locks section with desired access
-//    @param access - access to lock section with
-//                    see ut::Access for details
 void RWLock::Lock(Access access)
 {
 	UT_ASSERT(data);
@@ -155,8 +153,6 @@ void RWLock::Lock(Access access)
 
 //----------------------------------------------------------------------------->
 // Unlocks section with desired access
-//    @param access - access to unlock section with
-//                    see ut::Access for details
 void RWLock::Unlock(Access access)
 {
 	UT_ASSERT(data);

@@ -68,13 +68,9 @@ public:
 	void Unlock();
 
 	// Locks section with desired access
-	//    @param access - access to lock section with
-	//                    see ut::Access for details
 	void Lock(Access access);
 
 	// Unlocks section with desired access
-	//    @param access - access to unlock section with
-	//                    see ut::Access for details
 	void Unlock(Access access);
 
 private:
