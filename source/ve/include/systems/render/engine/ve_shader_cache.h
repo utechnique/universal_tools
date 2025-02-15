@@ -60,6 +60,9 @@ private:
 	// cache filename
 	static const char* skFileName;
 
+	// protects Find() and CompileFromFile() methods
+	ut::Mutex mutex;
+
 	// path to the cache file
 	ut::String path;
 
@@ -67,7 +70,7 @@ private:
 	ut::String shader_directory;
 
 	// cached shaders, key is a name of the shader
-	ut::AVLTree<ut::String, Shader::Info> cache;
+	ut::HashMap<ut::String, Shader::Info> cache;
 
 	// compiler recompiles shaders if hash changed
 	ShaderCompiler compiler;

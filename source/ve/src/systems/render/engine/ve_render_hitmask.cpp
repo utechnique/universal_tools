@@ -370,62 +370,87 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 // Creates shaders for drawing a mesh instance.
 ut::Array<BoundShader> HitMask::CreateMeshInstShader()
 {
-	ut::Array<BoundShader> shaders;
-	constexpr size_t light_permutation_count = MeshInstRendering::ShaderGrid::size;
-	for (size_t i = 0; i < light_permutation_count; i++)
+	// calculate multithreading data
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
+	constexpr size_t shader_permutation_count = MeshInstRendering::ShaderGrid::size;
+	const size_t shader_permutations_per_thread = shader_permutation_count / thread_count;
+	ut::Array< ut::UniquePtr<BoundShader> > temp_shader_cache(shader_permutation_count);
+
+	// multithreading job
+	auto load_shader_job = [&](ut::uint32 offset, ut::uint32 count)
 	{
-		const size_t vertex_format = MeshInstRendering::ShaderGrid::GetCoordinate<MeshInstRendering::vertex_format_column>(i);
-		const size_t alpha_mode = MeshInstRendering::ShaderGrid::GetCoordinate<MeshInstRendering::alpha_mode_column>(i);
+		for (ut::uint32 i = offset; i < offset + count; i++)
+		{
+			const size_t vertex_format = MeshInstRendering::ShaderGrid::GetCoordinate<MeshInstRendering::vertex_format_column>(i);
+			const size_t alpha_mode = MeshInstRendering::ShaderGrid::GetCoordinate<MeshInstRendering::alpha_mode_column>(i);
 
-		Shader::Macros macros;
-		Shader::MacroDefinition macro;
-		ut::String shader_name_suffix;
+			Shader::Macros macros;
+			Shader::MacroDefinition macro;
+			ut::String shader_name_suffix;
 
-		// enable instancing
-		macro.name = "INSTANCING";
-		macro.value = "1";
-		macros.Add(macro);
+			// enable instancing
+			macro.name = "INSTANCING";
+			macro.value = "1";
+			macros.Add(macro);
 
-		// hitmask pass
-		macro.name = "HITMASK_PASS";
-		macro.value = "1";
-		macros.Add(macro);
+			// hitmask pass
+			macro.name = "HITMASK_PASS";
+			macro.value = "1";
+			macros.Add(macro);
 
-		// batch size
-		macro.name = "BATCH_SIZE";
-		macro.value = ut::Print(Batcher::CalculateBatchSize(tools.device));
-		macros.Add(macro);
+			// batch size
+			macro.name = "BATCH_SIZE";
+			macro.value = ut::Print(Batcher::CalculateBatchSize(tools.device));
+			macros.Add(macro);
 
-		// alpha test
-		const bool alpha_test_enabled = alpha_mode == static_cast<size_t>(MeshInstRendering::AlphaMode::alpha_test);
-		macro.name = "ALPHA_TEST";
-		macro.value = alpha_test_enabled ? "1" : "0";
-		macros.Add(macro);
-		shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
+			// alpha test
+			const bool alpha_test_enabled = alpha_mode == static_cast<size_t>(MeshInstRendering::AlphaMode::alpha_test);
+			macro.name = "ALPHA_TEST";
+			macro.value = alpha_test_enabled ? "1" : "0";
+			macros.Add(macro);
+			shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
 
-		// vertex traits
-		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
-		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
+			// vertex traits
+			macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
+			shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
-		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
-		                                                            ut::String("hitmask_mesh_vs") + shader_name_suffix,
-		                                                            "VS",
-		                                                            "mesh.hlsl",
-		                                                            macros);
+			ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
+			                                                            ut::String("hitmask_mesh_vs") + shader_name_suffix,
+			                                                            "VS",
+			                                                            "mesh.hlsl",
+			                                                            macros);
 
-		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
-		                                                            ut::String("hitmask_mesh_ps") + shader_name_suffix,
-		                                                            "PS",
-		                                                            "mesh.hlsl",
-		                                                            macros);
+			ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
+			                                                            ut::String("hitmask_mesh_ps") + shader_name_suffix,
+			                                                            "PS",
+			                                                            "mesh.hlsl",
+			                                                            macros);
 
-		const bool result = shaders.Add(BoundShader(vs.MoveOrThrow(), ps.MoveOrThrow()));
-		if (!result)
+			temp_shader_cache[i] = ut::MakeUnique<BoundShader>(vs.MoveOrThrow(), ps.MoveOrThrow());
+		}
+	};
+
+	// compile shaders in multiple threads
+	for (ut::uint32 thread_id = 0, offset = 0; thread_id < thread_count; thread_id++)
+	{
+		const ut::uint32 count = static_cast<ut::uint32>(shader_permutations_per_thread) +
+			(thread_id == 0 ? (static_cast<ut::uint32>(shader_permutation_count) % thread_count) : 0);
+		tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void(ut::uint32,
+		                                                      ut::uint32)> >(load_shader_job,
+		                                                                     offset, count));
+		offset += count;
+	}
+	tools.scheduler.WaitForCompletion();
+
+	// get rid of unique ptr containers
+	ut::Array<BoundShader> shaders;
+	for (ut::uint32 i = 0; i < shader_permutation_count; i++)
+	{
+		if (!shaders.Add(ut::Move(temp_shader_cache[i].GetRef())))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
 	}
-
 	return shaders;
 }
 

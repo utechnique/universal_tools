@@ -597,54 +597,81 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 // Creates shaders for rendering geometry to the g-buffer.
 ut::Array<BoundShader> DeferredShading::CreateMeshInstGPassShaders()
 {
-	const ut::String shader_name_prefix = "mesh_gpass_";
-	ut::Array<BoundShader> shaders;
-	const size_t shader_count = GeometryPass::MeshInstRendering::ShaderGrid::size;
-	for (size_t i = 0; i < shader_count; i++)
+	// calculate multithreading data
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
+	constexpr size_t shader_permutation_count = GeometryPass::MeshInstRendering::ShaderGrid::size;
+	const size_t shader_permutations_per_thread = shader_permutation_count / thread_count;
+	ut::Array< ut::UniquePtr<BoundShader> > temp_shader_cache(shader_permutation_count);
+
+	// multithreading job
+	auto load_shader_job = [&](ut::uint32 offset, ut::uint32 count)
 	{
-		ut::String shader_name_suffix;
-		Shader::Macros macros;
-		Shader::MacroDefinition macro;
+		for (ut::uint32 i = offset; i < offset + count; i++)
+		{
+			ut::String shader_name_suffix;
+			Shader::Macros macros;
+			Shader::MacroDefinition macro;
 
-		// enable instancing
-		macro.name = "INSTANCING";
-		macro.value = "1";
-		macros.Add(macro);
+			// enable instancing
+			macro.name = "INSTANCING";
+			macro.value = "1";
+			macros.Add(macro);
 
-		// deferred pass
-		macro.name = "DEFERRED_PASS";
-		macro.value = "1";
-		macros.Add(macro);
+			// deferred pass
+			macro.name = "DEFERRED_PASS";
+			macro.value = "1";
+			macros.Add(macro);
 
-		// batch size
-		macro.name = "BATCH_SIZE";
-		macro.value = ut::Print(Batcher::CalculateBatchSize(tools.device));
-		macros.Add(macro);
+			// batch size
+			macro.name = "BATCH_SIZE";
+			macro.value = ut::Print(Batcher::CalculateBatchSize(tools.device));
+			macros.Add(macro);
 
-		// vertex traits
-		Mesh::VertexFormat vertex_format =
-			static_cast<Mesh::VertexFormat>(
-				GeometryPass::MeshInstRendering::ShaderGrid::GetCoordinate<GeometryPass::MeshInstRendering::vertex_format_column>(i));
-		macros += Mesh::GenerateVertexMacros(vertex_format, Mesh::Instancing::on);
-		shader_name_suffix += ut::String("_vf") + ut::Print<ut::uint32>(static_cast<ut::uint32>(vertex_format));
+			// vertex traits
+			Mesh::VertexFormat vertex_format =
+				static_cast<Mesh::VertexFormat>(
+					GeometryPass::MeshInstRendering::ShaderGrid::GetCoordinate<GeometryPass::MeshInstRendering::vertex_format_column>(i));
+			macros += Mesh::GenerateVertexMacros(vertex_format, Mesh::Instancing::on);
+			shader_name_suffix += ut::String("_vf") + ut::Print<ut::uint32>(static_cast<ut::uint32>(vertex_format));
 
-		// alpha mode
-		GeometryPass::MeshInstRendering::AlphaMode alpha_mode =
-			static_cast<GeometryPass::MeshInstRendering::AlphaMode>(
-				GeometryPass::MeshInstRendering::ShaderGrid::GetCoordinate<GeometryPass::MeshInstRendering::alpha_mode_column>(i));
-		const bool alpha_test = alpha_mode == GeometryPass::MeshInstRendering::AlphaMode::alpha_test;
-		macro.name = "ALPHA_TEST";
-		macro.value = alpha_test ? "1" : "0";
-		macros.Add(macro);
-		shader_name_suffix += alpha_test ? "_at_on" : "_at_off";
+			// alpha mode
+			GeometryPass::MeshInstRendering::AlphaMode alpha_mode =
+				static_cast<GeometryPass::MeshInstRendering::AlphaMode>(
+					GeometryPass::MeshInstRendering::ShaderGrid::GetCoordinate<GeometryPass::MeshInstRendering::alpha_mode_column>(i));
+			const bool alpha_test = alpha_mode == GeometryPass::MeshInstRendering::AlphaMode::alpha_test;
+			macro.name = "ALPHA_TEST";
+			macro.value = alpha_test ? "1" : "0";
+			macros.Add(macro);
+			shader_name_suffix += alpha_test ? "_at_on" : "_at_off";
 
-		// compile shaders
-		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex, shader_name_prefix + "vs" + shader_name_suffix,
-		                                                            "VS", "mesh.hlsl", macros);
-		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel, shader_name_prefix + "ps" + shader_name_suffix,
-		                                                            "PS", "mesh.hlsl", macros);
-		
-		if (!shaders.Add(BoundShader(vs.MoveOrThrow(), ps.MoveOrThrow())))
+			// compile shaders
+			const ut::String shader_name_prefix = "mesh_gpass_";
+			ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex, shader_name_prefix + "vs" + shader_name_suffix,
+			                                                            "VS", "mesh.hlsl", macros);
+			ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel, shader_name_prefix + "ps" + shader_name_suffix,
+			                                                            "PS", "mesh.hlsl", macros);
+
+			temp_shader_cache[i] = ut::MakeUnique<BoundShader>(vs.MoveOrThrow(), ps.MoveOrThrow());
+		}
+	};
+
+	// compile shaders in multiple threads
+	for (ut::uint32 thread_id = 0, offset = 0; thread_id < thread_count; thread_id++)
+	{
+		const ut::uint32 count = static_cast<ut::uint32>(shader_permutations_per_thread) +
+			(thread_id == 0 ? (static_cast<ut::uint32>(shader_permutation_count) % thread_count) : 0);
+		tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void(ut::uint32,
+		                                                      ut::uint32)> >(load_shader_job,
+		                                                                     offset, count));
+		offset += count;
+	}
+	tools.scheduler.WaitForCompletion();
+
+	// get rid of unique ptr containers
+	ut::Array<BoundShader> shaders;
+	for (ut::uint32 i = 0; i < shader_permutation_count; i++)
+	{
+		if (!shaders.Add(ut::Move(temp_shader_cache[i].GetRef())))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}

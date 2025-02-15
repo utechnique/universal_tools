@@ -449,167 +449,217 @@ void ForwardShading::DrawMesh(Context& context,
 // Creates a shader for the lighting pass.
 ut::Array<BoundShader> ForwardShading::CreateMeshInstLightPassShader()
 {
-	ut::Array<BoundShader> shaders;
-	constexpr size_t light_permutation_count = LightPass::MeshInstRendering::ShaderGrid::size;
-	for (size_t i = 0; i < light_permutation_count; i++)
+	// calculate multithreading data
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
+	constexpr size_t shader_permutation_count = LightPass::MeshInstRendering::ShaderGrid::size;
+	const size_t shader_permutations_per_thread = shader_permutation_count / thread_count;
+	ut::Array< ut::UniquePtr<BoundShader> > temp_shader_cache(shader_permutation_count);
+
+	// multithreading job
+	auto load_shader_job = [&](ut::uint32 offset, ut::uint32 count)
 	{
-		const size_t vertex_format = LightPass::MeshInstRendering::ShaderGrid::GetCoordinate<LightPass::MeshInstRendering::vertex_format_column>(i);
-		const size_t ibl_preset = LightPass::MeshInstRendering::ShaderGrid::GetCoordinate<LightPass::MeshInstRendering::ibl_column>(i);
-		const size_t source_type = LightPass::MeshInstRendering::ShaderGrid::GetCoordinate<LightPass::MeshInstRendering::light_type_column>(i);
-		const size_t alpha_test = LightPass::MeshInstRendering::ShaderGrid::GetCoordinate<LightPass::MeshInstRendering::alpha_test_column>(i);
-
-		Shader::Macros macros;
-		Shader::MacroDefinition macro;
-		ut::String shader_name_suffix;
-
-		// enable instancing
-		macro.name = "INSTANCING";
-		macro.value = "1";
-		macros.Add(macro);
-
-		// light pass
-		macro.name = "LIGHT_PASS";
-		macro.value = "1";
-		macros.Add(macro);
-
-		// batch size
-		macro.name = "BATCH_SIZE";
-		macro.value = ut::Print(Batcher::CalculateBatchSize(tools.device));
-		macros.Add(macro);
-
-		// vertex traits
-		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
-		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
-
-		// ibl preset
-		const bool ibl_enabled = ibl_preset == static_cast<size_t>(LightPass::MeshInstRendering::IblPreset::on);
-		shader_name_suffix += ibl_enabled ? "_ibl" : "_noibl";
-		macro.name = "IBL";
-		macro.value = ibl_enabled ? "1" : "0";
-		macros.Add(ut::Move(macro));
-
-		// light type
-		const char* light_type_str;
-		switch (static_cast<Light::SourceType>(source_type))
+		for (ut::uint32 i = offset; i < offset + count; i++)
 		{
-		case Light::SourceType::directional:
-			light_type_str = "DIRECTIONAL_LIGHT";
-			shader_name_suffix += "_directional";
-			break;
-		case Light::SourceType::point:
-			light_type_str = "POINT_LIGHT";
-			shader_name_suffix += "_point";
-			break;
-		case Light::SourceType::spot:
-			light_type_str = "SPOT_LIGHT";
-			shader_name_suffix += "_spot";
-			break;
-		case Light::SourceType::ambient:
-			light_type_str = "AMBIENT_LIGHT";
-			shader_name_suffix += "_ambient";
-			break;
-		default: throw ut::Error(ut::error::not_implemented);
+			const size_t vertex_format = LightPass::MeshInstRendering::ShaderGrid::GetCoordinate<LightPass::MeshInstRendering::vertex_format_column>(i);
+			const size_t ibl_preset = LightPass::MeshInstRendering::ShaderGrid::GetCoordinate<LightPass::MeshInstRendering::ibl_column>(i);
+			const size_t source_type = LightPass::MeshInstRendering::ShaderGrid::GetCoordinate<LightPass::MeshInstRendering::light_type_column>(i);
+			const size_t alpha_test = LightPass::MeshInstRendering::ShaderGrid::GetCoordinate<LightPass::MeshInstRendering::alpha_test_column>(i);
+
+			Shader::Macros macros;
+			Shader::MacroDefinition macro;
+			ut::String shader_name_suffix;
+
+			// enable instancing
+			macro.name = "INSTANCING";
+			macro.value = "1";
+			macros.Add(macro);
+
+			// light pass
+			macro.name = "LIGHT_PASS";
+			macro.value = "1";
+			macros.Add(macro);
+
+			// batch size
+			macro.name = "BATCH_SIZE";
+			macro.value = ut::Print(Batcher::CalculateBatchSize(tools.device));
+			macros.Add(macro);
+
+			// vertex traits
+			macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
+			shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
+
+			// ibl preset
+			const bool ibl_enabled = ibl_preset == static_cast<size_t>(LightPass::MeshInstRendering::IblPreset::on);
+			shader_name_suffix += ibl_enabled ? "_ibl" : "_noibl";
+			macro.name = "IBL";
+			macro.value = ibl_enabled ? "1" : "0";
+			macros.Add(ut::Move(macro));
+
+			// light type
+			const char* light_type_str;
+			switch (static_cast<Light::SourceType>(source_type))
+			{
+			case Light::SourceType::directional:
+				light_type_str = "DIRECTIONAL_LIGHT";
+				shader_name_suffix += "_directional";
+				break;
+			case Light::SourceType::point:
+				light_type_str = "POINT_LIGHT";
+				shader_name_suffix += "_point";
+				break;
+			case Light::SourceType::spot:
+				light_type_str = "SPOT_LIGHT";
+				shader_name_suffix += "_spot";
+				break;
+			case Light::SourceType::ambient:
+				light_type_str = "AMBIENT_LIGHT";
+				shader_name_suffix += "_ambient";
+				break;
+			default: throw ut::Error(ut::error::not_implemented);
+			}
+			macro.name = light_type_str;
+			macro.value = "1";
+			macros.Add(ut::Move(macro));
+
+			// alpha test
+			const bool alpha_test_enabled = alpha_test == static_cast<size_t>(LightPass::MeshInstRendering::AlphaTest::on);
+			macro.name = "ALPHA_TEST";
+			macro.value = alpha_test_enabled ? "1" : "0";
+			macros.Add(macro);
+			shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
+
+			ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
+																		ut::String("forward_mesh_lp_vs") + shader_name_suffix,
+																		"VS",
+																		"mesh.hlsl",
+																		macros);
+
+			ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
+			                                                            ut::String("forward_mesh_lp_ps") + shader_name_suffix,
+			                                                            "PS",
+			                                                            "mesh.hlsl",
+			                                                            macros);
+
+			temp_shader_cache[i] = ut::MakeUnique<BoundShader>(vs.MoveOrThrow(), ps.MoveOrThrow());
 		}
-		macro.name = light_type_str;
-		macro.value = "1";
-		macros.Add(ut::Move(macro));
+	};
 
-		// alpha test
-		const bool alpha_test_enabled = alpha_test == static_cast<size_t>(LightPass::MeshInstRendering::AlphaTest::on);
-		macro.name = "ALPHA_TEST";
-		macro.value = alpha_test_enabled ? "1" : "0";
-		macros.Add(macro);
-		shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
+	// compile shaders in multiple threads
+	for (ut::uint32 thread_id = 0, offset = 0; thread_id < thread_count; thread_id++)
+	{
+		const ut::uint32 count = static_cast<ut::uint32>(shader_permutations_per_thread) +
+			(thread_id == 0 ? (static_cast<ut::uint32>(shader_permutation_count) % thread_count) : 0);
+		tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void(ut::uint32,
+		                                                      ut::uint32)> >(load_shader_job,
+		                                                                     offset, count));
+		offset += count;
+	}
+	tools.scheduler.WaitForCompletion();
 
-		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
-		                                                            ut::String("forward_mesh_lp_vs") + shader_name_suffix,
-		                                                            "VS",
-		                                                            "mesh.hlsl",
-		                                                            macros);
-
-		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
-		                                                            ut::String("forward_mesh_lp_ps") + shader_name_suffix,
-		                                                            "PS",
-		                                                            "mesh.hlsl",
-		                                                            macros);
-
-		const bool result = shaders.Add(BoundShader(vs.MoveOrThrow(), ps.MoveOrThrow()));
-		if (!result)
+	// get rid of unique ptr containers
+	ut::Array<BoundShader> shaders;
+	for (ut::uint32 i = 0; i < shader_permutation_count; i++)
+	{
+		if (!shaders.Add(ut::Move(temp_shader_cache[i].GetRef())))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
 	}
-
 	return shaders;
 }
 
 // Creates a shader for the ibl pass.
 ut::Array<BoundShader> ForwardShading::CreateMeshInstIblShader(ut::uint32 ibl_mip_count)
 {
-	ut::Array<BoundShader> shaders;
-	constexpr size_t ibl_permutation_count = IblPass::MeshInstRendering::ShaderGrid::size;
-	for (size_t i = 0; i < ibl_permutation_count; i++)
+	// calculate multithreading data
+	const ut::uint32 thread_count = static_cast<ut::uint32>(tools.pool.GetThreadCount());
+	constexpr size_t shader_permutation_count = IblPass::MeshInstRendering::ShaderGrid::size;
+	const size_t shader_permutations_per_thread = shader_permutation_count / thread_count;
+	ut::Array< ut::UniquePtr<BoundShader> > temp_shader_cache(shader_permutation_count);
+
+	// multithreading job
+	auto load_shader_job = [&](ut::uint32 offset, ut::uint32 count)
 	{
-		const size_t vertex_format = IblPass::MeshInstRendering::ShaderGrid::GetCoordinate<IblPass::MeshInstRendering::vertex_format_column>(i);
-		const size_t alpha_test = IblPass::MeshInstRendering::ShaderGrid::GetCoordinate<IblPass::MeshInstRendering::alpha_test_column>(i);
+		for (ut::uint32 i = offset; i < offset + count; i++)
+		{
+			const size_t vertex_format = IblPass::MeshInstRendering::ShaderGrid::GetCoordinate<IblPass::MeshInstRendering::vertex_format_column>(i);
+			const size_t alpha_test = IblPass::MeshInstRendering::ShaderGrid::GetCoordinate<IblPass::MeshInstRendering::alpha_test_column>(i);
 
-		Shader::Macros macros;
-		Shader::MacroDefinition macro;
-		ut::String shader_name_suffix;
+			Shader::Macros macros;
+			Shader::MacroDefinition macro;
+			ut::String shader_name_suffix;
 
-		// enable instancing
-		macro.name = "INSTANCING";
-		macro.value = "1";
-		macros.Add(macro);
+			// enable instancing
+			macro.name = "INSTANCING";
+			macro.value = "1";
+			macros.Add(macro);
 
-		// ibl pass
-		macro.name = "IBL_PASS";
-		macro.value = "1";
-		macros.Add(macro);
-		macro.name = "IBL";
-		macro.value = "1";
-		macros.Add(macro);
+			// ibl pass
+			macro.name = "IBL_PASS";
+			macro.value = "1";
+			macros.Add(macro);
+			macro.name = "IBL";
+			macro.value = "1";
+			macros.Add(macro);
 
-		// batch size
-		macro.name = "BATCH_SIZE";
-		macro.value = ut::Print(Batcher::CalculateBatchSize(tools.device));
-		macros.Add(macro);
+			// batch size
+			macro.name = "BATCH_SIZE";
+			macro.value = ut::Print(Batcher::CalculateBatchSize(tools.device));
+			macros.Add(macro);
 
-		// mip count
-		macro.name = "IBL_MIP_COUNT";
-		macro.value = ut::Print(ibl_mip_count);
-		macros.Add(ut::Move(macro));
+			// mip count
+			macro.name = "IBL_MIP_COUNT";
+			macro.value = ut::Print(ibl_mip_count);
+			macros.Add(ut::Move(macro));
 
-		// vertex traits
-		macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
-		shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
+			// vertex traits
+			macros += Mesh::GenerateVertexMacros(static_cast<Mesh::VertexFormat>(vertex_format), Mesh::Instancing::on);
+			shader_name_suffix += ut::String("_vf") + ut::Print(vertex_format);
 
-		// alpha test
-		const bool alpha_test_enabled = alpha_test == static_cast<size_t>(IblPass::MeshInstRendering::AlphaTest::on);
-		macro.name = "ALPHA_TEST";
-		macro.value = alpha_test_enabled ? "1" : "0";
-		macros.Add(macro);
-		shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
+			// alpha test
+			const bool alpha_test_enabled = alpha_test == static_cast<size_t>(IblPass::MeshInstRendering::AlphaTest::on);
+			macro.name = "ALPHA_TEST";
+			macro.value = alpha_test_enabled ? "1" : "0";
+			macros.Add(macro);
+			shader_name_suffix += alpha_test_enabled ? "_at_on" : "_at_off";
 
-		ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
-		                                                            ut::String("forward_mesh_ibl_vs") + shader_name_suffix,
-		                                                            "VS",
-		                                                            "mesh.hlsl",
-		                                                            macros);
+			ut::Result<Shader, ut::Error> vs = tools.shader_loader.Load(Shader::Stage::vertex,
+			                                                            ut::String("forward_mesh_ibl_vs") + shader_name_suffix,
+			                                                            "VS",
+			                                                            "mesh.hlsl",
+			                                                            macros);
 
-		ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
-		                                                            ut::String("forward_mesh_ibl_ps") + shader_name_suffix,
-		                                                            "PS",
-		                                                            "mesh.hlsl",
-		                                                            macros);
+			ut::Result<Shader, ut::Error> ps = tools.shader_loader.Load(Shader::Stage::pixel,
+			                                                            ut::String("forward_mesh_ibl_ps") + shader_name_suffix,
+			                                                            "PS",
+			                                                            "mesh.hlsl",
+			                                                            macros);
 
-		const bool result = shaders.Add(BoundShader(vs.MoveOrThrow(), ps.MoveOrThrow()));
-		if (!result)
+			temp_shader_cache[i] = ut::MakeUnique<BoundShader>(vs.MoveOrThrow(), ps.MoveOrThrow());
+		}
+	};
+
+	// compile shaders in multiple threads
+	for (ut::uint32 thread_id = 0, offset = 0; thread_id < thread_count; thread_id++)
+	{
+		const ut::uint32 count = static_cast<ut::uint32>(shader_permutations_per_thread) +
+			(thread_id == 0 ? (static_cast<ut::uint32>(shader_permutation_count) % thread_count) : 0);
+		tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void(ut::uint32,
+		                                                      ut::uint32)> >(load_shader_job,
+		                                                                     offset, count));
+		offset += count;
+	}
+	tools.scheduler.WaitForCompletion();
+
+	// get rid of unique ptr containers
+	ut::Array<BoundShader> shaders;
+	for (ut::uint32 i = 0; i < shader_permutation_count; i++)
+	{
+		if (!shaders.Add(ut::Move(temp_shader_cache[i].GetRef())))
 		{
 			throw ut::Error(ut::error::out_of_memory);
 		}
 	}
-
 	return shaders;
 }
 

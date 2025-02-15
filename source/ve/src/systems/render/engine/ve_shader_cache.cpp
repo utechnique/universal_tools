@@ -146,11 +146,16 @@ ut::Result<Shader::Info, ut::Error> ShaderCache::CompileFromFile(Shader::Stage s
 	Shader::Info& info = compile_result.Get();
 	info.hash = ut::Sha256(shader_text.Get());
 
-	// remove previous version
-	cache.Remove(info.name);
+	// all cache actions must be protected with mutex
+	{
+		ut::ScopeLock lock(mutex);
 
-	// add to the cache
-	cache.Insert(info.name, info);
+		// remove previous version
+		cache.Remove(info.name);
+
+		// add to the cache
+		cache.Insert(info.name, info);
+	}
 
 	// success
 	return compile_result.Move();
@@ -168,6 +173,8 @@ ut::Optional<Shader::Info&> ShaderCache::Find(Shader::Stage stage,
                                               const ut::String& entry_point,
                                               const Shader::Macros& macros)
 {
+	ut::ScopeLock lock(mutex);
+
 	// search by name
 	ut::Optional<Shader::Info&> info = cache.Find(shader_name);
 	if (!info)
