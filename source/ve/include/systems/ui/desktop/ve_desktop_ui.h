@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/ui/ve_ui_frontend.h"
+#include "systems/ui/desktop/ve_startup_window.h"
 #include "systems/ui/desktop/ve_entity_browser.h"
 #include "systems/ui/desktop/ve_desktop_menu_bar.h"
 #include "systems/ui/desktop/ve_desktop_viewport.h"
@@ -24,15 +25,19 @@ class DesktopFrontend : public Frontend
 	class MainWindow : public Window
 	{
 	public:
-		// Constructor.
+		// Constructor. Simply initializes base FLTK window.
 		MainWindow(int x, int y,
 		           int w, int h,
 		           const char* title,
 		           DesktopFrontend& desktop_frontend,
 		           const Theme& theme);
 
-		// Overriden handle method. Frontend thread starts only after this
-		// method receives focus event message.
+		
+		// Overriden draw method. Sets @window_ready to 'true' thus informing
+		// the main UI thread that all internal widgets are ready for interactions.
+		void draw() override;
+
+		// Overriden handle method. Processes custom keyboard callbacks.
 		int handle(int event) override;
 
 		// Show current window.
@@ -64,14 +69,21 @@ class DesktopFrontend : public Frontend
 	friend MainWindow;
 
 public:
-	// Constructor.
+	// Constructor. Loads configuration file and starts FLTK thread.
 	DesktopFrontend();
 
 	// Destructor, hides main window and waits until fltk thread is finished.
 	~DesktopFrontend();
 
-	// Initialization.
+	// Initialization. Applies FLTK color scheme and shows the @startup_window.
 	ut::Optional<ut::Error> Initialize();
+
+	// Creates the main @window and closes the @startup_window.
+	void CreateMainWindow();
+
+	// Schedules CreateMainWindow() callback to the FLTK thread
+	// and waits for a result.
+	void Start();
 
 	// Launches user interface.
 	void Run();
@@ -128,6 +140,9 @@ private:
 	// processed in a separate thread
 	ut::UniquePtr<ut::Thread> fltk_thread;
 
+	// startup window
+	ut::UniquePtr<StartupWindow> startup_window;
+
 	// main window
 	ut::UniquePtr<MainWindow> window;
 
@@ -143,6 +158,9 @@ private:
 
 	// array of viewport references
 	ut::Array< ut::Ref<Viewport> > viewports;
+
+	// UI configuration
+	Config<Settings> cfg;
 
 	// Minimum width of the window
 	static const ut::uint32 skMinWidth;

@@ -1237,7 +1237,7 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 	                                                        EntityControls::skFilterInputHeight);
 	entity_controls.filter_input->when(FL_WHEN_CHANGED);
 	entity_controls.filter_input->callback([](Fl_Widget*, void* p) { static_cast<EntityBrowser*>(p)->UpdateFilterInput(); }, this);
-	entity_controls.filter_input->color(ConvertToFlColor(theme.background_color.ElementWise() / 2 + theme.background_color.ElementWise() / 4));
+	entity_controls.filter_input->color(ConvertToFlColor(theme.input_color));
 
 	// add entity button
 	entity_controls.add_entity_button = ut::MakeUnique<Button>(entity_controls.group->x() + entity_controls.filter_input->w(),
@@ -1265,7 +1265,10 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 	                                                             EntityControls::skFilterInputHeight);
 	entity_controls.clear_filter_button->SetIcon(ut::MakeShared<Icon>(Icon::CreateCross(entity_controls.clear_filter_button->w(),
 	                                                                                    entity_controls.clear_filter_button->h(),
-	                                                                                    ut::Color<4, ut::byte>(230, 230, 230, 200),
+	                                                                                    ut::Color<4, ut::byte>(theme.foreground_color.R(),
+	                                                                                                           theme.foreground_color.G(),
+	                                                                                                           theme.foreground_color.B(),
+	                                                                                                           200),
 	                                                                                    6)));
 	entity_controls.clear_filter_button->SetBackgroundColor(Button::State::release,
 	                                                        ConvertToFlColor(theme.background_color));
@@ -1313,7 +1316,7 @@ void EntityBrowser::InitializeEntityControls(const Theme& theme)
 	                                                               entity_controls.components.expand_button->w(),
 	                                                               entity_controls.components.expand_button->h());
 	entity_controls.components.counter_box->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-	entity_controls.components.counter_box->labelcolor(ConvertToFlColor(theme.caption_icon_color));
+	entity_controls.components.counter_box->labelcolor(ConvertToFlColor(theme.foreground_color));
 
 	// component checkboxes
 	const int component_count = static_cast<int>(ut::Factory<Component>::CountTypes());
@@ -1417,6 +1420,9 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	                                                                  icon_color,
 	                                                                  icon_margin, true, false)));
 	page->prev_button->SetCallback([&]() { page->page_id.Store(page->page_id.Read() - 1); ImmediateUpdate(); });
+	page->prev_button->SetBackgroundColor(Button::State::release, ConvertToFlColor(theme.background_color));
+	page->prev_button->SetBackgroundColor(Button::State::push, ConvertToFlColor(theme.button_push_color));
+	page->prev_button->SetBackgroundColor(Button::State::hover, ConvertToFlColor(theme.button_hover_color));
 
 	// first page button sets the current page id to 1
 	page->first_button = ut::MakeUnique<Button>(page->prev_button->x() - input_height,
@@ -1427,6 +1433,9 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	                                                                   icon_color,
 	                                                                   icon_margin, true, true)));
 	page->first_button->SetCallback([&]() { page->page_id.Store(1); ImmediateUpdate(); });
+	page->first_button->SetBackgroundColor(Button::State::release, ConvertToFlColor(theme.background_color));
+	page->first_button->SetBackgroundColor(Button::State::push, ConvertToFlColor(theme.button_push_color));
+	page->first_button->SetBackgroundColor(Button::State::hover, ConvertToFlColor(theme.button_hover_color));
 
 	// next page button increments the current page id
 	page->next_button = ut::MakeUnique<Button>(page->input->x() + page->input->w(),
@@ -1437,6 +1446,9 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	                                                                  icon_color,
 	                                                                  icon_margin, false, false)));
 	page->next_button->SetCallback([&]() { page->page_id.Store(page->page_id.Read() + 1); ImmediateUpdate(); });
+	page->next_button->SetBackgroundColor(Button::State::release, ConvertToFlColor(theme.background_color));
+	page->next_button->SetBackgroundColor(Button::State::push, ConvertToFlColor(theme.button_push_color));
+	page->next_button->SetBackgroundColor(Button::State::hover, ConvertToFlColor(theme.button_hover_color));
 
 	// last page button sets the current page id to the value equal to the page count
 	page->last_button = ut::MakeUnique<Button>(page->next_button->x() + page->next_button->w(),
@@ -1447,6 +1459,9 @@ void EntityBrowser::InitializePageControls(const Theme& theme)
 	                                                                  icon_color,
 	                                                                  icon_margin, false, true)));
 	page->last_button->SetCallback([&]() { page->page_id.Store(page->page_count.Read()); ImmediateUpdate(); });
+	page->last_button->SetBackgroundColor(Button::State::release, ConvertToFlColor(theme.background_color));
+	page->last_button->SetBackgroundColor(Button::State::push, ConvertToFlColor(theme.button_push_color));
+	page->last_button->SetBackgroundColor(Button::State::hover, ConvertToFlColor(theme.button_hover_color));
 
 	// this description box displays the number of pages
 	page->page_count_box = ut::MakeUnique<Fl_Box>(page->x(),

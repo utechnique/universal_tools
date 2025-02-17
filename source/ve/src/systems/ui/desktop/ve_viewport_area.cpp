@@ -473,6 +473,8 @@ void ViewportTab::ChangeProjectionCallback(Fl_Widget* widget, void* data)
 	ViewportTab* tab = static_cast<ViewportTab*>(data);
 	Viewport::Projection projection = static_cast<Viewport::Projection>(choice->value());
 	tab->ChangeViewportProjection(projection);
+
+	Fl::focus(tab);
 }
 
 // Callback that is called when a resolution type is changed.
@@ -482,6 +484,8 @@ void ViewportTab::ChangeResolutionCallback(Fl_Widget* widget, void* data)
 	ViewportTab* tab = static_cast<ViewportTab*>(data);
 	Viewport::Resolution resolution = static_cast<Viewport::Resolution>(choice->value());
 	tab->ChangeViewportResolution(resolution);
+
+	Fl::focus(tab);
 }
 
 // Callback that is called when a render mode is changed.
@@ -491,6 +495,8 @@ void ViewportTab::ChangeRenderModeCallback(Fl_Widget* widget, void* data)
 	ViewportTab* tab = static_cast<ViewportTab*>(data);
 	Viewport::RenderMode render_mode = static_cast<Viewport::RenderMode>(choice->value());
 	tab->ChangeViewportRenderMode(render_mode);
+
+	Fl::focus(tab);
 }
 
 //----------------------------------------------------------------------------//
@@ -819,6 +825,9 @@ void ViewportArea::ChangeLayout(size_t layout_id)
 	{
 		SetViewportFocus(viewport_boxes[0]->GetViewport().GetId());
 	}
+
+	// remove focus form the drop down list widget
+	Fl::focus(this);
 
 	// redraw everything
 	redraw();

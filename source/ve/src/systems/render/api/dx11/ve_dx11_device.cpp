@@ -296,12 +296,9 @@ ut::Optional<ut::Error> PlatformDevice::ExtractBackBufferTextureAndView(IDXGISwa
 
 //----------------------------------------------------------------------------//
 // Constructor.
-//    @param ui_frontend - shared pointer to the user interface to be
-//                         launched in.
 //    @param gpu - string with the name or index of the desired graphics
 //                 adapter. Pass 'auto' to use default graphics card.
-Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend,
-               const ut::String& gpu) : PlatformDevice(gpu)
+Device::Device(const ut::String& gpu) : PlatformDevice(gpu)
 {
 	info.max_uniform_buffer_size = 65536;
 	info.max_storage_buffer_size = 268435456;

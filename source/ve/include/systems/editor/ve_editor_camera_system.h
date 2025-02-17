@@ -58,12 +58,12 @@ private:
 	//    @param camera - reference to the camera component.
 	//    @param render - reference to the render component.
 	//    @param mode - const reference to the mode of the associated viewport.
-	//    @param viewport_id - id of the viewport associated with the camera.
+	//    @param use_resize_delay - indicates if to resize render view immediately.
 	void UpdateCamera(TransformComponent& transform,
 	                  CameraComponent& camera,
 	                  render::View& render_view,
 	                  const ui::Viewport::Mode& mode,
-	                  ui::Viewport::Id viewport_id);
+	                  bool force_resize = false);
 
 	// Updates transform component of the perspective camera.
 	//    @param transform - reference to the transform component.
@@ -89,15 +89,16 @@ private:
 
 	// Creates a new camera entity.
 	//    @param viewport_id - id of the viewport associated with a new camera.
+	// 	  @param mode - const reference to the mode of the associated viewport.
 	//    @param name - name of the entity.
 	//    @return - ve::CmdAddEntity command or ut::Error.
 	ut::Result<ut::UniquePtr<Cmd>, ut::Error> CreateCamera(ui::Viewport::Id viewport_id,
+	                                                       const ui::Viewport::Mode& mode,
 	                                                       ut::String entity_name);
 
 	// Initializes @viewports array.
 	void InitializeViewports(ui::Frontend& ui_frontend);
 
-	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
 	ut::SharedPtr<input::Manager> input_mgr;
 	ut::Array< ut::Ref<ui::Viewport> > viewports;
 

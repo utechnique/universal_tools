@@ -20,11 +20,13 @@ class RenderSystem : public ComponentSystem<RenderComponent, TransformComponent>
 	typedef ComponentSystem<RenderComponent, TransformComponent> Base;
 public:
 	// Constructor.
-	RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread,
-	             ut::SharedPtr<ui::Frontend::Thread> in_ui_thread);
+	RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread);
 
 	// Destructor. Engine is destructed in the render thread.
 	~RenderSystem();
+
+	// Makes UI viewports accessible for rendering.
+	void BindViewports(ut::SharedPtr<ui::Frontend::Thread> ui_thread);
 
 	// Draws all renderable components.
 	//    @param time_step_ms - time step for the current frame in milliseconds.
@@ -53,7 +55,6 @@ private:
 	//                    components.
 	void UnregisterEntity(Entity::Id id, Base::Access& access) override;
 
-	ut::SharedPtr<ui::Frontend::Thread> ui_thread;
 	ut::SharedPtr<Device::Thread> render_thread;
 	ut::UniquePtr<Engine> engine;
 };

@@ -25,13 +25,21 @@ Theme::Theme(ColorScheme scheme)
 		secondary_tab_color = ut::Color<3, ut::byte>(65, 65, 76);
 		button_hover_color = ut::Color<3, ut::byte>(66, 66, 69);
 		button_push_color = ut::Color<3, ut::byte>(0, 122, 204);
+		input_color = ut::Color<3, ut::byte>(39, 39, 39);
 		viewport_hover_color = ut::Color<3, ut::byte>(115, 115, 120);
 		viewport_focus_color = ut::Color<3, ut::byte>(192, 175, 23);
-		window_caption_color = ut::Color<3, ut::byte>(51, 51, 55);
-		caption_text_color = ut::Color<3, ut::byte>(100, 100, 110);
-		caption_icon_color = ut::Color<3, ut::byte>(240, 240, 243);
-		focus_border_color = ut::Color<3, ut::byte>(0, 122, 204);
-		unfocus_border_color = ut::Color<3, ut::byte>(66, 66, 69);
+		break;
+	case ColorScheme::light:
+		background_color = ut::Color<3, ut::byte>(238, 238, 242);
+		foreground_color = ut::Color<3, ut::byte>(52, 52, 52);
+		frame_color = ut::Color<3, ut::byte>(228, 228, 232);
+		primary_tab_color = ut::Color<3, ut::byte>(209, 208, 218);
+		secondary_tab_color = ut::Color<3, ut::byte>(221, 221, 228);
+		button_hover_color = ut::Color<3, ut::byte>(201, 222, 245);
+		button_push_color = ut::Color<3, ut::byte>(140, 181, 224);
+		input_color = ut::Color<3, ut::byte>(255, 255, 255);
+		viewport_hover_color = ut::Color<3, ut::byte>(75, 155, 120);
+		viewport_focus_color = ut::Color<3, ut::byte>(250, 175, 23);
 		break;
 	}
 	
@@ -48,13 +56,47 @@ void Theme::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot.Add(secondary_tab_color, "secondary_tab_color");
 	snapshot.Add(button_hover_color, "button_hover_color");
 	snapshot.Add(button_push_color, "button_push_color");
+	snapshot.Add(input_color, "input_color");
 	snapshot.Add(viewport_hover_color, "viewport_hover_color");
 	snapshot.Add(viewport_focus_color, "viewport_focus_color");
-	snapshot.Add(window_caption_color, "window_caption_color");
-	snapshot.Add(caption_text_color, "caption_text_color");
-	snapshot.Add(caption_icon_color, "caption_icon_color");
-	snapshot.Add(focus_border_color, "focus_border_color");
-	snapshot.Add(unfocus_border_color, "unfocus_border_color");
+}
+
+// Replaces original FLTK color scheme with own colors.
+void Theme::ApplyToFltk() const
+{
+	// set scheme
+	Fl::scheme("base");
+
+	// set colors
+	Fl::background(background_color.R(),
+	               background_color.G(),
+	               background_color.B());
+
+	Fl::background2(background_color.R(),
+	                background_color.G(),
+	                background_color.B());
+
+	Fl::foreground(foreground_color.R(),
+	               foreground_color.G(),
+	               foreground_color.B());
+
+	Fl::set_color(FL_LIGHT3,
+	              static_cast<ut::byte>(foreground_color.R() * 0.7f),
+	              static_cast<ut::byte>(foreground_color.G() * 0.7f),
+	              static_cast<ut::byte>(foreground_color.B() * 0.7f));
+
+	// tab
+	Fl::set_color(55, primary_tab_color.R(), primary_tab_color.G(), primary_tab_color.B());
+
+	// frame
+	Fl::set_color(32, background_color.R(), background_color.G(), background_color.B());
+	Fl::set_color(42, frame_color.R(), frame_color.G(), frame_color.B());
+	Fl::set_color(44, frame_color.R(), frame_color.G(), frame_color.B());
+	Fl::set_color(51, background_color.R(), background_color.G(), background_color.B());
+	Fl::set_color(54, frame_color.R(), frame_color.G(), frame_color.B());
+
+	// select from combo box color
+	Fl::set_color(15, frame_color.R(), frame_color.G(), frame_color.B());
 }
 
 //----------------------------------------------------------------------------//

@@ -1127,8 +1127,7 @@ VkAttachmentStoreOp ConvertStoreOpToVulkan(RenderTargetSlot::StoreOperation stor
 
 //----------------------------------------------------------------------------//
 // Constructor.
-Device::Device(ut::SharedPtr<ui::Frontend::Thread> ui_frontend,
-               const ut::String& gpu_name) : PlatformDevice(gpu_name)
+Device::Device(const ut::String& gpu_name) : PlatformDevice(gpu_name)
 {
 	info.max_uniform_buffer_size = gpu_properties.limits.maxUniformBufferRange;
 	info.max_storage_buffer_size = gpu_properties.limits.maxStorageBufferRange;

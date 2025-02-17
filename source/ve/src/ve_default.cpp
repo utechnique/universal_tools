@@ -25,24 +25,47 @@ Pipeline GenDefaultPipeline()
 		config.Save();
 	}
 
-	// create ui window
+	// create ui
 	ut::UniquePtr<ui::Frontend> ui_frontend = ut::MakeUnique<ui::PlatformFrontend>();
+#if VE_DESKTOP
+	ui::DesktopFrontend& desktop_frontend = static_cast<ui::DesktopFrontend&>(ui_frontend.GetRef());
+#endif
 	ut::SharedPtr<ui::Frontend::Thread> ui_frontend_thread = ut::MakeShared<ui::Frontend::Thread>(ut::Move(ui_frontend));
 
-    // create render thread
-	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>(ui_frontend_thread, config.gpu);
-
-	// create input state shared among systems
+	// create input manager shared among systems
 	ut::SharedPtr<input::Manager> input_mgr = ut::MakeShared<input::Manager>();
+
+    // create render system
+	ut::SharedPtr<render::Device::Thread> render_thread = ut::MakeShared<render::Device::Thread>(config.gpu);
+	ut::SharedPtr<render::RenderSystem> render_sys = ut::MakeShared<render::RenderSystem>(render_thread);
+	ut::SharedPtr<render::CameraSystem> render_camera_sys = ut::MakeShared<render::CameraSystem>();
+
+	// create input system
+	ut::SharedPtr<input::PollSystem> input_poll_sys = ut::MakeShared<input::PollSystem>(input_mgr);
+
+	// start main window
+#if VE_DESKTOP
+	desktop_frontend.Start();
+#endif
+	
+	// make ui viewports accessible for rendering
+	render_sys->BindViewports(ui_frontend_thread);
+
+	// create all systems depending on ui frontend
+	ut::SharedPtr<ui::Backend> ui_backend_sys = ut::MakeShared<ui::Backend>(ui_frontend_thread);
+	ut::SharedPtr<editor::ViewportCameraSystem> editor_camera_sys =
+		ut::MakeShared<editor::ViewportCameraSystem>(ui_frontend_thread, input_mgr);
+	ut::SharedPtr<editor::ViewportSelectionSystem> editor_selection_sys =
+		ut::MakeShared<editor::ViewportSelectionSystem>(ui_frontend_thread, input_mgr);
 
 	// build a pipeline
 	Pipeline pipeline;
-	pipeline.AddSerial(Pipeline(ut::MakeShared<input::PollSystem>(input_mgr)));
-	pipeline.AddSerial(Pipeline(ut::MakeShared<ui::Backend>(ui_frontend_thread)));
-	pipeline.AddSerial(Pipeline(ut::MakeShared<editor::ViewportCameraSystem>(ui_frontend_thread, input_mgr)));
-	pipeline.AddSerial(Pipeline(ut::MakeShared<editor::ViewportSelectionSystem>(ui_frontend_thread, input_mgr)));
-	pipeline.AddSerial(Pipeline(ut::MakeShared<render::CameraSystem>()));
-	pipeline.AddSerial(Pipeline(ut::MakeShared<render::RenderSystem>(render_thread, ui_frontend_thread)));
+	pipeline.AddSerial(Pipeline(ut::Move(input_poll_sys)));
+	pipeline.AddSerial(Pipeline(ut::Move(ui_backend_sys)));
+	pipeline.AddSerial(Pipeline(ut::Move(editor_camera_sys)));
+	pipeline.AddSerial(Pipeline(ut::Move(editor_selection_sys)));
+	pipeline.AddSerial(Pipeline(ut::Move(render_camera_sys)));
+	pipeline.AddSerial(Pipeline(ut::Move(render_sys)));
 
 	// success
 	return pipeline;

@@ -8,12 +8,9 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Constructor.
-RenderSystem::RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread,
-                           ut::SharedPtr<ui::Frontend::Thread> in_ui_thread) : Base("render")
-                                                                             , render_thread(ut::Move(in_render_thread))
-                                                                             , ui_thread(ut::Move(in_ui_thread))
+RenderSystem::RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread) : Base("render")
+                                                                           , render_thread(ut::Move(in_render_thread))
 {
-	UT_ASSERT(ui_thread);
 	UT_ASSERT(render_thread);
 
 	// create viewport manager
@@ -27,10 +24,6 @@ RenderSystem::RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread,
 	// initialize render engine
 	render_thread->Enqueue([&](Device& device) { engine = ut::MakeUnique<Engine>(device, ut::Move(vp_mgr)); });
 
-	// ask render thread to create display, but the task must be scheduled from the ui thread
-	// to synchronize them both
-	ui_thread->Enqueue([&](ui::Frontend& frontend) { engine->OpenViewports(frontend); });
-
 	ut::log.Lock() << "Render engine is ready in "
 	               << timer.GetTime<ut::time::Unit::second>()
 	               << "s." << ut::cret;
@@ -40,6 +33,23 @@ RenderSystem::RenderSystem(ut::SharedPtr<Device::Thread> in_render_thread,
 RenderSystem::~RenderSystem()
 {
 	render_thread->Enqueue([&](Device& device) { device.WaitIdle(); engine.Delete(); });
+}
+
+// Makes UI viewports accessible for rendering.
+void RenderSystem::BindViewports(ut::SharedPtr<ui::Frontend::Thread> ui_thread)
+{
+	UT_ASSERT(ui_thread);
+
+	ut::time::Counter timer;
+	timer.Start();
+
+	// ask render thread to create display, but the task must be scheduled from the ui thread
+	// to synchronize them both
+	ui_thread->Enqueue([&](ui::Frontend& frontend) { engine->OpenViewports(frontend); });
+
+	ut::log.Lock() << "Render engine updated viewports in "
+	               << timer.GetTime<ut::time::Unit::second>()
+	               << "s." << ut::cret;
 }
 
 // Draws all renderable components.

@@ -25,7 +25,7 @@ void HideWindow(void* wnd_ptr)
 }
 
 //----------------------------------------------------------------------------//
-// Constructor.
+// Constructor. Simply initializes base FLTK window.
 DesktopFrontend::MainWindow::MainWindow(int x, int y,
                                         int w, int h,
                                         const char* title,
@@ -34,11 +34,17 @@ DesktopFrontend::MainWindow::MainWindow(int x, int y,
                                                             , frontend(desktop_frontend)
 {}
 
-// Overriden handle method.
+// Overriden draw method. Sets @window_ready to 'true' thus informing
+// the main UI thread that all internal widgets are ready for interactions.
+void DesktopFrontend::MainWindow::draw()
+{
+	Window::draw();
+	frontend.window_ready.Store(true);
+}
+
+// Overriden handle method. Processes custom keyboard callbacks.
 int DesktopFrontend::MainWindow::handle(int event)
 {
-	frontend.window_ready.Store(true);
-
 	if (event == FL_KEYBOARD)
 	{
 		const ut::String key(Fl::event_text());
@@ -132,16 +138,12 @@ void DesktopFrontend::MainWindow::BindKeyboardHotkeyCallback(const ut::String& k
 }
 
 //----------------------------------------------------------------------------//
-// Constructor.
-DesktopFrontend::DesktopFrontend() : window_ready(false), exit(false)
+// Constructor. Loads configuration file and starts FLTK thread.
+DesktopFrontend::DesktopFrontend() : window_ready(false)
+                                   , exit(false)
+                                   , cfg(LoadCfg().MoveOrThrow())
 {
 	fltk_thread = ut::MakeUnique<ut::Thread>([this] { this->Run(); });
-
-	// wait until the main window appears on screen
-	while (!window_ready.Read())
-	{
-		ut::this_thread::Sleep(1);
-	}
 }
 
 // Destructor, hides main window and waits until fltk thread is finished.
@@ -152,7 +154,7 @@ DesktopFrontend::~DesktopFrontend()
 }
 
 //----------------------------------------------------------------------------->
-// Initialization.
+// Initialization. Applies FLTK color scheme and shows the @startup_window.
 ut::Optional<ut::Error> DesktopFrontend::Initialize()
 {
     // enable multithreading for XLib
@@ -160,73 +162,46 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
     XInitThreads();
 #endif
 
-	// get configuration copy
-	ut::Result<Config<Settings>, ut::Error> cfg = LoadCfg();
-	if (!cfg)
-	{
-		return cfg.MoveAlt();
-	}
+	// apply fltk theme
+	cfg.theme.ApplyToFltk();
 
-	// get theme
-	const Theme& theme = cfg->theme;
-
-	// set scheme
-	Fl::scheme("base");
-
-	// set colors
-	Fl::background(theme.background_color.R(),
-	               theme.background_color.G(),
-	               theme.background_color.B());
-
-	Fl::background2(theme.background_color.R(),
-	                theme.background_color.G(),
-	                theme.background_color.B());
-
-	Fl::foreground(theme.foreground_color.R(),
-	               theme.foreground_color.G(),
-	               theme.foreground_color.B());
-
-	Fl::set_color(FL_LIGHT3,
-	              static_cast<ut::byte>(theme.foreground_color.R() * 0.7f),
-	              static_cast<ut::byte>(theme.foreground_color.G() * 0.7f),
-	              static_cast<ut::byte>(theme.foreground_color.B() * 0.7f));
-
-	// tab
-	Fl::set_color(55, theme.primary_tab_color.R(), theme.primary_tab_color.G(), theme.primary_tab_color.B());
-
-	// frame
-	Fl::set_color(32, theme.background_color.R(), theme.background_color.G(), theme.background_color.B());
-	Fl::set_color(42, theme.frame_color.R(), theme.frame_color.G(), theme.frame_color.B());
-	Fl::set_color(44, theme.frame_color.R(), theme.frame_color.G(), theme.frame_color.B());
-	Fl::set_color(51, theme.background_color.R(), theme.background_color.G(), theme.background_color.B());
-	Fl::set_color(54, theme.frame_color.R(), theme.frame_color.G(), theme.frame_color.B());
+	// startup window
+	startup_window = ut::MakeUnique<StartupWindow>();
 
 	// independent modules
-	entity_browser = ut::MakeUnique<EntityBrowser>(cfg->window.offset.X(),
-	                                               cfg->window.offset.Y(),
+	entity_browser = ut::MakeUnique<EntityBrowser>(cfg.window.offset.X(),
+	                                               cfg.window.offset.Y(),
 	                                               EntityBrowser::skDefaultWidth,
 	                                               EntityBrowser::skDefaultHeight,
-	                                               theme);
+	                                               cfg.theme);
 	entity_browser->hide();
 	entity_browser->end();
 
+	// success
+	return ut::Optional<ut::Error>();
+}
+
+//----------------------------------------------------------------------------->
+// Creates the main @window and closes the @startup_window.
+void DesktopFrontend::CreateMainWindow()
+{
 	// create main window
-	window = ut::MakeUnique<MainWindow>(cfg->window.offset.X(),
-	                                    cfg->window.offset.Y(),
-	                                    cfg->window.extent.X(),
-	                                    cfg->window.extent.Y(),
+	window = ut::MakeUnique<MainWindow>(cfg.window.offset.X(),
+	                                    cfg.window.offset.Y(),
+	                                    cfg.window.extent.X(),
+	                                    cfg.window.extent.Y(),
 	                                    skTitle,
 	                                    *this,
-	                                    cfg->theme);
+	                                    cfg.theme);
 	window->size_range(skMinWidth, skMinHeight);
 	window->callback(DesktopFrontend::OnCloseCallback, this);
-	window->BindKeyboardHotkeyCallback(cfg->hotkeys.show_properties, [&]() { ShowSelectedEntitiesInEntityBrowser(); });
+	window->BindKeyboardHotkeyCallback(cfg.hotkeys.show_properties, [&]() { ShowSelectedEntitiesInEntityBrowser(); });
 
 	// menu
-	menu = ut::MakeUnique<MenuBar>(cfg.Get(), 0, 0, window->w(), entity_browser.GetRef());
+	menu = ut::MakeUnique<MenuBar>(cfg, 0, 0, window->w(), entity_browser.GetRef());
 
 	// viewport container
-	viewport_area = ut::MakeUnique<ViewportArea>(cfg.Get(),
+	viewport_area = ut::MakeUnique<ViewportArea>(cfg,
 	                                             0,
 	                                             menu->h(),
 	                                             window->w(),
@@ -244,21 +219,35 @@ ut::Optional<ut::Error> DesktopFrontend::Initialize()
 	window->take_focus();
 
 	// select layout
-	viewport_area->ChangeLayout(cfg->layout_id);
+	viewport_area->ChangeLayout(cfg.layout_id);
 
 	// update viewports according to the cfg data
-	viewport_area->ResizeViewports(cfg->viewports);
-	viewport_area->SetViewportProjections(cfg->projections);
-	viewport_area->SetViewportRenderModes(cfg->render_modes);
+	viewport_area->ResizeViewports(cfg.viewports);
+	viewport_area->SetViewportProjections(cfg.projections);
+	viewport_area->SetViewportRenderModes(cfg.render_modes);
 
 	// maximize the main window if needed
-	if (cfg->maximized)
+	if (cfg.maximized)
 	{
 		window->InitializeMaximized();
 	}
 
-	// success
-	return ut::Optional<ut::Error>();
+	// close startup window
+	startup_window->hide();
+}
+
+//----------------------------------------------------------------------------->
+// Schedules CreateMainWindow() callback to the FLTK thread
+// and waits for a result.
+void DesktopFrontend::Start()
+{
+	Fl::awake([](void* ptr) {static_cast<DesktopFrontend*>(ptr)->CreateMainWindow(); }, this);
+
+	// wait until the main window appears on screen
+	while (!window_ready.Read())
+	{
+		ut::this_thread::Sleep(1);
+	}
 }
 
 //----------------------------------------------------------------------------->

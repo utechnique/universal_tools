@@ -8,9 +8,9 @@ START_NAMESPACE(ve)
 START_NAMESPACE(editor)
 //----------------------------------------------------------------------------//
 // Constructor.
-ViewportCameraSystem::ViewportCameraSystem(ut::SharedPtr<ui::Frontend::Thread> ui_frontend_thread,
+ViewportCameraSystem::ViewportCameraSystem(ut::SharedPtr<ui::Frontend::Thread> ui_thread,
                                            ut::SharedPtr<input::Manager> input_mgr_ptr) :
-	Base("editor_viewport_cameras"), input_mgr(ut::Move(input_mgr_ptr)), ui_thread(ut::Move(ui_frontend_thread))
+	Base("editor_viewport_cameras"), input_mgr(ut::Move(input_mgr_ptr))
 {
 	ui_thread->Enqueue([&](ui::Frontend& frontend) { InitializeViewports(frontend); });
 }
@@ -77,7 +77,7 @@ CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
 	// a new entity must be created if desired camera doesn't exist
 	if (!entity_id)
 	{
-		commands.Add(CreateCamera(viewport_id, ut::Move(desired_name)).MoveOrThrow());
+		commands.Add(CreateCamera(viewport_id, mode, ut::Move(desired_name)).MoveOrThrow());
 		return commands;
 	}
 
@@ -108,7 +108,7 @@ CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
 	}
 
 	// update camera properties that are not affected by user input
-	UpdateCamera(transform, camera, render_view.Get(), mode, viewport_id);
+	UpdateCamera(transform, camera, render_view.Get(), mode);
 
 	// check if input is allowed
 	if (!mode.is_interactive)
@@ -145,12 +145,12 @@ CmdArray ViewportCameraSystem::ProcessViewport(Base::Access& access,
 //    @param camera - reference to the camera component.
 //    @param render - reference to the render component.
 //    @param mode - const reference to the mode of the associated viewport.
-//    @param viewport_id - id of the viewport associated with the camera.
+//    @param use_resize_delay - indicates if to resize render view immediately.
 void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
                                         CameraComponent& camera,
                                         render::View& render_view,
                                         const ui::Viewport::Mode& mode,
-                                        ui::Viewport::Id viewport_id)
+                                        bool force_resize)
 {
 	
 
@@ -178,7 +178,7 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 			const bool update_time_set = mode.update_time_ms != 0;
 			const bool elapsed_enough_time = ut::time::GetTime() - mode.update_time_ms >=
 			                                 skResolutionUpdateIntervalMs;
-			if (resolution_changed && update_time_set && elapsed_enough_time)
+			if (force_resize || (resolution_changed && update_time_set && elapsed_enough_time))
 			{
 				desired_width = mode.width;
 				desired_height = mode.height;
@@ -215,7 +215,9 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 		desired_height = mode.height;
 	}
 
-	if (render_view.width != desired_width || render_view.height != desired_height)
+	if (force_resize ||
+	    render_view.width != desired_width ||
+	    render_view.height != desired_height)
 	{
 		render_view.width = desired_width;
 		render_view.height = desired_height;
@@ -388,45 +390,58 @@ void ViewportCameraSystem::ProcessOrthographicCameraInput(TransformComponent& tr
 //----------------------------------------------------------------------------->
 // Creates a new camera entity.
 //    @param viewport_id - id of the viewport associated with a new camera.
+// 	  @param mode - const reference to the mode of the associated viewport.
 //    @param name - name of the entity.
 //    @return - ve::CmdAddEntity command or ut::Error.
 ut::Result<ut::UniquePtr<Cmd>, ut::Error> ViewportCameraSystem::CreateCamera(ui::Viewport::Id viewport_id,
+                                                                             const ui::Viewport::Mode& mode,
                                                                              ut::String entity_name)
 {
-	ut::Array< ut::UniquePtr<ve::Component> > components;
-
-	// transform
-	TransformComponent transform_component;
-	transform_component.translation = ut::Vector<3>(0);
-	if (!components.Add(ut::MakeUnique<TransformComponent>(ut::Move(transform_component))))
-	{
-		return ut::MakeError(ut::error::out_of_memory);
-	}
-
-	// camera
-	if (!components.Add(ut::MakeUnique<CameraComponent>()))
-	{
-		return ut::MakeError(ut::error::out_of_memory);
-	}
-
-	// controller
-	if (!components.Add(ut::MakeUnique<FreeCameraControllerComponent>()))
-	{
-		return ut::MakeError(ut::error::out_of_memory);
-	}
-
-	// render
-	RenderComponent render_component;
+	// create and initialize components
+	ut::UniquePtr<TransformComponent> transform_component = ut::MakeUnique<TransformComponent>();
+	ut::UniquePtr<NameComponent> name_component = ut::MakeUnique<NameComponent>(ut::Move(entity_name));
+	ut::UniquePtr<CameraComponent> camera_component = ut::MakeUnique<CameraComponent>();
+	ut::UniquePtr<FreeCameraControllerComponent> controller_component = ut::MakeUnique<FreeCameraControllerComponent>();
+	ut::UniquePtr<RenderComponent> render_component = ut::MakeUnique<RenderComponent>();
 	render::View render_view;
 	render_view.viewport_id = viewport_id;
-	render_component.units.Add(ut::MakeUnique<render::View>(ut::Move(render_view)));
-	if (!components.Add(ut::MakeUnique<RenderComponent>(ut::Move(render_component))))
+	
+	// initialize a camera according to the viewport's properties
+	constexpr bool resize_immediately = true;
+	UpdateCamera(transform_component.GetRef(),
+	             camera_component.GetRef(),
+	             render_view,
+	             mode,
+	             resize_immediately);
+	render_component->units.Add(ut::MakeUnique<render::View>(ut::Move(render_view)));
+
+	// transform
+	ut::Array< ut::UniquePtr<ve::Component> > components;
+	if (!components.Add(ut::Move(transform_component)))
 	{
 		return ut::MakeError(ut::error::out_of_memory);
 	}
 
 	// name
-	if (!components.Add(ut::MakeUnique<NameComponent>(ut::Move(entity_name))))
+	if (!components.Add(ut::Move(name_component)))
+	{
+		return ut::MakeError(ut::error::out_of_memory);
+	}
+
+	// camera
+	if (!components.Add(ut::Move(camera_component)))
+	{
+		return ut::MakeError(ut::error::out_of_memory);
+	}
+
+	// controller
+	if (!components.Add(ut::Move(controller_component)))
+	{
+		return ut::MakeError(ut::error::out_of_memory);
+	}
+
+	// render
+	if (!components.Add(ut::Move(render_component)))
 	{
 		return ut::MakeError(ut::error::out_of_memory);
 	}

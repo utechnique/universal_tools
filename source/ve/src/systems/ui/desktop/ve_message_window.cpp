@@ -54,9 +54,9 @@ MessageWindow::MessageWindow(int x_position,
 	                                   skOkButtonWidth,
 	                                   skOkButtonHeight,
 	                                  "Ok");
-	ok_button->SetBackgroundColor(Button::State::release, ConvertToFlColor(theme.window_caption_color));
-	ok_button->SetBackgroundColor(Button::State::push, ConvertToFlColor(theme.focus_border_color));
-	ok_button->SetBackgroundColor(Button::State::hover, ConvertToFlColor(theme.unfocus_border_color));
+	ok_button->SetBackgroundColor(Button::State::release, ConvertToFlColor(theme.background_color));
+	ok_button->SetBackgroundColor(Button::State::push, ConvertToFlColor(theme.button_push_color));
+	ok_button->SetBackgroundColor(Button::State::hover, ConvertToFlColor(theme.button_hover_color));
 	ok_button->SetCallback([&]() { hide(); });
 
 	resizable(nullptr);

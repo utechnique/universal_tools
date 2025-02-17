@@ -17,7 +17,8 @@ class Theme : public ut::meta::Reflective
 public:
 	enum class ColorScheme
 	{
-		dark
+		dark,
+		light
 	};
 
 	// Constructor, creates a theme with the provided color scheme.
@@ -27,21 +28,20 @@ public:
 	//    @param snapshot - reference to the reflection tree
 	void Reflect(ut::meta::Snapshot& snapshot);
 
+	// Replaces original FLTK color scheme with own colors.
+	void ApplyToFltk() const;
+
 	// colors
 	ut::Color<3, ut::byte> background_color;
 	ut::Color<3, ut::byte> foreground_color;
+	ut::Color<3, ut::byte> frame_color;
 	ut::Color<3, ut::byte> primary_tab_color;
 	ut::Color<3, ut::byte> secondary_tab_color;
 	ut::Color<3, ut::byte> button_hover_color;
 	ut::Color<3, ut::byte> button_push_color;
-	ut::Color<3, ut::byte> frame_color;
+	ut::Color<3, ut::byte> input_color;
 	ut::Color<3, ut::byte> viewport_hover_color;
 	ut::Color<3, ut::byte> viewport_focus_color;
-	ut::Color<3, ut::byte> window_caption_color;
-	ut::Color<3, ut::byte> caption_text_color;
-	ut::Color<3, ut::byte> caption_icon_color;
-	ut::Color<3, ut::byte> focus_border_color;
-	ut::Color<3, ut::byte> unfocus_border_color;
 };
 
 //----------------------------------------------------------------------------//
