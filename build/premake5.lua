@@ -74,14 +74,6 @@ VE_LIBS =
 	 INPUT_LIBS 
 }
 
--- libraries with ve resources (icons etc.) for final binaries
-VERC_LIBS = {}
-VERC_LIBDIRS = {}
-if WINDOWS then
-    table.insert(VERC_LIBDIRS, "../build/")
-    table.insert(VERC_LIBS, "verc")
-end
-
 -- ve static lib
 utStaticLibProj
 {
@@ -105,57 +97,66 @@ utStaticLibProj
 	}
 }
 
--- ve sandbox
-utApplication
+------------------------------------------------------------
+--                V I R T U A L   M I N D                 --
+------------------------------------------------------------
+
+-- libraries with vm resources (icons etc.) for final binaries
+VMRC_LIBS = {}
+VMRC_LIBDIRS = {}
+if WINDOWS then
+    table.insert(VMRC_LIBDIRS, "../build/")
+    table.insert(VMRC_LIBS, "vmrc")
+end
+
+-- vm static lib
+utStaticLibProj
 {
-	projname = "ve_sandbox",            -- project name
-	projdir  = "ve_sandbox",            -- project folder
+	projname = "vm",                    -- project name
+	targname = "vm",                    -- target name
+	projdir  = "vm",                    -- project folder
 	bindfltk = NO_UI and false or true, -- using fltk library
 	srcfiles =                          -- sources
 	{
-		"../source/ve_sandbox/**.h",
-		"../source/ve_sandbox/**.cpp",
+		"../source/vm/**.h",
+		"../source/vm/**.cpp",
+	},
+	incdir =                            -- includes
+	{
+		"../source/ut/include/",
+	},
+	dependencies =                      -- dependencies
+	{
+		"ut"
+	}
+}
+
+-- vm cradle
+utApplication
+{
+	projname = "cradle",                -- project name
+	projdir  = "cradle",                -- project folder
+	bindfltk = NO_UI and false or true, -- using fltk library
+	srcfiles =                          -- sources
+	{
+		"../source/cradle/**.h",
+		"../source/cradle/**.cpp",
 	},
 	incdir =                            --include directories
 	{
 		VE_INCLUDE_DIRS,
-		"../source/ve_sandbox/include/",
+		"../source/vm/include/",
+		"../source/cradle/include/",
 	},
-	libdir = { RENDER_LIB_DIRS, VERC_LIBDIRS }, --library directories
+	libdir = { RENDER_LIB_DIRS, VMRC_LIBDIRS }, --library directories
 	libdir_32 = { RENDER_LIB_DIRS_32 }, --library directories (32 bits only)
 	libdir_64 = { RENDER_LIB_DIRS_64 }, --library directories (64 bits only)
-	libs = { VE_LIBS, VERC_LIBS }, -- libraries (same names for 32 and 64 bit versions)
+	libs = { VE_LIBS, VMRC_LIBS, "vm" }, -- libraries (same names for 32 and 64 bit versions)
 	libs_release = { RENDER_LIBS_RELEASE }, -- libraries ('Release' only)
 	libs_dbg = { RENDER_LIBS_DBG }, -- libraries ('Debug' only)
 	dependencies = { "ve", "stb", "ut" }, -- dependencies
 	def = { RENDER_DEFS } -- preprocessor
 }
-
-------------------------------------------------------------
---                     S A M P L E S                      --
-------------------------------------------------------------
-
-if BUILD_SAMPLES then
-    utApplication
-    {
-        projname   = "compatibility_test", -- project name
-        projdir    = "samples",            -- project folder
-        consoleapp = true,                 -- console application
-        srcfiles   =                       -- sources
-        {
-            "../source/samples/compatibility_test/*.h",
-            "../source/samples/compatibility_test/*.cpp"
-        },
-        libs =                             -- libraries
-        {
-            "ut"
-        },
-        dependencies =                     -- dependencies
-        {
-            "ut"
-        }
-    }
-end
 
 ------------------------------------------------------------
 --                        F L T K                         --
