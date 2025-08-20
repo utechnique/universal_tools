@@ -373,8 +373,8 @@ private:
 	// parent factory after own registration is done.
 	typedef void(*RegisterCallback)(const String&, const DynamicTypePtr& ptr);
 
-	// AVL tree is used as a container for the (type/name) map as it
-	// provides good search performance.
+	// HashMap is used as a container for the (type/name) map as it
+	// provides good iteration and search performance.
 	typedef HashMap<String, DynamicTypePtr> Map;
 
 	// Adds provided type to the map and asks parents to register this type too.
