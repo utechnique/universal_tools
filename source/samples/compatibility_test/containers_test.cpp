@@ -3,6 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "containers_test.h"
 #include <unordered_map> // to compare with hasmap
+#include <map> // to compare with hasmap
 //----------------------------------------------------------------------------//
 ContainersTestUnit::ContainersTestUnit() : TestUnit("CONTAINERS")
 {
@@ -427,6 +428,13 @@ void AVLTreeTask::Execute()
 	// avltree test, following calls can cause
 	// throwing an error if something went wrong:
 	ut::AVLTree<int, ut::String> tree;
+	ut::Array<int> arr;
+	for (int i = 0; i < 1024; ++i)
+	{
+		int r = rand();
+		tree.Insert(r, ut::String("__") + ut::Print(r));
+		arr.Add(r);
+	}
 	tree.Insert(24, "__24");
 	tree.Insert(2,  "__2");
 	tree.Insert(32, "__32");
@@ -462,37 +470,39 @@ void AVLTreeTask::Execute()
 	tree.Insert(26, "__26_1");
 	tree.Insert(26, "__26_2");
 
-	// try to find a specific value by key
-	report += "searching element by key \'3\'(should be \'__3\'): ";
-	ut::Optional<ut::String&> find_result = tree.Find(128);
-	if (find_result)
+	for (size_t i = arr.Count(); i-- > 0;)
 	{
-		ut::String& str = find_result.Get();
-		report += str;
-		if (str == "__128")
-		{
-			report += ". Success";
-		}
-		else
-		{
-			report += ". Fail";
-			failed_test_counter.Increment();
-		}
+		tree.Remove(arr[i]);
 	}
-	else
-	{
-		report += ut::String("failed to find element\n");
-		failed_test_counter.Increment();
-		return;
-	}
+
+	// array for checking
+	ut::Array<ut::Pair<int, ut::String>> check_arr;
+	check_arr.Add(ut::Pair<int, ut::String>(2, "__2"));
+	check_arr.Add(ut::Pair<int, ut::String>(10, "__10"));
+	check_arr.Add(ut::Pair<int, ut::String>(15, "__15"));
+	check_arr.Add(ut::Pair<int, ut::String>(1, "__1"));
+	check_arr.Add(ut::Pair<int, ut::String>(55, "__55"));
+	check_arr.Add(ut::Pair<int, ut::String>(4, "__4"));
+	check_arr.Add(ut::Pair<int, ut::String>(43, "__43"));
+	check_arr.Add(ut::Pair<int, ut::String>(60, "__60"));
+	check_arr.Add(ut::Pair<int, ut::String>(18, "__18"));
+	check_arr.Add(ut::Pair<int, ut::String>(22, "__22"));
+	check_arr.Add(ut::Pair<int, ut::String>(49, "__49"));
+	check_arr.Add(ut::Pair<int, ut::String>(29, "__29"));
+	check_arr.Add(ut::Pair<int, ut::String>(27, "__27"));
+	check_arr.Add(ut::Pair<int, ut::String>(25, "__25"));
+	check_arr.Add(ut::Pair<int, ut::String>(26, "__26"));
+	check_arr.Add(ut::Pair<int, ut::String>(33, "__33"));
+	check_arr.Add(ut::Pair<int, ut::String>(128, "__128"));
+	check_arr.Add(ut::Pair<int, ut::String>(129, "__129"));
 
 	// iterate avl container forward
 	report += ut::CRet() + "iterating forward: ";
 	ut::AVLTree<int, ut::String>::ConstIterator riterator;
 	int previous_key = 0;
 	for (riterator = tree.Begin(ut::iterator::Position::first);
-	     riterator != tree.End(ut::iterator::Position::last);
-	     ++riterator)
+		riterator != tree.End(ut::iterator::Position::last);
+		++riterator)
 	{
 		const ut::Pair<const int, ut::String>& node = *riterator;
 		report += node.second;
@@ -529,7 +539,7 @@ void AVLTreeTask::Execute()
 	}
 
 	// range based for loop
-	report += ut::CRet() + ". Range based for loop:";
+	report += ut::CRet() + "Range based for loop:";
 	previous_key = 0;
 	for (auto inode : tree)
 	{
@@ -543,6 +553,30 @@ void AVLTreeTask::Execute()
 			return;
 		}
 		previous_key = key;
+	}
+
+	// check if all keys can be found
+	report += ut::CRet() + "Find elements: ";
+	for (const auto& check_el : check_arr)
+	{
+		ut::Optional<ut::String&> check_result = tree.Find(check_el.first);
+		if (check_result)
+		{
+			ut::String& str = check_result.Get();
+			report += str;
+			if (str != check_el.second)
+			{
+				report += ut::CRet() + "Fail. Invalid value for the key " + ut::Print(check_el.first) + ut::CRet();
+				failed_test_counter.Increment();
+				return;
+			}
+		}
+		else
+		{
+			report += ut::CRet() + "Failed to find element with the key " + ut::Print(check_el.first) + ut::CRet();
+			failed_test_counter.Increment();
+			return;
+		}
 	}
 
 	// copy test
@@ -671,7 +705,7 @@ void AVLTreeTask::Execute()
 	al_tree_1 = al_tree_0;
 	al_tree_2 = ut::Move(al_tree_1);
 
-	find_result = al_tree_2.Find(29);
+	ut::Optional<ut::String&> find_result = al_tree_2.Find(29);
 	if (find_result)
 	{
 		ut::String& str = find_result.Get();
@@ -693,6 +727,7 @@ void AVLTreeTask::Execute()
 	}
 
 	ut::AVLTree<int, MapValue> perf_tree;
+	std::map<int, MapValue> std_map;
 	ut::time::Counter counter;
 	ut::Array<int> source = GenerateMapArray(perf_arr_count);
 	const size_t source_count = source.Count();
@@ -706,6 +741,18 @@ void AVLTreeTask::Execute()
 		perf_tree.Insert(source[i], ut::Move(val));
 	}
 	double time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	report += ut::String("Insert(std): ");
+	counter.Start();
+	for (size_t i = 0; i < source_count; i++)
+	{
+		MapValue val;
+		val.ival = source[i];
+
+		std_map.insert(std::pair<int, MapValue>(source[i], std::move(val)));
+	}
+	time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
 
 	report += ut::String("Iteration: ");
@@ -725,6 +772,23 @@ void AVLTreeTask::Execute()
 	time = counter.GetTime();
 	report += ut::Print(time) + "ms. ";
 
+	report += ut::String("Iteration(std): ");
+	counter.Start();
+	std::map<int, MapValue>::iterator std_it;
+	for (std_it = std_map.begin();
+		std_it != std_map.end();
+		std_it++)
+	{
+		std::pair<const int, MapValue>& node = *std_it;
+		node.second.ival++;
+		if (node.second.ival != -1)
+		{
+			node.second.ival--;
+		}
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
 	report += ut::String("Search: ");
 	counter.Start();
 	for (size_t i = 0; i < source_count; i++)
@@ -732,6 +796,22 @@ void AVLTreeTask::Execute()
 		const int key = source[i];
 		ut::Optional<MapValue&> element = perf_tree.Find(key);
 		if (!element || element->ival != key)
+		{
+			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found.";
+			failed_test_counter.Increment();
+			return;
+		}
+	}
+	time = counter.GetTime();
+	report += ut::Print(time) + "ms. ";
+
+	report += ut::String("Search(std): ");
+	counter.Start();
+	for (size_t i = 0; i < source_count; i++)
+	{
+		const int key = source[i];
+		std::map<int, MapValue>::iterator element = std_map.find(key);
+		if (element == std_map.end() || element->second.ival != key)
 		{
 			report += ut::String("FAILED! Element ") + ut::Print(key) + " is invalid or was not found.";
 			failed_test_counter.Increment();
@@ -1173,13 +1253,6 @@ ut::String HashMapTest()
 		return report;
 	}
 	report += ut::String("(ok).\n");
-
-	report += ut::String("Iteration (range-based for loop): ");
-	const IntHashMapType& cmapref = map;
-	for (const ut::Pair<const int, MapValue>& e : cmapref)
-	{
-		report += ut::Print(e.GetSecond().ival) + " ";
-	}
 
 	// success
 	return report;
