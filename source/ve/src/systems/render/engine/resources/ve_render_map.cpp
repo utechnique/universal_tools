@@ -9,6 +9,7 @@ UT_REGISTER_TYPE(ve::render::Resource, ve::render::Map, "map")
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
+const char* ResourceCreator<Map>::skTypeChecker = "checker";
 const char* ResourceCreator<Map>::skTypeSolid = "solid";
 
 //----------------------------------------------------------------------------//
@@ -34,157 +35,40 @@ ResourceCreator<Map>::ResourceCreator(Device& in_device,
 // Creates a map according to the provided name, path or generator prompt.
 ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Create(const ut::String& name)
 {
-	const bool is_generator_prompt = Resource::GeneratorPrompt::Check(name);
-	if (is_generator_prompt)
+	auto create = [&](const ut::String& map_name) -> ut::Result<RcRef<Map>, ut::Error>
 	{
-		return Generate(name);
-	}
-
-	ut::Result<Image, ut::Error> load_img_result = img_loader.Load(name);
-	if (!load_img_result)
-	{
-		return ut::MakeError(load_img_result.MoveAlt());
-	}
-
-	return rc_mgr.AddResource<Map>(Map(load_img_result.Move()), name);
-}
-
-// Generates a map filled with solid color.
-//    @param color - color to fill the map.
-//    @param img_type - image type.
-// 	  @param format - image pixel format.
-//    @param width - width in pixels.
-//    @param height - height in pixels.
-//    @param depth - depth in pixels.
-//    @param mip_count - number of mips, 0 means full tail.
-// 	  @param name - optional string containing a name of the final
-//                  resource, so that this map could be found by calling
-//                  ve::render::ResourceManager::Acquire() function.
-//    @return - resource reference or ut::Error if failed.
-ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::CreateFromSolidColor(const ut::Color<4, ut::byte>& color,
-                                                                             Image::Type img_type,
-                                                                             pixel::Format format,
-                                                                             ut::uint32 width,
-                                                                             ut::uint32 height,
-                                                                             ut::uint32 depth,
-                                                                             ut::uint32 mip_count,
-                                                                             ut::Optional<ut::String> name)
-{
-	Image::Info img_info;
-	img_info.format = pixel::Format::r8g8b8a8_unorm;
-	img_info.usage = render::memory::Usage::gpu_immutable;
-	img_info.width = width;
-	img_info.height = height;
-	img_info.depth = depth;
-	img_info.mip_count = mip_count;
-
-	// validate texture type
-	const bool is_cubemap = img_type == Image::Type::cubic;
-	if (is_cubemap || img_info.type == Image::Type::planar)
-	{
-		img_info.depth = 1;
-	}
-	else if (img_info.type == Image::Type::linear)
-	{
-		img_info.height = 1;
-		img_info.depth = 1;
-	}
-
-	// calculate pixel size
-	const ut::uint32 pixel_size = pixel::GetSize(img_info.format);
-	if (pixel_size == 0)
-	{
-		return ut::MakeError(ut::error::invalid_arg, "Cannot generate ve::render::Map resource with zero pixel size.");
-	}
-
-	// calculate mip count
-	ut::uint32 mip_id = 0;
-	ut::uint32 face_size = 0;
-	ut::uint32 mip_width = img_info.width;
-	ut::uint32 mip_height = img_info.height;
-	ut::uint32 mip_depth = img_info.depth;
-	while (img_info.mip_count == 0 || mip_id < img_info.mip_count)
-	{
-		face_size += pixel_size * mip_depth * mip_width * mip_height;
-
-		mip_width /= 2;
-
-		if (img_info.type != Image::Type::linear)
+		const bool is_generator_prompt = Resource::GeneratorPrompt::Check(map_name);
+		if (is_generator_prompt)
 		{
-			mip_height /= 2;
+			return Generate(map_name);
 		}
 
-		if (img_info.type != Image::Type::linear &&
-			img_info.type != Image::Type::planar &&
-			img_info.type != Image::Type::cubic)
+		ut::Result<Image, ut::Error> load_img_result = img_loader.Load(map_name);
+		if (!load_img_result)
 		{
-			mip_depth /= 2;
+			return ut::MakeError(load_img_result.MoveAlt());
 		}
 
-		mip_id++;
 
-		if (mip_width == 0 || mip_height == 0 || mip_depth == 0)
-		{
-			break;
-		}
-	}
-	img_info.mip_count = mip_id;
+		return AddImgToRcMgr(load_img_result.Move(), map_name);
+	};
 
-	// initialize image data
-	const ut::uint32 face_count = is_cubemap ? 6 : 1;
-	img_info.data.Resize(face_count * face_size);
-	ut::Color<4, ut::byte>* pixel = reinterpret_cast<ut::Color<4, ut::byte>*>(img_info.data.GetAddress());
-	for (ut::uint32 face = 0; face < face_count; face++)
+	ut::Result<RcRef<Map>, ut::Error> result = create(name);
+	if (!result)
 	{
-		mip_width = img_info.width;
-		mip_height = img_info.height;
-		mip_depth = img_info.depth;
-
-		for (ut::uint32 mip = 0; mip < img_info.mip_count; mip++)
-		{
-			for (size_t i = 0; i < mip_depth; i++)
-			{
-				for (size_t j = 0; j < mip_height; j++)
-				{
-					for (size_t k = 0; k < mip_width; k++)
-					{
-						*pixel = color;
-						pixel++;
-					}
-				}
-			}
-
-			mip_width = ut::Max<ut::uint32>(mip_width / 2, 1);
-			mip_height = ut::Max<ut::uint32>(mip_height / 2, 1);
-			mip_depth = ut::Max<ut::uint32>(mip_depth / 2, 1);
-		}
+		ut::log.Lock() << "Failed to load a render resource (map): " << name << ut::cret;
+		return create(ut::String(Resource::GeneratorPrompt::skStarter) + skTypeChecker);
 	}
 
-	// create final gpu image
-	ut::Result<Image, ut::Error> image = device.CreateImage(ut::Move(img_info));
-	if (!image)
-	{
-		return ut::MakeError(image.MoveAlt());
-	}
-
-	return rc_mgr.AddResource<Map>(Map(image.Move()), ut::Move(name));
+	return result;
 }
 
 // Generates a map using provided generator prompt.
-// Acceptable @prompt attributes are:
-//  'w': width in pixels, must be unsigned integer, default is 0.
-//  'h': height in pixels, must be unsigned integer, default is 0.
-//  'd': depth in pixels, must be unsigned integer, default is 0.
-//  't': map type, valid values are '1d', '2d', '3d' and 'cube'.
-//  'r': red color, must be an integer from 0 to 255, default is 0.
-//  'g': green color, must be an integer from 0 to 255, default is 0.
-//  'b': blue color, must be an integer from 0 to 255, default is 0.
-//  'a': alpha color, must be an integer from 0 to 255, default is 255.
-//  'm': number of mips, must be unsigned integer, 0 means full tail,
-//  	    default value is 0.
-//  'c': named color, see ResourceCreator<Map>::GenColorNameMap()
-//       for details, this parameter is optional and can override or
-// 	     be used instead of 'r', 'g' and 'b' parameters.
+// Acceptable @prompt types are:
+//  1) ve::render::ResourceCreator<Map>::skTypeSolid, see
+//     ve::render::ResourceCreator<Map>::GenerateSolidColorMap() for
+//     acceptable attributes.
+//  2) ve::render::ResourceCreator<Map>::skTypeChecker, without attributes.
 ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Generate(const ut::String& prompt)
 {
 	// parse the prompt into the map type and separate attributes
@@ -196,15 +80,39 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Generate(const ut::Strin
 		return ut::MakeError(prompt_parse_result.MoveAlt());
 	}
 
-	// extract map type
+	// extract and process map type
 	const ut::String map_type(prompt_parse_result.Move());
-
-	// only solid type is supported for now
-	if (map_type != skTypeSolid)
+	if (map_type == skTypeSolid)
 	{
-		return ut::MakeError(ut::error::not_supported);
+		return GenerateSolidColorMap(generator_attributes, prompt);
+	}
+	else if (map_type == skTypeChecker)
+	{
+		return GenerateCheckerMap();
 	}
 
+	// fail if type is not recognized
+	return ut::MakeError(ut::error::not_supported);
+}
+
+// Generates a map filled with solid color.
+// Acceptable @attributes are:
+//  'w': width in pixels, must be unsigned integer, default is 0.
+//  'h': height in pixels, must be unsigned integer, default is 0.
+//  'd': depth in pixels, must be unsigned integer, default is 0.
+//  't': map type, valid values are '1d', '2d', '3d' and 'cube'.
+//  'r': red color, must be an integer from 0 to 255, default is 0.
+//  'g': green color, must be an integer from 0 to 255, default is 0.
+//  'b': blue color, must be an integer from 0 to 255, default is 0.
+//  'a': alpha color, must be an integer from 0 to 255, default is 255.
+//  'm': number of mips, must be unsigned integer, 0 means full tail,
+//       default value is 0.
+//  'c': named color, see ResourceCreator<Map>::GenColorNameMap()
+//       for details, this parameter is optional and can override or
+// 	     be used instead of 'r', 'g' and 'b' parameters.
+ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateSolidColorMap(const Resource::GeneratorPrompt::Attributes& attributes,
+                                                                              ut::Optional<ut::String> name)
+{
 	// map parameters
 	ut::String type = "2d";
 	ut::uint32 width = 1;
@@ -214,49 +122,96 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Generate(const ut::Strin
 	ut::Color<4, ut::byte> color(0, 0, 0, 255);
 
 	// update parameters using generator prompt attributes
-	for (const Resource::GeneratorPrompt::Attribute& attribute : generator_attributes)
+	for (const Resource::GeneratorPrompt::Attribute& attribute : attributes)
 	{
 		switch (attribute.type)
 		{
-			case 'w': width = ut::Scan<ut::uint32>(attribute.value); break;
-			case 'h': height = ut::Scan<ut::uint32>(attribute.value); break;
-			case 'd': depth = ut::Scan<ut::uint32>(attribute.value); break;
-			case 't': type = attribute.value; break;
-			case 'r': color.R() = ut::Scan<ut::byte>(attribute.value); break;
-			case 'g': color.G() = ut::Scan<ut::byte>(attribute.value); break;
-			case 'b': color.B() = ut::Scan<ut::byte>(attribute.value); break;
-			case 'a': color.A() = ut::Scan<ut::byte>(attribute.value); break;
-			case 'm': mip_count = ut::Scan<ut::uint32>(attribute.value); break;
-			case 'c':
+		case 'w': width = ut::Scan<ut::uint32>(attribute.value); break;
+		case 'h': height = ut::Scan<ut::uint32>(attribute.value); break;
+		case 'd': depth = ut::Scan<ut::uint32>(attribute.value); break;
+		case 't': type = attribute.value; break;
+		case 'r': color.R() = ut::Scan<ut::byte>(attribute.value); break;
+		case 'g': color.G() = ut::Scan<ut::byte>(attribute.value); break;
+		case 'b': color.B() = ut::Scan<ut::byte>(attribute.value); break;
+		case 'a': color.A() = ut::Scan<ut::byte>(attribute.value); break;
+		case 'm': mip_count = ut::Scan<ut::uint32>(attribute.value); break;
+		case 'c':
+		{
+			ut::Optional<ut::Color<3, ut::byte>&> find_color_result = color_map.Find(attribute.value);
+			if (find_color_result)
 			{
-				ut::Optional<ut::Color<3, ut::byte>&> find_color_result = color_map.Find(attribute.value);
-				if (find_color_result)
-				{
-					color.R() = find_color_result->R();
-					color.G() = find_color_result->G();
-					color.B() = find_color_result->B();
-				}
-			} break;
+				color.R() = find_color_result->R();
+				color.G() = find_color_result->G();
+				color.B() = find_color_result->B();
+			}
+		} break;
 		}
 	}
 
 	// get texture type
 	const bool is_cubemap = type == "cube";
 	Image::Type img_type = is_cubemap ? Image::Type::cubic :
-	                       type == "1d" ? Image::Type::linear :
-	                       type == "2d" ? Image::Type::planar :
-	                       type == "3d" ? Image::Type::volumetric :
-	                       Image::Type::planar;
+		type == "1d" ? Image::Type::linear :
+		type == "2d" ? Image::Type::planar :
+		type == "3d" ? Image::Type::volumetric :
+		Image::Type::planar;
 
 	// generate final resource
-	return CreateFromSolidColor(color,
-	                            img_type,
-	                            pixel::Format::r8g8b8a8_unorm,
-	                            width,
-	                            height,
-	                            depth,
-	                            mip_count,
-	                            prompt);
+	ResourceCreator<Map>::InitInfo map_info;
+	map_info.img_type = Image::Type::planar;
+	map_info.format = pixel::Format::r8g8b8a8_unorm;
+	map_info.width = width;
+	map_info.height = height;
+	map_info.depth = depth;
+	map_info.generate_mips = false;
+	map_info.name = ut::Move(name);
+	ut::Array< ut::Color<4, ut::byte> > pixels(width * height * depth);
+	for (ut::Color<4, ut::byte>& pixel : pixels)
+	{
+		pixel = color;
+	}
+
+	return CreateFromData<4, ut::byte>(map_info, pixels);
+}
+
+// Generates a checker map with ve::render::ResourceCreator<Map>::skTypeChecker
+// resource name.
+ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateCheckerMap()
+{
+	constexpr ut::uint32 checker_size = 256;
+	constexpr ut::uint32 checker_cell_size = 32;
+
+	InitInfo init_info;
+	init_info.img_type = Image::Type::planar;
+	init_info.format = pixel::Format::r8g8b8a8_unorm;
+	init_info.width = checker_size;
+	init_info.height = checker_size;
+	init_info.depth = 1;
+	init_info.mip_count = 0;
+	init_info.generate_mips = true;
+	init_info.name = skTypeChecker;
+
+	ut::Array< ut::Color<4, ut::byte> > pixels(init_info.width * init_info.height);
+	for (ut::uint32 y = 0; y < init_info.height; y++)
+	{
+		for (ut::uint32 x = 0; x < init_info.width; x++)
+		{
+			const bool y_is_even = (y / checker_cell_size) % 2 == 0;
+			const bool cell_is_even = (x / checker_cell_size) % 2 == y_is_even ? 0 : 1;
+			pixels[y * init_info.width + x] = cell_is_even ?
+			                                  ut::Color<4, ut::byte>(255, 0, 255, 255) :
+			                                  ut::Color<4, ut::byte>(0, 0, 0, 255);
+		}
+	}
+
+	return CreateFromData<4, ut::byte>(init_info, pixels);
+}
+
+// Adds provided ve::render::Image object to the resource manager as a ve::render::Map resource.
+ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::AddImgToRcMgr(Image image,
+                                                                      ut::Optional<ut::String> name)
+{
+    return rc_mgr.AddResource<Map>(Map(ut::Move(image)), name);
 }
 
 // Returns a hashmap of color names. Available colors are:

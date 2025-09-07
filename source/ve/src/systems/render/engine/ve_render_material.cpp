@@ -32,42 +32,44 @@ const char* Material::Generator::skTypeSurface = "surface"; // Solid 2d surface.
 ut::Result<Material, ut::Error> Material::Generator::CreateFromPrompt(const ut::String& prompt,
                                                                       ResourceManager& rc_mgr)
 {
-	// check if the prompt start with a special symbol
-	if (!Resource::GeneratorPrompt::Check(prompt))
+	auto gen_from_prompt = [&rc_mgr](const ut::String& prompt) -> ut::Result<Material, ut::Error>
 	{
-		return ut::MakeError(ut::error::invalid_arg);
-	}
-
-	// parse the prompt into the material type and separate attributes
-	Resource::GeneratorPrompt::Attributes generator_attributes;
-	ut::Result<ut::String, ut::Error> prompt_parse_result = Resource::GeneratorPrompt::Parse(prompt,
-	                                                                                         generator_attributes);
-	if (!prompt_parse_result)
-	{
-		return ut::MakeError(prompt_parse_result.MoveAlt());
-	}
-
-	// extract material type
-	const ut::String material_type(prompt_parse_result.Move());
-	if (material_type != skTypeSurface)
-	{
-		return ut::MakeError(ut::error::not_supported);
-	}
-
-	// material parameters
-	ut::Optional<ut::String> diffuse_prompt;
-	ut::String normal_prompt("*solid|r:127|g:127|b:255|a:255");
-	ut::String material_prompt("*solid|r:255|a:255");
-	ut::String color;
-	ut::byte alpha = 255;
-	bool enable_transparency = false;
-	bool unlit = false;
-
-	// update parameters using generator prompt attributes
-	for (const Resource::GeneratorPrompt::Attribute& attribute : generator_attributes)
-	{
-		switch (attribute.type)
+		// check if the prompt start with a special symbol
+		if (!Resource::GeneratorPrompt::Check(prompt))
 		{
+			return ut::MakeError(ut::error::invalid_arg);
+		}
+
+		// parse the prompt into the material type and separate attributes
+		Resource::GeneratorPrompt::Attributes generator_attributes;
+		ut::Result<ut::String, ut::Error> prompt_parse_result = Resource::GeneratorPrompt::Parse(prompt,
+			generator_attributes);
+		if (!prompt_parse_result)
+		{
+			return ut::MakeError(prompt_parse_result.MoveAlt());
+		}
+
+		// extract material type
+		const ut::String material_type(prompt_parse_result.Move());
+		if (material_type != skTypeSurface)
+		{
+			return ut::MakeError(ut::error::not_supported);
+		}
+
+		// material parameters
+		ut::Optional<ut::String> diffuse_prompt;
+		ut::String normal_prompt("*solid|r:127|g:127|b:255|a:255");
+		ut::String material_prompt("*solid|r:255|a:255");
+		ut::String color;
+		ut::byte alpha = 255;
+		bool enable_transparency = false;
+		bool unlit = false;
+
+		// update parameters using generator prompt attributes
+		for (const Resource::GeneratorPrompt::Attribute& attribute : generator_attributes)
+		{
+			switch (attribute.type)
+			{
 			case 'd': diffuse_prompt = attribute.value; break;
 			case 'n': normal_prompt = attribute.value; break;
 			case 'm': material_prompt = attribute.value; break;
@@ -75,62 +77,82 @@ ut::Result<Material, ut::Error> Material::Generator::CreateFromPrompt(const ut::
 			case 'a': alpha = ut::Scan<ut::byte>(attribute.value); break;
 			case 't': enable_transparency = attribute.value == "yes"; break;
 			case 'u': unlit = attribute.value == "yes"; break;
+			}
 		}
-	}
 
-	// process diffuse map parameter
-	if (!diffuse_prompt && color.Length() > 0)
-	{
-		ut::String solid_color_diffuse_prompt = Resource::GeneratorPrompt::skStarter;
-		solid_color_diffuse_prompt += ResourceCreator<Map>::skTypeSolid;
-		solid_color_diffuse_prompt += Resource::GeneratorPrompt::skSeparatorChr0;
-		solid_color_diffuse_prompt += ut::String("c") + Resource::GeneratorPrompt::skValueSeparatorChr + color;
-
-		if (alpha != 255)
+		// process diffuse map parameter
+		if (!diffuse_prompt && color.Length() > 0)
 		{
+			ut::String solid_color_diffuse_prompt = Resource::GeneratorPrompt::skStarter;
+			solid_color_diffuse_prompt += ResourceCreator<Map>::skTypeSolid;
 			solid_color_diffuse_prompt += Resource::GeneratorPrompt::skSeparatorChr0;
-			solid_color_diffuse_prompt += ut::String("a") + Resource::GeneratorPrompt::skValueSeparatorChr + ut::Print(alpha);
+			solid_color_diffuse_prompt += ut::String("c") + Resource::GeneratorPrompt::skValueSeparatorChr + color;
+
+			if (alpha != 255)
+			{
+				solid_color_diffuse_prompt += Resource::GeneratorPrompt::skSeparatorChr0;
+				solid_color_diffuse_prompt += ut::String("a") + Resource::GeneratorPrompt::skValueSeparatorChr + ut::Print(alpha);
+			}
+
+			diffuse_prompt = solid_color_diffuse_prompt;
+		}
+		else if (!diffuse_prompt)
+		{
+			diffuse_prompt = ut::String("*solid|r:255|g:255|b:255|a:255");
 		}
 
-		diffuse_prompt = solid_color_diffuse_prompt;
-	}
-	else if (!diffuse_prompt)
+		// acquire diffuse map
+		ut::Result<RcRef<Map>, ut::Error> diffuse_map = rc_mgr.Acquire<Map>(diffuse_prompt.Get());
+		if (!diffuse_map)
+		{
+			return ut::MakeError(diffuse_map.MoveAlt());
+		}
+
+		// acquire normal map
+		ut::Result<RcRef<Map>, ut::Error> normal_map = rc_mgr.Acquire<Map>(normal_prompt);
+		if (!normal_map)
+		{
+			return ut::MakeError(normal_map.MoveAlt());
+		}
+
+		// acquire material map
+		ut::Result<RcRef<Map>, ut::Error> material_map = rc_mgr.Acquire<Map>(material_prompt);
+		if (!material_map)
+		{
+			return ut::MakeError(material_map.MoveAlt());
+		}
+
+		// initialize material
+		Material material;
+		material.diffuse = diffuse_map.Move();
+		material.normal = normal_map.Move();
+		material.material = material_map.Move();
+		material.alpha = enable_transparency ? Material::Alpha::transparent :
+		                                       Material::Alpha::opaque;
+		material.double_sided = false;
+		material.unlit = unlit;
+
+		return material;
+	};
+
+	ut::Result<Material, ut::Error> result = gen_from_prompt(prompt);
+	if (!result)
 	{
-		diffuse_prompt = ut::String("*solid|r:255|g:255|b:255|a:255");
+		ut::log.Lock() << "Failed to load a render resource (material): " << prompt << ut::cret;
+
+		ut::String checker_material;
+		checker_material.Append(Resource::GeneratorPrompt::skStarterChr);
+		checker_material += skTypeSurface;
+		checker_material.Append(Resource::GeneratorPrompt::skSeparatorChr0);
+		checker_material.Append('d');
+		checker_material.Append(Resource::GeneratorPrompt::skValueSeparatorChr);
+		checker_material.Append(Resource::GeneratorPrompt::skStarterChr);
+		checker_material += ResourceCreator<Map>::skTypeChecker;
+
+		return gen_from_prompt(checker_material);
 	}
 
-	// acquire diffuse map
-	ut::Result<RcRef<Map>, ut::Error> diffuse_map = rc_mgr.Acquire<Map>(diffuse_prompt.Get());
-	if (!diffuse_map)
-	{
-		return ut::MakeError(diffuse_map.MoveAlt());
-	}
-
-	// acquire normal map
-	ut::Result<RcRef<Map>, ut::Error> normal_map = rc_mgr.Acquire<Map>(normal_prompt);
-	if (!normal_map)
-	{
-		return ut::MakeError(normal_map.MoveAlt());
-	}
-
-	// acquire material map
-	ut::Result<RcRef<Map>, ut::Error> material_map = rc_mgr.Acquire<Map>(material_prompt);
-	if (!material_map)
-	{
-		return ut::MakeError(material_map.MoveAlt());
-	}
-
-	// initialize material
-	Material material;
-	material.diffuse = diffuse_map.Move();
-	material.normal = normal_map.Move();
-	material.material = material_map.Move();
-	material.alpha = enable_transparency ? Material::Alpha::transparent :
-	                                       Material::Alpha::opaque;
-	material.double_sided = false;
-	material.unlit = unlit;
-
-	return material;
+	return result;
 }
 
 //----------------------------------------------------------------------------//

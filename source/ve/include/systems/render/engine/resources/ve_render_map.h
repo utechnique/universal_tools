@@ -27,32 +27,88 @@ public:
 template<> class ResourceCreator<Map>
 {
 public:
+	// This structure is used to initialize a map with pixel data.
+	struct InitInfo
+	{
+		Image::Type img_type = Image::Type::planar;
+		pixel::Format format = pixel::Format::r8g8b8a8_unorm;
+		ut::uint32 width = 1;
+		ut::uint32 height = 1;
+		ut::uint32 depth = 1;
+		ut::uint32 mip_count = 0;
+		bool generate_mips = true;
+		ut::Optional<ut::String> name;
+	};
+
 	// Constructor initializes an image loader and a hashmap of color names.
 	ResourceCreator(Device& device, ResourceManager& rc_mgr);
 
 	// Creates a map according to the provided name, path or generator prompt.
 	ut::Result<RcRef<Map>, ut::Error> Create(const ut::String& name);
 
-	// Generates a map filled with solid color.
-	//    @param color - color to fill the map.
-	//    @param img_type - image type.
-	// 	  @param format - image pixel format.
-	//    @param width - width in pixels.
-	//    @param height - height in pixels.
-	//    @param depth - depth in pixels.
-	//    @param mip_count - number of mips, 0 means full tail.
-	// 	  @param name - optional string containing a name of the final
-	//                  resource, so that this map could be found by calling
-	//                  ve::render::ResourceManager::Acquire() function.
+	// Generates a map initialized with provided color data.
+	//    @param init_info - reference to the
+	//                       ve::render::ResourceCreator<Map>::InitInfo object.
+	//    @param data - reference to the array with pixel data for the first mip.
 	//    @return - resource reference or ut::Error if failed.
-	ut::Result<RcRef<Map>, ut::Error> CreateFromSolidColor(const ut::Color<4, ut::byte>& color,
-	                                                       Image::Type img_type = Image::Type::planar,
-	                                                       pixel::Format format = pixel::Format::r8g8b8a8_unorm,
-	                                                       ut::uint32 width = 1,
-	                                                       ut::uint32 height = 1,
-	                                                       ut::uint32 depth = 1,
-	                                                       ut::uint32 mip_count = 1,
-	                                                       ut::Optional<ut::String> name = ut::Optional<ut::String>());
+	template<int channel_count = 4,
+	         typename ChannelType = ut::byte>
+	ut::Result<RcRef<Map>, ut::Error> CreateFromData(const InitInfo& init_info,
+	                                                 const ut::Array< ut::Color<channel_count,
+	                                                                            ChannelType> >& data)
+	{
+		constexpr ut::uint32 dst_pixel_size = sizeof(ut::Color<channel_count, ChannelType>);
+		const ut::uint32 src_pixel_size = pixel::GetSize(init_info.format);
+		if (dst_pixel_size != src_pixel_size)
+		{
+			return ut::MakeError(ut::error::types_not_match);
+		}
+
+		// initialize image info
+		Image::Info img_info;
+		img_info.type = init_info.img_type;
+		img_info.format = init_info.format;
+		img_info.usage = render::memory::Usage::gpu_immutable;
+		img_info.width = init_info.width;
+		img_info.height = init_info.height;
+		img_info.depth = init_info.depth;
+		img_info.mip_count = init_info.mip_count == 0 ?
+		                     ImageLoader::CountMips(img_info.width,
+		                                            img_info.height,
+		                                            img_info.depth) :
+		                     init_info.mip_count;
+
+		// allocate and copy pixel data
+		img_info.data.Resize(data.Count() * dst_pixel_size);
+		ut::memory::Copy(img_info.data.GetAddress(),
+		                 data.GetAddress(),
+		                 img_info.data.GetSize());
+
+		// generate mips
+		if (init_info.generate_mips)
+		{
+			ut::Optional<ut::Error> mip_gen_error = ImageLoader::GenerateMipTail<channel_count,
+			                                                                     ChannelType>(img_info.data,
+			                                                                                  img_info.width,
+			                                                                                  img_info.height,
+			                                                                                  img_info.depth,
+			                                                                                  img_info.mip_count);
+			if (mip_gen_error)
+			{
+				return ut::MakeError(mip_gen_error.Move());
+			}
+		}
+
+		// create final gpu image
+		ut::Result<Image, ut::Error> image = device.CreateImage(ut::Move(img_info));
+		if (!image)
+		{
+			return ut::MakeError(image.MoveAlt());
+		}
+
+		// add this map as a resource
+		return AddImgToRcMgr(image.Move(), init_info.name);
+	}
 
 	// Returns a hashmap of color names. Available colors are:
 	// Red colors:
@@ -98,11 +154,20 @@ public:
 	static ut::HashMap<ut::String, ut::Color<3, ut::byte> > GenColorNameMap();
 
 	// Below is the list of all possible map types generated with generator prompt.
+	static const char* skTypeChecker; // Checkmates texture, not adjustable.
 	static const char* skTypeSolid; // Single color for the whole map.
 
 private:
 	// Generates a map using provided generator prompt.
-	// Acceptable @prompt attributes are:
+	// Acceptable @prompt types are:
+	//  1) ve::render::ResourceCreator<Map>::skTypeSolid, see
+	//     ve::render::ResourceCreator<Map>::GenerateSolidColorMap() for
+	//     acceptable attributes.
+	//  2) ve::render::ResourceCreator<Map>::skTypeChecker, without attributes.
+	ut::Result<RcRef<Map>, ut::Error> Generate(const ut::String& prompt);
+
+	// Generates a map filled with solid color.
+	// Acceptable @attributes are:
 	//  'w': width in pixels, must be unsigned integer, default is 0.
 	//  'h': height in pixels, must be unsigned integer, default is 0.
 	//  'd': depth in pixels, must be unsigned integer, default is 0.
@@ -112,11 +177,19 @@ private:
 	//  'b': blue color, must be an integer from 0 to 255, default is 0.
 	//  'a': alpha color, must be an integer from 0 to 255, default is 255.
 	//  'm': number of mips, must be unsigned integer, 0 means full tail,
-	//  	    default value is 0.
+	//       default value is 0.
 	//  'c': named color, see ResourceCreator<Map>::GenColorNameMap()
 	//       for details, this parameter is optional and can override or
 	// 	     be used instead of 'r', 'g' and 'b' parameters.
-	ut::Result<RcRef<Map>, ut::Error> Generate(const ut::String& prompt);
+	ut::Result<RcRef<Map>, ut::Error> GenerateSolidColorMap(const Resource::GeneratorPrompt::Attributes& attributes,
+	                                                        ut::Optional<ut::String> name);
+
+	// Generates a checker map with ve::render::ResourceCreator<Map>::skTypeChecker
+	// resource name.
+	ut::Result<RcRef<Map>, ut::Error> GenerateCheckerMap();
+
+    // Adds provided ve::render::Image object to the resource manager as a ve::render::Map resource.
+    ut::Result<RcRef<Map>, ut::Error> AddImgToRcMgr(Image image, ut::Optional<ut::String> name);
 
 	// color name map to quickly pick a color by its name
 	ut::HashMap<ut::String, ut::Color<3, ut::byte> > color_map;

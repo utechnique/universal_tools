@@ -22,6 +22,20 @@ ImageLoader::ImageLoader(Device& device_ref) noexcept : device(device_ref)
 {}
 
 //----------------------------------------------------------------------------->
+// Returns the number of mips in a full mip set for the desired metrics.
+//    @param width - width of the first mip in pixels.
+//    @param height - height of the first mip in pixels.
+//    @param depth - depth of the first mip in pixels.
+//    @return - number of mips.
+ut::uint32 ImageLoader::CountMips(ut::uint32 width,
+                                  ut::uint32 height,
+                                  ut::uint32 depth)
+{
+	const float max_size = static_cast<float>(ut::Max(ut::Max(width, height), depth));
+	return static_cast<ut::uint32>(ut::Logarithm2<float>(max_size)) + 1;
+}
+
+//----------------------------------------------------------------------------->
 // Loads an image from file.
 //    @param filename - path to the image to be loaded.
 //    @param info - const reference to the ImageLoader::Info object.
@@ -67,31 +81,17 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 	img_info.width = info.width ? info.width.Get() : width;
 	img_info.height = info.height ? info.height.Get() : height;
 	img_info.depth = 1;
-	img_info.mip_count = info.mip_count ? info.mip_count.Get() : 0;
+	img_info.mip_count = info.mip_count ? info.mip_count.Get() :
+	                     CountMips(img_info.width, img_info.height, 1);
 
-	// calculate mip data
-	ut::uint32 mip_width = img_info.width;
-	ut::uint32 mip_height = img_info.height;
-	ut::uint32 mip_id = 0;
-	ut::uint32 total_size = 0;
-	while (img_info.mip_count == 0 || mip_id < img_info.mip_count)
-	{
-		total_size += mip_width * mip_height;
+	// allocate enough memory for the mip tail
+	const ut::uint32 first_mip_size = img_info.width * img_info.height *
+	                                  pixel::GetSize(img_info.format);
+	const bool has_mip_tail = img_info.mip_count > 1;
+	const ut::uint32 mip_tail_max_size = has_mip_tail ? (first_mip_size / 2 + first_mip_size / 4) : 0;
+	img_info.data.Resize(first_mip_size + mip_tail_max_size);
 
-		mip_width /= 2;
-		mip_height /= 2;
-		mip_id++;
-
-		if (mip_width == 0 || mip_height == 0)
-		{
-			break;
-		}
-	}
-
-	img_info.mip_count = mip_id;
-	img_info.data.Resize(total_size * 4);
-
-	// create first mip
+	// initialize first mip
 	if (img_info.width != width || img_info.height != height)
 	{
 		stbir_resize_uint8(pixels.Get(),
@@ -113,17 +113,18 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 	// generate other mips
 	if (info.high_quality_mips)
 	{
-		GenerateHighQualityMipTail(img_info.data,
-		                           img_info.width,
-		                           img_info.height,
-		                           img_info.mip_count);
+		GenerateHighQualityMipTail2D(img_info.data,
+		                             img_info.width,
+		                             img_info.height,
+		                             img_info.mip_count);
 	}
 	else
 	{
-		GenerateMipTail4x1(img_info.data,
-		                   img_info.width,
-		                   img_info.height,
-		                   img_info.mip_count);
+		GenerateMipTail<4, ut::byte, ut::uint32>(img_info.data,
+		                                         img_info.width,
+		                                         img_info.height,
+		                                         1,
+		                                         img_info.mip_count);
 	}
 
 	// success
@@ -131,81 +132,43 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 }
 
 //----------------------------------------------------------------------------//
-// Generates mip tail using averaging 4 source pixels into
-// the one destination pixel. Fast, but quality is low.
-//    @param data - image data with initialized first mip and
-//                  empty space for the mip tail.
-//    @param width - width of the first mip in pixels.
-//    @param height - height of the first mip in pixels.
-//    @param mip_count - number of mips in a tail.
-void ImageLoader::GenerateMipTail4x1(ut::Array<ut::byte>& data,
-                                     ut::uint32 width,
-                                     ut::uint32 height,
-                                     ut::uint32 mip_count)
-{
-	ut::uint32 prev_mip = 0;
-	ut::uint32 mip_offset = width * height * sizeof(Pixel);
-	ut::uint32 mip_width = width / 2;
-	ut::uint32 mip_height = height / 2;
-
-	for (ut::uint32 mip = 1; mip < mip_count; mip++)
-	{
-		for (ut::uint32 i = 0; i < mip_height; i++)
-		{
-			// calculate offset
-			const ut::uint32 dst_row_offset = mip_offset + i * mip_width * sizeof(Pixel);
-			const ut::uint32 src_row_offset_up = prev_mip + (i * 2) * width * sizeof(Pixel);
-			const ut::uint32 src_row_offset_down = prev_mip + (i * 2 + 1) * height * sizeof(Pixel);
-
-			for (ut::uint32 j = 0; j < mip_width; j++)
-			{
-				const ut::uint32 column_offset = j * sizeof(Pixel);
-
-				// calculate pointers to the source and destination pixels
-				Pixel* dst = reinterpret_cast<Pixel*>(&data[dst_row_offset + column_offset]);
-				Pixel* prev_up = reinterpret_cast<Pixel*>(&data[src_row_offset_up + column_offset * 2]);
-				Pixel* prev_down = reinterpret_cast<Pixel*>(&data[src_row_offset_down + column_offset * 2]);
-
-				// combine 4 source pixels into 1 dst pixel
-				ut::uint32 r = prev_up->R() + prev_up[1].R() + prev_down->R() + prev_down[1].R();
-				ut::uint32 g = prev_up->G() + prev_up[1].G() + prev_down->G() + prev_down[1].G();
-				ut::uint32 b = prev_up->B() + prev_up[1].B() + prev_down->B() + prev_down[1].B();
-				ut::uint32 a = prev_up->A() + prev_up[1].A() + prev_down->A() + prev_down[1].A();
-				*dst = Pixel(r / 4, g / 4, b / 4, a / 4);
-			}
-		}
-
-		prev_mip = mip_offset;
-		width = mip_width;
-		height = mip_height;
-		mip_offset += mip_width * mip_height * sizeof(Pixel);
-		mip_width /= 2;
-		mip_height /= 2;
-	}
-}
-
-//----------------------------------------------------------------------------//
 // Generates mip tail using stb downscaling. Slow, but quality is good.
-//    @param data - image data with initialized first mip and
-//                  empty space for the mip tail.
+//    @param data - array of pixel data with initialized first mip, it's
+//                  better to provide sufficient space for all mips,
+//                  however this array will be expanded internally to
+//                  accomodate all mips anyway.
 //    @param width - width of the first mip in pixels.
 //    @param height - height of the first mip in pixels.
 //    @param mip_count - number of mips in a tail.
-void ImageLoader::GenerateHighQualityMipTail(ut::Array<ut::byte>& data,
-                                             ut::uint32 width,
-                                             ut::uint32 height,
-                                             ut::uint32 mip_count)
+//    @return - optional ut::Error if failed.
+ut::Optional<ut::Error> ImageLoader::GenerateHighQualityMipTail2D(ut::Array<ut::byte>& data,
+                                                                  ut::uint32 width,
+                                                                  ut::uint32 height,
+                                                                  ut::uint32 mip_count)
 {
-	
+	// check if data has enough pixels for the first mip
+	if (data.GetSize() < width * height * sizeof(Pixel))
+	{
+		return ut::Error(ut::error::out_of_bounds);
+	}
+
+	// calculate metrics of the second mip
 	ut::uint32 prev_mip = 0;
 	ut::uint32 prev_mip_w = width;
 	ut::uint32 prev_mip_h = height;
 	ut::uint32 mip_width = width / 2;
 	ut::uint32 mip_height = height / 2;
 	ut::uint32 mip_offset = width * height * sizeof(Pixel);
+
+	// process all mips starting from the second
 	for (ut::uint32 i = 1; i < mip_count; i++)
 	{
-		ut::uint32 mip_size = mip_width * mip_height * sizeof(Pixel);
+		const ut::uint32 mip_size = mip_width * mip_height * sizeof(Pixel);
+		const size_t min_expected_size = mip_offset + mip_size;
+		if (data.GetSize() < min_expected_size)
+		{
+			data.Resize(min_expected_size);
+		}
 
 		stbir_resize_uint8(&data[prev_mip], prev_mip_w, prev_mip_h, 0,
 		                   &data[mip_offset], mip_width, mip_height, 0,
@@ -219,6 +182,9 @@ void ImageLoader::GenerateHighQualityMipTail(ut::Array<ut::byte>& data,
 		mip_width /= 2;
 		mip_height /= 2;
 	}
+
+	// success
+	return ut::Optional<ut::Error>();
 }
 
 //----------------------------------------------------------------------------//

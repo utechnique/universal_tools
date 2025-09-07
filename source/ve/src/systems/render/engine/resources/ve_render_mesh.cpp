@@ -216,28 +216,55 @@ ResourceCreator<Mesh>::ResourceCreator(Device& in_device,
 // Creates a mesh according to the provided name, path or generator prompt.
 ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::Create(const ut::String& name)
 {
-	const bool is_generator_prompt = Resource::GeneratorPrompt::Check(name);
-	if (!is_generator_prompt)
+	auto create = [&](const ut::String& mesh_name) -> ut::Result<RcRef<Mesh>, ut::Error>
 	{
-		return ut::MakeError(ut::error::not_implemented);
+		const bool is_generator_prompt = Resource::GeneratorPrompt::Check(mesh_name);
+		if (!is_generator_prompt)
+		{
+			return ut::MakeError(ut::error::not_implemented);
+		}
+
+		Resource::GeneratorPrompt::Attributes generator_attributes;
+		ut::Result<ut::String, ut::Error> prompt_parse_result = Resource::GeneratorPrompt::Parse(mesh_name,
+		                                                                                         generator_attributes);
+		if (!prompt_parse_result)
+		{
+			return ut::MakeError(prompt_parse_result.MoveAlt());
+		}
+
+		ut::Optional<ut::Function<Generator>&> find_result = generators.Find(prompt_parse_result.Get());
+		if (!find_result)
+		{
+			return ut::MakeError(ut::error::not_implemented);
+		}
+
+		const ut::Function<Generator>& generator = find_result.Get();
+		return generator(mesh_name, generator_attributes, device, rc_mgr);
+	};
+
+	ut::Result<RcRef<Mesh>, ut::Error> result = create(name);
+	if (!result)
+	{
+		ut::log.Lock() << "Failed to load a render resource (mesh): " << name << ut::cret;
+
+		ut::String checker_mesh;
+		checker_mesh.Append(Resource::GeneratorPrompt::skStarterChr);
+		checker_mesh += skTypeBox;
+		checker_mesh.Append(Resource::GeneratorPrompt::skSeparatorChr0);
+		checker_mesh.Append('m');
+		checker_mesh.Append(Resource::GeneratorPrompt::skValueSeparatorChr);
+		checker_mesh.Append(Resource::GeneratorPrompt::skStarterChr);
+		checker_mesh += Material::Generator::skTypeSurface;
+		checker_mesh.Append(Resource::GeneratorPrompt::skSeparatorChr1);
+		checker_mesh.Append('d');
+		checker_mesh.Append(Resource::GeneratorPrompt::skValueSeparatorChr);
+		checker_mesh.Append(Resource::GeneratorPrompt::skStarterChr);
+		checker_mesh += ResourceCreator<Map>::skTypeChecker;
+
+		return create(checker_mesh);
 	}
 
-	Resource::GeneratorPrompt::Attributes generator_attributes;
-	ut::Result<ut::String, ut::Error> prompt_parse_result = Resource::GeneratorPrompt::Parse(name,
-	                                                                                         generator_attributes);
-	if (!prompt_parse_result)
-	{
-		return ut::MakeError(prompt_parse_result.MoveAlt());
-	}
-
-	ut::Optional<ut::Function<Generator>&> find_result = generators.Find(prompt_parse_result.Get());
-	if (!find_result)
-	{
-		return ut::MakeError(ut::error::not_implemented);
-	}
-
-	const ut::Function<Generator>& generator = find_result.Get();
-	return generator(name, generator_attributes, device, rc_mgr);
+	return result;
 }
 
 // Creates a 2D rectangle with vertex format
