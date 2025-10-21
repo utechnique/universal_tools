@@ -696,6 +696,32 @@ public:
 };
 
 //----------------------------------------------------------------------------//
+// Range-based 'for' loop support.
+template<typename NodeType>
+inline typename Array< Tree<NodeType> >::Iterator begin(Tree<NodeType>& tree)
+{
+	return tree.BeginLeaves();
+}
+
+template<typename NodeType>
+inline typename Array< Tree<NodeType> >::Iterator end(Tree<NodeType>& tree)
+{
+	return tree.EndLeaves();
+}
+
+template<typename NodeType>
+inline typename Array< Tree<NodeType> >::ConstIterator begin(const Tree<NodeType>& tree)
+{
+	return tree.BeginLeaves();
+}
+
+template<typename NodeType>
+inline typename Array< Tree<NodeType> >::ConstIterator end(const Tree<NodeType>& tree)
+{
+	return tree.EndLeaves();
+}
+
+//----------------------------------------------------------------------------//
 END_NAMESPACE(ut)
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
