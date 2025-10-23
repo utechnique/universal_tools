@@ -208,15 +208,18 @@ ut::uint64 GetTime()
 	FILETIME ft;
 	GetSystemTimeAsFileTime(&ft);
 
-	LONGLONG ll_time = (LONGLONG)ft.dwLowDateTime + ((LONGLONG)(ft.dwHighDateTime) << 32LL);
-	ll_time /= 10;
+	LARGE_INTEGER li;
+	li.LowPart = ft.dwLowDateTime;
+	li.HighPart = ft.dwHighDateTime;
 
 	if (epoch == Epoch::unix)
 	{
-		ll_time -= 116444736000000000LL;
+		li.QuadPart -= 0x019DB1DED53E8000;
 	}
 
-	return Convert<Unit::microsecond, time_unit, ut::uint64>(static_cast<ut::uint64>(ll_time));
+	li.QuadPart /= 10; // converting from 100ns to microseconds
+
+	return Convert<Unit::microsecond, time_unit, ut::uint64>(static_cast<ut::uint64>(li.QuadPart));
 #elif UT_UNIX
 	struct timeval tm;
 	gettimeofday(&tm, NULL);
@@ -225,7 +228,7 @@ ut::uint64 GetTime()
 
 	if (epoch == Epoch::windows)
 	{
-		tm_microsec += 116444736000000000LL;
+		tm_microsec += 11644473600000000LL;
 	}
 
 	return Convert<Unit::microsecond, time_unit, ut::uint64>(static_cast<ut::uint64>(tm_microsec));
