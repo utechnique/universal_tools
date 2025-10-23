@@ -325,7 +325,8 @@ public:
 		const Scalar one = static_cast<Scalar>(1);
 		const Scalar two = static_cast<Scalar>(2);
 
-		Matrix<matrix_size, matrix_size, Scalar> matrix;
+		Matrix<matrix_size, matrix_size, Scalar> matrix =
+			Matrix<matrix_size, matrix_size, Scalar>::MakeIdentity();
 
 		matrix(0, 0) = one - j*j*two - k*k*two;
 		matrix(0, 1) = i*j*two - r*k*two;

@@ -57,27 +57,38 @@ error::Code Error::GetCode() const
 
 //----------------------------------------------------------------------------->
 // Returns full description of the error
+// 	  @param short_form - indicates whether to form a description
+//                        in a short single line form without a backtrace.
 //    @return - string with error description and call stack
-const String Error::GetDesc() const
+const String Error::GetDesc(bool short_form) const
 {
-	//String desc(GetErrorDesc(code));
 	String desc(error::GetCodeDesc(code));
 
 	// full description
 #if UT_ERROR_DESCRIPTION
 	if (description.Length() > 0)
 	{
-		desc.AddLine("");
-		desc.AddLine("Detailed description:");
-		desc.AddLine(description);
+		if (short_form)
+		{
+			desc += String(" ") + description;
+		}
+		else
+		{
+			desc.AddLine("");
+			desc.AddLine("Detailed description:");
+			desc.AddLine(description);
+		}
 	}
 #endif // UT_ERROR_DESCRIPTION
 
 	// callstack
 #if UT_ERROR_BACKTRACE
-	desc.AddLine("");
-	desc.AddLine("Call Stack:");
-	desc.AddLine(callstack);
+	if (!short_form)
+	{
+		desc.AddLine("");
+		desc.AddLine("Call Stack:");
+		desc.AddLine(callstack);
+	}
 #endif // UT_ERROR_BACKTRACE
 
 	return desc;
