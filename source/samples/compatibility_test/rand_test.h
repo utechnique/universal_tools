@@ -3,15 +3,23 @@
 //----------------------------------------------------------------------------//
 #pragma once
 //----------------------------------------------------------------------------//
-#include "math/ut_precision.h"
-#include "math/ut_cmp.h"
-#include "math/ut_pow.h"
-#include "math/ut_trigonometry.h"
-#include "math/ut_matrix.h"
-#include "math/ut_quaternion.h"
-#include "math/ut_rect.h"
-#include "math/ut_average.h"
-#include "math/ut_rand.h"
+#include "ut.h"
+#include "test_task.h"
+#include "test_unit.h"
+//----------------------------------------------------------------------------//
+class RandTestUnit : public TestUnit
+{
+public:
+	RandTestUnit();
+};
+
+//----------------------------------------------------------------------------//
+class Mt19937Task : public TestTask
+{
+public:
+	Mt19937Task();
+	void Execute();
+};
 
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
