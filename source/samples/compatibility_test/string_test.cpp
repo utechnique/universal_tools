@@ -29,6 +29,8 @@ StringTestUnit::StringTestUnit() : TestUnit("STRING")
 	tasks.Add(ut::MakeUnique<StrFindTask>());
 	tasks.Add(ut::MakeUnique<StrSubStrTask>());
 	tasks.Add(ut::MakeUnique<StrSplitTask>());
+	tasks.Add(ut::MakeUnique<StrStartsWithTask>());
+	tasks.Add(ut::MakeUnique<StrEndsWithTask>());
 }
 
 //----------------------------------------------------------------------------//
@@ -754,6 +756,178 @@ void StrSplitTask::Execute()
 	substrs = src.Split("#");
 	if (substrs.Count() != 1 ||
 		substrs[0] != src)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	report += "Success.";
+}
+
+//----------------------------------------------------------------------------//
+// StartsWith
+StrStartsWithTask::StrStartsWithTask() : TestTask("StartsWith")
+{ }
+
+void StrStartsWithTask::Execute()
+{
+	ut::String str = "()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";
+
+	bool result = str.StartsWith('(');
+	if (!result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.StartsWith(')');
+	if (result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.StartsWith("()*+,-./012");
+	if (!result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.StartsWith("(A*+,-./012");
+	if (result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.StartsWith("()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~");
+	if (!result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.StartsWith("()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~A");
+	if (result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.StartsWith("()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~AAAAA");
+	if (result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	ut::String cmp = "()*+,-./0123456789:;";
+	result = str.StartsWith(cmp);
+	if (!result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	cmp = "()*+,-./0123456789:A;";
+	result = str.StartsWith(cmp);
+	if (result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	report += "Success.";
+}
+
+//----------------------------------------------------------------------------//
+// EndsWith
+StrEndsWithTask::StrEndsWithTask() : TestTask("EndsWith")
+{ }
+
+void StrEndsWithTask::Execute()
+{
+	ut::String str = "()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";
+
+	bool result = str.EndsWith('~');
+	if (!result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.EndsWith('}');
+	if (result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+	
+	result = str.EndsWith("stuvwxyz{|}~");
+	if (!result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.EndsWith("ijklmnopqrstuvwx");
+	if (result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.EndsWith("()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~");
+	if (!result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.EndsWith("()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~A");
+	if (result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	result = str.EndsWith("AA()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~AAAAA");
+	if (result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	ut::String cmp = "^_abcdefghijklmnopqrstuvwxyz{|}~";
+	result = str.EndsWith(cmp);
+	if (!result)
+	{
+		report += "Failed.";
+		failed_test_counter.Increment();
+		return;
+	}
+
+	cmp = "()*+,-./0123456789:A;";
+	result = str.EndsWith(cmp);
+	if (result)
 	{
 		report += "Failed.";
 		failed_test_counter.Increment();
