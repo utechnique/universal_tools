@@ -653,7 +653,7 @@ public:
 
 	// Searches the string for the first occurrence of the character specified
 	// by its argument.
-	//    @param str - the reference to the searched string.
+	//    @param c - the reference to the searched character.
 	//    @param pos - when specified, the search only includes characters
 	//                 at or after position pos, ignoring any possible
 	//                 occurrences that include characters before it.
@@ -685,6 +685,93 @@ public:
 	{
 		UT_ASSERT(pos < length);
 		return TString(GetAddress() + pos, len ? len.Get() : (length - pos));
+	}
+
+	// Checks if the string begins with the given prefix.
+	//    @param str - null-terminated c-string.
+	//    @return - true if the string begins with the provided prefix,
+	//              false otherwise. 
+	bool StartsWith(const T* str) const
+	{
+		const T* s1 = (const T*)GetAddress();
+		const T* s2 = (const T*)str;
+		T c1, c2;
+		do
+		{
+			c1 = (T)*s1++;
+			c2 = (T)*s2++;
+			if (c1 == '\0')
+			{
+				return c1 == c2;
+			}
+		} while (c1 == c2);
+
+		return c2 == '\0';
+	}
+
+	// Checks if the string begins with the given prefix.
+	//    @param str - a reference to the prefix string.
+	//    @return - true if the string begins with the provided prefix,
+	//              false otherwise. 
+	bool StartsWith(const TString& str) const
+	{
+		return StartsWith(str.GetAddress());
+	}
+
+	// Checks if the string begins with the given prefix.
+	//    @param c - prefix character.
+	//    @return - true if the string begins with the provided prefix,
+	//              false otherwise. 
+	bool StartsWith(T c) const
+	{
+		return *GetAddress() == c;
+	}
+
+	// Checks if the string ends with the given suffix.
+	//    @param str - null-terminated c-string.
+	//    @return - true if the string ends with the provided suffix,
+	//              false otherwise. 
+	bool EndsWith(const T* str) const
+	{
+		const size_t own_length = Length();
+		const size_t suffix_length = StrLen<T>(str);
+		if (suffix_length > own_length)
+		{
+			return false;
+		}
+
+		return StrCmp<T>(GetAddress() + own_length - suffix_length, str);
+	}
+
+	// Checks if the string ends with the given suffix.
+	//    @param str - a reference to the suffix string.
+	//    @return - true if the string ends with the provided suffix,
+	//              false otherwise. 
+	bool EndsWith(const TString& str) const
+	{
+		const size_t own_length = length;
+		const size_t suffix_length = str.length;
+		if (suffix_length > own_length)
+		{
+			return false;
+		}
+
+		return StrCmp<T>(GetAddress() + own_length - suffix_length, str.GetAddress());
+	}
+
+	// Checks if the string ends with the given suffix.
+	//    @param c - suffix character.
+	//    @return - true if the string ends with the provided suffix,
+	//              false otherwise. 
+	bool EndsWith(T c) const
+	{
+		const size_t own_length = Length();
+		if (own_length == 0)
+		{
+			return false;
+		}
+
+		return GetAddress()[own_length - 1] == c;
 	}
 
 	// Parses self into set of words separated by spaces, tabs, etc.
