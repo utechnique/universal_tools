@@ -174,8 +174,8 @@ ut::Result<render::Mesh, ut::Error> Gltf::ExportMesh(Device& device,
 				ut::byte* index_ptr = geometry.index_buffer.GetAddress();
 				for (ut::uint32 index_iter = 0; index_iter < geometry.index_count; index_iter++)
 				{
-					render::Mesh::IndexType* index = reinterpret_cast<render::Mesh::IndexType*>(index_ptr) +
-					                                 index_iter;
+					render::Mesh::IndexIntType* index = reinterpret_cast<render::Mesh::IndexIntType*>(index_ptr) +
+					                                    index_iter;
 					*index += vertex_id_offset;
 				}
 			}
@@ -186,7 +186,7 @@ ut::Result<render::Mesh, ut::Error> Gltf::ExportMesh(Device& device,
 			if (index_find_result)
 			{
 				index_offset = static_cast<ut::uint32>(index_find_result->size /
-				                                       sizeof(render::Mesh::IndexType));
+				                                       sizeof(render::Mesh::IndexIntType));
 				index_find_result->size += geometry.index_buffer.GetSize();
 				index_find_result->data += ut::Move(geometry.index_buffer);
 			}
@@ -196,7 +196,7 @@ ut::Result<render::Mesh, ut::Error> Gltf::ExportMesh(Device& device,
 				buffer_info.type = render::Buffer::Type::index;
 				buffer_info.usage = render::memory::Usage::gpu_immutable;
 				buffer_info.size = geometry.index_buffer.GetSize();
-				buffer_info.stride = sizeof(render::Mesh::IndexType);
+				buffer_info.stride = sizeof(render::Mesh::IndexIntType);
 				buffer_info.data = ut::Move(geometry.index_buffer);
 
 				index_data.Insert(geometry.vertex_format, ut::Move(buffer_info));
@@ -528,9 +528,9 @@ ut::Result<ResourceCreator<render::Mesh>::GeometryData,
 	// read indices
 	if (primitive.indices)
 	{
-		ut::Result<ut::Array<ut::Vector<1, render::Mesh::IndexType>>, ut::Error> indices =
+		ut::Result<ut::Array<ut::Vector<1, render::Mesh::IndexIntType>>, ut::Error> indices =
 			ut::MakeError(ut::error::not_found);
-		indices = ReadAccessorData<1, render::Mesh::IndexType>(primitive.indices.Get());
+		indices = ReadAccessorData<1, render::Mesh::IndexIntType>(primitive.indices.Get());
 		if (!indices)
 		{
 			return ut::MakeError(indices.MoveAlt());
@@ -697,8 +697,8 @@ ut::Result<ResourceCreator<render::Mesh>::GeometryData,
 		const ut::uint32 face_count = geometry_data.index_count / 3;
 		for (ut::uint32 face_iter = 0; face_iter < face_count; face_iter++)
 		{
-			render::Mesh::IndexType* index = reinterpret_cast<render::Mesh::IndexType*>(index_buffer_ptr) + face_iter * 3;
-			const render::Mesh::IndexType temp_index = index[1];
+			render::Mesh::IndexIntType* index = reinterpret_cast<render::Mesh::IndexIntType*>(index_buffer_ptr) + face_iter * 3;
+			const render::Mesh::IndexIntType temp_index = index[1];
 			index[1] = index[2];
 			index[2] = temp_index;
 		}

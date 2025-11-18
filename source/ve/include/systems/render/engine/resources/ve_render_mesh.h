@@ -125,7 +125,7 @@ public:
 
 	// Only 32-bit indices are supported
 	static constexpr IndexType index_format = IndexType::uint32;
-	typedef ut::uint32 IndexType;
+	typedef ut::uint32 IndexIntType;
 
 	// Number of vertices in one face.
 	static constexpr ut::uint32 skTriangleVertices = 3;
