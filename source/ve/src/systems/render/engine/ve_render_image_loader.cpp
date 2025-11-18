@@ -3,7 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_image_loader.h"
 #include "stb_image.h"
-#include "stb_image_resize.h"
+#include "stb_image_resize2.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -94,15 +94,15 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 	// initialize first mip
 	if (img_info.width != width || img_info.height != height)
 	{
-		stbir_resize_uint8(pixels.Get(),
-			               width,
-			               height,
-			               0,
-		                   img_info.data.GetAddress(),
-			               img_info.width,
-			               img_info.height,
-			               0,
-		                   STBI_rgb_alpha);
+		stbir_resize_uint8_linear(pixels.Get(),
+		                          width,
+		                          height,
+		                          0,
+		                          img_info.data.GetAddress(),
+		                          img_info.width,
+		                          img_info.height,
+		                          0,
+		                          STBIR_RGBA);
 	}
 	else
 	{
@@ -170,9 +170,9 @@ ut::Optional<ut::Error> ImageLoader::GenerateHighQualityMipTail2D(ut::Array<ut::
 			data.Resize(min_expected_size);
 		}
 
-		stbir_resize_uint8(&data[prev_mip], prev_mip_w, prev_mip_h, 0,
-		                   &data[mip_offset], mip_width, mip_height, 0,
-		                   STBI_rgb_alpha);
+		stbir_resize_uint8_linear(&data[prev_mip], prev_mip_w, prev_mip_h, 0,
+		                          &data[mip_offset], mip_width, mip_height, 0,
+		                          STBIR_RGBA);
 
 		prev_mip = mip_offset;
 		prev_mip_w = mip_width;
