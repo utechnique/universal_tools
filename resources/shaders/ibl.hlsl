@@ -13,7 +13,7 @@
 #endif
 
 //----------------------------------------------------------------------------//
-#define NUM_FILTER_SAMPLES 16
+#define NUM_FILTER_SAMPLES 32
 #define REFLECTION_MAX_BRIGHTNESS 15.0
 
 //----------------------------------------------------------------------------//
@@ -58,6 +58,12 @@ float2 Hammersley(uint index, uint sample_count, uint2 random)
 	float E1 = frac((float)index / sample_count + float(random.x & 0xffff) / (1 << 16));
 	float E2 = float(ReverseBits32(index) ^ random.y) * 2.3283064365386963e-10;
 	return float2(E1, E2);
+}
+
+float D_GGX(float a2, float NoH)
+{
+	float d = (NoH * a2 - NoH) * NoH + 1;
+	return a2 / (PI * d * d);
 }
 
 float4 ImportanceSampleGGX(float2 E, float roughness)
@@ -111,16 +117,32 @@ float4 FilterPS(PS_INPUT input) : SV_Target
 	float4 FilteredColor = 0;
 	float Weight = 0;
 
+	uint CubeSize = 1u << (MIP_COUNT - 1);
+	const float SolidAngleTexel = 4.0f * PI / float(6.0f * CubeSize * CubeSize) * 2.0f;
+
 	for (int i = 0; i < NUM_FILTER_SAMPLES; i++)
 	{
 		float2 E = Hammersley(i, NUM_FILTER_SAMPLES, 0);
-		float3 H = TangentToWorldZ(ImportanceSampleGGX(E, Roughness).xyz, N);
-		float3 L = 2 * dot(N, H) * H - N;
 
-		float NoL = saturate(dot(N, L));
+		E.y *= 0.995;
+
+		float3 H = ImportanceSampleGGX(E, Roughness).xyz;
+		float3 L = 2 * H.z * H - float3(0, 0, 1);
+
+		float NoL = L.z;
+		float NoH = H.z;
+
 		if (NoL > 0)
 		{
-			FilteredColor += max(min(REFLECTION_MAX_BRIGHTNESS, g_texcube_scene.SampleLevel(g_sampler, L, g_filter.x)), 0.0f) * NoL * g_filter.y;
+			float PDF = D_GGX(Roughness * Roughness * Roughness * Roughness, NoH) * 0.25;
+			float SolidAngleSample = 1.0 / (NUM_FILTER_SAMPLES * PDF);
+			float Mip = 0.5 * log2(SolidAngleSample / SolidAngleTexel);
+
+			float ConeAngle = acos(1 - SolidAngleSample / (2 * PI));
+
+			H = TangentToWorldZ(H, N);
+			L = 2 * dot(N, H) * H - N;
+			FilteredColor += clamp(g_texcube_scene.SampleLevel(g_sampler, L, Mip) * NoL, 0, REFLECTION_MAX_BRIGHTNESS);
 			Weight += NoL;
 		}
 	}

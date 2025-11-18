@@ -3,6 +3,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/resources/ve_render_mesh.h"
 #include "systems/render/engine/ve_render_rc_mgr.h"
+#include "systems/render/engine/ve_render_mesh_loader.h"
 //----------------------------------------------------------------------------//
 UT_REGISTER_TYPE(ve::render::Resource, ve::render::Mesh, "mesh")
 //----------------------------------------------------------------------------//
@@ -14,9 +15,9 @@ START_NAMESPACE(render)
 const char* Mesh::skInstanceIdSemantic = "INSTANCE_ID";
 
 // The list of names acceptable for generating a mesh from a generator prompt.
-const char* ResourceCreator<Mesh>::skTypeBox = "box";
-const char* ResourceCreator<Mesh>::skTypeSphere = "sphere";
-const char* ResourceCreator<Mesh>::skTypeTorus = "torus";
+const char* ResourceCreator<Mesh>::Generator::skTypeBox = "box";
+const char* ResourceCreator<Mesh>::Generator::skTypeSphere = "sphere";
+const char* ResourceCreator<Mesh>::Generator::skTypeTorus = "torus";
 
 //----------------------------------------------------------------------------//
 // The MeshVertexHelper is a helper struct that provides recursive functionality
@@ -59,21 +60,7 @@ template<> struct MeshVertexHelper<0>
 
 //----------------------------------------------------------------------------//
 // Constructor.
-Mesh::Mesh(ut::uint32 in_polygon_count,
-           ut::uint32 in_vertex_count,
-           Buffer in_vertex_buffer,
-           ut::Optional<Buffer> in_index_buffer,
-           IndexType in_index_type,
-           VertexFormat in_vertex_format,
-           PolygonMode in_polygon_mode,
-           ut::Array<Subset> in_subsets) : polygon_count(in_polygon_count)
-                                         , vertex_count(in_vertex_count)
-                                         , vertex_buffer(ut::Move(in_vertex_buffer))
-                                         , index_buffer(ut::Move(in_index_buffer))
-                                         , index_type(in_index_type)
-                                         , vertex_format(in_vertex_format)
-                                         , polygon_mode(in_polygon_mode)
-                                         , subsets(ut::Move(in_subsets))
+Mesh::Mesh(ut::Array<Subset> mesh_subsets) : subsets(ut::Move(mesh_subsets))
 {}
 
 // Identify() method must be implemented for the polymorphic types.
@@ -108,12 +95,6 @@ InputAssemblyState Mesh::CreateIaState(VertexFormat vertex_format,
 	}
 
 	return ia_state;
-}
-
-// Creates the input assembly state for the desired subset of this mesh.
-InputAssemblyState Mesh::CreateIaState(Instancing instancing) const
-{
-	return CreateIaState(vertex_format, polygon_mode, instancing);
 }
 
 // Converts provided Mesh::PolygonMode value to corresponding
@@ -208,9 +189,9 @@ ResourceCreator<Mesh>::ResourceCreator(Device& in_device,
                                        ResourceManager& in_rc_mgr) : device(in_device)
                                                                    , rc_mgr(in_rc_mgr)
 {
-	generators.Insert(skTypeBox, CreateBox);
-	generators.Insert(skTypeSphere, CreateSphere);
-	generators.Insert(skTypeTorus, CreateTorus);
+	generators.Insert(Generator::skTypeBox, CreateBox);
+	generators.Insert(Generator::skTypeSphere, CreateSphere);
+	generators.Insert(Generator::skTypeTorus, CreateTorus);
 }
 
 // Creates a mesh according to the provided name, path or generator prompt.
@@ -219,49 +200,44 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::Create(const ut::Strin
 	auto create = [&](const ut::String& mesh_name) -> ut::Result<RcRef<Mesh>, ut::Error>
 	{
 		const bool is_generator_prompt = Resource::GeneratorPrompt::Check(mesh_name);
-		if (!is_generator_prompt)
+		if (is_generator_prompt)
 		{
-			return ut::MakeError(ut::error::not_implemented);
+			Resource::GeneratorPrompt::Attributes generator_attributes;
+			ut::Result<ut::String,
+			           ut::Error> prompt_parse_result = Resource::GeneratorPrompt::Parse(mesh_name,
+			                                                                             generator_attributes);
+			if (!prompt_parse_result)
+			{
+				return ut::MakeError(prompt_parse_result.MoveAlt());
+			}
+
+			ut::Optional<ut::Function<PrimitiveGenerator>&> find_result = generators.Find(prompt_parse_result.Get());
+			if (!find_result)
+			{
+				return ut::MakeError(ut::error::not_found);
+			}
+
+			const ut::Function<PrimitiveGenerator>& generator = find_result.Get();
+			return generator(mesh_name, generator_attributes, device, rc_mgr);
 		}
 
-		Resource::GeneratorPrompt::Attributes generator_attributes;
-		ut::Result<ut::String, ut::Error> prompt_parse_result = Resource::GeneratorPrompt::Parse(mesh_name,
-		                                                                                         generator_attributes);
-		if (!prompt_parse_result)
+		MeshLoader loader(device, rc_mgr);
+		ut::Result<Mesh, ut::Error> load_mesh_result = loader.Load(mesh_name);
+		if (!load_mesh_result)
 		{
-			return ut::MakeError(prompt_parse_result.MoveAlt());
+			return ut::MakeError(load_mesh_result.MoveAlt());
 		}
 
-		ut::Optional<ut::Function<Generator>&> find_result = generators.Find(prompt_parse_result.Get());
-		if (!find_result)
-		{
-			return ut::MakeError(ut::error::not_implemented);
-		}
-
-		const ut::Function<Generator>& generator = find_result.Get();
-		return generator(mesh_name, generator_attributes, device, rc_mgr);
+		return rc_mgr.AddResource<Mesh>(load_mesh_result.Move(), name);
 	};
 
 	ut::Result<RcRef<Mesh>, ut::Error> result = create(name);
 	if (!result)
 	{
-		ut::log.Lock() << "Failed to load a render resource (mesh): " << name << ut::cret;
+		ut::log.Lock() << "Failed to load a render resource (mesh): " <<
+			name + ". " + result.GetAlt().GetDesc(true) << ut::cret;
 
-		ut::String checker_mesh;
-		checker_mesh.Append(Resource::GeneratorPrompt::skStarterChr);
-		checker_mesh += skTypeBox;
-		checker_mesh.Append(Resource::GeneratorPrompt::skSeparatorChr0);
-		checker_mesh.Append('m');
-		checker_mesh.Append(Resource::GeneratorPrompt::skValueSeparatorChr);
-		checker_mesh.Append(Resource::GeneratorPrompt::skStarterChr);
-		checker_mesh += Material::Generator::skTypeSurface;
-		checker_mesh.Append(Resource::GeneratorPrompt::skSeparatorChr1);
-		checker_mesh.Append('d');
-		checker_mesh.Append(Resource::GeneratorPrompt::skValueSeparatorChr);
-		checker_mesh.Append(Resource::GeneratorPrompt::skStarterChr);
-		checker_mesh += ResourceCreator<Map>::skTypeChecker;
-
-		return create(checker_mesh);
+		return rc_mgr.Acquire<Mesh>(BuildCheckerPrompt());
 	}
 
 	return result;
@@ -294,21 +270,20 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateEyeSpaceRect(con
 	vertices[5].position = ut::Vector<2>(position.X() + extent.X(), position.Y() - extent.Y());
 	vertices[5].texcoord = ut::Vector<2>(1, 1);
 
-	ut::Result<Buffer, ut::Error> vertex_buffer = device.CreateBuffer(ut::Move(buffer_info));
-	if (!vertex_buffer)
+	ut::Result<Buffer, ut::Error> vertex_gpu_buffer = device.CreateBuffer(ut::Move(buffer_info));
+	if (!vertex_gpu_buffer)
 	{
-		return ut::MakeError(vertex_buffer.MoveAlt());
+		return ut::MakeError(vertex_gpu_buffer.MoveAlt());
 	}
 
-	Mesh mesh(2, 6,
-	          vertex_buffer.Move(),
-	          ut::Optional<Buffer>(),
-	          IndexType::uint32,
-	          vertex_format,
-	          Mesh::PolygonMode::triangle,
-	          ut::Array<Mesh::Subset>());
+	ut::Array<Mesh::Subset> subsets;
+	Mesh::Subset subset;
+	subset.vertex_buffer = ut::MakeUnsafeShared<Mesh::VertexBuffer>(vertex_gpu_buffer.Move(), vertex_format);
+	subset.polygon_mode = Mesh::PolygonMode::triangle;
+	subset.count = 6;
+	subsets.Add(ut::Move(subset));
 
-	return rc_mgr.AddResource<Mesh>(ut::Move(mesh));
+	return rc_mgr.AddResource<Mesh>(Mesh(ut::Move(subsets)));
 }
 
 // Generates vertices for the box mesh.
@@ -323,12 +298,14 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenBoxVertices(Mesh::
                                                                           const ut::Vector<3>& extent)
 {
 	ResourceCreator<Mesh>::GeometryData geometry;
-	const InputAssemblyState input_assembly = Mesh::CreateIaState(vertex_format, Mesh::PolygonMode::triangle);
+	geometry.vertex_format = vertex_format;
+	geometry.polygon_mode = polygon_mode;
+	geometry.input_assembly = Mesh::CreateIaState(vertex_format, Mesh::PolygonMode::triangle);
 
 	// set vertices
 	geometry.vertex_count = 24;
-	geometry.vertex_buffer.Resize(input_assembly.vertex_stride * geometry.vertex_count);
-	VertexReflector vertices(input_assembly, geometry.vertex_buffer.GetAddress());
+	geometry.vertex_buffer.Resize(geometry.input_assembly.vertex_stride * geometry.vertex_count);
+	VertexReflector vertices(geometry.input_assembly, geometry.vertex_buffer.GetAddress());
 
 	vertices.Get<vertex_traits::position>(0).Write(ut::Vector<3>(-extent.X(), extent.Y(), -extent.Z()));
 	vertices.Get<vertex_traits::normal>(0).Write(ut::Vector<3>(0, 1, 0));
@@ -444,7 +421,7 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenBoxVertices(Mesh::
 	indices[33] = 23; indices[34] = 20; indices[35] = 22;
 
 	// calculate tangents
-	ComputeTangents(input_assembly, geometry);
+	ComputeTangents(geometry.input_assembly, geometry);
 
 	// apply position offset
 	for (ut::uint32 i = 0; i < geometry.vertex_count; i++)
@@ -470,14 +447,16 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenSphereVertices(Mes
                                                                              ut::uint32 segment_count)
 {
 	ResourceCreator<Mesh>::GeometryData geometry;
-	const InputAssemblyState input_assembly = Mesh::CreateIaState(vertex_format, Mesh::PolygonMode::triangle);
+	geometry.vertex_format = vertex_format;
+	geometry.polygon_mode = polygon_mode;
+	geometry.input_assembly = Mesh::CreateIaState(vertex_format, Mesh::PolygonMode::triangle);
 
 	// initialize vertices
 	const ut::uint32 nv = segment_count;
 	const ut::uint32 nh = segment_count;
 	geometry.vertex_count = (nv + 1) * (nh + 1);
-	geometry.vertex_buffer.Resize(input_assembly.vertex_stride * geometry.vertex_count);
-	VertexReflector vertices(input_assembly, geometry.vertex_buffer.GetAddress());
+	geometry.vertex_buffer.Resize(geometry.input_assembly.vertex_stride * geometry.vertex_count);
+	VertexReflector vertices(geometry.input_assembly, geometry.vertex_buffer.GetAddress());
 	for (ut::uint32 i = 0; i < nv + 1; i++)
 	{
 		const float i_nv = static_cast<float>(i) / static_cast<float>(nv);
@@ -526,7 +505,7 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenSphereVertices(Mes
 	}
 
 	// calculate tangents
-	ComputeTangents(input_assembly, geometry);
+	ComputeTangents(geometry.input_assembly, geometry);
 
 	// apply position offset
 	for (ut::uint32 i = 0; i < geometry.vertex_count; i++)
@@ -558,12 +537,14 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenTorusVertices(Mesh
                                                                             AxisOrientation orientation)
 {
 	ResourceCreator<Mesh>::GeometryData geometry;
-	const InputAssemblyState input_assembly = Mesh::CreateIaState(vertex_format, Mesh::PolygonMode::triangle);
+	geometry.vertex_format = vertex_format;
+	geometry.polygon_mode = polygon_mode;
+	geometry.input_assembly = Mesh::CreateIaState(vertex_format, Mesh::PolygonMode::triangle);
 
 	// allocate vertex buffer
 	geometry.vertex_count = (radial_segment_count + 1) * (tubular_segment_count + 1);
-	geometry.vertex_buffer.Resize(input_assembly.vertex_stride * geometry.vertex_count);
-	VertexReflector vertices(input_assembly, geometry.vertex_buffer.GetAddress());
+	geometry.vertex_buffer.Resize(geometry.input_assembly.vertex_stride * geometry.vertex_count);
+	VertexReflector vertices(geometry.input_assembly, geometry.vertex_buffer.GetAddress());
 
 	// allocate index buffer
 	geometry.index_count = radial_segment_count * tubular_segment_count * 6;
@@ -637,7 +618,7 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenTorusVertices(Mesh
 	}
 
 	// calculate tangents
-	ComputeTangents(input_assembly, geometry);
+	ComputeTangents(geometry.input_assembly, geometry);
 
 	// apply position offset
 	for (ut::uint32 i = 0; i < geometry.vertex_count; i++)
@@ -649,28 +630,9 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenTorusVertices(Mesh
 	return geometry;
 }
 
-// Creates a generator prompt for a default surface material with solid color.
-ut::String ResourceCreator<Mesh>::GenDefaultMaterialPrompt(const ut::Optional<ut::String>& color)
-{
-	ut::String material_prompt = Resource::GeneratorPrompt::skStarter;
-	material_prompt += Material::Generator::skTypeSurface;
-
-	if (color)
-	{
-		material_prompt += Resource::GeneratorPrompt::skSeparatorChr0;
-		material_prompt += ut::String("c") +
-		                   Resource::GeneratorPrompt::skValueSeparatorChr +
-		                   color.Get();
-	}
-
-	return material_prompt;
-}
-
 // Creates a simple mesh resource with single subset from the provided
 // index and vertex data.
 ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreatePrimitive(ut::Optional<ut::String> name,
-                                                                          Mesh::VertexFormat vertex_format,
-                                                                          Mesh::PolygonMode polygon_mode,
                                                                           GeometryData geometry_data,
                                                                           const ut::Optional<ut::String>& material_prompt,
                                                                           const ut::Optional<ut::String>& color,
@@ -707,38 +669,31 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreatePrimitive(ut::Op
 	ut::Array<Mesh::Subset> subsets;
 	if (!material_prompt || material_prompt.Get() != "no")
 	{
-		// generate default material prompt if it wasn't set manually
-		const ut::String final_material_prompt = material_prompt ?
-		                                         material_prompt.Get() :
-		                                         GenDefaultMaterialPrompt(color);
-
 		// create material
-		ut::Result<Material, ut::Error> material = Material::Generator::CreateFromPrompt(final_material_prompt,
-			rc_mgr);
+		ut::Result<Material, ut::Error> material = material_prompt ?
+		                                           Material::Generator::CreateFromPrompt(material_prompt.Get(),
+		                                                                                 rc_mgr) :
+		                                           Material::Generator::CreateDefault(rc_mgr);
 		if (!material)
 		{
 			return ut::MakeError(material.MoveAlt());
 		}
 
-		// initialize single subset
+		// initialize a subset
 		Mesh::Subset subset;
-		subset.index_offset = 0;
-		subset.index_count = geometry_data.index_count;
 		subset.material = material.Move();
+		subset.vertex_buffer = ut::MakeUnsafeShared<Mesh::VertexBuffer>(vertex_buffer.Move(),
+		                                                                geometry_data.vertex_format);
+		subset.index_buffer = ut::MakeUnsafeShared<Mesh::IndexBuffer>(index_buffer.Move(),
+		                                                              Mesh::index_format);
+		subset.polygon_mode = geometry_data.polygon_mode;
+		subset.offset = 0;
+		subset.count = geometry_data.index_count;
 		subsets.Add(ut::Move(subset));
 	}
 
 	// create mesh
-	Mesh mesh(geometry_data.index_count / Mesh::GetPolygonVertexCount(polygon_mode),
-	          geometry_data.vertex_count,
-	          vertex_buffer.Move(),
-	          index_buffer.Move(),
-	          IndexType::uint32,
-	          vertex_format,
-	          polygon_mode,
-	          ut::Move(subsets));
-
-	return rc_mgr.AddResource<Mesh>(ut::Move(mesh), ut::Move(name));
+	return rc_mgr.AddResource<Mesh>(Mesh(ut::Move(subsets)), ut::Move(name));
 }
 
 // Helper function to compute tangents.
@@ -839,15 +794,15 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateBox(const ut::St
 	{
 		switch (attribute.type)
 		{
-			case 'x': position.X() = ut::Scan<float>(attribute.value); break;
-			case 'y': position.Y() = ut::Scan<float>(attribute.value); break;
-			case 'z': position.Z() = ut::Scan<float>(attribute.value); break;
-			case 'w': extent.X() = ut::Scan<float>(attribute.value) * 0.5f; break;
-			case 'h': extent.Y() = ut::Scan<float>(attribute.value) * 0.5f; break;
-			case 'd': extent.Z() = ut::Scan<float>(attribute.value) * 0.5f; break;
-			case 'm': material_prompt = attribute.value; break;
-			case 'c': color = attribute.value; break;
-			case 'l': line_mode = attribute.value == "yes"; break;
+			case Generator::x_position: position.X() = ut::Scan<float>(attribute.value); break;
+			case Generator::y_position: position.Y() = ut::Scan<float>(attribute.value); break;
+			case Generator::z_position: position.Z() = ut::Scan<float>(attribute.value); break;
+			case Generator::width: extent.X() = ut::Scan<float>(attribute.value) * 0.5f; break;
+			case Generator::height: extent.Y() = ut::Scan<float>(attribute.value) * 0.5f; break;
+			case Generator::depth: extent.Z() = ut::Scan<float>(attribute.value) * 0.5f; break;
+			case Generator::material: material_prompt = attribute.value; break;
+			case Generator::color: color = attribute.value; break;
+			case Generator::line_mode: line_mode = attribute.value == "yes"; break;
 		}
 	}	
 
@@ -862,8 +817,6 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateBox(const ut::St
 
 	// create final primitive
 	return CreatePrimitive(ut::Move(name),
-	                       vertex_format,
-	                       polygon_mode,
 	                       geometry_data,
 	                       material_prompt,
 	                       color,
@@ -905,14 +858,14 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateSphere(const ut:
 	{
 		switch (attribute.type)
 		{
-			case 'r': radius = ut::Scan<float>(attribute.value); break;
-			case 's': segment_count = ut::Scan<ut::uint32>(attribute.value); break;
-			case 'x': position.X() = ut::Scan<float>(attribute.value); break;
-			case 'y': position.Y() = ut::Scan<float>(attribute.value); break;
-			case 'z': position.Z() = ut::Scan<float>(attribute.value); break;
-			case 'm': material_prompt = attribute.value; break;
-			case 'c': color = attribute.value; break;
-			case 'l': line_mode = attribute.value == "yes"; break;
+			case Generator::radius: radius = ut::Scan<float>(attribute.value); break;
+			case Generator::segment_count: segment_count = ut::Scan<ut::uint32>(attribute.value); break;
+			case Generator::x_position: position.X() = ut::Scan<float>(attribute.value); break;
+			case Generator::y_position: position.Y() = ut::Scan<float>(attribute.value); break;
+			case Generator::z_position: position.Z() = ut::Scan<float>(attribute.value); break;
+			case Generator::material: material_prompt = attribute.value; break;
+			case Generator::color: color = attribute.value; break;
+			case Generator::line_mode: line_mode = attribute.value == "yes"; break;
 		}
 	}
 
@@ -930,8 +883,6 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateSphere(const ut:
 
 	// create final primitive
 	return CreatePrimitive(ut::Move(name),
-	                       vertex_format,
-	                       polygon_mode,
 	                       geometry_data,
 	                       material_prompt,
 	                       color,
@@ -979,16 +930,16 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateTorus(const ut::
 	{
 		switch (attribute.type)
 		{
-			case 'r': radius = ut::Scan<float>(attribute.value); break;
-			case 't': thickness = ut::Scan<float>(attribute.value); break;
-			case 's': radial_segment_count = ut::Scan<ut::uint32>(attribute.value); break;
-			case 'x': position.X() = ut::Scan<float>(attribute.value); break;
-			case 'y': position.Y() = ut::Scan<float>(attribute.value); break;
-			case 'z': position.Z() = ut::Scan<float>(attribute.value); break;
-			case 'o': orientation = attribute.value; break;
-			case 'm': material_prompt = attribute.value; break;
-			case 'c': color = attribute.value; break;
-			case 'l': line_mode = attribute.value == "yes"; break;
+			case Generator::radius: radius = ut::Scan<float>(attribute.value); break;
+			case Generator::thickness: thickness = ut::Scan<float>(attribute.value); break;
+			case Generator::segment_count: radial_segment_count = ut::Scan<ut::uint32>(attribute.value); break;
+			case Generator::x_position: position.X() = ut::Scan<float>(attribute.value); break;
+			case Generator::y_position: position.Y() = ut::Scan<float>(attribute.value); break;
+			case Generator::z_position: position.Z() = ut::Scan<float>(attribute.value); break;
+			case Generator::orientation: orientation = attribute.value; break;
+			case Generator::material: material_prompt = attribute.value; break;
+			case Generator::color: color = attribute.value; break;
+			case Generator::line_mode: line_mode = attribute.value == "yes"; break;
 		}
 	}
 
@@ -1025,13 +976,37 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateTorus(const ut::
 
 	// create final primitive
 	return CreatePrimitive(ut::Move(name),
-	                       vertex_format,
-	                       polygon_mode,
 	                       geometry_data,
 	                       material_prompt,
 	                       color,
 	                       device,
 	                       rc_mgr);
+}
+
+// Returns the generator prompt string for a checker mesh.
+ut::String ResourceCreator<Mesh>::BuildCheckerPrompt()
+{
+	ut::String prompt;
+
+	// mesh type
+	prompt.Append(Resource::GeneratorPrompt::skStarterChr);
+	prompt += Generator::skTypeBox;
+
+	// material type
+	prompt.Append(Resource::GeneratorPrompt::skSeparatorChr0);
+	prompt.Append('m');
+	prompt.Append(Resource::GeneratorPrompt::skValueSeparatorChr);
+	prompt.Append(Resource::GeneratorPrompt::skStarterChr);
+	prompt += Material::Generator::skTypeSurface;
+
+	// base color map (checker)
+	prompt.Append(Resource::GeneratorPrompt::skSeparatorChr1);
+	prompt.Append(Material::Generator::Attribute::base_color);
+	prompt.Append(Resource::GeneratorPrompt::skValueSeparatorChr);
+	prompt.Append(Resource::GeneratorPrompt::skStarterChr);
+	prompt += ResourceCreator<Map>::Generator::skTypeChecker;
+
+	return prompt;
 }
 
 //----------------------------------------------------------------------------//

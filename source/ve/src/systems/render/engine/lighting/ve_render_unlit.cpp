@@ -180,7 +180,7 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 	MeshInstRendering::AlphaMode prev_alpha_mode = MeshInstRendering::AlphaMode::count;
 	MeshInstRendering::CullMode prev_cull_mode = MeshInstRendering::CullMode::count;
 	MeshInstRendering::StencilMode prev_stencil_mode = MeshInstRendering::StencilMode::count;
-	Map* prev_diffuse_ptr = nullptr;
+	Map* prev_base_color_ptr = nullptr;
 	Buffer* prev_vertex_buffer = nullptr;
 	Buffer* prev_index_buffer = nullptr;
 	ut::uint32 prev_index_offset = 0;
@@ -216,19 +216,20 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 		MeshInstance::Batch& batch = batches[batch_id];
 
 		// material maps
-		Map* diffuse_ptr = &material.diffuse.Get();
+		Map* base_color_ptr = &material.base_color.Get();
 
 		// buffers
-		Buffer* vertex_buffer = &mesh.vertex_buffer;
-		Buffer* index_buffer = mesh.index_buffer ? &mesh.index_buffer.Get() : nullptr;
+		Mesh::VertexBuffer* vertex_buffer = subset.vertex_buffer.Get();
+		UT_ASSERT(vertex_buffer);
+		Mesh::IndexBuffer* index_buffer = subset.index_buffer.Get();
 
 		// index count
-		const ut::uint32 index_offset = subset.index_offset;
-		const ut::uint32 index_count = subset.index_count;
+		const ut::uint32 index_offset = subset.offset;
+		const ut::uint32 index_count = subset.count;
 
 		// check pipeline state
-		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
-		const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
+		const Mesh::VertexFormat vertex_format = vertex_buffer->format;
+		const Mesh::PolygonMode polygon_mode = subset.polygon_mode;
 		MeshInstRendering::AlphaMode alpha_mode = MeshInstRendering::AlphaMode::opaque;
 		switch (material.alpha)
 		{
@@ -250,7 +251,7 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 
 		// check if at least one shader resource has changed
 		const bool shader_rc_changed = batch_id != prev_batch_id ||
-		                               diffuse_ptr != prev_diffuse_ptr;
+		                               base_color_ptr != prev_base_color_ptr;
 
 		// check buffers
 		const bool vertex_buffer_changed = prev_vertex_buffer != vertex_buffer;
@@ -299,11 +300,11 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 		{
 			desc_set.transform_ub.BindUniformBuffer(batch.transform);
 			desc_set.material_ub.BindUniformBuffer(batch.material);
-			desc_set.diffuse.BindImage(material.diffuse.Get());
+			desc_set.base_color.BindImage(material.base_color.Get());
 			context.BindDescriptorSet(desc_set);
 
 			prev_batch_id = batch_id;
-			prev_diffuse_ptr = diffuse_ptr;
+			prev_base_color_ptr = base_color_ptr;
 		}
 
 		// bind vertex buffer
@@ -318,7 +319,7 @@ void UnlitRenderer::RenderUnlitMeshInstancesJob(Context& context,
 		{
 			if (index_buffer != nullptr)
 			{
-				context.BindIndexBuffer(*index_buffer, 0, mesh.index_type);
+				context.BindIndexBuffer(*index_buffer, 0, index_buffer->format);
 			}
 			prev_index_buffer = index_buffer;
 		}

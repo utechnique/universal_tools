@@ -40,6 +40,9 @@ public:
 	SamplerCache sampler_cache;
 	FrameManager frame_mgr;
 
+	// random generator
+	ut::rng::Generator<ut::rng::Algorithm::mt19937> random;
+
 	// common shaders
 	struct Shaders
 	{
@@ -57,7 +60,9 @@ public:
 		pixel::Format alternative_depth_stencil = pixel::Format::d32_float_s8_uint;
 		pixel::Format light_buffer = pixel::Format::r16g16b16a16_float;
 		pixel::Format ibl = pixel::Format::r16g16b16a16_float;
-		pixel::Format gbuffer = pixel::Format::r16g16b16a16_float;
+		pixel::Format gbuffer_base_color = pixel::Format::r8g8b8a8_srgb;
+		pixel::Format gbuffer_normal = pixel::Format::r8g8b8a8_unorm;
+		pixel::Format gbuffer_emissive = pixel::Format::r8g8b8a8_srgb;
 		pixel::Format hitmask = pixel::Format::r8g8b8a8_unorm;
 		pixel::Format ldr = pixel::Format::r8g8b8a8_unorm;
 	} formats;

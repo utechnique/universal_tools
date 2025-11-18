@@ -182,9 +182,9 @@ void Manager::UpdateLightUniforms(Context& context,
 	uniforms.direction.Z() = direction.Z();
 	uniforms.direction.W() = shape_radius;
 
-	uniforms.color.R() = color.R() * intensity;
-	uniforms.color.G() = color.G() * intensity;
-	uniforms.color.B() = color.B() * intensity;
+	uniforms.color.R() = ut::Pow(color.R(), 2.2f) * intensity;
+	uniforms.color.G() = ut::Pow(color.G(), 2.2f) * intensity;
+	uniforms.color.B() = ut::Pow(color.B(), 2.2f) * intensity;
 	uniforms.color.A() = shape_length;
 
 	uniforms.attenuation.X() = attenuation_distance;

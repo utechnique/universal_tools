@@ -15,6 +15,9 @@ namespace directories
 	// Resources.
 	static const char* skRc = "resources";
 	static const char* skRcAlt = "../../../../resources";
+
+	// Cached engine resources.
+	static const char* skCache = "cache";
 }
 
 //----------------------------------------------------------------------------//

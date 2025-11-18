@@ -22,6 +22,7 @@ GaussianBlur::ViewData::ViewData(PipelineState in_pipeline,
 
 // Gaussian blur constructor.
 GaussianBlur::GaussianBlur(Toolset& toolset) : tools(toolset)
+                                             , fullscreen_quad(tools.rc_mgr.fullscreen_quad->subsets.GetFirst())
 {}
 
 // Creates blur (per-view) data.
@@ -42,7 +43,7 @@ ut::Result<GaussianBlur::ViewData, ut::Error> GaussianBlur::CreateViewData(Rende
 	PipelineState::Info info;
 	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
 	info.SetShader(Shader::Stage::pixel, blur_shader);
-	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
+	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::Operation::never;
@@ -139,7 +140,7 @@ void GaussianBlur::Apply(Context& context,
 	                        ut::Color<4>(0), 1.0f);
 	context.BindPipelineState(data.pipeline_state);
 	context.BindDescriptorSet(data.desc_set);
-	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
+	context.BindVertexBuffer(fullscreen_quad.vertex_buffer.GetRef(), 0);
 	context.Draw(6, 0);
 	context.EndRenderPass();
 }

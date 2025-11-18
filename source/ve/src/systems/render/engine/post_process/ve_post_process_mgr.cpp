@@ -19,6 +19,7 @@ Manager::Manager(Toolset& toolset) : tools(toolset)
                                                        color_only_pass,
                                                        color_and_ds_pass,
                                                        clear_color_and_ds_pass)
+                                   , dithering(toolset, color_only_pass)
                                    , fxaa(toolset, color_only_pass)
 {}
 
@@ -134,6 +135,13 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 		return ut::MakeError(stencil_highlight_data.MoveAlt());
 	}
 
+	// dithering
+	ut::Result<Dithering::ViewData, ut::Error> dithering_data = dithering.CreateViewData();
+	if (!dithering_data)
+	{
+		return ut::MakeError(dithering_data.MoveAlt());
+	}
+
 	// fxaa
 	ut::Result<Fxaa::ViewData, ut::Error> fxaa_data = fxaa.CreateViewData();
 	if (!fxaa_data)
@@ -155,6 +163,7 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 	return ViewData(ut::Move(swap_slots),
 	                tone_mapping_data.Move(),
 	                stencil_highlight_data.Move(),
+	                dithering_data.Move(),
 	                fxaa_data.Move());
 }
 
@@ -171,6 +180,22 @@ ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::tone_mapping>(Context& cont
 	                         data.tone_mapping,
 	                         source,
 	                         parameters.tone_mapping);
+}
+
+// Applies gradient dithering effect.
+template<>
+ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::gradient_dithering>(Context& context,
+                                                                         ViewData& data,
+                                                                         Image& source,
+                                                                         const Parameters& parameters,
+                                                                         double time_ms)
+{
+	return dithering.ApplyGradientDithering(data.swap_mgr,
+	                                        context,
+	                                        data.dithering,
+	                                        source,
+	                                        parameters.dithering,
+	                                        static_cast<float>(time_ms));
 }
 
 // Applies stencil highlighting effect.

@@ -23,7 +23,7 @@ public:
 	enum class LightPassMode
 	{
 		complete,
-		deferred_diffuse,
+		deferred_base_color,
 		deferred_normal,
 	};
 

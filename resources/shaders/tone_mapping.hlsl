@@ -3,6 +3,9 @@
 //----------------------------------------------------------------------------//
 // Tone mapping techniques.
 //----------------------------------------------------------------------------//
+#include "gamma.hlsl"
+
+//----------------------------------------------------------------------------//
 // Resources.
 Texture2D g_tex2d : register(t0);
 SamplerState g_sampler : register(s1);
@@ -19,7 +22,8 @@ struct PS_INPUT
 
 float4 ToneMapClamp(PS_INPUT input) : SV_Target
 {
-	return clamp(g_tex2d.Sample(g_sampler, input.texcoord), 0, 1);
+	float4 clamped_color = clamp(g_tex2d.Sample(g_sampler, input.texcoord), 0, 1);
+	return float4(AccurateRgb2Srgb(clamped_color.rgb), clamped_color.a);
 }
 
 //----------------------------------------------------------------------------//

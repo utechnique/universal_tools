@@ -118,7 +118,7 @@ private:
 
 	// Creates a pipeline state for the pass blending
 	// final highlight color with the original image.
-	PipelineState CreateBlendPasPipelineState();
+	PipelineState CreateBlendPassPipelineState();
 
 	// Calculates visibility factor for lines animation.
 	static float CalculateLineVisibility(const Parameters& parameters,
@@ -129,6 +129,8 @@ private:
 	                                 float time_ms);
 
 	Toolset& tools;
+
+	Mesh::Subset& fullscreen_quad;
 
 	GaussianBlur& blur;
 

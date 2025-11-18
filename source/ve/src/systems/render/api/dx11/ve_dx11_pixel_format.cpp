@@ -17,6 +17,8 @@ DXGI_FORMAT ConvertPixelFormatToDX11(pixel::Format format)
 	case pixel::Format::b8g8r8a8_unorm: return DXGI_FORMAT_B8G8R8A8_UNORM;
 	case pixel::Format::r8g8b8a8_srgb: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	case pixel::Format::b8g8r8a8_srgb: return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+	case pixel::Format::a2b10g10r10_unorm: return DXGI_FORMAT_R10G10B10A2_UNORM;
+	case pixel::Format::r11g11b10_float: return DXGI_FORMAT_R11G11B10_FLOAT;
 	case pixel::Format::r16_float: return DXGI_FORMAT_R16_FLOAT;
 	case pixel::Format::r16_sint: return DXGI_FORMAT_R16_SINT;
 	case pixel::Format::r16_uint: return DXGI_FORMAT_R16_UINT;

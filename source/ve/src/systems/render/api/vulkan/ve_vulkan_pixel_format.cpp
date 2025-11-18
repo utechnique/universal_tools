@@ -17,6 +17,8 @@ VkFormat ConvertPixelFormatToVulkan(pixel::Format format)
 	case pixel::Format::b8g8r8a8_unorm: return VK_FORMAT_B8G8R8A8_UNORM;
 	case pixel::Format::r8g8b8a8_srgb: return VK_FORMAT_R8G8B8A8_SRGB;
 	case pixel::Format::b8g8r8a8_srgb: return VK_FORMAT_B8G8R8A8_SRGB;
+	case pixel::Format::a2b10g10r10_unorm: return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+	case pixel::Format::r11g11b10_float: return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 	case pixel::Format::r16_float: return VK_FORMAT_R16_SFLOAT;
 	case pixel::Format::r16_sint: return VK_FORMAT_R16_SINT;
 	case pixel::Format::r16_uint: return VK_FORMAT_R16_UINT;

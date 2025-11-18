@@ -43,7 +43,7 @@ public:
 	enum RenderMode
 	{
 		complete,
-		diffuse,
+		base_color,
 		normal
 	};
 

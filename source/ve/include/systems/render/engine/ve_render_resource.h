@@ -189,9 +189,30 @@ public:
 		return *this;
 	}
 
-	// Copying is prohibited.
-	RcRef(const RcRef&) = delete;
-	RcRef& operator = (const RcRef&) = delete;
+	// Copy constructor.
+	RcRef(const RcRef& other) : rc_ptr(other.rc_ptr)
+	                          , counter(other.counter)
+	{
+		if (IsValid())
+		{
+			Increment();
+		}
+	}
+
+	// Copy assignment operator.
+	RcRef& operator = (const RcRef& other)
+	{
+		Decrement();
+		rc_ptr = other.rc_ptr;
+		counter = other.counter;
+
+		if (IsValid())
+		{
+			Increment();
+		}
+
+		return *this;
+	}
 
 	// Destructor.
 	~RcRef()
@@ -236,7 +257,24 @@ public:
 	}
 
 private:
-	// Decrements resource reference count.
+	// Increments the reference count of the managed resource.
+	void Increment()
+	{
+		if (rc_ptr == nullptr)
+		{
+			return;
+		}
+
+		ut::SharedPtr<ReferencedResource::Counter> shared_counter = counter.Pin();
+		if (!shared_counter)
+		{
+			return;
+		}
+
+		shared_counter->Increment();
+	}
+
+	// Decrements the reference count of the managed resource.
 	void Decrement()
 	{
 		if (rc_ptr == nullptr)

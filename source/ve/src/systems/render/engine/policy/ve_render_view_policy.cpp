@@ -66,7 +66,7 @@ void Policy<View>::Initialize(View& view)
 		ut::Result<postprocess::ViewData, ut::Error> post_process_data = post_process_mgr.CreateViewData(scene_buffer->depth_stencil,
 		                                                                                                 view.width,
 		                                                                                                 view.height,
-		                                                                                                 pixel::Format::r8g8b8a8_unorm);
+		                                                                                                 tools.formats.ldr);
 		if (!post_process_data)
 		{
 			throw ut::Error(post_process_data.MoveAlt());
@@ -204,7 +204,8 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 
 	// postprocess
 	frame.final_img = post_process_mgr.ApplyEffects
-	                  <postprocess::Effect::stencil_highlighting,
+	                  <postprocess::Effect::gradient_dithering,
+	                   postprocess::Effect::stencil_highlighting,
 	                   postprocess::Effect::fxaa>(context,
 	                                              frame.post_process,
 	                                              color_buffer,
@@ -290,11 +291,11 @@ Image& Policy<View>::RenderLightPass(Context& context,
 	                                                 face);
 
 	// exit if the view mode is set to show one of the g-buffer targets
-	if (light_pass_mode == View::LightPassMode::deferred_diffuse)
+	if (light_pass_mode == View::LightPassMode::deferred_base_color)
 	{
-		context.SetTargetState(scene.lighting.deferred_shading.diffuse,
+		context.SetTargetState(scene.lighting.deferred_shading.base_color,
 		                       Target::Info::State::resource);
-		return scene.lighting.deferred_shading.diffuse.GetImage(); // exit
+		return scene.lighting.deferred_shading.base_color.GetImage(); // exit
 	}
 	else if (light_pass_mode == View::LightPassMode::deferred_normal)
 	{
@@ -313,14 +314,14 @@ Image& Policy<View>::RenderLightPass(Context& context,
 
 	// use forward renderer to draw all units that
 	// can't be rendered in deferred pass
-	lighting_mgr.forward_shading.DrawTransparentGeometry(context,
-	                                                     scene.lighting.forward_shading,
-	                                                     scene.view_ub[static_cast<ut::uint32>(face)],
-	                                                     view_position,
-	                                                     mesh_instance_policy.batcher,
-	                                                     lights,
-	                                                     ibl_cubemap,
-	                                                     face);
+	lighting_mgr.forward_shading.Draw(context,
+	                                  scene.lighting.forward_shading,
+	                                  scene.view_ub[static_cast<ut::uint32>(face)],
+	                                  view_position,
+	                                  mesh_instance_policy.batcher,
+	                                  lights,
+	                                  ibl_cubemap,
+	                                  face);
 
 	context.SetTargetState(scene.lighting.light_buffer, Target::Info::State::resource);
 	return scene.lighting.light_buffer.GetImage();

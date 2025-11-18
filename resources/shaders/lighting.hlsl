@@ -38,9 +38,10 @@ struct LightingData
 //----------------------------------------------------------------------------//
 void CalculateMetallicDiffuseSpecular(inout SurfaceData surface)
 {
+	float dielectric_F0 = 0.08; // assuming usual surface.specular is 0.5
 	float3 base_color = surface.diffuse;
 	surface.diffuse = base_color - base_color * surface.metallic;
-	surface.specular = lerp(0.002 * surface.specular, base_color, surface.metallic);
+	surface.specular = lerp(dielectric_F0 * surface.specular, base_color, surface.metallic);
 }
 
 //----------------------------------------------------------------------------//
@@ -233,9 +234,9 @@ float3 GetImageBasedReflectionLighting(TextureCube ibl_cubemap,
                                        float ibl_mip_count)
 {
 	float absolute_specular_mip = ComputeReflectionCaptureMipFromRoughness(roughness, ibl_mip_count);
-	float4 specular_ibl = ibl_cubemap.SampleLevel(ibl_sampler, reflection_vector, absolute_specular_mip);
-	specular_color = EnvBRDFApprox(specular_color, roughness, NoV);
-	return specular_ibl.rgb * specular_color;
+	float4 prefiltered = ibl_cubemap.SampleLevel(ibl_sampler, reflection_vector, absolute_specular_mip);
+	float3 brdf_lut = EnvBRDFApprox(specular_color, roughness, NoV);
+	return prefiltered.rgb * brdf_lut;
 }
 
 //----------------------------------------------------------------------------//

@@ -19,6 +19,8 @@ namespace pixel
 		b8g8r8a8_unorm,
 		r8g8b8a8_srgb,
 		b8g8r8a8_srgb,
+		a2b10g10r10_unorm,
+		r11g11b10_float,
 		r16_float,
 		r16_sint,
 		r16_uint,
@@ -60,6 +62,8 @@ namespace pixel
 		       format == Format::b8g8r8a8_unorm     ? 4 :
 		       format == Format::r8g8b8a8_srgb      ? 4 :
 		       format == Format::b8g8r8a8_srgb      ? 4 :
+		       format == Format::a2b10g10r10_unorm  ? 4 :
+		       format == Format::r11g11b10_float    ? 4 :
 		       format == Format::r16_float          ? 2 :
 		       format == Format::r16_sint           ? 2 :
 		       format == Format::r16_uint           ? 2 :
@@ -101,6 +105,8 @@ namespace pixel
 		       format == Format::b8g8r8a8_unorm     ? 4 :
 		       format == Format::r8g8b8a8_srgb      ? 4 :
 		       format == Format::b8g8r8a8_srgb      ? 4 :
+		       format == Format::a2b10g10r10_unorm  ? 4 :
+		       format == Format::r11g11b10_float    ? 3 :
 		       format == Format::r16_float          ? 1 :
 		       format == Format::r16_sint           ? 1 :
 		       format == Format::r16_uint           ? 1 :

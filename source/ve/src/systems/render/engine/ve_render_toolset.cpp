@@ -71,10 +71,16 @@ Toolset::Toolset(Device& dvc_ref) : device(dvc_ref)
                             formats.preferred_depth_stencil :
                             formats.alternative_depth_stencil;
 
-    // check supported G-Buffer format
-    if (!device_info.supports_2d_render_target_format[static_cast<size_t>(formats.gbuffer)])
+    // check supported G-Buffer base color format
+    if (!device_info.supports_2d_render_target_format[static_cast<size_t>(formats.gbuffer_base_color)])
     {
-        throw ut::Error(ut::error::not_supported, "G-Buffer format is not supported.");
+        throw ut::Error(ut::error::not_supported, "G-Buffer(base color) format is not supported.");
+    }
+
+    // check supported G-Buffer normal format
+    if (!device_info.supports_2d_render_target_format[static_cast<size_t>(formats.gbuffer_normal)])
+    {
+        throw ut::Error(ut::error::not_supported, "G-Buffer(normal) format is not supported.");
     }
 
     // check supported light-buffer format

@@ -16,6 +16,7 @@ START_NAMESPACE(postprocess)
 enum class Effect
 {
 	tone_mapping,
+	gradient_dithering,
 	stencil_highlighting,
 	fxaa
 };
@@ -151,6 +152,7 @@ private:
 	GaussianBlur gaussian_blur;
 	ToneMapper tone_mapper;
 	StencilHighlight stencil_highlight;
+	Dithering dithering;
 	Fxaa fxaa;
 };
 

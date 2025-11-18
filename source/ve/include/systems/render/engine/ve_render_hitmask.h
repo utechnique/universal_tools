@@ -97,14 +97,14 @@ private:
 		struct AlphaTestOnDescriptors : public DescriptorSet
 		{
 			AlphaTestOnDescriptors() : DescriptorSet(view_ub, transform_ub, hitmask_id_ub,
-			                                         sampler, diffuse)
+			                                         sampler, base_color)
 			{}
 
 			Descriptor view_ub = "g_ub_view";
 			Descriptor transform_ub = "g_ub_transform";
 			Descriptor hitmask_id_ub = "g_ub_hitmask_id";
 			Descriptor sampler = "g_sampler";
-			Descriptor diffuse = "g_tex2d_diffuse";
+			Descriptor base_color = "g_tex2d_base_color";
 		};
 	};
 

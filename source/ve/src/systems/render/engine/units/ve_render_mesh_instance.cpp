@@ -20,10 +20,12 @@ void MeshInstance::Reflect(ut::meta::Snapshot& snapshot)
 {
 	Unit::Reflect(snapshot);
 	snapshot.Add(mesh_path, "mesh_path");
-	snapshot.Add(diffuse_add, "diffuse_add");
-	snapshot.Add(diffuse_mul, "diffuse_mul");
-	snapshot.Add(material_add, "material_add");
-	snapshot.Add(material_mul, "material_mul");
+	snapshot.Add(base_color_factor, "base_color_factor");
+	snapshot.Add(roughness_factor, "roughness_factor");
+	snapshot.Add(metallic_factor, "metallic_factor");
+	snapshot.Add(emissive_strength, "emissive_strength");
+	snapshot.Add(occlusion_factor, "occlusion_factor");
+	snapshot.Add(force_forward_renderer, "force_forward_renderer");
 	snapshot.Add(highlighted, "highlighted");
 }
 

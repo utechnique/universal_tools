@@ -183,7 +183,8 @@ public:
 
 	// Takes ownership of provided resource.
 	template<typename ResourceType>
-	RcRef<ResourceType> AddResource(ResourceType resource, ut::Optional<ut::String> name = ut::Optional<ut::String>())
+	RcRef<ResourceType> AddResource(ResourceType resource,
+	                                ut::Optional<ut::String> name = ut::Optional<ut::String>())
 	{
 		// lock resources
 		ut::ScopeRWLock scope_lock(lock, ut::RWLock::Access::write);
@@ -197,18 +198,27 @@ public:
 		// update the name/id map
 		if (name)
 		{
-			ut::Optional<ut::Pair<const ut::String, Resource::Id>&> insert_name_result = names.Insert(name.Get(), id);
+			ut::Optional<ut::Pair<const ut::String,
+			                      Resource::Id>&> insert_name_result = names.Insert(name.Get(), id);
 			UT_ASSERT(!insert_name_result);
+			if (insert_name_result)
+			{
+				ut::String error_desc = ut::String("Unable to add a resource with name \"") +
+					name.Get() + "\", the resource with such name already exists.";
+				throw ut::Error(ut::error::already_exists, ut::Move(error_desc));
+			}
 		}
 
 		// create unique resource object with a reference counter
 		ReferencedResource unique_rc(*this, ut::Move(rc_unique_ptr), id, ut::Move(name));
 
 		// create reference
-		RcRef<ResourceType> ref(static_cast<ResourceType&>(unique_rc.ptr.GetRef()), unique_rc.ref_counter);
+		RcRef<ResourceType> ref(static_cast<ResourceType&>(unique_rc.ptr.GetRef()),
+		                        unique_rc.ref_counter);
 
 		// add to the map
-		ut::Optional<ut::Pair<const Resource::Id, ReferencedResource>&> insert_rc_result = resources.Insert(id, ut::Move(unique_rc));
+		ut::Optional<ut::Pair<const Resource::Id,
+		                      ReferencedResource>&> insert_rc_result = resources.Insert(id, ut::Move(unique_rc));
 		UT_ASSERT(!insert_rc_result);
 		return ref;
 	}
@@ -230,6 +240,7 @@ public:
 	RcRef<Map> img_green;
 	RcRef<Map> img_blue;
 	RcRef<Map> img_normal;
+	RcRef<Map> img_checker;
 
 private:
 	// Creates internal engine resources (primitives, common 1x1 textures, etc.)

@@ -41,10 +41,11 @@ public:
 	// CPU representation of the material uniform buffer.
 	struct MaterialBuffer
 	{
-		ut::Vector<4> diffuse_add;
-		ut::Vector<4> diffuse_mul;
-		ut::Vector<4> material_add;
-		ut::Vector<4> material_mul;
+		ut::Vector<4> base_color_factor;
+		float roughness_factor;
+		float metallic_factor;
+		float emissive_strength;
+		float occlusion_factor;
 	};
 
 	// CPU representation of the entity-id buffer.
@@ -67,21 +68,27 @@ public:
 	// The resource name of the mesh asset. It is needed for the render engine
 	// to be able to initialize @mesh reference.
 	ut::String mesh_path = ut::String(Resource::GeneratorPrompt::skStarter) +
-	                       ResourceCreator<Mesh>::skTypeBox;
-
-	// Color that is added to the diffuse component of all mesh materials.
-	ut::Color<3> diffuse_add = ut::Color<3>(0);
+	                       ResourceCreator<Mesh>::Generator::skTypeBox;
 
 	// Color that is multiplied with the diffuse
 	// component of all mesh materials.
-	ut::Color<3> diffuse_mul = ut::Color<3>(1);
+	ut::Color<4> base_color_factor = ut::Color<4>(1);
 
-	// Color that is added to the material component of all mesh materials.
-	ut::Color<3> material_add = ut::Color<3>(0);
+	// The factor for the roughness of the material.
+	float roughness_factor = 1.0f;
 
-	// Color that is multiplied with the material
-	// component of all mesh materials.
-	ut::Color<3> material_mul = ut::Color<3>(1);
+	// The factor for the metalness of the material.
+	float metallic_factor = 1.0f;
+
+	// The factor for the emissive color.
+	float emissive_strength = 1.0f;
+
+	// The factor for the occlusion of the material.
+	float occlusion_factor = 1.0f;
+
+	// Determines if this mesh instance must be rendered in forward pass even
+	// if it's suitable for deferred rendering.
+	bool force_forward_renderer = false;
 
 	// Determines if this mesh instance has separate stencil mask bit enabled.
 	bool highlighted = false;

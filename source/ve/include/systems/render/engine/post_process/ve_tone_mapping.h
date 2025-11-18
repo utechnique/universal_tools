@@ -59,6 +59,7 @@ private:
 
 	// Common rendering tools.
 	Toolset& tools;
+	Mesh::Subset& fullscreen_quad;
 	RenderPass& pass;
 	Shader pixel_shader;
 	PipelineState pipeline_state;

@@ -161,7 +161,7 @@ void ViewportCameraSystem::UpdateCamera(TransformComponent& transform,
 	switch (mode.render_mode)
 	{
 		case ui::Viewport::RenderMode::complete: render_view.light_pass_mode = render::View::LightPassMode::complete; break;
-		case ui::Viewport::RenderMode::diffuse: render_view.light_pass_mode = render::View::LightPassMode::deferred_diffuse; break;
+		case ui::Viewport::RenderMode::base_color: render_view.light_pass_mode = render::View::LightPassMode::deferred_base_color; break;
 		case ui::Viewport::RenderMode::normal: render_view.light_pass_mode = render::View::LightPassMode::deferred_normal; break;
 	}
 

@@ -83,14 +83,14 @@ private:
 		struct Descriptors : public DescriptorSet
 		{
 			Descriptors() : DescriptorSet(view_ub, transform_ub,
-			                              material_ub, sampler, diffuse)
+			                              material_ub, sampler, base_color)
 			{}
 
 			Descriptor view_ub = "g_ub_view";
 			Descriptor transform_ub = "g_ub_transform";
 			Descriptor material_ub = "g_ub_material";
 			Descriptor sampler = "g_sampler";
-			Descriptor diffuse = "g_tex2d_diffuse";
+			Descriptor base_color = "g_tex2d_base_color";
 		};
 	};
 

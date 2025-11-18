@@ -90,15 +90,19 @@ void Batcher::UpdateBatch(Context& context,
 		MeshInstance::DrawCall& dc = dc_start[j];
 		MeshInstance& instance = dc.instance;
 
-		// transform
+		// transform buffer
 		ut::memory::Copy(transform_memory + j, &instance.world_matrix, sizeof(ut::Matrix<4, 4>));
 
-		// material
-		MeshInstance::MaterialBuffer& material = material_memory[j];
-		ut::memory::Copy(&material.diffuse_add, &instance.diffuse_add, sizeof(ut::Color<3>));
-		ut::memory::Copy(&material.diffuse_mul, &instance.diffuse_mul, sizeof(ut::Color<3>));
-		ut::memory::Copy(&material.material_add, &instance.material_add, sizeof(ut::Color<3>));
-		ut::memory::Copy(&material.material_mul, &instance.material_mul, sizeof(ut::Color<3>));
+		// material buffer
+		MeshInstance::MaterialBuffer& material_buffer = material_memory[j];
+		material_buffer.base_color_factor.R() = ut::Pow(instance.base_color_factor.R(), 2.2f);
+		material_buffer.base_color_factor.G() = ut::Pow(instance.base_color_factor.G(), 2.2f);
+		material_buffer.base_color_factor.B() = ut::Pow(instance.base_color_factor.B(), 2.2f);
+		material_buffer.base_color_factor.A() = instance.base_color_factor.A();
+		material_buffer.roughness_factor = instance.roughness_factor;
+		material_buffer.metallic_factor = instance.metallic_factor;
+		material_buffer.emissive_strength = instance.emissive_strength;
+		material_buffer.occlusion_factor = instance.occlusion_factor;
 	}
 
 	// finish mapping

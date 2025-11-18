@@ -12,6 +12,8 @@
 #ifndef SRGB_TO_RGB
 	#define SRGB_TO_RGB 0
 #endif
+//----------------------------------------------------------------------------//
+#include "gamma.hlsl"
 
 //----------------------------------------------------------------------------//
 // Resources.
@@ -33,13 +35,13 @@ struct PS_INPUT
 // Pixel shader entry point.
 float4 PS(PS_INPUT input) : SV_Target
 {
-	float4 c = g_tex2d.Sample(g_sampler, input.texcoord) * g_color;
+	float4 c = g_tex2d.Sample(g_sampler, input.texcoord);
 #if RGB_TO_SRGB
-	return pow(c, 2.2f);
+	return float4(AccurateRgb2Srgb(c.rgb * g_color.rgb), c.a * g_color.a);
 #elif SRGB_TO_RGB
-	return pow(c, 1.0f / 2.2f);
+	return float4(AccurateSrgb2Rgb(c.rgb), c.a) * g_color;
 #else
-	return c;
+	return c * g_color;
 #endif
 }
 

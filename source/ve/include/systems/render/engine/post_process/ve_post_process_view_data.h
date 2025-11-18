@@ -7,6 +7,7 @@
 #include "ve_post_process_slots.h"
 #include "ve_tone_mapping.h"
 #include "ve_stencil_highlight.h"
+#include "ve_dithering.h"
 #include "ve_fxaa.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -23,6 +24,7 @@ public:
 	ViewData(ut::Array<SwapSlot> in_swap_slots,
 	         ToneMapper::ViewData in_tone_mapping,
 	         StencilHighlight::ViewData in_stencil_highlight,
+	         Dithering::ViewData in_dithering,
 	         Fxaa::ViewData in_fxaa);
 
 	// Move constructor and operator.
@@ -39,6 +41,7 @@ public:
 	// effects
 	ToneMapper::ViewData tone_mapping;
 	StencilHighlight::ViewData stencil_highlight;
+	Dithering::ViewData dithering;
 	Fxaa::ViewData fxaa;
 };
 

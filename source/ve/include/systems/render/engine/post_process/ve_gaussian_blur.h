@@ -82,6 +82,7 @@ public:
 private:
 	// Common rendering tools.
 	Toolset& tools;
+	Mesh::Subset& fullscreen_quad;
 	ut::HashMap<ut::String, ut::UniquePtr<Shader> > pixel_shaders;
 };
 

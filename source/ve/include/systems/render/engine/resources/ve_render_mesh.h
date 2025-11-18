@@ -46,30 +46,63 @@ public:
 		off
 	};
 
+	// Vertex buffer that can be linked with a ve::render::Mesh::Subset object.
+	struct VertexBuffer : public Buffer
+	{
+		VertexBuffer(Buffer buffer,
+		             VertexFormat vertex_format) : Buffer(ut::Move(buffer))
+		                                         , format(vertex_format)
+		{}
+
+		VertexFormat format;
+	};
+
+	// Index buffer that can be linked with a ve::render::Mesh::Subset object.
+	struct IndexBuffer : public Buffer
+	{
+		IndexBuffer(Buffer buffer,
+		            IndexType index_format) : Buffer(ut::Move(buffer))
+		                                    , format(index_format)
+		{}
+
+		IndexType format;
+	};
+
 	// Mesh::Subset is a part of the mesh with a separate material
-	// and rendering options.
+	// and rendering options to be rendered with one draw call.
 	struct Subset
 	{
+		static constexpr ut::thread_safety::Mode skThreadSafety = ut::thread_safety::Mode::off;
+
+		// Defines the shading parameters of this subset.
 		Material material;
 
-		// index offset in the index buffer if it exists
-		// or a vertex offset in the vertex buffer otherwise
-		ut::uint32 index_offset = 0;
+		// Vertex buffer to be attached to IA pipeline stage.
+		ut::SharedPtr<VertexBuffer, skThreadSafety> vertex_buffer;
 
-		// number of indices if the index buffer exists
-		// or a number of vertices otherwise
-		ut::uint32 index_count = 0;
+		// Index buffer to be attached to IA pipeline stage (can be nullptr).
+		ut::SharedPtr<IndexBuffer, skThreadSafety> index_buffer;
+
+		// The polygon mode for this drawcall.
+		PolygonMode polygon_mode = Mesh::PolygonMode::triangle;
+
+		// Index offset in the @index_buffer if it has non-nullptr value
+		// or a vertex offset in the @vertex_buffer otherwise.
+		ut::uint32 offset = 0;
+
+		// Number of indices to draw if the @index_buffer has non-nullptr
+		// value or a number of vertices in @vertex_buffer otherwise.
+		ut::uint32 count = 0;
+
+		// Creates the input assembly state for this subset.
+		InputAssemblyState CreateIaState(Instancing instancing = Instancing::off) const
+		{
+			return Mesh::CreateIaState(vertex_buffer->format, polygon_mode, instancing);
+		}
 	};
 
 	// Constructor.
-	Mesh(ut::uint32 in_polygon_count,
-	     ut::uint32 in_vertex_count,
-		 Buffer in_vertex_buffer,
-		 ut::Optional<Buffer> in_index_buffer,
-		 IndexType in_index_type,
-	     VertexFormat in_vertex_format,
-	     PolygonMode in_polygon_mode,
-	     ut::Array<Subset> in_subsets);
+	Mesh(ut::Array<Subset> mesh_subsets);
 
 	// Identify() method must be implemented for the polymorphic types.
 	const ut::DynamicType& Identify() const override;
@@ -83,15 +116,16 @@ public:
 	// RasterizationState::PolygonMode value.
 	static RasterizationState::PolygonMode GetRasterizerPolygonMode(PolygonMode polygon_mode);
 
-	// Creates the input assembly state for the desired subset of this mesh.
-	InputAssemblyState CreateIaState(Instancing instancing = Instancing::off) const;
-
 	// Returns an array of shader macros for the specified vertex format.
 	static ut::Array<Shader::MacroDefinition> GenerateVertexMacros(VertexFormat vertex_format,
 	                                                               Instancing instancing = Instancing::off);
 
 	// Returns a number of vertices to render one polygon using the provided mode.
 	static ut::uint32 GetPolygonVertexCount(PolygonMode mode);
+
+	// Only 32-bit indices are supported
+	static constexpr IndexType index_format = IndexType::uint32;
+	typedef ut::uint32 IndexType;
 
 	// Number of vertices in one face.
 	static constexpr ut::uint32 skTriangleVertices = 3;
@@ -101,25 +135,6 @@ public:
 	// identify current instance in shader.
 	static const char* skInstanceIdSemantic;
 	static constexpr pixel::Format skInstanceIdFormat = pixel::Format::r32_uint;
-
-	// Number of polygons.
-	ut::uint32 polygon_count;
-
-	// Number of vertices in the vertex buffer.
-	ut::uint32 vertex_count;
-
-	// Vertex and index buffers.
-	Buffer vertex_buffer;
-	ut::Optional<Buffer> index_buffer;
-
-	// Indicates if indices are 16-bit or 32-bit.
-	IndexType index_type;
-
-	// The format of the vertices in the vertex buffer.
-	VertexFormat vertex_format;
-
-	// The polygon mode of this mesh.
-	PolygonMode polygon_mode;
 
 	// Subset groups, each has it's own material.
 	ut::Array<Subset> subsets;
@@ -161,6 +176,9 @@ public:
 	// the process of creating a mesh.
 	struct GeometryData
 	{
+		Mesh::VertexFormat vertex_format;
+		Mesh::PolygonMode polygon_mode;
+		InputAssemblyState input_assembly;
 		ut::uint32 index_count = 0;
 		ut::uint32 vertex_count = 0;
 		ut::Array<ut::byte> vertex_buffer;
@@ -233,25 +251,44 @@ public:
 	static void ComputeTangents(const InputAssemblyState& input_assembly,
 	                            GeometryData& geometry_data);
 
-	// The list of names acceptable for generating a mesh from a generator prompt.
-	static const char *skTypeBox, *skTypeSphere, *skTypeTorus;
+	// Generator attributes.
+	struct Generator
+	{
+		enum Attribute : char
+		{
+			x_position    = 'x',
+			y_position    = 'y',
+			z_position    = 'z',
+			width         = 'w',
+			height        = 'h',
+			depth         = 'd',
+			radius        = 'r',
+			thickness     = 't',
+			segment_count = 's',
+			orientation   = 'o',
+			material      = 'm',
+			color         = 'c',
+			line_mode     = 'l',
+		};
+
+		// The list of names acceptable for generating a mesh from a generator prompt.
+		static const char *skTypeBox,
+		                  *skTypeSphere,
+		                  *skTypeTorus;
+	};
 
 private:
 	// ve::render::ResourceCreator<Mesh>::Generator is a signature of function
 	// generating a mesh from generator prompt.
-	using Generator = ut::Result<RcRef<Mesh>, ut::Error>(const ut::String&,
-	                                                     const Resource::GeneratorPrompt::Attributes&,
-	                                                     Device& device,
-	                                                     ResourceManager& rc_mgr);
-
-	// Creates a generator prompt for a default surface material with solid color.
-	static ut::String GenDefaultMaterialPrompt(const ut::Optional<ut::String>& color);
+	using PrimitiveGenerator = ut::Result<RcRef<Mesh>,
+	                                      ut::Error>(const ut::String&,
+	                                                 const Resource::GeneratorPrompt::Attributes&,
+	                                                 Device& device,
+	                                                 ResourceManager& rc_mgr);
 
 	// Creates a simple mesh resource with single subset from the provided
 	// index and vertex data.
 	static ut::Result<RcRef<Mesh>, ut::Error> CreatePrimitive(ut::Optional<ut::String> name,
-                                                              Mesh::VertexFormat vertex_format,
-                                                              Mesh::PolygonMode polygon_mode,
                                                               GeometryData geometry_data,
                                                               const ut::Optional<ut::String>& material_prompt,
                                                               const ut::Optional<ut::String>& color,
@@ -275,7 +312,7 @@ private:
 	//   'c': name of the color to be used if 'm' parameter wasn't provided,
 	//        see ResourceCreator<Map>::GenColorNameMap() for details.
 	//   'l': enables line (wireframe) mode, must be 'yes' or 'no'. Default is 'no'.
-	static Generator CreateBox;
+	static PrimitiveGenerator CreateBox;
 
 	// Creates a spherical mesh from the provided generator prompt.
 	// Acceptable prompt attributes are:
@@ -293,7 +330,7 @@ private:
 	//   'c': name of the color to be used if 'm' parameter wasn't provided,
 	//        see ResourceCreator<Map>::GenColorNameMap() for details.
 	//   'l': enables line (wireframe) mode, must be 'yes' or 'no'. Default is 'no'.
-	static Generator CreateSphere;
+	static PrimitiveGenerator CreateSphere;
 
 	// Creates a torus mesh from the provided generator prompt.
 	// Acceptable prompt attributes are:
@@ -315,12 +352,15 @@ private:
 	//   'c': name of the color to be used if 'm' parameter wasn't provided,
 	//        see ResourceCreator<Map>::GenColorNameMap() for details.
 	//   'l': enables line (wireframe) mode, must be 'yes' or 'no'. Default is 'no'.
-	static Generator CreateTorus;
+	static PrimitiveGenerator CreateTorus;
+
+	// Returns the generator prompt string for a checker mesh.
+	static ut::String BuildCheckerPrompt();
 
 	// All generator functions are gathered in this hashmap to be quickly picked
 	// using a mesh shape name as a key instead of comparing all possible shape
 	// names one by one.
-	ut::HashMap<ut::String, ut::Function<Generator> > generators;
+	ut::HashMap<ut::String, ut::Function<PrimitiveGenerator> > generators;
 
 	// ve::render::Device and ve::renderResourceManager objects are essential
 	// for creating a mesh resource.

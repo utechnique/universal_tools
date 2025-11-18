@@ -22,14 +22,20 @@
 #define DEFERRED_PASS 0
 #endif
 
+// Define 'IBL_PASS' macro to compile ibl reflection pass shader.
+#ifndef IBL_PASS
+#define IBL_PASS 0
+#endif
+
 // Define 'LIGHT_PASS' macro to compile light pass shader.
 #ifndef LIGHT_PASS
 #define LIGHT_PASS 0
 #endif
+#define AMBIENT_PASS (LIGHT_PASS && AMBIENT_LIGHT)
 
-// Define 'IBL_PASS' macro to compile ibl reflection pass shader.
-#ifndef IBL_PASS
-#define IBL_PASS 0
+// Define 'EMISSIVE_PASS' macro to compile emissive pass shader.
+#ifndef EMISSIVE_PASS
+#define EMISSIVE_PASS 0
 #endif
 
 // Define 'HITMASK_PASS' macro to compile shader rendering the color
@@ -50,12 +56,13 @@
 #define IBL_MIP_COUNT 8
 #endif
 
-#define NEEDS_DIFFUSE_MAP (!HITMASK_PASS || ALPHA_TEST)
-#define NEEDS_NORMAL_MAP (!HITMASK_PASS && !UNLIT_PASS)
-#define NEEDS_MATERIAL_MAP (!HITMASK_PASS && !UNLIT_PASS)
+#define NEEDS_BASE_COLOR_MAP ((!HITMASK_PASS && !EMISSIVE_PASS) || ALPHA_TEST)
+#define NEEDS_NORMAL_MAP (!AMBIENT_PASS && !HITMASK_PASS && !EMISSIVE_PASS && !UNLIT_PASS)
+#define NEEDS_METALLIC_ROUGHNESS_MAP ((!AMBIENT_PASS || IBL) && !HITMASK_PASS && !EMISSIVE_PASS && !UNLIT_PASS)
+#define NEEDS_OCCLUSION_MAP (DEFERRED_PASS || (LIGHT_PASS && AMBIENT_LIGHT))
+#define NEEDS_EMISSIVE_MAP (DEFERRED_PASS || EMISSIVE_PASS)
 #define NEEDS_MATERIAL_BUFFER (!HITMASK_PASS)
-#define NEEDS_TEXTURE_COORD (NEEDS_DIFFUSE_MAP || NEEDS_NORMAL_MAP || NEEDS_MATERIAL_MAP)
-#define ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT (LIGHT_PASS && AMBIENT_LIGHT)
+#define NEEDS_TEXTURE_COORD (NEEDS_BASE_COLOR_MAP || NEEDS_NORMAL_MAP || NEEDS_METALLIC_ROUGHNESS_MAP || NEEDS_EMISSIVE_MAP)
 
 //----------------------------------------------------------------------------//
 #include "vertex.hlsl"
@@ -65,6 +72,9 @@
 #endif
 #if LIGHT_PASS || IBL_PASS
 #include "lighting.hlsl"
+#endif
+#if UNLIT_PASS
+#include "gamma.hlsl"
 #endif
 
 //----------------------------------------------------------------------------//
@@ -111,10 +121,11 @@ struct PS_INPUT
 // Per-instance material buffer.
 struct Material
 {
-	float4 diffuse_add;
-	float4 diffuse_mul;
-	float4 material_add;
-	float4 material_mul;
+	float4 base_color_factor;
+	float roughness_factor;
+	float metallic_factor;
+	float emissive_strength;
+	float occlusion_factor;
 };
 
 //----------------------------------------------------------------------------//
@@ -154,32 +165,29 @@ cbuffer g_ub_hitmask_id : register(b4)
 SamplerState g_sampler : register(s5);
 #endif
 
-#if NEEDS_DIFFUSE_MAP
-Texture2D g_tex2d_diffuse : register(t6);
+#if NEEDS_BASE_COLOR_MAP
+Texture2D g_tex2d_base_color : register(t6);
 #endif
 
 #if NEEDS_NORMAL_MAP
 Texture2D g_tex2d_normal : register(t7);
 #endif
 
-#if NEEDS_MATERIAL_MAP
-Texture2D g_tex2d_material : register(t8);
+#if NEEDS_METALLIC_ROUGHNESS_MAP
+Texture2D g_tex2d_metallic_roughness : register(t8);
 #endif
 
 #if IBL_PASS
 TextureCube g_ibl_cubemap : register(t9);
+#else // IBL_PASS
+#if NEEDS_OCCLUSION_MAP
+Texture2D g_tex2d_occlusion : register(t9);
 #endif
 
-//----------------------------------------------------------------------------//
-// Dumb function to prevent aggresive optimizers from stripping out unused
-// shader resources.
-#if ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT
-float PreserveRcBindings(float2 texcoord)
-{
-	return g_tex2d_normal.Sample(g_sampler, texcoord).r +
-	       g_tex2d_material.Sample(g_sampler, texcoord).r;
-}
+#if NEEDS_EMISSIVE_MAP
+Texture2D g_tex2d_emissive : register(t10);
 #endif
+#endif // else IBL_PASS
 
 //----------------------------------------------------------------------------//
 // Vertex shader entry.
@@ -214,7 +222,7 @@ PS_INPUT VS(Vertex input)
 	#else
 		output.hitmask_id = g_hitmask_id;
 	#endif
-#elif !UNLIT_PASS
+#elif !UNLIT_PASS && !EMISSIVE_PASS
 	// world position
 	#if !DEFERRED_PASS
 		output.world_position = world_position;
@@ -222,12 +230,12 @@ PS_INPUT VS(Vertex input)
 
 	// normal
 	#if VERTEX_HAS_NORMAL
-		output.normal = mul(input.normal, transform);
+		output.normal = normalize(mul(input.normal, transform));
 	#endif
 
 	// tangent, binormal
 	#if VERTEX_HAS_TANGENT
-		output.tangent = mul(input.tangent, transform);
+		output.tangent = normalize(mul(input.tangent, transform));
 		output.binormal = cross(output.normal, output.tangent);
 	#endif
 #endif // !UNLIT_PASS
@@ -253,47 +261,63 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 	float2 texcoord = 0.0f;
 #endif
 
-	// sample diffuse texture
-#if NEEDS_DIFFUSE_MAP
-	float4 diffuse_sample = g_tex2d_diffuse.Sample(g_sampler, texcoord);
+	// sample base color texture
+#if NEEDS_BASE_COLOR_MAP
+	float4 base_color_sample = g_tex2d_base_color.Sample(g_sampler, texcoord);
 #endif
 
 	// perform alpha test
 #if ALPHA_TEST
-	float alpha = diffuse_sample.a;
+	float alpha = base_color_sample.a;
 	if (alpha < 0.25f)
 	{
 		clip(-1);
 	}
 #endif // ALPHA_TEST
 
+#if NEEDS_MATERIAL_BUFFER
+	#if INSTANCING
+		Material material = g_material[input.instance_id];
+	#else
+		Material material = g_material;
+	#endif
+#endif
+
+	// sample emissive texture
+#if NEEDS_EMISSIVE_MAP
+	float3 emissive = g_tex2d_emissive.Sample(g_sampler, texcoord).rgb *
+		material.emissive_strength;
+#endif
+
 	// process appropriate render pass
 #if HITMASK_PASS
 	output = input.hitmask_id;
 #elif UNLIT_PASS
-	#if INSTANCING
-		Material material = g_material[input.instance_id];
-	#else
-		Material material = g_material;
-	#endif
-	output.rgb = diffuse_sample.rgb * material.diffuse_mul.rgb + material.diffuse_add.rgb;
-	output.a = diffuse_sample.a;
+	output.rgb = ApproxRgb2Srgb(base_color_sample.rgb) * material.base_color_factor.rgb;
+	output.a = base_color_sample.a * material.base_color_factor.a;
+#elif EMISSIVE_PASS
+	output.rgb = emissive;
+	output.a = 1.0f;
 #else // not HITMASK_PASS and not UNLIT_PASS
-	// sample normal and material textures
+	// sample normal map
+#if NEEDS_NORMAL_MAP
 	float4 normal_sample = g_tex2d_normal.Sample(g_sampler, texcoord);
-	float4 material_sample = g_tex2d_material.Sample(g_sampler, texcoord);
+#else
+	float4 normal_sample = float4(0.5f, 0.5f, 1.0f, 1.0f);
+#endif
+
+	// sample metallic-roughness map
+#if NEEDS_METALLIC_ROUGHNESS_MAP
+	float4 metallic_roughness_sample = g_tex2d_metallic_roughness.Sample(g_sampler, texcoord);
+#else
+	float4 metallic_roughness_sample = float4(0.0f, 1.0f, 0.0f, 0.0f);
+#endif
 
 	// calculate material data
-	#if INSTANCING
-		Material material = g_material[input.instance_id];
-	#else
-		Material material = g_material;
-	#endif
-	float3 diffuse_color = diffuse_sample.rgb * material.diffuse_mul.rgb + material.diffuse_add.rgb;
+	float3 base_color = base_color_sample.rgb * material.base_color_factor.rgb;
 	float3 normal_color = normal_sample.rgb;
-	float3 material_color = material_sample.rgb * material.material_mul.rgb + material.material_add.rgb;
-	float roughness = material_color.r;
-	float metallic = material_color.g;
+	float roughness = metallic_roughness_sample.g * material.roughness_factor;
+	float metallic = metallic_roughness_sample.b * material.metallic_factor;
 
 	// calculate final normal
 	#if VERTEX_HAS_NORMAL && VERTEX_HAS_TANGENT
@@ -306,18 +330,28 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 		float3 normal = normal_sample.rgb;
 	#endif
 
+	// calculate occlusion factor
+	#if NEEDS_OCCLUSION_MAP
+		float occlusion = g_tex2d_occlusion.Sample(g_sampler, texcoord).r *
+		                  material.occlusion_factor;
+	#endif
+
 	#if DEFERRED_PASS
-		output.diffuse = float4(diffuse_color.rgb, roughness);
-		output.normal = float4(normal, metallic);
+		output = EncodeGBuffer(normal,
+		                       base_color,
+		                       emissive,
+		                       roughness,
+		                       metallic,
+		                       occlusion);
 	#else
 		SurfaceData surface;
 		surface.world_position = input.world_position;
 		surface.look = normalize(g_camera_position.xyz - surface.world_position);
-		surface.normal = normal;
-		surface.diffuse = diffuse_color;
+		surface.normal = normalize(normal);
+		surface.diffuse = base_color;
 		surface.specular = 0.5f;
 		surface.roughness = roughness;
-		surface.min_roughness = 0.04f;
+		surface.min_roughness = 0.001f;
 		surface.metallic = metallic;
 		surface.cavity = 1.0f;
 
@@ -344,7 +378,7 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 
 			// calculate lighting
 			#if AMBIENT_LIGHT
-				float3 light_amount = ComputeAmbientLighting(surface, light);
+				float3 light_amount = ComputeAmbientLighting(surface, light) * occlusion;
 			#else
 				float3 light_amount = ComputeDirectLighting(surface, light);
 			#endif
@@ -352,7 +386,7 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 		#elif IBL_PASS
 			float3 view_direction = -surface.look;
 			float3 reflection_vector = normalize(reflect(view_direction, surface.normal));
-			float NoV = saturate(dot(view_direction, surface.normal));
+			float NoV = saturate(dot(surface.normal, surface.look));
 			float3 light_amount = GetImageBasedReflectionLighting(g_ibl_cubemap,
 			                                                      g_sampler,
 			                                                      surface.roughness,
@@ -362,17 +396,9 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 			                                                      IBL_MIP_COUNT);
 		#endif // LIGHT_PASS
 		output.rgb = light_amount;
-		output.a = diffuse_sample.a;
+		output.a = base_color_sample.a * material.base_color_factor.a;
 	#endif // !DEFERRED_PASS
 #endif // !HITMASK_PASS
-
-	// preserve shader resource bindings from being optimized out
-#if ESSENTIAL_BINDINGS_CAN_BE_OPTIMIZED_OUT
-		if (output.r < -1.0f)
-		{
-			output.r += PreserveRcBindings(texcoord);
-		}
-#endif
 
 	return output;
 }

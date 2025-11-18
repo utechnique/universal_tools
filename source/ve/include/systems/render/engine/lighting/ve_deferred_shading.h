@@ -22,8 +22,9 @@ public:
 	struct ViewData
 	{
 		// render target (can be a cubemap)
-		Target diffuse;
+		Target base_color;
 		Target normal;
+		Target emissive;
 		Target depth;
 
 		// cubemaps need a separate framebuffer for each face
@@ -129,49 +130,84 @@ private:
 			// Descriptor set to render mesh with geometry pass shaders.
 			struct Descriptors : public DescriptorSet
 			{
-				Descriptors() : DescriptorSet(view_ub, transform_ub, material_ub,
-				                              sampler, diffuse, normal, material)
+				Descriptors() : DescriptorSet(view_ub, transform_ub, material_ub, sampler,
+				                              base_color, normal, metallic_roughness,
+				                              occlusion, emissive)
 				{}
 
 				Descriptor view_ub = "g_ub_view";
 				Descriptor transform_ub = "g_ub_transform";
 				Descriptor material_ub = "g_ub_material";
 				Descriptor sampler = "g_sampler";
-				Descriptor diffuse = "g_tex2d_diffuse";
+				Descriptor base_color = "g_tex2d_base_color";
 				Descriptor normal = "g_tex2d_normal";
-				Descriptor material = "g_tex2d_material";
+				Descriptor metallic_roughness = "g_tex2d_metallic_roughness";
+				Descriptor occlusion = "g_tex2d_occlusion";
+				Descriptor emissive = "g_tex2d_emissive";
 			};
 		};
 	};
 
-	// Descriptor set for the image based lighting pass.
-	struct IblDescriptorSet : public DescriptorSet
+	// The list of descriptors used in different shading stages.
+	struct ShadingDescriptors : public DescriptorSet
 	{
-		IblDescriptorSet() : DescriptorSet(view_ub, sampler, depth,
-		                                   diffuse, normal, ibl_cubemap)
-		{}
-
-		Descriptor view_ub = "g_ub_view";
-		Descriptor sampler = "g_sampler";
-		Descriptor depth = "g_tex2d_depth";
-		Descriptor diffuse = "g_tex2d_diffuse";
-		Descriptor normal = "g_tex2d_normal";
-		Descriptor ibl_cubemap = "g_ibl_cubemap";
-	};
-
-	// Descriptor set for the light pass shaders.
-	struct LightPassDescriptorSet : public DescriptorSet
-	{
-		LightPassDescriptorSet() : DescriptorSet(view_ub, light_ub, sampler,
-		                                         depth, diffuse, normal)
+		template<typename... DescriptorTypes>
+		ShadingDescriptors(DescriptorTypes&... descriptors) :
+			DescriptorSet(descriptors...)
 		{}
 
 		Descriptor view_ub = "g_ub_view";
 		Descriptor light_ub = "g_ub_light";
 		Descriptor sampler = "g_sampler";
 		Descriptor depth = "g_tex2d_depth";
-		Descriptor diffuse = "g_tex2d_diffuse";
+		Descriptor base_color = "g_tex2d_base_color";
 		Descriptor normal = "g_tex2d_normal";
+		Descriptor emissive = "g_tex2d_emissive";
+		Descriptor ibl_cubemap = "g_ibl_cubemap";
+	};
+
+	// Descriptor set for the image based lighting pass.
+	struct IblDescriptorSet : public ShadingDescriptors
+	{
+		IblDescriptorSet() : ShadingDescriptors(view_ub, sampler, depth,
+		                                        base_color, normal, ibl_cubemap)
+		{}
+	};
+
+	// Descriptor set for the light pass shaders.
+	struct LightPassDescriptors : public ShadingDescriptors
+	{
+		LightPassDescriptors() : ShadingDescriptors(view_ub, light_ub, sampler,
+		                                            depth, base_color, normal)
+		{}
+	};
+
+	// Descriptor set for the ambient pass shaders.
+	struct AmbientPassDescriptors : public ShadingDescriptors
+	{
+		static constexpr size_t count = static_cast<size_t>(LightPass::IblPreset::count);
+
+		enum class IblOn { select };
+		enum class IblOff { select };
+
+		// Ibl needs a roughness value from G-Buffer emissive .a channel
+		// and a metallic value from normal .a channel.
+		AmbientPassDescriptors(IblOn) : ShadingDescriptors(view_ub, light_ub, sampler,
+		                                                   depth, base_color, normal,
+		                                                   emissive)
+		{}
+
+		// No need in G-Buffer emissive and normal targets without Ibl.
+		AmbientPassDescriptors(IblOff) : ShadingDescriptors(view_ub, light_ub, sampler,
+		                                                    depth, base_color, emissive)
+		{}
+	};
+
+	// Descriptor set for the emissive pass.
+	struct EmissivePassDescriptors : public ShadingDescriptors
+	{
+		EmissivePassDescriptors() : ShadingDescriptors(sampler, emissive)
+		{}
 	};
 
 	// Renders mesh instance units to the g-buffer.
@@ -190,6 +226,34 @@ private:
 	                                ut::uint32 offset,
 	                                ut::uint32 count);
 
+	// Applies IBL lighting.
+	void ShadeIblReflection(Context& context,
+	                        DeferredShading::ViewData& data,
+	                        Buffer& view_uniform_buffer,
+	                        ut::Optional<Image&> ibl_cubemap,
+	                        Image::Cube::Face cubeface);
+
+	// Applies ambient lighting.
+	void ShadeAmbientLight(Context& context,
+	                       DeferredShading::ViewData& data,
+	                       Buffer& view_uniform_buffer,
+	                       Light::Sources& lights,
+	                       LightPass::IblPreset ibl_preset,
+	                       Image::Cube::Face cubeface);
+
+	// Applies directional + spot + point lighting.
+	void ShadeDirectLight(Context& context,
+	                      DeferredShading::ViewData& data,
+	                      Buffer& view_uniform_buffer,
+	                      Light::Sources& lights,
+	                      LightPass::IblPreset ibl_preset,
+	                      Image::Cube::Face cubeface);
+
+	// Applies emissive lighting.
+	void ShadeEmissive(Context& context,
+	                   DeferredShading::ViewData& data,
+	                   Image::Cube::Face cubeface);
+
 	// Creates shaders for rendering geometry to the g-buffer.
 	ut::Array<BoundShader> CreateMeshInstGPassShaders();
 
@@ -200,6 +264,9 @@ private:
 	// Creates all permutations of light pass shaders.
 	ut::Array<Shader> CreateLightPassShaders();
 
+	// Creates a pixel shader for the emissive pass.
+	Shader CreateEmissiveShader();
+
 	// Creates a pixel shader for the image based lighting.
 	Shader CreateIblShader(ut::uint32 ibl_mip_count);
 
@@ -208,6 +275,9 @@ private:
 
 	// Creates a render pass for the shading techniques.
 	RenderPass CreateLightPass();
+
+	// Creates a render pass for the emissive lighting.
+	RenderPass CreateEmissivePass();
 
 	// Creates a pipeline state to render geometry to the g-buffer.
 	ut::Result<PipelineState, ut::Error> CreateMeshInstGPassPipeline(Mesh::VertexFormat vertex_format,
@@ -220,24 +290,29 @@ private:
 	ut::Result<PipelineState, ut::Error> CreateLightPassPipeline(Light::SourceType source_type,
 	                                                             LightPass::IblPreset ibl_preset);
 
-	// Creates a pipeline state to apply image based lighting.
-	PipelineState CreateIblPipeline();
-
 	// Creates all possible geometry pass pipeline permutations for a mesh instance.
 	ut::Array<PipelineState> CreateMeshInstGPassPipelinePermutations();
 
 	// Creates all possible light pass pipeline permutations for a mesh instance.
 	ut::Array<PipelineState> CreateLightPassPipelinePermutations();
 
+	// Creates a pipeline state to apply emissive lighting.
+	PipelineState CreateEmissivePipeline();
+
+	// Creates a pipeline state to apply image based lighting.
+	PipelineState CreateIblPipeline();
+
 	// Connects all descriptor sets to the corresponding shaders.
 	void ConnectDescriptors();
 
 	// Common rendering tools.
 	Toolset& tools;
+	Mesh::Subset& fullscreen_quad;
 
 	// Shaders.
 	ut::Array<BoundShader> mesh_inst_gpass_shader;
 	ut::Array<Shader> light_shader;
+	Shader emissive_shader;
 	Shader ibl_shader;
 
 	// Render passes.
@@ -247,6 +322,7 @@ private:
 	// Pipeline states.
 	ut::Array<PipelineState> mesh_inst_gpass_pipeline;
 	ut::Array<PipelineState> light_pipeline;
+	PipelineState emissive_pipeline;
 	PipelineState ibl_pipeline;
 
 	// Secondary command buffers to parallelize cpu work.
@@ -254,8 +330,10 @@ private:
 
 	// Descriptors.
 	ut::Array<GeometryPass::MeshInstRendering::Descriptors> gpass_mesh_inst_desc_set;
+	LightPassDescriptors light_pass_desc_set;
+	AmbientPassDescriptors ambient_pass_desc_set[AmbientPassDescriptors::count];
+	EmissivePassDescriptors emissive_pass_desc_set;
 	IblDescriptorSet ibl_desc_set;
-	LightPassDescriptorSet lightpass_desc_set;
 };
 
 //----------------------------------------------------------------------------//

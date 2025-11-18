@@ -124,23 +124,15 @@ void ResourceManager::Update()
 // Creates internal engine resources (primitives, common 1x1 textures, etc.)
 ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
 {
+	typedef ResourceCreator<Map>::Generator MapGenerator;
+
 	ResourceCreator<Map>& map_creator = GetCreator<Map>();
 	ResourceCreator<Mesh>& mesh_creator = GetCreator<Mesh>();
 
-	// init info for 1x1 maps
-	ResourceCreator<Map>::InitInfo map_1x1_info;
-	map_1x1_info.img_type = Image::Type::planar;
-	map_1x1_info.format = pixel::Format::r8g8b8a8_unorm;
-	map_1x1_info.width = 1;
-	map_1x1_info.height = 1;
-	map_1x1_info.depth = 1;
-	map_1x1_info.mip_count = 1;
-	map_1x1_info.generate_mips = false;
-	ut::Array< ut::Color<4, ut::byte> > pixel_1x1(1);
-
 	// 1x1 black image
-	pixel_1x1.GetFirst() = ut::Color<4, ut::byte>(0, 0, 0, 255);
-	ut::Result<RcRef<Map>, ut::Error> map = map_creator.CreateFromData<4, ut::byte>(map_1x1_info, pixel_1x1);
+	ut::Color<4, ut::byte> color = ut::Color<4, ut::byte>(0, 0, 0, 255);
+	ut::Result<RcRef<Map>,
+	           ut::Error> map = map_creator.Create(MapGenerator::Create1x1Prompt(color));
 	if (!map)
 	{
 		return map.MoveAlt();
@@ -148,8 +140,8 @@ ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
 	img_black = map.Move();
 
 	// 1x1 white image
-	pixel_1x1.GetFirst() = ut::Color<4, ut::byte>(255, 255, 255, 255);
-	map = map_creator.CreateFromData<4, ut::byte>(map_1x1_info, pixel_1x1);
+	color = ut::Color<4, ut::byte>(255, 255, 255, 255);
+	map = map_creator.Create(MapGenerator::Create1x1Prompt(color));
 	if (!map)
 	{
 		return map.MoveAlt();
@@ -157,8 +149,8 @@ ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
 	img_white = map.Move();
 
 	// 1x1 red image
-	pixel_1x1.GetFirst() = ut::Color<4, ut::byte>(255, 0, 0, 255);
-	map = map_creator.CreateFromData<4, ut::byte>(map_1x1_info, pixel_1x1);
+	color = ut::Color<4, ut::byte>(255, 0, 0, 255);
+	map = map_creator.Create(MapGenerator::Create1x1Prompt(color));
 	if (!map)
 	{
 		return map.MoveAlt();
@@ -166,8 +158,8 @@ ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
 	img_red = map.Move();
 
 	// 1x1 green image
-	pixel_1x1.GetFirst() = ut::Color<4, ut::byte>(0, 255, 0, 255);
-	map = map_creator.CreateFromData<4, ut::byte>(map_1x1_info, pixel_1x1);
+	color = ut::Color<4, ut::byte>(0, 255, 0, 255);
+	map = map_creator.Create(MapGenerator::Create1x1Prompt(color));
 	if (!map)
 	{
 		return map.MoveAlt();
@@ -175,8 +167,8 @@ ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
 	img_green = map.Move();
 
 	// 1x1 blue image
-	pixel_1x1.GetFirst() = ut::Color<4, ut::byte>(0, 0, 255, 255);
-	map = map_creator.CreateFromData<4, ut::byte>(map_1x1_info, pixel_1x1);
+	color = ut::Color<4, ut::byte>(0, 0, 255, 255);
+	map = map_creator.Create(MapGenerator::Create1x1Prompt(color));
 	if (!map)
 	{
 		return map.MoveAlt();
@@ -184,13 +176,22 @@ ut::Optional<ut::Error> ResourceManager::CreateEngineResources()
 	img_blue = map.Move();
 
 	// 1x1 normal map
-	pixel_1x1.GetFirst() = ut::Color<4, ut::byte>(127, 127, 255, 255);
-	map = map_creator.CreateFromData<4, ut::byte>(map_1x1_info, pixel_1x1);
+	color = ut::Color<4, ut::byte>(127, 127, 255, 255);
+	map = map_creator.Create(MapGenerator::Create1x1Prompt(color));
 	if (!map)
 	{
 		return map.MoveAlt();
 	}
 	img_normal = map.Move();
+
+	// checker map
+	map = map_creator.Create(ut::String(Resource::GeneratorPrompt::skStarter) +
+	                         ResourceCreator<Map>::Generator::skTypeChecker);
+	if (!map)
+	{
+		return map.MoveAlt();
+	}
+	img_checker = map.Move();
 
 	// fullscreen rect
 	ut::Result<RcRef<Mesh>, ut::Error> mesh = mesh_creator.CreateEyeSpaceRect();

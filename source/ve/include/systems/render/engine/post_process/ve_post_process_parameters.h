@@ -6,6 +6,7 @@
 #include "ve_gaussian_blur.h"
 #include "ve_tone_mapping.h"
 #include "ve_stencil_highlight.h"
+#include "ve_dithering.h"
 #include "ve_fxaa.h"
 
 //----------------------------------------------------------------------------//
@@ -18,6 +19,7 @@ struct Parameters
 {
 	ToneMapper::Parameters tone_mapping;
 	StencilHighlight::Parameters stencil_highlight;
+	Dithering::Parameters dithering;
 	Fxaa::Parameters fxaa;
 };
 

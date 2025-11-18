@@ -115,7 +115,11 @@ void RenderSystem::InitializeUnitsJob(Base::Access& access,
 			unit->world_matrix = unit->world_transform.ToMatrix();
 
 			// initialize rendering resources (buffers, textures, etc.)
-			engine->InitializeUnit(*unit);
+			if (!unit->IsInitialized())
+			{
+				changed = true;
+				engine->InitializeUnit(*unit);
+			}
 		}
 
 		// re-register units and update a cache

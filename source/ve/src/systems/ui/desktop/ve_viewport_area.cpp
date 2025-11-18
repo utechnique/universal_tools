@@ -56,7 +56,7 @@ static const ut::uint32 skRenderModeCount = 3;
 static const char* skRenderModeNames[skRenderModeCount] =
 {
 	"Complete",
-	"G-Buffer (Diffuse)",
+	"G-Buffer (Base Color)",
 	"G-Buffer (Normal)",
 };
 

@@ -9,8 +9,11 @@ UT_REGISTER_TYPE(ve::render::Resource, ve::render::Map, "map")
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
-const char* ResourceCreator<Map>::skTypeChecker = "checker";
-const char* ResourceCreator<Map>::skTypeSolid = "solid";
+const char* ResourceCreator<Map>::skSrgbFileLoadPrefix = "<srgb>";
+const char* ResourceCreator<Map>::Generator::skTypeChecker = "checker";
+const char* ResourceCreator<Map>::Generator::skTypeSolid = "solid";
+const char* ResourceCreator<Map>::Generator::skRgba32Format = "rgba32";
+const char* ResourceCreator<Map>::Generator::skSrgb32Format = "srgba32";
 
 //----------------------------------------------------------------------------//
 // Constructor.
@@ -26,7 +29,7 @@ const ut::DynamicType& Map::Identify() const
 //----------------------------------------------------------------------------//
 // Constructor initializes an image loader and a hashmap of color names.
 ResourceCreator<Map>::ResourceCreator(Device& in_device,
-                                      ResourceManager& in_rc_mgr) : color_map(GenColorNameMap())
+                                      ResourceManager& in_rc_mgr) : color_map(Generator::CreateColorNameMap())
                                                                   , device(in_device)
                                                                   , rc_mgr(in_rc_mgr)
                                                                   , img_loader(device)
@@ -43,12 +46,23 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Create(const ut::String&
 			return Generate(map_name);
 		}
 
-		ut::Result<Image, ut::Error> load_img_result = img_loader.Load(map_name);
+		// check if the resource name has sRGB prefix
+		bool requires_srgb2linear = false;
+		ut::String undecorated_name(map_name);
+		if (undecorated_name.StartsWith(skSrgbFileLoadPrefix))
+		{
+			undecorated_name = map_name.GetAddress() + ut::StrLen(skSrgbFileLoadPrefix);
+			requires_srgb2linear = true;
+		}
+
+		// load an image from file
+		ImageLoader::Info img_info;
+		img_info.srgb = requires_srgb2linear;
+		ut::Result<Image, ut::Error> load_img_result = img_loader.Load(undecorated_name, img_info);
 		if (!load_img_result)
 		{
 			return ut::MakeError(load_img_result.MoveAlt());
 		}
-
 
 		return AddImgToRcMgr(load_img_result.Move(), map_name);
 	};
@@ -57,7 +71,8 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Create(const ut::String&
 	if (!result)
 	{
 		ut::log.Lock() << "Failed to load a render resource (map): " << name << ut::cret;
-		return create(ut::String(Resource::GeneratorPrompt::skStarter) + skTypeChecker);
+		return rc_mgr.Acquire<Map>(ut::String(Resource::GeneratorPrompt::skStarter) +
+		                           Generator::skTypeChecker);
 	}
 
 	return result;
@@ -73,8 +88,9 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Generate(const ut::Strin
 {
 	// parse the prompt into the map type and separate attributes
 	Resource::GeneratorPrompt::Attributes generator_attributes;
-	ut::Result<ut::String, ut::Error> prompt_parse_result = Resource::GeneratorPrompt::Parse(prompt,
-	                                                                                         generator_attributes);
+	ut::Result<ut::String,
+	           ut::Error> prompt_parse_result = Resource::GeneratorPrompt::Parse(prompt,
+	                                                                             generator_attributes);
 	if (!prompt_parse_result)
 	{
 		return ut::MakeError(prompt_parse_result.MoveAlt());
@@ -82,13 +98,13 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Generate(const ut::Strin
 
 	// extract and process map type
 	const ut::String map_type(prompt_parse_result.Move());
-	if (map_type == skTypeSolid)
+	if (map_type == Generator::skTypeSolid)
 	{
 		return GenerateSolidColorMap(generator_attributes, prompt);
 	}
-	else if (map_type == skTypeChecker)
+	else if (map_type == Generator::skTypeChecker)
 	{
-		return GenerateCheckerMap();
+		return GenerateCheckerMap(generator_attributes, prompt);
 	}
 
 	// fail if type is not recognized
@@ -110,6 +126,8 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Generate(const ut::Strin
 //  'c': named color, see ResourceCreator<Map>::GenColorNameMap()
 //       for details, this parameter is optional and can override or
 // 	     be used instead of 'r', 'g' and 'b' parameters.
+//  'f': image format, acceptable values are 'rgba32' and 'srgba32'.
+//       Default is 'rgba32'.
 ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateSolidColorMap(const Resource::GeneratorPrompt::Attributes& attributes,
                                                                               ut::Optional<ut::String> name)
 {
@@ -120,22 +138,23 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateSolidColorMap(co
 	ut::uint32 depth = 1;
 	ut::uint32 mip_count = 0;
 	ut::Color<4, ut::byte> color(0, 0, 0, 255);
+	pixel::Format format = pixel::Format::r8g8b8a8_unorm;
 
 	// update parameters using generator prompt attributes
 	for (const Resource::GeneratorPrompt::Attribute& attribute : attributes)
 	{
 		switch (attribute.type)
 		{
-		case 'w': width = ut::Scan<ut::uint32>(attribute.value); break;
-		case 'h': height = ut::Scan<ut::uint32>(attribute.value); break;
-		case 'd': depth = ut::Scan<ut::uint32>(attribute.value); break;
-		case 't': type = attribute.value; break;
-		case 'r': color.R() = ut::Scan<ut::byte>(attribute.value); break;
-		case 'g': color.G() = ut::Scan<ut::byte>(attribute.value); break;
-		case 'b': color.B() = ut::Scan<ut::byte>(attribute.value); break;
-		case 'a': color.A() = ut::Scan<ut::byte>(attribute.value); break;
-		case 'm': mip_count = ut::Scan<ut::uint32>(attribute.value); break;
-		case 'c':
+		case Generator::width: width = ut::Scan<ut::uint32>(attribute.value); break;
+		case Generator::height: height = ut::Scan<ut::uint32>(attribute.value); break;
+		case Generator::depth: depth = ut::Scan<ut::uint32>(attribute.value); break;
+		case Generator::type: type = attribute.value; break;
+		case Generator::red: color.R() = ut::Scan<ut::byte>(attribute.value); break;
+		case Generator::green: color.G() = ut::Scan<ut::byte>(attribute.value); break;
+		case Generator::blue: color.B() = ut::Scan<ut::byte>(attribute.value); break;
+		case Generator::alpha: color.A() = ut::Scan<ut::byte>(attribute.value); break;
+		case Generator::mip_count: mip_count = ut::Scan<ut::uint32>(attribute.value); break;
+		case Generator::color_name:
 		{
 			ut::Optional<ut::Color<3, ut::byte>&> find_color_result = color_map.Find(attribute.value);
 			if (find_color_result)
@@ -144,6 +163,12 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateSolidColorMap(co
 				color.G() = find_color_result->G();
 				color.B() = find_color_result->B();
 			}
+		} break;
+		case Generator::format:
+		{
+			format = attribute.value == Generator::skSrgb32Format ?
+			         pixel::Format::r8g8b8a8_srgb :
+			         pixel::Format::r8g8b8a8_unorm;
 		} break;
 		}
 	}
@@ -159,7 +184,7 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateSolidColorMap(co
 	// generate final resource
 	ResourceCreator<Map>::InitInfo map_info;
 	map_info.img_type = Image::Type::planar;
-	map_info.format = pixel::Format::r8g8b8a8_unorm;
+	map_info.format = format;
 	map_info.width = width;
 	map_info.height = height;
 	map_info.depth = depth;
@@ -174,30 +199,64 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateSolidColorMap(co
 	return CreateFromData<4, ut::byte>(map_info, pixels);
 }
 
-// Generates a checker map with ve::render::ResourceCreator<Map>::skTypeChecker
-// resource name.
-ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateCheckerMap()
+// Generates a checker map.
+//  'w': width in pixels, must be unsigned integer, default is 0.
+//  'h': height in pixels, must be unsigned integer, default is 0.
+//  'm': number of mips, must be unsigned integer, 0 means full tail,
+//       default value is 0.
+//  'n': number of cells on each side, default value is 8.
+ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateCheckerMap(const Resource::GeneratorPrompt::Attributes& attributes,
+                                                                           ut::Optional<ut::String> name)
 {
-	constexpr ut::uint32 checker_size = 256;
-	constexpr ut::uint32 checker_cell_size = 32;
+	// map parameters
+	ut::uint32 width = 256;
+	ut::uint32 height = 256;
+	ut::uint32 mip_count = 0;
+	ut::uint32 cell_count = 8;
+	pixel::Format format = pixel::Format::r8g8b8a8_unorm;
+
+	// update parameters using generator prompt attributes
+	for (const Resource::GeneratorPrompt::Attribute& attribute : attributes)
+	{
+		switch (attribute.type)
+		{
+		case Generator::width: width = ut::Scan<ut::uint32>(attribute.value); break;
+		case Generator::height: height = ut::Scan<ut::uint32>(attribute.value); break;
+		case Generator::mip_count: mip_count = ut::Scan<ut::uint32>(attribute.value); break;
+		case Generator::number: cell_count = ut::Scan<ut::uint32>(attribute.value); break;
+		case Generator::format:
+		{
+			format = attribute.value == Generator::skSrgb32Format ?
+				pixel::Format::r8g8b8a8_srgb :
+				pixel::Format::r8g8b8a8_unorm;
+		} break;
+		}
+	}
+
+	width = ut::Max(width, 64u);
+	height = ut::Max(height, 64u);
+	cell_count = ut::Clamp(cell_count, 2u, ut::Min(width, height) / 4);
 
 	InitInfo init_info;
 	init_info.img_type = Image::Type::planar;
 	init_info.format = pixel::Format::r8g8b8a8_unorm;
-	init_info.width = checker_size;
-	init_info.height = checker_size;
+	init_info.width = width;
+	init_info.height = height;
 	init_info.depth = 1;
-	init_info.mip_count = 0;
+	init_info.mip_count = mip_count;
 	init_info.generate_mips = true;
-	init_info.name = skTypeChecker;
+	init_info.name = name;
+
+	const ut::uint32 cell_width = width / cell_count;
+	const ut::uint32 cell_height = height / cell_count;
 
 	ut::Array< ut::Color<4, ut::byte> > pixels(init_info.width * init_info.height);
 	for (ut::uint32 y = 0; y < init_info.height; y++)
 	{
 		for (ut::uint32 x = 0; x < init_info.width; x++)
 		{
-			const bool y_is_even = (y / checker_cell_size) % 2 == 0;
-			const bool cell_is_even = (x / checker_cell_size) % 2 == y_is_even ? 0 : 1;
+			const bool y_is_even = (y / cell_height) % 2 == 0;
+			const bool cell_is_even = (x / cell_width) % 2 == y_is_even ? 0 : 1;
 			pixels[y * init_info.width + x] = cell_is_even ?
 			                                  ut::Color<4, ut::byte>(255, 0, 255, 255) :
 			                                  ut::Color<4, ut::byte>(0, 0, 0, 255);
@@ -211,7 +270,7 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::GenerateCheckerMap()
 ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::AddImgToRcMgr(Image image,
                                                                       ut::Optional<ut::String> name)
 {
-    return rc_mgr.AddResource<Map>(Map(ut::Move(image)), name);
+	return rc_mgr.AddResource<Map>(Map(ut::Move(image)), name);
 }
 
 // Returns a hashmap of color names. Available colors are:
@@ -255,7 +314,7 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::AddImgToRcMgr(Image imag
 // Grey colors:
 //     gainsboro, light_gray, silver, dark_gray, gray, dim_gray,
 //     light_slate_gray, slate_gray, dark_slate_gray, black.
-ut::HashMap<ut::String, ut::Color<3, ut::byte> > ResourceCreator<Map>::GenColorNameMap()
+ut::HashMap<ut::String, ut::Color<3, ut::byte> > ResourceCreator<Map>::Generator::CreateColorNameMap()
 {
 	ut::HashMap<ut::String, ut::Color<3, ut::byte> > map;
 
@@ -421,6 +480,74 @@ ut::HashMap<ut::String, ut::Color<3, ut::byte> > ResourceCreator<Map>::GenColorN
 	map.Insert("black", ut::Color<3, ut::byte>(0, 0, 0));
 
 	return map;
+}
+
+// Creates a generator prompt for a RGBA 1x1 map with 32-bits per channel.
+//    @param color - a color of the pixel.
+// 	  @param srgb - a boolean indicating if an image must be
+//                  stored in srgb space.
+//    @return - a generator prompt string.
+ut::String ResourceCreator<Map>::Generator::Create1x1Prompt(const ut::Color<4, ut::byte>& color,
+                                                            bool srgb)
+{
+	const char separator[2] = { Resource::GeneratorPrompt::skSeparatorChr0, 0 };
+	const char value_separator[2] = { Resource::GeneratorPrompt::skValueSeparatorChr, 0 };
+	const char format[2] = { Generator::format, 0 };
+	const char red[2] = { Generator::red, 0 };
+	const char green[2] = { Generator::green, 0 };
+	const char blue[2] = { Generator::blue, 0 };
+	const char alpha[2] = { Generator::alpha, 0 };
+
+	ut::String prompt = Resource::GeneratorPrompt::skStarter;
+	prompt += Generator::skTypeSolid;
+
+	if (srgb)
+	{
+		prompt += ut::String(separator) +
+		          format +
+		          value_separator +
+		          Generator::skSrgb32Format;
+	}
+
+	prompt += ut::String(separator) + red + value_separator + ut::Print(color.R());
+	prompt += ut::String(separator) + green + value_separator + ut::Print(color.G());
+	prompt += ut::String(separator) + blue + value_separator + ut::Print(color.B());
+	prompt += ut::String(separator) + alpha + value_separator + ut::Print(color.A());
+
+	return prompt;
+}
+
+// Creates a generator prompt for a RGBA 1x1 map with 32-bits per channel.
+//    @param color_name - a color name, see GenColorNameMap() function for
+//                        details.
+// 	  @param srgb - a boolean indicating if an image must be
+//                  stored in srgb space.
+//    @return - a generator prompt string.
+ut::String ResourceCreator<Map>::Generator::Create1x1Prompt(const ut::String& color_name,
+                                                            ut::byte alpha,
+                                                            bool srgb)
+{
+	const char separator[2] = { Resource::GeneratorPrompt::skSeparatorChr0, 0 };
+	const char value_separator[2] = { Resource::GeneratorPrompt::skValueSeparatorChr, 0 };
+	const char format_attr[2] = { Generator::format, 0 };
+	const char color_name_attr[2] = { Generator::color_name, 0 };
+	const char alpha_attr[2] = { Generator::alpha, 0 };
+
+	ut::String prompt = Resource::GeneratorPrompt::skStarter;
+	prompt += Generator::skTypeSolid;
+
+	if (srgb)
+	{
+		prompt += ut::String(separator) +
+		          format_attr +
+		          value_separator +
+		          Generator::skSrgb32Format;
+	}
+
+	prompt += ut::String(separator) + color_name_attr + value_separator + color_name;
+	prompt += ut::String(separator) + alpha_attr + value_separator + ut::Print(alpha);
+
+	return prompt;
 }
 
 //----------------------------------------------------------------------------//

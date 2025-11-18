@@ -11,6 +11,7 @@ START_NAMESPACE(postprocess)
 // SRGB converter constructor.
 ClampToneMapper::ClampToneMapper(Toolset& toolset,
                                  RenderPass& postprocess_pass) : tools(toolset)
+                                                               , fullscreen_quad(tools.rc_mgr.fullscreen_quad->subsets.GetFirst())
                                                                , pass(postprocess_pass)
                                                                , pixel_shader(LoadShader())
                                                                , pipeline_state(CreatePipelineState())
@@ -32,7 +33,7 @@ PipelineState ClampToneMapper::CreatePipelineState()
 	PipelineState::Info info;
 	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
 	info.SetShader(Shader::Stage::pixel, pixel_shader);
-	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->CreateIaState();
+	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
 	info.depth_stencil_state.depth_write_enable = false;
 	info.depth_stencil_state.depth_compare_op = compare::Operation::never;
@@ -84,7 +85,7 @@ SwapSlot& ClampToneMapper::Apply(SwapManager& swap_mgr,
 	                        ut::Color<4>(0), 1.0f);
 	context.BindPipelineState(pipeline_state);
 	context.BindDescriptorSet(data.desc_set);
-	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
+	context.BindVertexBuffer(fullscreen_quad.vertex_buffer.GetRef(), 0);
 	context.Draw(6, 0);
 	context.EndRenderPass();
 

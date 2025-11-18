@@ -75,12 +75,12 @@ void IBL::FilterCubemap(Context& context,
 	filter_desc_set.cubemap.BindImage(cubemap);
 
 	Mesh& mesh = cube.Get();
+	Mesh::Subset& mesh_subset = mesh.subsets.GetFirst();
 
 	ut::uint32 mip_size = tools.config.ibl_size;
 	for (ut::uint32 mip = 0; mip < mip_count; mip++)
 	{
 		filter_desc_set.filter_ub.BindUniformBuffer(filter_ub[static_cast<ut::uint32>(face)][mip]);
-			
 
 		ut::Rect<ut::uint32> render_area(0, 0, mip_size, mip_size);
 		context.BeginRenderPass(filter_pass,
@@ -89,18 +89,19 @@ void IBL::FilterCubemap(Context& context,
 		                        ut::Color<4>(0));
 		context.BindPipelineState(filter_pipeline[mip]);
 		context.BindDescriptorSet(filter_desc_set);
-		context.BindVertexBuffer(mesh.vertex_buffer, 0);
+		context.BindVertexBuffer(mesh_subset.vertex_buffer.GetRef(), 0);
 
-		if (mesh.index_buffer)
+		if (mesh_subset.index_buffer)
 		{
-			const ut::uint32 index_count = mesh.polygon_count *
-				Mesh::GetPolygonVertexCount(mesh.polygon_mode);
-			context.BindIndexBuffer(mesh.index_buffer.Get(), 0, mesh.index_type);
+			const ut::uint32 index_count = mesh_subset.count;
+			context.BindIndexBuffer(mesh_subset.index_buffer.GetRef(),
+			                        0,
+			                        mesh_subset.index_buffer->format);
 			context.DrawIndexed(index_count, 0, 0);
 		}
 		else
 		{
-			context.Draw(mesh.vertex_count, 0);
+			context.Draw(mesh_subset.count, 0);
 		}
 
 		context.EndRenderPass();
@@ -208,7 +209,7 @@ ut::Array<PipelineState> IBL::CreateFilterPipelines()
 		               filter_shader.GetShader(Shader::Stage::vertex));
 		info.SetShader(Shader::Stage::pixel,
 		               filter_shader.GetShader(Shader::Stage::pixel));
-		info.input_assembly_state = cube->CreateIaState();
+		info.input_assembly_state = cube->subsets.GetFirst().CreateIaState();
 		info.depth_stencil_state.depth_test_enable = false;
 		info.depth_stencil_state.depth_write_enable = false;
 		info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
@@ -296,17 +297,20 @@ ut::Result<RcRef<Mesh>, ut::Error> IBL::CreateCube()
 		return ut::MakeError(index_buffer.MoveAlt());
 	}
 
-	// create mesh
-	Mesh mesh(cube_data.index_count / Mesh::GetPolygonVertexCount(polygon_mode),
-	          cube_data.vertex_count,
-	          vertex_buffer.Move(),
-	          index_buffer.Move(),
-	          IndexType::uint32,
-	          vertex_format,
-	          polygon_mode,
-	          ut::Array<Mesh::Subset>());
+	// create a mesh subset
+	ut::Array<Mesh::Subset> subsets;
+	Mesh::Subset subset;
+	subset.vertex_buffer = ut::MakeUnsafeShared<Mesh::VertexBuffer>(vertex_buffer.Move(),
+	                                                                vertex_format);
+	subset.index_buffer = ut::MakeUnsafeShared<Mesh::IndexBuffer>(index_buffer.Move(),
+	                                                              Mesh::index_format);
+	subset.polygon_mode = polygon_mode;
+	subset.offset = 0;
+	subset.count = cube_data.index_count;
+	subsets.Add(ut::Move(subset));
 
-	return tools.rc_mgr.AddResource<Mesh>(ut::Move(mesh));
+	// create mesh
+	return tools.rc_mgr.AddResource<Mesh>(Mesh(ut::Move(subsets)));
 }
 
 // Calculates a number of mips in the IBL cubemap.

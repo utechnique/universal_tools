@@ -213,7 +213,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 	Mesh::PolygonMode prev_polygon_mode = Mesh::PolygonMode::count;
 	MeshInstRendering::AlphaMode prev_alpha_mode = MeshInstRendering::AlphaMode::count;
 	MeshInstRendering::CullMode prev_cull_mode = MeshInstRendering::CullMode::count;
-	Map* prev_diffuse_ptr = nullptr;
+	Map* prev_base_color_ptr = nullptr;
 	Buffer* prev_vertex_buffer = nullptr;
 	Buffer* prev_index_buffer = nullptr;
 	ut::uint32 prev_index_offset = 0;
@@ -241,19 +241,20 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 		MeshInstance::Batch& batch = batches[batch_id];
 
 		// material maps
-		Map* diffuse_ptr = &material.diffuse.Get();
+		Map* base_color_ptr = &material.base_color.Get(); // required for alpha
 
 		// buffers
-		Buffer* vertex_buffer = &mesh.vertex_buffer;
-		Buffer* index_buffer = mesh.index_buffer ? &mesh.index_buffer.Get() : nullptr;
+		Mesh::VertexBuffer* vertex_buffer = subset.vertex_buffer.Get();
+		UT_ASSERT(vertex_buffer);
+		Mesh::IndexBuffer* index_buffer = subset.index_buffer.Get();
 
 		// index count
-		const ut::uint32 index_offset = subset.index_offset;
-		const ut::uint32 index_count = subset.index_count;
+		const ut::uint32 index_offset = subset.offset;
+		const ut::uint32 index_count = subset.count;
 
 		// check pipeline state
-		const Mesh::VertexFormat vertex_format = mesh.vertex_format;
-		const Mesh::PolygonMode polygon_mode = mesh.polygon_mode;
+		const Mesh::VertexFormat vertex_format = vertex_buffer->format;
+		const Mesh::PolygonMode polygon_mode = subset.polygon_mode;
 		const MeshInstRendering::AlphaMode alpha_mode = material.alpha == Material::Alpha::masked ?
 		                                                MeshInstRendering::AlphaMode::alpha_test :
 		                                                MeshInstRendering::AlphaMode::opaque;
@@ -268,9 +269,9 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 
 		// check if at least one shader resource has changed
 		const bool batch_id_changed = batch_id != prev_batch_id;
-		const bool diffuse_map_changed = diffuse_ptr != prev_diffuse_ptr;
+		const bool base_color_map_changed = base_color_ptr != prev_base_color_ptr;
 		const bool shader_rc_changed = batch_id_changed || alpha_mode_changed ||
-		                               (alpha_test_on && diffuse_map_changed);
+		                               (alpha_test_on && base_color_map_changed);
 
 		// check buffers
 		const bool vertex_buffer_changed = prev_vertex_buffer != vertex_buffer;
@@ -319,7 +320,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 			{
 				mesh_inst_at_on_desc_set.transform_ub.BindUniformBuffer(batch.transform);
 				mesh_inst_at_on_desc_set.hitmask_id_ub.BindUniformBuffer(batch.entity_id);
-				mesh_inst_at_on_desc_set.diffuse.BindImage(material.diffuse.Get());
+				mesh_inst_at_on_desc_set.base_color.BindImage(material.base_color.Get());
 				context.BindDescriptorSet(mesh_inst_at_on_desc_set);
 			}
 			else
@@ -330,7 +331,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 			}
 
 			prev_batch_id = batch_id;
-			prev_diffuse_ptr = diffuse_ptr;
+			prev_base_color_ptr = base_color_ptr;
 		}
 
 		// bind vertex buffer
@@ -345,7 +346,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 		{
 			if (index_buffer != nullptr)
 			{
-				context.BindIndexBuffer(*index_buffer, 0, mesh.index_type);
+				context.BindIndexBuffer(*index_buffer, 0, index_buffer->format);
 			}
 			prev_index_buffer = index_buffer;
 		}

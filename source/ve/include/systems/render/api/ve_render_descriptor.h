@@ -123,7 +123,7 @@ public:
 		for (size_t i = 0; i < n; i++)
 		{
 			ut::byte* descriptor_address = reinterpret_cast<ut::byte*>(args[i]);
-			descriptors.Add(static_cast<ut::uint32>(descriptor_address - start));
+			descriptors.Add(static_cast<ut::int32>(descriptor_address - start));
 		}
 	}
 
@@ -166,7 +166,7 @@ private:
 	void Validate();
 
 	// each descriptor here is an offset from the DescriptorSet class in bytes.
-	ut::Array<ut::uint32> descriptors;
+	ut::Array<ut::int32> descriptors;
 
 	// counts bound resources
 	ResourceCount resource_count;

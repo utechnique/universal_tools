@@ -159,9 +159,8 @@ half3 EnvBRDFApprox(half3 specular_color, half roughness, half NoV)
 	half4 r = roughness * c0 + c1;
 	half a004 = min(r.x * r.x, exp2(-9.28 * NoV)) * r.x + r.y;
 	half2 AB = half2(-1.04, 1.04) * a004 + r.zw;
-	AB.y *= saturate(50.0 * specular_color.g);
-
-	return specular_color * AB.x + AB.y;
+	float F90 = saturate(50.0 * specular_color.g);
+	return specular_color * AB.x + F90 * AB.y;
 }
 
 half EnvBRDFApproxNonmetal(half roughness, half NoV)

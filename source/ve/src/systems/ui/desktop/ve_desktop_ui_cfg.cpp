@@ -124,9 +124,9 @@ Settings::Settings() : window(0, 0, 640, 480)
 	projections.Add(static_cast<ut::uint32>(Viewport::Projection::orthographic_positive_z));
 
 	render_modes.Add(Viewport::RenderMode::complete);
-	render_modes.Add(Viewport::RenderMode::diffuse);
-	render_modes.Add(Viewport::RenderMode::diffuse);
-	render_modes.Add(Viewport::RenderMode::diffuse);
+	render_modes.Add(Viewport::RenderMode::base_color);
+	render_modes.Add(Viewport::RenderMode::base_color);
+	render_modes.Add(Viewport::RenderMode::base_color);
 }
 
 // Registers data into reflection tree.

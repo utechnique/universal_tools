@@ -110,52 +110,98 @@ public:
 		return AddImgToRcMgr(image.Move(), init_info.name);
 	}
 
-	// Returns a hashmap of color names. Available colors are:
-	// Red colors:
-	//     indian_red, light_coral, salmon, dark_salmon, light_salmon,
-	//     crimson, red, fire_brick, dark_red.
-	// Pink colors:
-	//     pink, light_pink, hot_pink, deep_pink, medium_violet_red,
-	//     pale_violet_red.
-	// Orange colors:
-	//     coral, tomato, orange_red, dark_orange, orange.
-	// Yellow colors:
-	//     gold, yellow, light_yellow, lemon, light_goldenrod_yellow,
-	//     papaya_whip, moccasin, peach_puff, pale_goldenrod, khaki,
-	//     dark_khaki.
-	// Purple colors:
-	//     lavender, thistle, plum, violet, orchid, fuchsia, magenta,
-	//     medium_orchid, medium_purple, rebecca_purple, blue_violet,
-	//     dark_violet, dark_orchid, dark_magenta, purple, indigo,
-	//     slate_blue, dark_slate_blue, medium_slate_blue.
-	// Green colors:
-	//     green_yellow, chartreuse, lawn_green, lime, lime_green, pale_green,
-	//     light_green, medium_spring_green, spring_green, medium_sea_green,
-	//     sea_green, forest_green, green, dark_green, yellow_green,
-	//     olive_drab, olive, dark_olive_green, medium_aquamarine,
-	//     dark_sea_green, light_sea_green, dark_cyan, teal.
-	// Blue colors:
-	//     aqua, cyan, light_cyan, pale_turquoise, aquamarine, turquoise,
-	//     medium_turquoise, dark_turquoise, cadet_blue, steel_blue,
-	//     light_steel_blue, powder_blue, light_blue, sky_blue, light_sky_blue,
-	//     deep_sky_blue, dodger_blue, cornflower_blue, royal_blue, blue,
-	//     medium_blue, dark_blue, navy, midnight_blue.
-	// Brown colors:
-	//     cornsilk, blanched_almond, bisque, navajo_white, wheat, burly_wood,
-	//     tan, rosy_brown, sandy_brown, goldenrod, dark_goldenrod, peru,
-	//     chocolate, saddle_brown, sienna, brown, maroon.
-	// White colors:
-	//     white, snow, honey_dew, mint_cream, azure, alice_blue, ghost_white,
-	//     white_smoke, sea_shell, beige, old_lace, floral_white, ivory,
-	//     antique_white, linen, lavender_blush, misty_rose.
-	// Grey colors:
-	//     gainsboro, light_gray, silver, dark_gray, gray, dim_gray,
-	//     light_slate_gray, slate_gray, dark_slate_gray, black.
-	static ut::HashMap<ut::String, ut::Color<3, ut::byte> > GenColorNameMap();
+	// Generator attributes.
+	struct Generator
+	{
+		enum Attribute : char
+		{
+			width      = 'w',
+			height     = 'h',
+			depth      = 'd',
+			type       = 't',
+			red        = 'r',
+			green      = 'g',
+			blue       = 'b',
+			alpha      = 'a',
+			mip_count  = 'm',
+			color_name = 'c',
+			format     = 'f',
+			number     = 'n'
+		};
 
-	// Below is the list of all possible map types generated with generator prompt.
-	static const char* skTypeChecker; // Checkmates texture, not adjustable.
-	static const char* skTypeSolid; // Single color for the whole map.
+		// Returns a hashmap of color names. Available colors are:
+		// Red colors:
+		//     indian_red, light_coral, salmon, dark_salmon, light_salmon,
+		//     crimson, red, fire_brick, dark_red.
+		// Pink colors:
+		//     pink, light_pink, hot_pink, deep_pink, medium_violet_red,
+		//     pale_violet_red.
+		// Orange colors:
+		//     coral, tomato, orange_red, dark_orange, orange.
+		// Yellow colors:
+		//     gold, yellow, light_yellow, lemon, light_goldenrod_yellow,
+		//     papaya_whip, moccasin, peach_puff, pale_goldenrod, khaki,
+		//     dark_khaki.
+		// Purple colors:
+		//     lavender, thistle, plum, violet, orchid, fuchsia, magenta,
+		//     medium_orchid, medium_purple, rebecca_purple, blue_violet,
+		//     dark_violet, dark_orchid, dark_magenta, purple, indigo,
+		//     slate_blue, dark_slate_blue, medium_slate_blue.
+		// Green colors:
+		//     green_yellow, chartreuse, lawn_green, lime, lime_green, pale_green,
+		//     light_green, medium_spring_green, spring_green, medium_sea_green,
+		//     sea_green, forest_green, green, dark_green, yellow_green,
+		//     olive_drab, olive, dark_olive_green, medium_aquamarine,
+		//     dark_sea_green, light_sea_green, dark_cyan, teal.
+		// Blue colors:
+		//     aqua, cyan, light_cyan, pale_turquoise, aquamarine, turquoise,
+		//     medium_turquoise, dark_turquoise, cadet_blue, steel_blue,
+		//     light_steel_blue, powder_blue, light_blue, sky_blue, light_sky_blue,
+		//     deep_sky_blue, dodger_blue, cornflower_blue, royal_blue, blue,
+		//     medium_blue, dark_blue, navy, midnight_blue.
+		// Brown colors:
+		//     cornsilk, blanched_almond, bisque, navajo_white, wheat, burly_wood,
+		//     tan, rosy_brown, sandy_brown, goldenrod, dark_goldenrod, peru,
+		//     chocolate, saddle_brown, sienna, brown, maroon.
+		// White colors:
+		//     white, snow, honey_dew, mint_cream, azure, alice_blue, ghost_white,
+		//     white_smoke, sea_shell, beige, old_lace, floral_white, ivory,
+		//     antique_white, linen, lavender_blush, misty_rose.
+		// Grey colors:
+		//     gainsboro, light_gray, silver, dark_gray, gray, dim_gray,
+		//     light_slate_gray, slate_gray, dark_slate_gray, black.
+		static ut::HashMap<ut::String, ut::Color<3, ut::byte> > CreateColorNameMap();
+
+		// Creates a generator prompt for a RGBA 1x1 map with 32-bits per channel.
+		//    @param color - a color of the pixel.
+		// 	  @param srgb - a boolean indicating if an image must be
+		//                  stored in srgb space.
+		//    @return - a generator prompt string.
+		static ut::String Create1x1Prompt(const ut::Color<4, ut::byte>& color,
+		                                  bool srgb = false);
+
+		// Creates a generator prompt for a RGBA 1x1 map with 32-bits per channel.
+		//    @param color_name - a color name, see GenColorNameMap() function for
+		//                        details.
+		// 	  @param srgb - a boolean indicating if an image must be
+		//                  stored in srgb space.
+		//    @return - a generator prompt string.
+		static ut::String Create1x1Prompt(const ut::String& color_name,
+		                                  ut::byte alpha = 255,
+		                                  bool srgb = false);
+
+		// Below is the list of all possible map types generated with generator prompt.
+		static const char* skTypeChecker; // Checkmates texture, not adjustable.
+		static const char* skTypeSolid; // Single color for the whole map.
+
+		// Below is the list of all possible map formats generated with generator prompt.
+		static const char* skRgba32Format; // 32-bit rgba
+		static const char* skSrgb32Format; // 32-bit srgba
+	};
+
+	// Indicates that the map is stored in sRGB format if its resource
+	// name starts with this prefix.
+	static const char* skSrgbFileLoadPrefix;
 
 private:
 	// Generates a map using provided generator prompt.
@@ -181,15 +227,22 @@ private:
 	//  'c': named color, see ResourceCreator<Map>::GenColorNameMap()
 	//       for details, this parameter is optional and can override or
 	// 	     be used instead of 'r', 'g' and 'b' parameters.
+	//  'f': image format, acceptable values are 'rgba32' and 'srgba32'.
+	//       Default is 'rgba32'.
 	ut::Result<RcRef<Map>, ut::Error> GenerateSolidColorMap(const Resource::GeneratorPrompt::Attributes& attributes,
 	                                                        ut::Optional<ut::String> name);
 
-	// Generates a checker map with ve::render::ResourceCreator<Map>::skTypeChecker
-	// resource name.
-	ut::Result<RcRef<Map>, ut::Error> GenerateCheckerMap();
+	// Generates a checker map.
+	//  'w': width in pixels, must be unsigned integer, default is 256.
+	//  'h': height in pixels, must be unsigned integer, default is 256.
+	//  'm': number of mips, must be unsigned integer, 0 means full tail,
+	//       default value is 0.
+	//  'n': number of cells on each side, default value is 8.
+	ut::Result<RcRef<Map>, ut::Error> GenerateCheckerMap(const Resource::GeneratorPrompt::Attributes& attributes,
+	                                                     ut::Optional<ut::String> name);
 
-    // Adds provided ve::render::Image object to the resource manager as a ve::render::Map resource.
-    ut::Result<RcRef<Map>, ut::Error> AddImgToRcMgr(Image image, ut::Optional<ut::String> name);
+	// Adds provided ve::render::Image object to the resource manager as a ve::render::Map resource.
+	ut::Result<RcRef<Map>, ut::Error> AddImgToRcMgr(Image image, ut::Optional<ut::String> name);
 
 	// color name map to quickly pick a color by its name
 	ut::HashMap<ut::String, ut::Color<3, ut::byte> > color_map;

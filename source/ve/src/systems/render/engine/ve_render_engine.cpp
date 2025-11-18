@@ -59,10 +59,7 @@ void Engine::UnregisterEntity(Entity::Id id)
 // Initializes a unit with the correct policy.
 void Engine::InitializeUnit(Unit& unit)
 {
-	if (!unit.IsInitialized())
-	{
-		unit_mgr.InitializeUnit(unit);
-	}
+	unit_mgr.InitializeUnit(unit);
 }
 
 // Renders the whole environment to the internal images and presents
@@ -217,16 +214,8 @@ void Engine::DisplayImage(Context& context,
 		throw update_ub_error.Move();
 	}
 
-	// check if rgb->srgb or srgb->rgb conversions are needed
-	const bool src_is_srgb = pixel::IsSrgb(image.GetInfo().format);
-	const bool dst_is_srgb = pixel::IsSrgb(viewport.display.GetTarget(display_buffer_id).GetInfo().format);
-	const bool needs_rgb2srgb = dst_is_srgb && !src_is_srgb;
-	const bool needs_srgb2rgb = !dst_is_srgb && src_is_srgb;
-
 	// choose pipeline state according to the color space conversion type
-	PipelineState& pipeline_state = needs_rgb2srgb ? viewport.pipeline_rgb2srgb_no_alpha :
-		                            needs_srgb2rgb ? viewport.pipeline_srgb2rgb_no_alpha :
-	                                viewport.pipeline_state_no_alpha;
+	PipelineState& pipeline_state = viewport.pipeline_srgb2rgb_no_alpha;
 
 	// set shader resources
 	frame.quad_desc_set.ub.BindUniformBuffer(frame.display_quad_ub);
@@ -238,7 +227,7 @@ void Engine::DisplayImage(Context& context,
 	context.BeginRenderPass(viewport.quad_pass, framebuffer, render_area, frame.clear_color);
 	context.BindPipelineState(pipeline_state);
 	context.BindDescriptorSet(frame.quad_desc_set);
-	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->vertex_buffer, 0);
+	context.BindVertexBuffer(tools.rc_mgr.fullscreen_quad->subsets.GetFirst().vertex_buffer.GetRef(), 0);
 	context.Draw(6, 0);
 
 	// draw profiler info

@@ -8,14 +8,14 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 const char* ShaderCache::skMetaName = "shader_cache";
 #if VE_VULKAN
-const char* ShaderCache::skFileName = "shaders/vulkan_cache";
+const char* ShaderCache::skFileName = "vulkan_shaders";
 #elif VE_DX11
-const char* ShaderCache::skFileName = "shaders/dx11_cache";
+const char* ShaderCache::skFileName = "dx11_shaders";
 #endif
 
 //----------------------------------------------------------------------------//
 // Constructor.
-ShaderCache::ShaderCache() : path(ut::String(directories::skRc) + ut::skFileSeparator + skFileName)
+ShaderCache::ShaderCache() : path(ut::String(directories::skCache) + ut::skFileSeparator + skFileName)
                            , shader_directory(ut::String("shaders") + ut::skFileSeparator)
 {}
 
@@ -44,7 +44,7 @@ ut::Optional<ut::Error> ShaderCache::Load()
 		return open_error;
 	}
 
-	// save to cache to file
+	// load from file
 	return snapshot.Load(file);
 }
 
@@ -68,7 +68,7 @@ ut::Optional<ut::Error> ShaderCache::Save()
 		return open_error;
 	}
 
-	// save to cache to file
+	// save to file
 	return snapshot.Save(file);
 }
 
