@@ -8,7 +8,7 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 // Supported GLTF version.
-const char* Gltf::skSupportedVersion = "2.0";
+const char* Gltf::skGltfSupportedVersion = "2.0";
 
 // Allowed vertex attribute names.
 const char* Gltf::Mesh::Primitive::skPositionAttrName = "POSITION";
@@ -23,14 +23,15 @@ const char* Gltf::Mesh::Primitive::skWeightsAttrName = "WEIGHTS_";
 //    @path - a path to the file to be loaded.
 Gltf::Gltf(const ut::String& path) : root_dir(path.GetIsolatedLocation())
                                    , filename(path.GetIsolatedFilename())
-                                   , json(LoadJsonFile(path).MoveOrThrow())
+                                   , glb(LoadGlbContainer(path).MoveOrThrow())
+                                   , json(LoadJsonFile(path, glb).MoveOrThrow())
                                    , asset(LoadAsset(json).MoveOrThrow())
                                    , scene_id(LoadSceneId(json))
                                    , scenes(LoadScenes(json).MoveOrThrow())
                                    , nodes(LoadNodes(json).MoveOrThrow())
                                    , meshes(LoadMeshes(json).MoveOrThrow())
                                    , accessors(LoadAccessors(json).MoveOrThrow())
-                                   , buffers(LoadBuffers(json, root_dir).MoveOrThrow())
+                                   , buffers(LoadBuffers(json, glb, root_dir).MoveOrThrow())
                                    , buffer_views(LoadBufferViews(json).MoveOrThrow())
                                    , images(LoadImages(json).MoveOrThrow())
                                    , samplers(LoadSamplers(json).MoveOrThrow())
@@ -499,46 +500,96 @@ ut::Result<RcRef<render::Map>, ut::Error> Gltf::ExportTexture(ResourceManager& r
 
 	const Image& img = images[texture.source.Get()];
 	
-	if (!img.uri)
-	{
-		return ut::MakeError(ut::error::out_of_bounds, "Image URI is absent.");
-	}
+	const bool data_is_embedded_in_uri = img.uri.HasValue() && img.uri->StartsWith("data:");
+	const bool data_is_embedded_in_buffer = img.buffer_view.HasValue();
+	const bool data_is_in_external_file = img.uri.HasValue() && !data_is_embedded_in_uri;
+	const bool data_is_embedded = data_is_embedded_in_uri || data_is_embedded_in_buffer;
 
-	ut::String path;
+	ut::String rc_name;
 	if (srgb)
 	{
-		path += ResourceCreator<Map>::skSrgbFileLoadPrefix;
+		rc_name += ResourceCreator<Map>::skSrgbFileLoadPrefix;
 	}
 
-	const bool is_embedded = img.uri->StartsWith("data:");
-
-	// acquire the texture from the file system if it's not embedded
-	if (!is_embedded)
+	// external file is the simplest case
+	if (data_is_in_external_file)
 	{
-		path += root_dir + img.uri.Get();
-		return rc_mgr.Acquire<render::Map>(path);
+		rc_name += root_dir + img.uri.Get();
+		return rc_mgr.Acquire<render::Map>(rc_name);
+	}
+
+	// check if the image has source
+	if (!data_is_embedded)
+	{
+		return ut::MakeError(ut::error::fail,
+			"GLB texture image is neither embedded nor linked to external file.");
+	}
+
+	// compose a new unique resource name and check if it has been already created
+	// by previous texture export calls, then we would need just to link it here
+	const ut::String img_name = img.name ? img.name.Get() :
+	                            (ut::String("img") + ut::Print(texture_id));
+	rc_name += root_dir + filename + ut::skFileSeparator + img_name;
+	ut::Result<RcRef<render::Map>, ut::Error> existing_map = rc_mgr.Find<render::Map>(rc_name);
+	if (existing_map)
+	{
+		return rc_mgr.Acquire<render::Map>(rc_name);
 	}
 
 	// load the embedded data
-	ut::Result<ut::Array<ut::byte>,
-	           ut::Error> img_data = LoadUriData(img.uri.Get(), root_dir);
-	if (!img_data)
+	ut::Array<ut::byte> img_data;
+	if (data_is_embedded_in_uri)
 	{
-		return ut::MakeError(img_data.MoveAlt());
+		ut::Result<ut::Array<ut::byte>,
+			ut::Error> uri_data = LoadUriData(img.uri.Get(), root_dir);
+		if (!uri_data)
+		{
+			return ut::MakeError(uri_data.MoveAlt());
+		}
+
+		img_data = uri_data.Move();
+	}
+	else if (data_is_embedded_in_buffer)
+	{
+		const ut::uint32 buffer_view_id = img.buffer_view.Get();
+		if (buffer_view_id >= buffer_views.Count())
+		{
+			return ut::MakeError(ut::error::out_of_bounds,
+				"Unable to load GLTF texture image, invalid buffer-view id");
+		}
+
+		const BufferView& buffer_view = buffer_views[buffer_view_id];
+		if (buffer_view.buffer_id >= buffers.Count())
+		{
+			return ut::MakeError(ut::error::out_of_bounds,
+				"Unable to load GLTF texture image, invalid buffer id");
+		}
+
+		const Buffer& buffer = buffers[buffer_view.buffer_id];
+		img_data.Resize(buffer_view.byte_length);
+		const ut::uint32 buffer_offset = buffer_view.byte_offset ?
+		                                 buffer_view.byte_offset.Get() : 0;
+		if (buffer_offset + buffer_view.byte_length > buffer.data.GetSize())
+		{
+			return ut::MakeError(ut::error::out_of_bounds,
+				"Unable to load GLTF texture image, buffer overrun.");
+		}
+
+		ut::memory::Copy(img_data.GetAddress(),
+		                 buffer.data.GetAddress() + buffer_offset,
+		                 buffer_view.byte_length);
 	}
 
 	// decode image data
 	ImageLoader::Info img_loader_info;
 	img_loader_info.srgb = srgb;
 	ut::Result<render::Image,
-	           ut::Error> decoded_image = img_loader.LoadFromMemory(img_data.Get(),
+	           ut::Error> decoded_image = img_loader.LoadFromMemory(img_data,
 	                                                                img_loader_info);
 
 	// create a new resource, resource name must be unique!
-	ut::String img_rc_name = path + root_dir + filename +
-	                         ut::skFileSeparator + img.uri.Get();
 	return rc_mgr.AddResource<Map>(Map(decoded_image.Move()),
-	                                   ut::Move(img_rc_name));
+	                                   ut::Move(rc_name));
 }
 
 // Generates ve::render::ResourceCreator<render::Mesh>::GeometryData object
@@ -770,15 +821,196 @@ ut::Result<render::Mesh::PolygonMode,
 	return ut::MakeError(ut::error::not_supported);
 }
 
+// Loads GLB binary container data from file.
+ut::Result<ut::Optional<Gltf::Glb>, ut::Error> Gltf::LoadGlbContainer(const ut::String& path)
+{
+	ut::File file;
+	ut::Optional<ut::Error> opt_err = file.Open(path, ut::File::Access::read);
+	if (opt_err)
+	{
+		return ut::MakeError(opt_err.Move());
+	}
+
+	ut::Result<ut::stream::Cursor, ut::Error> file_size = file.GetSize();
+	if (!file_size)
+	{
+		return ut::MakeError(file_size.MoveAlt());
+	}
+
+	Glb glb;
+
+	// check if enough room for the magic value
+	if (file_size.Get() < sizeof(Glb::Header::magic))
+	{
+		return ut::Optional<Gltf::Glb>();
+	}
+
+	// read magic
+	opt_err = ut::endianness::Read<skOrder>(file,
+	                                        &glb.header.magic,
+	                                        sizeof(glb.header.magic),
+	                                        1);
+	if (opt_err)
+	{
+		return ut::MakeError(opt_err.Move());
+	}
+
+	// check magic
+	if (glb.header.magic != Glb::Header::skMagic)
+	{
+		return ut::Optional<Gltf::Glb>();
+	}
+
+	// check if enough room for the full header and at least one chunk
+	constexpr size_t min_required_file_size = sizeof(Glb::Header::skSize) +
+	                                          sizeof(Glb::Chunk::length) +
+	                                          sizeof(Glb::Chunk::type) + 2;
+	if (file_size.Get() < min_required_file_size)
+	{
+		
+		return ut::MakeError(ut::error::out_of_bounds, ut::String("GLB file ") + path +
+		                                               " is too small to contain a header and one chunk.");
+	}
+
+	// read version
+	opt_err = ut::endianness::Read<skOrder>(file,
+	                                        &glb.header.version,
+	                                        sizeof(glb.header.version),
+	                                        1);
+	if (opt_err)
+	{
+		return ut::MakeError(opt_err.Move());
+	}
+	else if (glb.header.version != skGlbSupportedVersion)
+	{
+		ut::String error_desc("GLB version ");
+		error_desc += ut::Print(glb.header.version) +
+			" is not supported. The only supported version is " +
+			ut::Print(skGlbSupportedVersion) + ".";
+		return ut::MakeError(ut::error::not_supported, ut::Move(error_desc));
+	}
+
+	// read glb length
+	opt_err = ut::endianness::Read<skOrder>(file,
+	                                        &glb.header.length,
+	                                        sizeof(glb.header.length),
+	                                        1);
+	if (opt_err)
+	{
+		return ut::MakeError(opt_err.Move());
+	}
+	else if (glb.header.length > file_size.Get())
+	{
+		return ut::MakeError(ut::error::not_supported,
+		                     "GLB header's length exceeds the actual file size");
+	}
+
+	// read chunks
+	while (true)
+	{
+		Glb::Chunk chunk;
+
+		// read chunk length
+		opt_err = ut::endianness::Read<skOrder>(file,
+		                                        &chunk.length,
+		                                        sizeof(chunk.length),
+		                                        1);
+		if (opt_err)
+		{
+			return ut::MakeError(opt_err.Move());
+		}
+
+		// read chunk type
+		opt_err = ut::endianness::Read<skOrder>(file,
+		                                        &chunk.type,
+		                                        sizeof(chunk.type),
+		                                        1);
+		if (opt_err)
+		{
+			return ut::MakeError(opt_err.Move());
+		}
+
+		// read chunk data
+		chunk.data.Resize(chunk.length);
+		opt_err = file.Read(chunk.data.GetAddress(), 1, chunk.length);
+		if (opt_err)
+		{
+			return ut::MakeError(opt_err.Move());
+		}
+
+		// apply padding
+		const size_t padding = chunk.length % Glb::Chunk::skPadding;
+		for (size_t padding_iter = 0; padding_iter < padding; padding_iter++)
+		{
+			ut::byte padding_byte;
+			opt_err = file.Read(&padding_byte, 1, 1);
+			if (opt_err)
+			{
+				return ut::MakeError(opt_err->GetCode(), "GLB chunk is not padded.");
+			}
+		}
+
+		// add chunk to the GLB object
+		if (chunk.type == Glb::Chunk::skTypeJson)
+		{
+			glb.json_chunk = ut::Move(chunk);
+		}
+		else if(chunk.type == Glb::Chunk::skTypeBinaryBuffer)
+		{
+			glb.binary_buffer_chunk = ut::Move(chunk);
+		}
+
+		// get the current file cursor to check if it's the end of the file
+		ut::Result<ut::stream::Cursor, ut::Error> file_cursor = file.GetCursor();
+		if (!file_cursor)
+		{
+			return ut::MakeError(file_cursor.MoveAlt());
+		}
+
+		// the last chunk must be the end of the GLB container
+		if (file_cursor.Get() == file_size.Get())
+		{
+			break;
+		}
+	}
+
+	return ut::Optional<Gltf::Glb>(glb);
+}
+
 // Loads the desired GLTF file from the given path.
-ut::Result<ut::JsonDoc, ut::Error> Gltf::LoadJsonFile(const ut::String& path)
+ut::Result<ut::JsonDoc, ut::Error> Gltf::LoadJsonFile(const ut::String& path,
+                                                      const ut::Optional<Glb>& glb)
 {
 	ut::JsonDoc json;
 
+	// text GLTF file
+	if (!glb)
+	{
+		try
+		{
+			ut::File file(path, ut::File::Access::read);
+			file >> json;
+		}
+		catch (ut::Error error)
+		{
+			return ut::MakeError(ut::Move(error));
+		}
+
+		return json;
+	}
+
+	// find a binary chunk with the JSON file
+	if (!glb->json_chunk)
+	{
+		return ut::MakeError(ut::error::fail, "GLB JSON chunk is absent.");
+	}
+
+	// read JSON
+	ut::BinaryStream chunk_stream;
+	chunk_stream.SetBuffer(glb->json_chunk->data);
 	try
 	{
-		ut::File file(path, ut::File::Access::read);
-		file >> json;
+		chunk_stream >> json;
 	}
 	catch (ut::Error error)
 	{
@@ -852,14 +1084,15 @@ ut::Result<Gltf::Asset, ut::Error> Gltf::LoadAsset(const ut::JsonDoc& json)
 	}
 
 	// check version
-	const bool version_support = asset.version == skSupportedVersion ||
-		(asset.min_version && asset.min_version.Get() == skSupportedVersion);
-	if (!version_support)
+	const ut::String supported_version = skGltfSupportedVersion;
+	const bool is_file_version_supported = asset.version == supported_version ||
+		(asset.min_version && asset.min_version.Get() == supported_version);
+	if (!is_file_version_supported)
 	{
 		ut::String error_desc("Gltf version ");
 		error_desc += asset.version +
 			" is not supported. The only supported version is " +
-			skSupportedVersion + ".";
+			supported_version + ".";
 		return ut::MakeError(ut::error::not_supported, ut::Move(error_desc));
 	}
 
@@ -1631,6 +1864,7 @@ ut::Result<Gltf::Accessor::Sparse,
 
 // Loads an array of GLTF buffers from the given JSON file.
 ut::Result<ut::Array<Gltf::Buffer>, ut::Error> Gltf::LoadBuffers(const ut::JsonDoc& json,
+                                                                 const ut::Optional<Glb>& glb,
                                                                  const ut::String& root_dir)
 {
 	ut::Array<Buffer> buffers;
@@ -1690,9 +1924,13 @@ ut::Result<ut::Array<Gltf::Buffer>, ut::Error> Gltf::LoadBuffers(const ut::JsonD
 				return ut::MakeError(ut::error::empty, "Buffer URI is empty.");
 			}
 		}
+		else if (glb && glb->binary_buffer_chunk)
+		{
+			new_buffer.data = glb->binary_buffer_chunk->data;
+		}
 		else
 		{
-			ut::memory::Set(new_buffer.data.GetAddress(), 0, new_buffer.byte_length);
+			return ut::MakeError(ut::error::fail, "GLTF buffer has neither URI nor GLB BIN chunk.");
 		}
 
 		// name

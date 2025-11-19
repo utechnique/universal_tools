@@ -17,7 +17,42 @@ class Gltf
 {
 public:
 	// Supported GLTF version.
-	static const char* skSupportedVersion;
+	static constexpr ut::uint32 skGlbSupportedVersion = 2;
+	static const char* skGltfSupportedVersion;
+
+	// GLTF uses little endianness.
+	static constexpr ut::endianness::Order skOrder = ut::endianness::Order::little;
+
+	// GLB container.
+	struct Glb
+	{
+		struct Header
+		{
+			ut::uint32 magic;
+			ut::uint32 version;
+			ut::uint32 length;
+
+			static constexpr ut::uint32 skMagic = 0x46546C67;
+			static constexpr size_t skSize = sizeof(magic) +
+			                                 sizeof(version) +
+			                                 sizeof(length);
+		};
+
+		struct Chunk
+		{
+			ut::uint32 length;
+			ut::uint32 type;
+			ut::Array<ut::byte> data;
+
+			static constexpr size_t skPadding = 4;
+			static constexpr ut::uint32 skTypeJson = 0x4E4F534A;
+			static constexpr ut::uint32 skTypeBinaryBuffer = 0x004E4942;
+		};
+
+		Header header;
+		ut::Optional<Chunk> json_chunk;
+		ut::Optional<Chunk> binary_buffer_chunk;
+	};
 
 	// Metadata about the glTF asset.
 	struct Asset
@@ -303,6 +338,9 @@ public:
 	// The name of this GLTF file.
 	ut::String filename;
 
+	// Binary container.
+	ut::Optional<Glb> glb;
+
 	// GLTF json file.
 	ut::JsonDoc json;
 
@@ -480,8 +518,12 @@ private:
 	static ut::Result<render::Mesh::PolygonMode,
 	                  ut::Error> ConvertMeshPrimitiveMode(Mesh::Primitive::Mode mode);
 
+	// Loads GLB binary container data from file.
+	static ut::Result<ut::Optional<Glb>, ut::Error> LoadGlbContainer(const ut::String& path);
+
 	// Loads the desired GLTF file from the given path.
-	static ut::Result<ut::JsonDoc, ut::Error> LoadJsonFile(const ut::String& path);
+	static ut::Result<ut::JsonDoc, ut::Error> LoadJsonFile(const ut::String& path,
+	                                                       const ut::Optional<Glb>& glb);
 
 	// Loads a GLTF asset object from the given JSON file.
 	static ut::Result<Asset, ut::Error> LoadAsset(const ut::JsonDoc& json);
@@ -516,6 +558,7 @@ private:
 	// Loads an array of GLTF buffers from the given JSON file.
 	static ut::Result<ut::Array<Buffer>,
 	                  ut::Error> LoadBuffers(const ut::JsonDoc& json,
+	                                         const ut::Optional<Glb>& glb,
 	                                         const ut::String& root_dir);
 
 	// Loads binary data from the given GLTF URI link.
