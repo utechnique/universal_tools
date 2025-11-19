@@ -22,6 +22,7 @@ const char* Gltf::Mesh::Primitive::skWeightsAttrName = "WEIGHTS_";
 // Constructor, loads and initializes intermediate GLTF data from file.
 //    @path - a path to the file to be loaded.
 Gltf::Gltf(const ut::String& path) : root_dir(path.GetIsolatedLocation())
+                                   , filename(path.GetIsolatedFilename())
                                    , json(LoadJsonFile(path).MoveOrThrow())
                                    , asset(LoadAsset(json).MoveOrThrow())
                                    , scene_id(LoadSceneId(json))
@@ -68,6 +69,9 @@ ut::Result<render::Mesh, ut::Error> Gltf::ExportMesh(Device& device,
 			mesh_export_indices.Add(mesh_iter);
 		}
 	}
+
+	// create an image loader to be able to load embedded textures
+	ImageLoader img_loader(device);
 
 	// a mesh can have primitives with different vertex format, we must
 	// batch chunks of geometry data (vertices and indices) of the same format
@@ -204,7 +208,7 @@ ut::Result<render::Mesh, ut::Error> Gltf::ExportMesh(Device& device,
 			
 			// create a material
 			ut::Result<render::Material, ut::Error> material = primitive.material ?
-				ExportMaterial(rc_mgr, primitive.material.Get()) :
+				ExportMaterial(rc_mgr, img_loader, primitive.material.Get()) :
 				render::Material::Generator::CreateChecker(rc_mgr);
 			if (!material)
 			{
@@ -284,9 +288,11 @@ ut::Result<render::Mesh, ut::Error> Gltf::ExportMesh(Device& device,
 // included in this GLTF file.
 //    @rc_mgr - a reference to the resource manager to create new render
 //              resources like ve::Render::Map.
+// 	  @img_loader - a reference to the image loader to load image data.
 //    @material_id - index of the desired material.
 //    @return - a new ve::render::Material object or ut::Error if failed.
 ut::Result<render::Material, ut::Error> Gltf::ExportMaterial(ResourceManager& rc_mgr,
+                                                             const ImageLoader& img_loader,
                                                              size_t material_id) const
 {
 	if (material_id >= materials.Count())
@@ -302,7 +308,7 @@ ut::Result<render::Material, ut::Error> Gltf::ExportMaterial(ResourceManager& rc
 	if (gltf_material.normal_texture)
 	{
 		ut::Result<RcRef<render::Map>,
-		           ut::Error> map_result = ExportTexture(rc_mgr,
+		           ut::Error> map_result = ExportTexture(rc_mgr, img_loader,
 		                                                 gltf_material.normal_texture->index);
 		if (!map_result)
 		{
@@ -332,7 +338,7 @@ ut::Result<render::Material, ut::Error> Gltf::ExportMaterial(ResourceManager& rc
 		const Material::PbrMetallicRoughness& pbr = gltf_material.pbr_metallic_roughness.Get();
 		const bool srgb_format = true;
 		ut::Result<RcRef<render::Map>,
-		           ut::Error> map_result = ExportTexture(rc_mgr,
+		           ut::Error> map_result = ExportTexture(rc_mgr, img_loader,
 		                                                 pbr.base_color_texture->index,
 		                                                 srgb_format);
 		if (!map_result)
@@ -362,7 +368,7 @@ ut::Result<render::Material, ut::Error> Gltf::ExportMaterial(ResourceManager& rc
 	{
 		const Material::PbrMetallicRoughness& pbr = gltf_material.pbr_metallic_roughness.Get();
 		ut::Result<RcRef<render::Map>,
-		           ut::Error> map_result = ExportTexture(rc_mgr,
+		           ut::Error> map_result = ExportTexture(rc_mgr, img_loader,
 		                                                 pbr.metallic_roughness_texture->index);
 		if (!map_result)
 		{
@@ -389,7 +395,7 @@ ut::Result<render::Material, ut::Error> Gltf::ExportMaterial(ResourceManager& rc
 	if (gltf_material.occlusion_texture)
 	{
 		ut::Result<RcRef<render::Map>,
-		           ut::Error> map_result = ExportTexture(rc_mgr,
+		           ut::Error> map_result = ExportTexture(rc_mgr, img_loader,
 		                                                 gltf_material.occlusion_texture->index);
 		if (!map_result)
 		{
@@ -417,7 +423,7 @@ ut::Result<render::Material, ut::Error> Gltf::ExportMaterial(ResourceManager& rc
 	{
 		const bool srgb_format = true;
 		ut::Result<RcRef<render::Map>,
-		           ut::Error> map_result = ExportTexture(rc_mgr,
+		           ut::Error> map_result = ExportTexture(rc_mgr, img_loader,
 		                                                 gltf_material.emissive_texture->index,
 		                                                 srgb_format);
 		if (!map_result)
@@ -466,10 +472,12 @@ ut::Result<render::Material, ut::Error> Gltf::ExportMaterial(ResourceManager& rc
 // Constructs a new ve::render::Map object from a desired texture
 // included in this GLTF file.
 //    @rc_mgr - a reference to the resource manager to create a new map.
+// 	  @img_loader - a reference to the image loader to load image data.
 //    @texture_id - index of the desired texture.
 // 	  @srgb - indicates if the map must be stored in SRGB format.
 //    @return - a new ve::render::Material object or ut::Error if failed.
 ut::Result<RcRef<render::Map>, ut::Error> Gltf::ExportTexture(ResourceManager& rc_mgr,
+                                                              const ImageLoader& img_loader,
                                                               size_t texture_id,
                                                               bool srgb) const
 {
@@ -502,9 +510,35 @@ ut::Result<RcRef<render::Map>, ut::Error> Gltf::ExportTexture(ResourceManager& r
 		path += ResourceCreator<Map>::skSrgbFileLoadPrefix;
 	}
 
-	path += root_dir + img.uri.Get();
+	const bool is_embedded = img.uri->StartsWith("data:");
 
-	return rc_mgr.Acquire<render::Map>(path);
+	// acquire the texture from the file system if it's not embedded
+	if (!is_embedded)
+	{
+		path += root_dir + img.uri.Get();
+		return rc_mgr.Acquire<render::Map>(path);
+	}
+
+	// load the embedded data
+	ut::Result<ut::Array<ut::byte>,
+	           ut::Error> img_data = LoadUriData(img.uri.Get(), root_dir);
+	if (!img_data)
+	{
+		return ut::MakeError(img_data.MoveAlt());
+	}
+
+	// decode image data
+	ImageLoader::Info img_loader_info;
+	img_loader_info.srgb = srgb;
+	ut::Result<render::Image,
+	           ut::Error> decoded_image = img_loader.LoadFromMemory(img_data.Get(),
+	                                                                img_loader_info);
+
+	// create a new resource, resource name must be unique!
+	ut::String img_rc_name = path + root_dir + filename +
+	                         ut::skFileSeparator + img.uri.Get();
+	return rc_mgr.AddResource<Map>(Map(decoded_image.Move()),
+	                                   ut::Move(img_rc_name));
 }
 
 // Generates ve::render::ResourceCreator<render::Mesh>::GeometryData object
@@ -1642,8 +1676,8 @@ ut::Result<ut::Array<Gltf::Buffer>, ut::Error> Gltf::LoadBuffers(const ut::JsonD
 			if (new_buffer.uri)
 			{
 				ut::Result<ut::Array<ut::byte>,
-				           ut::Error> data = LoadUri(new_buffer.uri.Get(),
-				                                     root_dir);
+				           ut::Error> data = LoadUriData(new_buffer.uri.Get(),
+				                                         root_dir);
 				if (!data)
 				{
 					return ut::MakeError(data.MoveAlt());
@@ -1679,16 +1713,23 @@ ut::Result<ut::Array<Gltf::Buffer>, ut::Error> Gltf::LoadBuffers(const ut::JsonD
 
 // Loads binary data from the given GLTF URI link.
 ut::Result<ut::Array<ut::byte>,
-           ut::Error> Gltf::LoadUri(const ut::String& uri,
-                                    const ut::String& root_dir)
+           ut::Error> Gltf::LoadUriData(const ut::String& uri,
+                                        const ut::String& root_dir)
 {
 	// check if data is embedded in uri
-	const char* data_label = "data:";
-	const char* embedded_addr = ut::StrStr(uri.GetAddress(), data_label);
-	if (embedded_addr == uri.GetAddress())
+	if (uri.StartsWith("data:"))
 	{
-		return ut::MakeError(ut::error::not_supported,
-		                     "Embedded URI is not supported.");
+		const ut::String base_64_ext = "base64,";
+		ut::Optional<size_t> base64_index = uri.Find(base_64_ext);
+		if (!base64_index)
+		{
+			return ut::MakeError(ut::error::fail,
+			                     "Embedded URI does not use base64 encoding.");
+		}
+
+		const size_t embedded_base64_data_index = base64_index.Get() + base_64_ext.Length();
+
+		return ut::DecodeBase64(uri.GetAddress() + embedded_base64_data_index);
 	}
 
 	// open file

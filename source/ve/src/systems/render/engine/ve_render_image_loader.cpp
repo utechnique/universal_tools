@@ -40,10 +40,9 @@ ut::uint32 ImageLoader::CountMips(ut::uint32 width,
 //    @param filename - path to the image to be loaded.
 //    @param info - const reference to the ImageLoader::Info object.
 //    @return - new render::Image object or ut::Error if failed.
-ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
-                                               const ImageLoader::Info& info)
+ut::Result<Image, ut::Error> ImageLoader::LoadFromFile(const ut::String& filename,
+                                                       const ImageLoader::Info& info) const
 {
-	// get file path
 	ut::Optional<ut::String> path = FindResourceFile(filename);
 	if (!path)
 	{
@@ -51,7 +50,6 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 		return ut::MakeError(ut::error::not_found);
 	}
 
-	// load image
 	int width, height, channels;
 	ut::UniquePtr<stbi_uc, StbiDeleter> pixels(stbi_load(path->GetAddress(),
 	                                                     &width,
@@ -60,15 +58,53 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 	                                                     STBI_rgb_alpha));
 	if (!pixels)
 	{
-		return ut::MakeError(ut::error::fail, ut::String("Render: failed to load ") + filename);
+		return ut::MakeError(ut::error::fail, ut::String("Render: STB failed to load ") + filename);
 	}
 
-	// check number of channels
-	if (channels > 4)
+	return CreateImage(pixels.Get(), width, height, channels, info);
+}
+
+// Loads an image from memory.
+//    @param data - a byte array containing image data.
+//    @param info - const reference to the ImageLoader::Info object.
+//    @return - new render::Image object or ut::Error if failed.
+ut::Result<Image, ut::Error> ImageLoader::LoadFromMemory(const ut::Array<ut::byte>& data,
+                                                         const Info& info) const
+{
+	int width, height, channels;
+	ut::UniquePtr<stbi_uc, StbiDeleter> pixels(stbi_load_from_memory(data.GetAddress(),
+	                                                                 static_cast<int>(data.GetSize()),
+	                                                                 &width,
+	                                                                 &height,
+	                                                                 &channels,
+	                                                                 STBI_rgb_alpha));
+	if (!pixels)
 	{
-		ut::String err_desc = ut::String("Render: error while loading \"") +
-		                      filename + "\": too much channels";
-		return ut::MakeError(ut::error::not_supported, ut::Move(err_desc));
+		return ut::MakeError(ut::error::fail, "Render: STB failed to load an image from memory.");
+	}
+
+	return CreateImage(pixels.Get(), width, height, channels, info);
+}
+
+// Creates an image from intermediate decoded data.
+//    @param data - a pointer to the data to be loaded.
+// 	  @param width - width in pixels of the decoded image.
+// 	  @param height - height in pixels of the decoded image.
+// 	  @param channel_count - the number of channels in the decoded image.
+//    @param info - const reference to the ImageLoader::Info object
+//                  describing the final image.
+//    @return - new render::Image object or ut::Error if failed.
+ut::Result<Image, ut::Error> ImageLoader::CreateImage(const ut::byte* data,
+                                                      int width,
+                                                      int height,
+                                                      int channel_count,
+                                                      const Info& info) const
+{
+	// check number of channels
+	if (channel_count > 4)
+	{
+		return ut::MakeError(ut::error::not_supported,
+		                     "Render: error while loading an image: too much channels");
 	}
 
 	// initialize image info
@@ -94,7 +130,7 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 	// initialize first mip
 	if (img_info.width != width || img_info.height != height)
 	{
-		stbir_resize_uint8_linear(pixels.Get(),
+		stbir_resize_uint8_linear(data,
 		                          width,
 		                          height,
 		                          0,
@@ -107,7 +143,7 @@ ut::Result<Image, ut::Error> ImageLoader::Load(const ut::String& filename,
 	else
 	{
 		const ut::uint32 first_mip_size = img_info.width * img_info.height * 4;
-		ut::memory::Copy(img_info.data.GetAddress(), pixels.Get(), first_mip_size);
+		ut::memory::Copy(img_info.data.GetAddress(), data, first_mip_size);
 	}
 
 	// generate other mips

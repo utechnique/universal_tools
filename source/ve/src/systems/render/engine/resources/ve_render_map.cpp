@@ -58,7 +58,7 @@ ut::Result<RcRef<Map>, ut::Error> ResourceCreator<Map>::Create(const ut::String&
 		// load an image from file
 		ImageLoader::Info img_info;
 		img_info.srgb = requires_srgb2linear;
-		ut::Result<Image, ut::Error> load_img_result = img_loader.Load(undecorated_name, img_info);
+		ut::Result<Image, ut::Error> load_img_result = img_loader.LoadFromFile(undecorated_name, img_info);
 		if (!load_img_result)
 		{
 			return ut::MakeError(load_img_result.MoveAlt());

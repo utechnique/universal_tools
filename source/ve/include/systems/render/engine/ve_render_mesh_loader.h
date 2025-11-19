@@ -4,6 +4,7 @@
 #pragma once
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/resources/ve_render_mesh.h"
+#include "systems/render/engine/ve_render_image_loader.h"
 #include "ve_transform.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -277,23 +278,30 @@ public:
 	// included in this GLTF file.
 	//    @rc_mgr - a reference to the resource manager to create new render
 	//              resources like ve::Render::Map.
+	// 	  @img_loader - a reference to the image loader to load image data.
 	//    @material_id - index of the desired material.
 	//    @return - a new ve::render::Material object or ut::Error if failed.
 	ut::Result<render::Material, ut::Error> ExportMaterial(ResourceManager& rc_mgr,
+	                                                       const ImageLoader& img_loader,
 	                                                       size_t material_id) const;
 
 	// Constructs a new ve::render::Map object from a desired texture
 	// included in this GLTF file.
-	//    @rc_mgr - a reference to the resource manager to create a new map.
+	//    @rc_mgr - a reference to the resource manager to create a new map resource.
+	// 	  @img_loader - a reference to the image loader to load image data.
 	//    @texture_id - index of the desired texture.
 	// 	  @srgb - indicates if the map must be stored in SRGB format.
 	//    @return - a new ve::render::Material object or ut::Error if failed.
 	ut::Result<RcRef<render::Map>, ut::Error> ExportTexture(ResourceManager& rc_mgr,
+	                                                        const ImageLoader& img_loader,
 	                                                        size_t texture_id,
 	                                                        bool srgb = false) const;
 
 	// The path to the directory containing this GLTF file. 
 	ut::String root_dir;
+
+	// The name of this GLTF file.
+	ut::String filename;
 
 	// GLTF json file.
 	ut::JsonDoc json;
@@ -512,8 +520,8 @@ private:
 
 	// Loads binary data from the given GLTF URI link.
 	static ut::Result<ut::Array<ut::byte>,
-	                  ut::Error> LoadUri(const ut::String& uri,
-	                                     const ut::String& root_dir);
+	                  ut::Error> LoadUriData(const ut::String& uri,
+	                                         const ut::String& root_dir);
 
 	// Loads an array of GLTF buffer views from the given JSON file.
 	static ut::Result<ut::Array<BufferView>,

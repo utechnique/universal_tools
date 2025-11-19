@@ -21,7 +21,7 @@ const ut::Vector<2, int> Profiler::skFpsOffset = ut::Vector<2, int>(25, 5);
 //----------------------------------------------------------------------------//
 // Constructor.
 Profiler::Profiler(Toolset &toolset_ref) noexcept : tools(toolset_ref)
-                                                  , font(tools.img_loader.Load(skFontPath).MoveOrThrow())
+                                                  , font(tools.img_loader.LoadFromFile(skFontPath).MoveOrThrow())
                                                   , display_input_assembly(Frame::CreateInputAssemblyState())
                                                   , text_buffer(CreateTextBuffer())
                                                   , text_ub(CreateUniformBuffer())

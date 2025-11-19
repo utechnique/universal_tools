@@ -32,8 +32,15 @@ public:
 	//    @param filename - path to the image to be loaded.
 	//    @param info - const reference to the ImageLoader::Info object.
 	//    @return - new render::Image object or ut::Error if failed.
-	ut::Result<Image, ut::Error> Load(const ut::String& filename,
-	                                  const Info& info = Info());
+	ut::Result<Image, ut::Error> LoadFromFile(const ut::String& filename,
+	                                          const Info& info = Info()) const;
+
+	// Loads an image from memory.
+	//    @param data - a byte array containing image data.
+	//    @param info - const reference to the ImageLoader::Info object.
+	//    @return - new render::Image object or ut::Error if failed.
+	ut::Result<Image, ut::Error> LoadFromMemory(const ut::Array<ut::byte>& data,
+	                                            const Info& info = Info()) const;
 
 	// Returns the number of mips in a mip set for the desired metrics.
 	//    @param width - width of the first mip in pixels.
@@ -169,6 +176,20 @@ public:
 	                                                            ut::uint32 mip_count);
 
 private:
+	// Creates an image from intermediate decoded data.
+	//    @param data - a pointer to the data to be loaded.
+	// 	  @param width - width in pixels of the decoded image.
+	// 	  @param height - height in pixels of the decoded image.
+	// 	  @param channel_count - the number of channels in the decoded image.
+	//    @param info - const reference to the ImageLoader::Info object
+	//                  describing the final image.
+	//    @return - new render::Image object or ut::Error if failed.
+	ut::Result<Image, ut::Error> CreateImage(const ut::byte* data,
+	                                         int width,
+	                                         int height,
+	                                         int channel_count,
+	                                         const Info& info) const;
+
 	// Representation of a pixel of the image being loaded.
 	typedef ut::Color<4, ut::byte> Pixel;
 
