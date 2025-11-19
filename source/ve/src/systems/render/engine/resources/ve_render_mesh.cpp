@@ -1001,7 +1001,7 @@ ut::String ResourceCreator<Mesh>::BuildCheckerPrompt()
 
 	// base color map (checker)
 	prompt.Append(Resource::GeneratorPrompt::skSeparatorChr1);
-	prompt.Append(Material::Generator::Attribute::base_color);
+	prompt.Append(Material::Generator::Attribute::base_color_map);
 	prompt.Append(Resource::GeneratorPrompt::skValueSeparatorChr);
 	prompt.Append(Resource::GeneratorPrompt::skStarterChr);
 	prompt += ResourceCreator<Map>::Generator::skTypeChecker;
