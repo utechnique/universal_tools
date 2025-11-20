@@ -319,6 +319,7 @@ void HitMask::DrawMeshInstancesJob(Context& context,
 			if (alpha_test_on)
 			{
 				mesh_inst_at_on_desc_set.transform_ub.BindUniformBuffer(batch.transform);
+				mesh_inst_at_on_desc_set.material_ub.BindUniformBuffer(batch.material);
 				mesh_inst_at_on_desc_set.hitmask_id_ub.BindUniformBuffer(batch.entity_id);
 				mesh_inst_at_on_desc_set.base_color.BindImage(material.base_color.Get());
 				context.BindDescriptorSet(mesh_inst_at_on_desc_set);

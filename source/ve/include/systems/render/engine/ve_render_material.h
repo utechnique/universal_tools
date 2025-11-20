@@ -98,8 +98,33 @@ public:
 	RcRef<Map> occlusion;
 	RcRef<Map> emissive;
 
+	// The factors for the base color of the material.
+	ut::Color<4, float> base_color_factor = ut::Color<4, float>(1.0f);
+
+	// The factors for the emissive color of the material. This value defines
+	// linear multipliers for the sampled texels of the emissive map.
+	ut::Color<3, float> emissive_factor = ut::Color<3, float>(1.0f);
+
+	// The factor for the metalness of the material.
+	float metallic_factor = 1.0f;
+
+	// The factor for the roughness of the material.
+	float roughness_factor = 1.0f;
+
+	// A scalar multiplier controlling the amount of occlusion applied.
+	float occlusion_strength = 1.0f;
+	
+	// The scalar parameter applied to each normal vector of the normal map.
+	// This value scales the normal vector in X and Y directions using the
+	// formula: scaledNormal = (normalize<sampled normal texture value> * 2.0 - 1.0) *
+	//                         vec3(<normal scale>, <normal scale>, 1.0).
+	float normal_scale = 1.0f;
+
 	// Transparency mode.
 	Alpha alpha = Alpha::opaque;
+
+	// The alpha cutoff value of the material.
+	float alpha_cutoff = 0.5f;
 
 	// Indicates if the surface is visible from both sides.
 	bool double_sided = false;

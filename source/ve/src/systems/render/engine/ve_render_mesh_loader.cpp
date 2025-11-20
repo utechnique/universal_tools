@@ -448,6 +448,45 @@ ut::Result<render::Material, ut::Error> Gltf::ExportMaterial(ResourceManager& rc
 		material.emissive = map_result.Move();
 	}
 
+	// base color factor
+	if (gltf_material.pbr_metallic_roughness &&
+	    gltf_material.pbr_metallic_roughness->base_color_factor)
+	{
+		material.base_color_factor = gltf_material.pbr_metallic_roughness->base_color_factor.Get();
+	}
+
+	// metallic factor
+	if (gltf_material.pbr_metallic_roughness &&
+	    gltf_material.pbr_metallic_roughness->metallic_factor)
+	{
+		material.metallic_factor = gltf_material.pbr_metallic_roughness->metallic_factor.Get();
+	}
+
+	// metallic factor
+	if (gltf_material.pbr_metallic_roughness &&
+	    gltf_material.pbr_metallic_roughness->roughness_factor)
+	{
+		material.roughness_factor = gltf_material.pbr_metallic_roughness->roughness_factor.Get();
+	}
+
+	// emissive factor
+	if (gltf_material.emissive_factor)
+	{
+		material.emissive_factor = gltf_material.emissive_factor.Get();
+	}
+
+	// occlusion strength
+	if (gltf_material.occlusion_texture && gltf_material.occlusion_texture->strength)
+	{
+		material.occlusion_strength = gltf_material.occlusion_texture->strength.Get();
+	}
+
+	// normal scale
+	if (gltf_material.normal_texture && gltf_material.normal_texture->scale)
+	{
+		material.normal_scale = gltf_material.normal_texture->scale.Get();
+	}
+
 	// alpha
 	if (gltf_material.alpha_mode)
 	{
@@ -459,6 +498,12 @@ ut::Result<render::Material, ut::Error> Gltf::ExportMaterial(ResourceManager& rc
 		{
 			material.alpha = render::Material::Alpha::transparent;
 		}
+	}
+
+	// alpha cutoff
+	if (gltf_material.alpha_cutoff)
+	{
+		material.alpha_cutoff = gltf_material.alpha_cutoff.Get();
 	}
 
 	// double-sided

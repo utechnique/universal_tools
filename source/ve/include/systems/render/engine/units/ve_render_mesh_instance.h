@@ -42,10 +42,16 @@ public:
 	struct MaterialBuffer
 	{
 		ut::Vector<4> base_color_factor;
+
 		float roughness_factor;
 		float metallic_factor;
 		float emissive_strength;
-		float occlusion_factor;
+		float occlusion_strength;
+
+		float alpha_cutoff;
+		float normal_scale;
+		float reserved1;
+		float reserved2;
 	};
 
 	// CPU representation of the entity-id buffer.
@@ -84,7 +90,10 @@ public:
 	float emissive_strength = 1.0f;
 
 	// The factor for the occlusion of the material.
-	float occlusion_factor = 1.0f;
+	float occlusion_strength = 1.0f;
+
+	// The scalar parameter applied to each normal vector of the normal map.
+	float normal_scale = 1.0f;
 
 	// Determines if this mesh instance must be rendered in forward pass even
 	// if it's suitable for deferred rendering.

@@ -89,20 +89,32 @@ void Batcher::UpdateBatch(Context& context,
 	{
 		MeshInstance::DrawCall& dc = dc_start[j];
 		MeshInstance& instance = dc.instance;
+		const Material& material = instance.mesh->subsets[dc.subset_id].material;
 
 		// transform buffer
 		ut::memory::Copy(transform_memory + j, &instance.world_matrix, sizeof(ut::Matrix<4, 4>));
 
 		// material buffer
 		MeshInstance::MaterialBuffer& material_buffer = material_memory[j];
-		material_buffer.base_color_factor.R() = ut::Pow(instance.base_color_factor.R(), 2.2f);
-		material_buffer.base_color_factor.G() = ut::Pow(instance.base_color_factor.G(), 2.2f);
-		material_buffer.base_color_factor.B() = ut::Pow(instance.base_color_factor.B(), 2.2f);
-		material_buffer.base_color_factor.A() = instance.base_color_factor.A();
-		material_buffer.roughness_factor = instance.roughness_factor;
-		material_buffer.metallic_factor = instance.metallic_factor;
-		material_buffer.emissive_strength = instance.emissive_strength;
-		material_buffer.occlusion_factor = instance.occlusion_factor;
+		material_buffer.base_color_factor.R() = ut::Pow(material.base_color_factor.R() *
+		                                                instance.base_color_factor.R(), 2.2f);
+		material_buffer.base_color_factor.G() = ut::Pow(material.base_color_factor.G() *
+		                                                instance.base_color_factor.G(), 2.2f);
+		material_buffer.base_color_factor.B() = ut::Pow(material.base_color_factor.B() *
+		                                                instance.base_color_factor.B(), 2.2f);
+		material_buffer.base_color_factor.A() = material.base_color_factor.A() *
+		                                        instance.base_color_factor.A();
+		material_buffer.roughness_factor = material.roughness_factor *
+		                                   instance.roughness_factor;
+		material_buffer.metallic_factor = material.metallic_factor *
+		                                  instance.metallic_factor;
+		material_buffer.emissive_strength = material.emissive_factor.Length() *
+		                                    instance.emissive_strength;
+		material_buffer.occlusion_strength = material.occlusion_strength *
+		                                     instance.occlusion_strength;
+		material_buffer.normal_scale = material.normal_scale *
+		                               instance.normal_scale;
+		material_buffer.alpha_cutoff = material.alpha_cutoff;
 	}
 
 	// finish mapping

@@ -24,7 +24,8 @@ void MeshInstance::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot.Add(roughness_factor, "roughness_factor");
 	snapshot.Add(metallic_factor, "metallic_factor");
 	snapshot.Add(emissive_strength, "emissive_strength");
-	snapshot.Add(occlusion_factor, "occlusion_factor");
+	snapshot.Add(occlusion_strength, "occlusion_strength");
+	snapshot.Add(normal_scale, "normal_scale");
 	snapshot.Add(force_forward_renderer, "force_forward_renderer");
 	snapshot.Add(highlighted, "highlighted");
 }

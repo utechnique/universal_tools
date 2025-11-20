@@ -61,7 +61,7 @@
 #define NEEDS_METALLIC_ROUGHNESS_MAP ((!AMBIENT_PASS || IBL) && !HITMASK_PASS && !EMISSIVE_PASS && !UNLIT_PASS)
 #define NEEDS_OCCLUSION_MAP (DEFERRED_PASS || (LIGHT_PASS && AMBIENT_LIGHT))
 #define NEEDS_EMISSIVE_MAP (DEFERRED_PASS || EMISSIVE_PASS)
-#define NEEDS_MATERIAL_BUFFER (!HITMASK_PASS)
+#define NEEDS_MATERIAL_BUFFER ((!HITMASK_PASS) || ALPHA_TEST)
 #define NEEDS_TEXTURE_COORD (NEEDS_BASE_COLOR_MAP || NEEDS_NORMAL_MAP || NEEDS_METALLIC_ROUGHNESS_MAP || NEEDS_EMISSIVE_MAP)
 
 //----------------------------------------------------------------------------//
@@ -122,10 +122,16 @@ struct PS_INPUT
 struct Material
 {
 	float4 base_color_factor;
+
 	float roughness_factor;
 	float metallic_factor;
 	float emissive_strength;
-	float occlusion_factor;
+	float occlusion_strength;
+
+	float alpha_cutoff;
+	float normal_scale;
+	float reserved1;
+	float reserved2;
 };
 
 //----------------------------------------------------------------------------//
@@ -253,7 +259,7 @@ PS_INPUT VS(Vertex input)
 PS_OUTPUT PS(PS_INPUT input) : SV_Target
 {
 	PS_OUTPUT output;
-
+	
 	// extract texcoord
 #if VERTEX_HAS_TEXCOORD && NEEDS_TEXTURE_COORD
 	float2 texcoord = input.texcoord;
@@ -266,15 +272,6 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 	float4 base_color_sample = g_tex2d_base_color.Sample(g_sampler, texcoord);
 #endif
 
-	// perform alpha test
-#if ALPHA_TEST
-	float alpha = base_color_sample.a;
-	if (alpha < 0.25f)
-	{
-		clip(-1);
-	}
-#endif // ALPHA_TEST
-
 #if NEEDS_MATERIAL_BUFFER
 	#if INSTANCING
 		Material material = g_material[input.instance_id];
@@ -282,6 +279,15 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 		Material material = g_material;
 	#endif
 #endif
+
+	// perform alpha test
+#if ALPHA_TEST
+	float alpha = base_color_sample.a;
+	if (alpha < material.alpha_cutoff)
+	{
+		clip(-1);
+	}
+#endif // ALPHA_TEST
 
 	// sample emissive texture
 #if NEEDS_EMISSIVE_MAP
@@ -322,7 +328,9 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 	// calculate final normal
 	#if VERTEX_HAS_NORMAL && VERTEX_HAS_TANGENT
 		float3x3 world_to_tangent = float3x3(input.tangent, input.binormal, input.normal);
-		float3 tbn_normal = normalize(-1 + (2 * normal_color));
+		float3 scaled_normal = float3(material.normal_scale, material.normal_scale, 1.0f) *
+		                       (2.0f * normal_color - 1.0f);
+		float3 tbn_normal = normalize(scaled_normal);
 		float3 normal = normalize(mul(tbn_normal, world_to_tangent));
 	#elif VERTEX_HAS_NORMAL
 		float3 normal = input.normal + normal_sample.a;
@@ -333,7 +341,7 @@ PS_OUTPUT PS(PS_INPUT input) : SV_Target
 	// calculate occlusion factor
 	#if NEEDS_OCCLUSION_MAP
 		float occlusion = g_tex2d_occlusion.Sample(g_sampler, texcoord).r *
-		                  material.occlusion_factor;
+		                  material.occlusion_strength;
 	#endif
 
 	#if DEFERRED_PASS

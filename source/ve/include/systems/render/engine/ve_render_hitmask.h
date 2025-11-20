@@ -96,12 +96,13 @@ private:
 
 		struct AlphaTestOnDescriptors : public DescriptorSet
 		{
-			AlphaTestOnDescriptors() : DescriptorSet(view_ub, transform_ub, hitmask_id_ub,
-			                                         sampler, base_color)
+			AlphaTestOnDescriptors() : DescriptorSet(view_ub, transform_ub, material_ub,
+			                                         hitmask_id_ub, sampler, base_color)
 			{}
 
 			Descriptor view_ub = "g_ub_view";
 			Descriptor transform_ub = "g_ub_transform";
+			Descriptor material_ub = "g_ub_material";
 			Descriptor hitmask_id_ub = "g_ub_hitmask_id";
 			Descriptor sampler = "g_sampler";
 			Descriptor base_color = "g_tex2d_base_color";
