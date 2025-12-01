@@ -1976,7 +1976,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		case VK_FORMAT_B8G8R8A8_SRGB: info.format = pixel::Format::b8g8r8a8_srgb; break;
 		case VK_FORMAT_R8G8B8A8_UNORM: info.format = pixel::Format::r8g8b8a8_unorm; break;
 		case VK_FORMAT_B8G8R8A8_UNORM: info.format = pixel::Format::b8g8r8a8_unorm; break;
-		default: return ut::MakeError(VulkanError(res, "Unsupported surface format."));
+		default: return ut::MakeError(ut::error::not_supported, "Unsupported surface format.");
 		}
 		info.width = swapchain_extent.width;
 		info.height = swapchain_extent.height;
@@ -2068,6 +2068,37 @@ ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBuffer::Info& 
 
 	PlatformCmdBuffer platform_buffer(device.GetVkHandle(), cmd_pool.Get(), cmd_buffer, fence);
 	return CmdBuffer(ut::Move(platform_buffer), cmd_buffer_info);
+}
+
+// Creates a query buffer.
+//    @param query_buffer_info - reference to the information about
+//                               the query buffer to be created.
+//    @return - new query buffer or error if failed.
+ut::Result<QueryBuffer, ut::Error> Device::CreateQueryBuffer(const QueryBuffer::Info& query_buffer_info)
+{
+	VkQueryPoolCreateInfo pool_info;
+	pool_info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+	pool_info.pNext = nullptr;
+	pool_info.flags = 0;
+	pool_info.pipelineStatistics = 0;
+	pool_info.queryCount = query_buffer_info.count;
+
+	switch (query_buffer_info.type)
+	{
+	case QueryBuffer::Type::occlusion: pool_info.queryType = VK_QUERY_TYPE_OCCLUSION; break;
+	case QueryBuffer::Type::timestamp: pool_info.queryType = VK_QUERY_TYPE_TIMESTAMP; break;
+	default: return ut::MakeError(ut::error::not_supported, "Unsupported query format.");
+	}
+
+	VkQueryPool query_pool;
+	VkResult res = vkCreateQueryPool(device.GetVkHandle(), &pool_info, nullptr, &query_pool);
+	if (res != VK_SUCCESS)
+	{
+		return ut::MakeError(VulkanError(res, "vkCreateQueryPool"));
+	}
+
+	PlatformQueryBuffer platform_query_buffer(device.GetVkHandle(), query_pool);
+	return QueryBuffer(ut::Move(platform_query_buffer), query_buffer_info);
 }
 
 // Creates render pass object.
@@ -2870,6 +2901,7 @@ void Device::Record(CmdBuffer& cmd_buffer,
 	Context context(PlatformContext(device.GetVkHandle(),
 	                                allocator,
 	                                cmd_buffer,
+	                                gpu_properties.limits.timestampPeriod,
 	                                ut::Move(framebuffer_size)));
 	function(context);
 

@@ -10,6 +10,7 @@
 #include "systems/render/api/ve_render_display.h"
 #include "systems/render/api/ve_render_buffer.h"
 #include "systems/render/api/ve_render_pipeline_state.h"
+#include "systems/render/api/ve_render_query.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -266,6 +267,25 @@ public:
 	// does nothing if this context is writing to the non-primary command buffer.
 	//    @param buffers - array of references to the secondary buffer.
 	void ExecuteSecondaryBuffers(ut::Array< ut::Ref<CmdBuffer> >& buffers);
+
+	// Write a query object.
+	//    @param query_buffer - a reference to the buffer containing the
+	//                          desired query.
+	//    @param query_id - an index of the query in @query_buffer to be written.
+	//    @param stage - the pipeline stage for writing a query.
+	void WriteQuery(QueryBuffer& query_buffer,
+	                ut::uint32 query_id,
+	                QueryBuffer::PipelineStage stage);
+
+	// Returns the results for the provided query buffer, and resets that buffer.
+	//    @param query_buffer - a buffer containing the queries.
+	//    @param first_query - the initial query index.
+	//    @param count - the number of queries to read, all queries in the
+	//                   @query_buffer starting from @first_query will be read
+	//                   if this parameter is empty.
+	ut::Array<ut::uint64> ReadAndResetQueryBuffer(QueryBuffer& query_buffer,
+	                                              ut::uint32 first_query = 0,
+	                                              ut::Optional<ut::uint32> count = ut::Optional<ut::uint32>());
 
 private:
 	// Toggles render target's state.

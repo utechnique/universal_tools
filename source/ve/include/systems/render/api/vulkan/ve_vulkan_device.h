@@ -8,6 +8,7 @@
 #include "systems/render/api/vulkan/ve_vulkan_resource.h"
 #include "systems/render/api/vulkan/ve_vulkan_queue.h"
 #include "systems/render/api/vulkan/ve_vulkan_buffer.h"
+#include "systems/render/api/vulkan/ve_vulkan_query.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -88,23 +89,23 @@ protected:
 	//    @param memory_property_flags - buffer memory property flags.
 	//    @return - buffer resource or error if failed.
 	ut::Result<VkRc<vk::Rc::buffer>, ut::Error> CreateVulkanBuffer(VkDeviceSize size,
-	                                                           VkBufferUsageFlags usage,
-	                                                           VmaMemoryUsage memory_usage,
-	                                                           VkMemoryPropertyFlags memory_property_flags);
+	                                                               VkBufferUsageFlags usage,
+	                                                               VmaMemoryUsage memory_usage,
+	                                                               VkMemoryPropertyFlags memory_property_flags);
 
 	// Allocates gpu memory for the specified image.
 	//    @param buffer - buffer handle.
 	//    @param properties - memory properties.
 	//    @return - memory resource object or error if failed.
 	ut::Result<VkRc<vk::Rc::memory>, ut::Error> AllocateImageMemory(VkImage image,
-	                                                            VkMemoryPropertyFlags properties);
+	                                                                VkMemoryPropertyFlags properties);
 
 	// Allocates gpu memory for the specified buffer.
 	//    @param buffer - buffer handle.
 	//    @param properties - memory properties.
 	//    @return - memory resource object or error if failed.
 	ut::Result<VkRc<vk::Rc::memory>, ut::Error> AllocateBufferMemory(VkBuffer buffer,
-	                                                             VkMemoryPropertyFlags properties);
+	                                                                 VkMemoryPropertyFlags properties);
 
 	// Creates staging buffer for initializing gpu resources.
 	//    @param size - size of the buffer in bytes.

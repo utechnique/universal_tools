@@ -33,9 +33,7 @@ public:
 			ut::uint32 length;
 
 			static constexpr ut::uint32 skMagic = 0x46546C67;
-			static constexpr size_t skSize = sizeof(magic) +
-			                                 sizeof(version) +
-			                                 sizeof(length);
+			static constexpr size_t skSize = sizeof(ut::uint32) * 3;
 		};
 
 		struct Chunk

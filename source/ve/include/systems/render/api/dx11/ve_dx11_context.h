@@ -60,6 +60,9 @@ protected:
 
 	// current render area
 	ut::Optional< ut::Vector<2, ut::uint32> > bound_framebuffer_size;
+
+	// Disjoint queries that must be ended on the end of a frame.
+	ut::Array<ID3D11Query*> disjoint_queries_to_end;
 };
 
 //----------------------------------------------------------------------------//

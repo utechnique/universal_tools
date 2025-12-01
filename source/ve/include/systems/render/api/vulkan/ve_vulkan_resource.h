@@ -36,7 +36,8 @@ namespace vk
 		pipeline,
 		pipeline_layout,
 		descriptor_set_layout,
-		descriptor_pool
+		descriptor_pool,
+		query_pool
 	};
 }
 
@@ -357,6 +358,19 @@ template<> struct VkDetail<vk::Rc::descriptor_pool>
 
 	typedef VkDescriptorPool Handle;
 	void Destroy(VkDescriptorPool pool_handle) { vkDestroyDescriptorPool(device, pool_handle, nullptr); }
+
+private:
+	VkDevice device;
+};
+
+// Query pool.
+template<> struct VkDetail<vk::Rc::query_pool>
+{
+	VkDetail(VkDevice device_handle = VK_NULL_HANDLE) : device(device_handle)
+	{}
+
+	typedef VkQueryPool Handle;
+	void Destroy(VkQueryPool pool_handle) { vkDestroyQueryPool(device, pool_handle, nullptr); }
 
 private:
 	VkDevice device;

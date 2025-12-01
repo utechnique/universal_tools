@@ -12,7 +12,6 @@ Engine::Engine(Device& render_device,
                                              , device(render_device)
                                              , tools(render_device)
                                              , unit_mgr(tools)
-                                             , profiler(tools)
 {
 	// set vertical synchronization for viewports
 	SetVerticalSynchronization(tools.config.vsync);
@@ -70,8 +69,16 @@ void Engine::ProcessNextFrame(System::Time time_step_ms)
 	// get current frame
 	Frame& frame = UpdateCurrentFrameInfo();
 
+	// update profiler
+	tools.profiler.ResetCounterAndUpdateFrameId();
+
 	// wait for the previous frame to finish
-	device.WaitCmdBuffer(frame.cmd_buffer);
+	{
+		ut::Optional<Profiler::ScopeCounter> wait_gpu_cmd_scope_counter =
+			tools.profiler.CreateScopeCounter(Profiler::Stat::wait_gpu);
+
+		device.WaitCmdBuffer(frame.cmd_buffer);
+	}
 
 	// update resources (deletes unused resources, etc.)
 	tools.rc_mgr.Update();
@@ -93,10 +100,15 @@ void Engine::ProcessNextFrame(System::Time time_step_ms)
 
 	// generate an array of active displays
 	ut::Array< ut::Ref<Display> > display_array;
-	for (size_t i = 0; i < active_viewports.Count(); i++)
 	{
-		display_array.Add(active_viewports[i]->display);
-		device.AcquireNextDisplayBuffer(display_array.GetLast());
+		ut::Optional<Profiler::ScopeCounter> wait_sync_scope_counter =
+			tools.profiler.CreateScopeCounter(Profiler::Stat::wait_sync);
+
+		for (size_t i = 0; i < active_viewports.Count(); i++)
+		{
+			display_array.Add(active_viewports[i]->display);
+			device.AcquireNextDisplayBuffer(display_array.GetLast());
+		}
 	}
 
 	// record all commands for the current frame
@@ -105,6 +117,8 @@ void Engine::ProcessNextFrame(System::Time time_step_ms)
 	                                                                            time_step_ms); });
 
 	// submit commands and enqueue display presentation
+	ut::Optional<Profiler::ScopeCounter> submit_scope_counter =
+		tools.profiler.CreateScopeCounter(Profiler::Stat::submit);
 	device.Submit(frame.cmd_buffer, display_array);
 
 	// go to the next frame
@@ -116,6 +130,13 @@ void Engine::ProcessNextFrame(System::Time time_step_ms)
 ut::ThreadPool<void>& Engine::GetThreadPool()
 {
 	return tools.pool;
+}
+
+// Returns a reference to the profiler object,
+// use it to measure performance.
+Profiler& Engine::GetProfiler()
+{
+	return tools.profiler;
 }
 
 // Updates the information about the current frame and returns the
@@ -149,6 +170,12 @@ void Engine::RecordFrameCommands(Context& context,
                                  ut::Array< ut::Ref<ViewportManager::Proxy> >& active_viewports,
                                  System::Time time_step_ms)
 {
+	// collect the timestamps and reset queries from the previous cycle
+	tools.profiler.CollectQueriesAndSaveResults(context);
+
+	ut::Optional<Profiler::ScopeCounter> scope_counter =
+		tools.profiler.CreateScopeCounter(Profiler::Stat::frame, context);
+
 	// generate global transform buffer for all mesh instance units
 	Policy<MeshInstance>& mesh_instance_policy = unit_mgr.policies.Get<MeshInstance>();
 	mesh_instance_policy.batcher.UpdateBuffers(context);
@@ -183,10 +210,12 @@ void Engine::DisplayToUser(Context& context, ut::Array< ut::Ref<ViewportManager:
 		}
 
 		// display to user
+		const bool display_profiler_stat = tools.config.show_fps ||
+		                                   tools.config.show_render_stat;
 		DisplayImage(context,
 		             image ? image.Get() : tools.rc_mgr.img_black.Get(),
 		             active_viewports[i],
-		             ui_viewport_widget.GetId() == 0);
+		             display_profiler_stat);
 	}
 }
 
@@ -234,7 +263,11 @@ void Engine::DisplayImage(Context& context,
 	if (display_profiler)
 	{
 		context.BindPipelineState(viewport.pipeline_state);
-		profiler.DrawInfo(context, frame, fb_info.width, fb_info.height);
+		tools.profiler.DrawStats(context,
+		                         frame,
+		                         viewport.ui_widget.GetId(),
+		                         fb_info.width,
+		                         fb_info.height);
 	}
 
 	context.EndRenderPass();

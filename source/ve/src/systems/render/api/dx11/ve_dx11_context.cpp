@@ -786,6 +786,90 @@ void Context::ExecuteSecondaryBuffers(ut::Array< ut::Ref<CmdBuffer> >& buffers)
 	}
 }
 
+// Write a query object.
+//    @param query_buffer - a reference to the buffer containing the
+//                          desired query.
+//    @param query_id - an index of the query in @query_buffer to be written.
+//    @param stage - the pipeline stage for writing a query.
+void Context::WriteQuery(QueryBuffer& query_buffer,
+                         ut::uint32 query_id,
+                         QueryBuffer::PipelineStage stage)
+{
+	const QueryBuffer::Info& query_info = query_buffer.GetInfo();
+
+	if (query_info.type == QueryBuffer::Type::timestamp &&
+	    !query_buffer.started_disjoint_query)
+	{
+		UT_ASSERT(query_buffer.disjoint_query.Get());
+		d3d11_context->Begin(query_buffer.disjoint_query.Get());
+		disjoint_queries_to_end.Add(query_buffer.disjoint_query.Get());
+
+		query_buffer.started_disjoint_query = true;
+	}
+
+	UT_ASSERT(query_id < query_info.count);
+	d3d11_context->End(query_buffer.queries[query_id].Get());
+}
+
+// Returns the results for the provided query buffer.
+//    @param query_buffer - a buffer containing the queries.
+//    @param first_query - the initial query index.
+//    @param count - the number of queries to read, all queries in the
+//                   @query_buffer starting from @first_query will be read
+//                   if this parameter is empty.
+ut::Array<ut::uint64> Context::ReadAndResetQueryBuffer(QueryBuffer& query_buffer,
+                                                       ut::uint32 first_query,
+                                                       ut::Optional<ut::uint32> count)
+{
+	const QueryBuffer::Info& query_info = query_buffer.GetInfo();
+
+	const size_t remaining_query_count = count ? count.Get() : (query_info.count - first_query);
+
+	D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint;
+	disjoint.Disjoint = FALSE;
+	double frequency_ns;
+	if (query_info.type == QueryBuffer::Type::timestamp &&
+	    query_buffer.started_disjoint_query)
+	{
+		HRESULT result = S_FALSE;
+		while (result == S_FALSE)
+		{
+			result = d3d11_context->GetData(query_buffer.disjoint_query.Get(),
+			                                &disjoint,
+			                                sizeof(disjoint),
+			                                0);
+			if (FAILED(result))
+			{
+				throw ut::Error(ut::error::fail, "GetData(disjoint) failed.");
+			}
+
+			ut::this_thread::Yield();
+		}
+
+		frequency_ns = static_cast<double>(disjoint.Frequency) / 1000000000.0;
+		query_buffer.started_disjoint_query = false;
+	}
+
+	ut::Array<ut::uint64> query_results(remaining_query_count);
+	for (ut::uint32 query_iter = 0; query_iter < remaining_query_count; query_iter++)
+	{
+		ut::uint64 timestamp;
+		const ut::uint32 query_id = first_query + query_iter;
+		HRESULT result = d3d11_context->GetData(query_buffer.queries[query_id].Get(),
+		                                        &timestamp,
+		                                        sizeof(ut::uint64),
+		                                        0);
+		if (FAILED(result))
+		{
+			throw ut::Error(ut::error::fail, "GetData(query) failed.");
+		}
+
+		query_results[query_iter] = static_cast<ut::uint64>(timestamp / frequency_ns);
+	}
+
+	return query_results;
+}
+
 //----------------------------------------------------------------------------//
 END_NAMESPACE(render)
 END_NAMESPACE(ve)

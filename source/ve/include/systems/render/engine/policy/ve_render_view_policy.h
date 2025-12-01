@@ -47,6 +47,7 @@ private:
 
 	// Renders environment.
 	Image& RenderLightPass(Context& context,
+	                       ui::Viewport::Id viewport_id,
 	                       View::SceneBuffer& scene,
 	                       Light::Sources& lights,
 	                       const ut::Matrix<4>& view_matrix,
@@ -54,7 +55,8 @@ private:
 	                       const ut::Vector<3>& view_position,
 	                       View::LightPassMode light_pass_mode,
 	                       ut::Optional<Image&> ibl_cubemap = ut::Optional<Image&>(),
-	                       Image::Cube::Face face = Image::Cube::Face::positive_x);
+	                       Image::Cube::Face face = Image::Cube::Face::positive_x,
+	                       ut::Optional<Profiler::StatSubgroup> stat_subgroup = ut::Optional<Profiler::StatSubgroup>());
 
 	// Renders IBL cubemap.
 	void RenderIblCubemap(Context& context,

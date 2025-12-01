@@ -148,6 +148,9 @@ void RenderSystem::InitializeUnits(Base::Access& access)
 	const size_t thread_count = thread_pool.GetThreadCount();
 	const size_t entities_per_thread = entity_count / thread_count;
 
+	ut::Optional<Profiler::ScopeCounter> scope_counter =
+		engine->GetProfiler().CreateScopeCounter(Profiler::Stat::unit_initialization);
+
 	Toolset::DefaultScheduler scheduler = thread_pool.CreateScheduler();
 
 	size_t entity_id = 0;

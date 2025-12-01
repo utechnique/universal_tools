@@ -21,6 +21,7 @@ public:
 	PlatformContext(VkDevice device_handle,
 	                VmaAllocator allocator_handle,
 	                PlatformCmdBuffer& cmd_buffer_ref,
+	                float timestamp_period,
 	                ut::Optional< ut::Vector<2, ut::uint32> > bound_framebuffer_size =
 	                                                          ut::Optional< ut::Vector<2, ut::uint32> >());
 
@@ -72,6 +73,9 @@ protected:
 	// reference to the buffer containing all commands recorded
 	// by this context
 	PlatformCmdBuffer& cmd_buffer;
+
+	// The number of nanoseconds required for a timestamp query to be incremented by 1.
+	double timestamp_period;
 
 	// current render area
 	ut::Optional< ut::Vector<2, ut::uint32> > bound_framebuffer_size;

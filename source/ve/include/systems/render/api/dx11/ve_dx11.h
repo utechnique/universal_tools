@@ -17,6 +17,7 @@
 #include "systems/render/api/dx11/ve_dx11_render_pass.h"
 #include "systems/render/api/dx11/ve_dx11_framebuffer.h"
 #include "systems/render/api/dx11/ve_dx11_buffer.h"
+#include "systems/render/api/dx11/ve_dx11_query.h"
 #include "systems/render/api/dx11/ve_dx11_shader.h"
 #include "systems/render/api/dx11/ve_dx11_shader_compiler.h"
 #include "systems/render/api/dx11/ve_dx11_pipeline_state.h"

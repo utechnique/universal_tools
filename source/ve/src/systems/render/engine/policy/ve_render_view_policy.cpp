@@ -169,12 +169,19 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 	ut::Optional<Image&> ibl_cubemap;
 	if (tools.config.ibl_enabled && view.light_pass_mode == View::LightPassMode::complete)
 	{
+		ut::Optional<Profiler::ScopeCounter> ibl_scope_counter =
+			tools.profiler.CreateScopeCounter(Profiler::Stat::ibl,
+			                                  context,
+			                                  view.viewport_id);
+
 		RenderIblCubemap(context, view, lights);
+
 		ibl_cubemap = frame.ibl.filtered_cubemap.GetImage();
 	}
 
 	// render the scene to the final buffer
 	Image& light_pass_img = RenderLightPass(context,
+	                                        view.viewport_id,
 	                                        frame.scene,
 	                                        lights,
 	                                        view.view_matrix,
@@ -203,6 +210,10 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 	context.SetTargetState(color_buffer->color_target, Target::Info::State::resource);
 
 	// postprocess
+	ut::Optional<Profiler::ScopeCounter> postprocess_scope_counter =
+		tools.profiler.CreateScopeCounter(Profiler::Stat::postprocess,
+		                                  context,
+		                                  view.viewport_id);
 	frame.final_img = post_process_mgr.ApplyEffects
 	                  <postprocess::Effect::gradient_dithering,
 	                   postprocess::Effect::stencil_highlighting,
@@ -268,6 +279,7 @@ ut::Result<View::SceneBuffer, ut::Error> Policy<View>::CreateSceneBuffer(ut::uin
 //----------------------------------------------------------------------------->
 // Renders environment.
 Image& Policy<View>::RenderLightPass(Context& context,
+                                     ui::Viewport::Id viewport_id,
                                      View::SceneBuffer& scene,
                                      Light::Sources& lights,
                                      const ut::Matrix<4>& view_matrix,
@@ -275,20 +287,29 @@ Image& Policy<View>::RenderLightPass(Context& context,
                                      const ut::Vector<3>& view_position,
                                      View::LightPassMode light_pass_mode,
                                      ut::Optional<Image&> ibl_cubemap,
-                                     Image::Cube::Face face)
+                                     Image::Cube::Face face,
+                                     ut::Optional<Profiler::StatSubgroup> stat_subgroup)
 {
 	Policy<MeshInstance>& mesh_instance_policy = policies.Get<MeshInstance>();
 
 	// update view uniform buffer
 	UpdateViewUniforms(context, scene, view_matrix, proj_matrix, view_position, face);
 
-	// bake deferred shading data
-	lighting_mgr.deferred_shading.BakeOpaqueGeometry(context,
-	                                                 scene.depth_stencil,
-	                                                 scene.lighting.deferred_shading,
-	                                                 scene.view_ub[static_cast<ut::uint32>(face)],
-	                                                 mesh_instance_policy.batcher,
-	                                                 face);
+	
+	{ // bake deferred shading data
+		ut::Optional<Profiler::ScopeCounter> gbuffer_bake_scope_counter =
+			tools.profiler.CreateScopeCounter(Profiler::Stat::gbuffer_bake,
+			                                  context,
+			                                  viewport_id,
+			                                  stat_subgroup);
+
+		lighting_mgr.deferred_shading.BakeOpaqueGeometry(context,
+		                                                 scene.depth_stencil,
+		                                                 scene.lighting.deferred_shading,
+		                                                 scene.view_ub[static_cast<ut::uint32>(face)],
+		                                                 mesh_instance_policy.batcher,
+		                                                 face);
+	}
 
 	// exit if the view mode is set to show one of the g-buffer targets
 	if (light_pass_mode == View::LightPassMode::deferred_base_color)
@@ -304,24 +325,39 @@ Image& Policy<View>::RenderLightPass(Context& context,
 		return scene.lighting.deferred_shading.normal.GetImage(); // exit
 	}
 
-	// perform deferred shading
-	lighting_mgr.deferred_shading.Shade(context,
-	                                    scene.lighting.deferred_shading,
-	                                    scene.view_ub[static_cast<ut::uint32>(face)],
-	                                    lights,
-	                                    ibl_cubemap,
-	                                    face);
+	{ // perform deferred shading
+		ut::Optional<Profiler::ScopeCounter> def_shading_scope_counter =
+			tools.profiler.CreateScopeCounter(Profiler::Stat::deferred_shading,
+			                                  context,
+			                                  viewport_id,
+			                                  stat_subgroup);
+
+		lighting_mgr.deferred_shading.Shade(context,
+		                                    scene.lighting.deferred_shading,
+		                                    scene.view_ub[static_cast<ut::uint32>(face)],
+		                                    lights,
+		                                    ibl_cubemap,
+		                                    face);
+	}
 
 	// use forward renderer to draw all units that
 	// can't be rendered in deferred pass
-	lighting_mgr.forward_shading.Draw(context,
-	                                  scene.lighting.forward_shading,
-	                                  scene.view_ub[static_cast<ut::uint32>(face)],
-	                                  view_position,
-	                                  mesh_instance_policy.batcher,
-	                                  lights,
-	                                  ibl_cubemap,
-	                                  face);
+	{
+		ut::Optional<Profiler::ScopeCounter> forward_render_scope_counter =
+			tools.profiler.CreateScopeCounter(Profiler::Stat::forward_rendering,
+			                                  context,
+			                                  viewport_id,
+			                                  stat_subgroup);
+
+		lighting_mgr.forward_shading.Draw(context,
+		                                  scene.lighting.forward_shading,
+		                                  scene.view_ub[static_cast<ut::uint32>(face)],
+		                                  view_position,
+		                                  mesh_instance_policy.batcher,
+		                                  lights,
+		                                  ibl_cubemap,
+		                                  face);
+	}
 
 	context.SetTargetState(scene.lighting.light_buffer, Target::Info::State::resource);
 	return scene.lighting.light_buffer.GetImage();
@@ -348,6 +384,7 @@ void Policy<View>::RenderIblCubemap(Context& context,
 	for (ut::uint32 i = frame.ibl.face_id; i < frame.ibl.face_id + faces_to_update; i++)
 	{
 		RenderLightPass(context,
+		                view.viewport_id,
 		                frame.environment_map,
 		                lights,
 		                lighting_mgr.ibl.CreateFaceViewMatrix(static_cast<Image::Cube::Face>(i), view.camera_position),
@@ -355,7 +392,8 @@ void Policy<View>::RenderIblCubemap(Context& context,
 		                view.camera_position,
 		                View::LightPassMode::complete,
 		                frame.ibl.filtered_cubemap.GetImage(),
-		                static_cast<Image::Cube::Face>(i));
+		                static_cast<Image::Cube::Face>(i),
+		                Profiler::StatSubgroup::ibl);
 	}
 
 	// ibl source must have full set of mips

@@ -11,6 +11,7 @@
 #include "ve_render_image_loader.h"
 #include "ve_shader_loader.h"
 #include "ve_sampler_cache.h"
+#include "ve_render_profiler.h"
 
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
@@ -39,6 +40,7 @@ public:
 	ShaderLoader shader_loader;
 	SamplerCache sampler_cache;
 	FrameManager frame_mgr;
+	Profiler profiler;
 
 	// random generator
 	ut::rng::Generator<ut::rng::Algorithm::mt19937> random;

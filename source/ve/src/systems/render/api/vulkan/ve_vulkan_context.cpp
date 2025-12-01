@@ -43,9 +43,11 @@ PlatformImage::State CreateTargetImageState(Target::Info target_info,
 PlatformContext::PlatformContext(VkDevice device_handle,
                                  VmaAllocator allocator_handle,
                                  PlatformCmdBuffer& cmd_buffer_ref,
+                                 float in_timestamp_period,
                                  ut::Optional< ut::Vector<2, ut::uint32> > framebuffer_size) : device(device_handle)
                                                                                              , allocator(allocator_handle)
                                                                                              , cmd_buffer(cmd_buffer_ref)
+                                                                                             , timestamp_period(static_cast<double>(in_timestamp_period))
                                                                                              , bound_framebuffer_size(ut::Move(framebuffer_size))
 {}
 
@@ -912,6 +914,70 @@ void Context::ExecuteSecondaryBuffers(ut::Array< ut::Ref<CmdBuffer> >& buffers)
 	}
 
 	vkCmdExecuteCommands(cmd_buffer.GetVkHandle(), count, handles.GetAddress());
+}
+
+// Write a query object.
+//    @param query_buffer - a reference to the buffer containing the
+//                          desired query.
+//    @param query_id - an index of the query in @query_buffer to be written.
+//    @param stage - the pipeline stage for writing a query.
+void Context::WriteQuery(QueryBuffer& query_buffer,
+                         ut::uint32 query_id,
+                         QueryBuffer::PipelineStage stage)
+{
+	UT_ASSERT(query_id < query_buffer.GetInfo().count);
+
+	const VkPipelineStageFlagBits stage_flags = stage == QueryBuffer::PipelineStage::top_of_pipe ?
+	                                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT :
+	                                            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+	vkCmdWriteTimestamp(cmd_buffer.GetVkHandle(),
+	                    stage_flags,
+	                    query_buffer.GetVkHandle(),
+	                    query_id);
+}
+
+// Returns the results for the provided query buffer.
+//    @param query_buffer - a buffer containing the queries.
+//    @param first_query - the initial query index.
+//    @param count - the number of queries to read, all queries in the
+//                   @query_buffer starting from @first_query will be read
+//                   if this parameter is empty.
+ut::Array<ut::uint64> Context::ReadAndResetQueryBuffer(QueryBuffer& query_buffer,
+                                                       ut::uint32 first_query,
+                                                       ut::Optional<ut::uint32> count)
+{
+	const QueryBuffer::Info& info = query_buffer.GetInfo();
+
+	const ut::uint32 remaining_query_count = count ? count.Get() : (info.count - first_query);
+
+	ut::Array<ut::uint64> result(remaining_query_count);
+	
+	if (remaining_query_count > 0)
+	{
+		VkResult res = vkGetQueryPoolResults(device,
+		                                     query_buffer.GetVkHandle(),
+		                                     first_query,
+		                                     remaining_query_count,
+		                                     result.GetSize(),
+		                                     result.GetAddress(),
+		                                     sizeof(ut::uint64),
+		                                     VK_QUERY_RESULT_64_BIT);
+
+		UT_ASSERT(res == VK_SUCCESS || res == VK_NOT_READY);
+	}
+
+	for (ut::uint64& timestamp : result)
+	{
+		timestamp = static_cast<ut::uint64>(timestamp * timestamp_period);
+	}
+
+	vkCmdResetQueryPool(cmd_buffer.GetVkHandle(),
+	                    query_buffer.GetVkHandle(),
+	                    0,
+	                    info.count);
+
+	return result;
 }
 
 //----------------------------------------------------------------------------//

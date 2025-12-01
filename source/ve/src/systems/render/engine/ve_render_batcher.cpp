@@ -167,6 +167,9 @@ void Batcher::UpdateBatchById(Context& context, size_t batch_id)
 // Updates all batches.
 void Batcher::UpdateBuffers(Context& context)
 {
+	ut::Optional<Profiler::ScopeCounter> scope_counter =
+		tools.profiler.CreateScopeCounter(Profiler::Stat::batching);
+
 	// calculate how many buffers are needed to cover all mesh instance units
 	const size_t dc_count = draw_calls.Count();
 	const size_t buffer_need = dc_count / batch_size +
@@ -215,9 +218,12 @@ void Batcher::UpdateBuffers(Context& context)
 	{
 		if (parallelize_buffer_update)
 		{
-			void(Batcher::*callback)(Context&, size_t) = &Batcher::UpdateBatchById;
-			auto f = ut::MemberFunction<Batcher, void(Context&, size_t)>(this, callback);
-			tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void(Context&, size_t)> >(f, context, i));
+			auto job = [&, i]()
+			{
+				UpdateBatchById(context, i);
+			};
+
+			tools.scheduler.Enqueue(ut::MakeUnique< ut::Task<void()> >(job));
 		}
 		else
 		{

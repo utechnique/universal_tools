@@ -6,7 +6,6 @@
 #include "systems/render/ve_render_api.h"
 #include "ve_render_viewport_mgr.h"
 #include "ve_render_toolset.h"
-#include "ve_render_profiler.h"
 #include "policy/ve_render_view_policy.h"
 #include "ve_render_unit_mgr.h"
 
@@ -41,6 +40,10 @@ public:
 	// use it to parallelize cpu work.
 	ut::ThreadPool<void>& GetThreadPool();
 
+	// Returns a reference to the profiler object,
+	// use it to measure performance.
+	Profiler& GetProfiler();
+
 private:
 	// Updates the information about the current frame and returns the
 	// reference to this frmae.
@@ -71,9 +74,6 @@ private:
 
 	// unit manager renders and maintains units
 	UnitManager unit_mgr;
-
-	// measures performance
-	Profiler profiler;
 };
 
 //----------------------------------------------------------------------------//

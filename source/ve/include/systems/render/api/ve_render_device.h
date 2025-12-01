@@ -16,6 +16,7 @@
 #include "systems/render/api/ve_render_shader.h"
 #include "systems/render/api/ve_render_pipeline_state.h"
 #include "systems/render/api/ve_render_descriptor.h"
+#include "systems/render/api/ve_render_query.h"
 #include "systems/ui/ve_ui.h"
 #include "ve_dedicated_thread.h"
 //----------------------------------------------------------------------------//
@@ -97,6 +98,12 @@ public:
 	//                             the command buffer to be created.
 	//    @return - new command buffer or error if failed.
 	ut::Result<CmdBuffer, ut::Error> CreateCmdBuffer(const CmdBuffer::Info& cmd_buffer_info);
+
+	// Creates a query buffer.
+	//    @param query_buffer_info - reference to the information about
+	//                               the query buffer to be created.
+	//    @return - new query buffer or error if failed.
+	ut::Result<QueryBuffer, ut::Error> CreateQueryBuffer(const QueryBuffer::Info& query_buffer_info);
 
 	// Creates render pass object.
 	//    @param in_color_slots - array of color slots.

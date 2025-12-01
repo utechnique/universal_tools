@@ -35,6 +35,12 @@ public:
 	// identifies how many IBL faces are rendered in one frame
 	ut::uint32 ibl_frequency;
 
+	// identifies whether to show fps value of now
+	bool show_fps;
+
+	// identifies whether to show render statistics
+	bool show_render_stat;
+
 private:
 	// Validates data after loading.
 	void Validate();

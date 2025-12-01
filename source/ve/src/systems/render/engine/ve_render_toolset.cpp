@@ -36,6 +36,12 @@ Toolset::Toolset(Device& dvc_ref) : device(dvc_ref)
                                   , shader_loader(dvc_ref)
                                   , sampler_cache(dvc_ref)
                                   , frame_mgr(dvc_ref)
+                                  , profiler(dvc_ref,
+                                             img_loader,
+                                             config,
+                                             rc_mgr,
+                                             sampler_cache,
+                                             frame_mgr)
                                   , shaders {
                                                 shader_loader.Load(Shader::Stage::vertex,
                                                                    "quad_vs",

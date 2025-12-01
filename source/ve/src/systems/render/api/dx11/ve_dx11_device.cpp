@@ -858,6 +858,62 @@ ut::Result<CmdBuffer, ut::Error> Device::CreateCmdBuffer(const CmdBuffer::Info& 
 	return CmdBuffer(PlatformCmdBuffer(cmd_list, deferred_context), cmd_buffer_info);
 }
 
+// Creates a query buffer.
+//    @param query_buffer_info - reference to the information about
+//                               the query buffer to be created.
+//    @return - new query buffer or error if failed.
+ut::Result<QueryBuffer, ut::Error> Device::CreateQueryBuffer(const QueryBuffer::Info& query_buffer_info)
+{
+	D3D11_QUERY_DESC query_desc;
+	query_desc.MiscFlags = 0;
+
+	switch (query_buffer_info.type)
+	{
+	case QueryBuffer::Type::occlusion: query_desc.Query = D3D11_QUERY_OCCLUSION; break;
+	case QueryBuffer::Type::timestamp: query_desc.Query = D3D11_QUERY_TIMESTAMP; break;
+	default: return ut::MakeError(ut::error::not_supported, "Unsupported query format.");
+	}
+
+	ut::Array<ID3D11Query*> queries;
+	auto release_queries = [&]()
+	{
+		for (ID3D11Query* prev_query : queries)
+		{
+			prev_query->Release();
+		}
+	};
+
+	// create queries one by one
+	for (ut::uint32 query_iter = 0; query_iter < query_buffer_info.count; query_iter++)
+	{
+		ID3D11Query* query;
+		HRESULT result = d3d11_device->CreateQuery(&query_desc, &query);
+		if (FAILED(result))
+		{
+			release_queries();
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " CreateQuery() failed.");
+		}
+
+		queries.Add(query);
+	}
+
+	// create a disjoint query for the timestamp quries
+	ID3D11Query* disjoint_query = nullptr;
+	if (query_buffer_info.type == QueryBuffer::Type::timestamp)
+	{
+		query_desc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+		HRESULT result = d3d11_device->CreateQuery(&query_desc, &disjoint_query);
+		if (FAILED(result))
+		{
+			release_queries();
+			return ut::MakeError(ut::error::fail, ut::Print(result) + " CreateQuery(disjoint) failed.");
+		}
+	}
+
+	PlatformQueryBuffer platform_query_buffer(ut::Move(queries), disjoint_query);
+	return QueryBuffer(ut::Move(platform_query_buffer), query_buffer_info);
+}
+
 // Creates render pass object.
 //    @param in_color_slots - array of color slots.
 //    @param in_depth_stencil_slot - optional depth stencil slot.
@@ -1329,6 +1385,13 @@ void Device::Record(CmdBuffer& cmd_buffer,
 
 	// record commands
 	function(context);
+
+	// end disjoint queries
+	for (ID3D11Query* disjoint_query : context.disjoint_queries_to_end)
+	{
+		context.d3d11_context->End(disjoint_query);
+	}
+	context.disjoint_queries_to_end.Reset();
 
 	// deferred context must call FinishCommandList() after
 	// all commands have been recorded
