@@ -326,7 +326,7 @@ void Profiler::CollectQueriesAndSaveResults(Context& context)
 }
 
 // Returns a null-terminated string with the name of the given stat group.
-char* Profiler::GetStatName(Stat stat)
+const char* Profiler::GetStatName(Stat stat)
 {
 	switch (stat)
 	{

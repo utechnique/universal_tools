@@ -206,7 +206,7 @@ public:
 
 private:
 	// Returns a null-terminated string with the name of the given stat group.
-	static char* GetStatName(Stat stat);
+	static const char* GetStatName(Stat stat);
 
 	// Creates a vertex buffer containing preallocated vertices for the text.
 	// Each symbol represents a quad of two triangles, 6 vertices per symbol.
