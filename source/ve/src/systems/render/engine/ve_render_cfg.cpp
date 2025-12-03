@@ -11,7 +11,7 @@ START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 static const ut::uint32 skDefaultFramesInFlightCount = 2;
 static const ut::uint32 skDefaultSwapchainBufferCount = 3;
-static const ut::uint32 skMaxFramesInFlightCount = 10;
+static const ut::uint32 skMaxFramesInFlightCount = 3;
 //----------------------------------------------------------------------------//
 // Constructor, default values are set here.
 Settings::Settings() : vsync(true)
