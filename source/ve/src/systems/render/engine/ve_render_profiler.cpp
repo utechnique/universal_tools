@@ -332,7 +332,6 @@ const char* Profiler::GetStatName(Stat stat)
 	{
 		case Stat::unit_initialization: return "init units";
 		case Stat::wait_gpu: return "wait gpu";
-		case Stat::wait_sync: return "wait sync";
 		case Stat::frame: return "record frame";
 		case Stat::batching: return "batching";
 		case Stat::ibl: return "ibl";

@@ -13,7 +13,8 @@ Engine::Engine(Device& render_device,
                                              , tools(render_device)
                                              , unit_mgr(tools)
 {
-	// set vertical synchronization for viewports
+	// set vertical synchronization and the number of swap buffers
+	SetSwapBufferCount(tools.config.swapchain_buffer_count);
 	SetVerticalSynchronization(tools.config.vsync);
 
 	// set display shaders
@@ -101,9 +102,6 @@ void Engine::ProcessNextFrame(System::Time time_step_ms)
 	// generate an array of active displays
 	ut::Array< ut::Ref<Display> > display_array;
 	{
-		ut::Optional<Profiler::ScopeCounter> wait_sync_scope_counter =
-			tools.profiler.CreateScopeCounter(Profiler::Stat::wait_sync);
-
 		for (size_t i = 0; i < active_viewports.Count(); i++)
 		{
 			display_array.Add(active_viewports[i]->display);

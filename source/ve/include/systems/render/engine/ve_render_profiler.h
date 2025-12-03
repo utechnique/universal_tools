@@ -22,7 +22,6 @@ public:
 	{
 		unit_initialization,
 		wait_gpu,
-		wait_sync,
 		frame,
 		batching,
 		ibl,

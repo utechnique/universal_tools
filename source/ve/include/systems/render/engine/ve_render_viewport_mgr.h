@@ -73,6 +73,9 @@ protected:
 	// Returns 'true' if at least one viewport task is waiting to be executed.
 	bool HasPendingViewportTasks();
 
+	// Changes the number of buffers in a swap chain to the given value.
+	void SetSwapBufferCount(ut::uint32 swap_buffer_count);
+
 	// Enables or disables vertical synchronization.
 	void SetVerticalSynchronization(bool status);
 
@@ -142,9 +145,12 @@ private:
 	// synchronization point to strictly synchronize viewport events
 	ut::SyncPoint sync_point;
 
+	// the number of buffers in a swap chain
+	ut::uint32 swap_buffer_count = 2;
+
 	// vertical synchronization is either enabled for all viewports or disabled
 	// for all viewports
-	bool vertical_synchronization;
+	bool vertical_synchronization = true;
 };
 
 //----------------------------------------------------------------------------//

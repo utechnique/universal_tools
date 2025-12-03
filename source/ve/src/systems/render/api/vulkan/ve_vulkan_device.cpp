@@ -1678,9 +1678,12 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
 //    @param viewport - reference to UI viewport containing rendering area.
+//    @param swap_buffer_count - the number of swapchain buffers.
 //    @param vsync - boolean whether to enable vertical synchronization or not.
 //    @return - new display object or error if failed.
-ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewport, bool vsync)
+ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewport,
+                                                     ut::uint32 swap_buffer_count,
+                                                     bool vsync)
 {
 	// surface of the display
 	VkSurfaceKHR surface;
@@ -1845,7 +1848,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		// iterate all modes to find immediate one
 		for (uint32_t i = 0; i < present_mode_count; i++)
 		{
-			if (present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR || 
+			if (present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR ||
 			    present_modes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
 			{
 				present_mode = present_modes[i];
@@ -1855,12 +1858,36 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 		}
 	}
 
-	// Determine the number of VkImage's to use in the swap chain.
-	// We need to acquire only 1 presentable image at at time.
-	// Asking for minImageCount images ensures that we can acquire
-	// 1 presentable image as long as we present it before attempting
-	// to acquire another.
-	uint32_t desired_number_of_swap_chain_images = surf_capabilities.minImageCount;
+	// the desired buffer count can be safely increased if it's being
+	// too low for this surface capabilities as it won't cause any
+	// synchronization problems
+	//
+	// however it cannot exceed surf_capabilities.maxImageCount, because
+	// lowering the buffer count can cause synchronization issues in the case
+	// when the number of frames in flight is higher than the lowered numbered
+	// of swapchain buffers
+	if (swap_buffer_count < surf_capabilities.minImageCount)
+	{
+		ut::log.Lock() <<
+			"Vulkan: Swapchain buffer count was increased from " <<
+			swap_buffer_count <<
+			" to " <<
+			surf_capabilities.minImageCount <<
+			" to meet surface capabilities." <<
+			ut::cret;
+		swap_buffer_count = surf_capabilities.minImageCount;
+	}
+
+	// check if the swap chain supports the desired buffer count
+	if (swap_buffer_count > surf_capabilities.maxImageCount)
+	{
+		ut::String error_desc = ut::String("Unable to create Vulkan display with ") +
+			ut::Print(swap_buffer_count) + " swap buffers. "
+			"Current device supports a range between " +
+			ut::Print(surf_capabilities.minImageCount) + " and " +
+			ut::Print(surf_capabilities.maxImageCount);
+		return ut::MakeError(ut::error::not_supported, ut::Move(error_desc));
+	}
 
 	// surface transform
 	VkSurfaceTransformFlagBitsKHR pre_transform;
@@ -1896,7 +1923,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::PlatformViewport& viewp
 	swapchain_ci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	swapchain_ci.pNext = nullptr;
 	swapchain_ci.surface = surface;
-	swapchain_ci.minImageCount = desired_number_of_swap_chain_images;
+	swapchain_ci.minImageCount = swap_buffer_count;
 	swapchain_ci.imageFormat = surface_format;
 	swapchain_ci.imageExtent.width = swapchain_extent.width;
 	swapchain_ci.imageExtent.height = swapchain_extent.height;
@@ -2936,7 +2963,7 @@ void Device::WaitCmdBuffer(CmdBuffer& cmd_buffer)
 	cmd_buffer.pending = false;
 
 	// reset descriptor and command pools
-	ResetCmdBuffer(cmd_buffer);	
+	ResetCmdBuffer(cmd_buffer);
 }
 
 // Submits a command buffer to a queue. Also it's possible to enqueue presentation
@@ -2983,11 +3010,6 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 
 		const ut::uint32 current_buffer_id = display.current_buffer_id;
 		signal_semaphores[i] = display.present_ready_semaphores[current_buffer_id].GetVkHandle();
-
-		if (display.pending_buffers[current_buffer_id])
-		{
-			throw ut::Error(ut::error::invalid_arg, "Render: Display command buffer isn't finished for the previous frame.");
-		}
 	}
 
 	// initialize submit info
@@ -3040,20 +3062,9 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 
 		// present
 		res = vkQueuePresentKHR(main_queue.GetVkHandle(), &present);
-		if (res == VK_SUCCESS)
-		{
-			// add information about the command buffer associated with a
-			// particular display buffer
-			for (ut::uint32 i = 0; i < display_count; i++)
-			{
-				const ut::uint32 current_buffer_id = present_queue[i]->current_buffer_id;
-				present_queue[i]->pending_buffers[current_buffer_id] = cmd_buffer;
-			}
-		}
-		else if (res != VK_ERROR_OUT_OF_DATE_KHR && res != VK_SUBOPTIMAL_KHR)
-		{
-			UT_ASSERT(0);
-		}
+		UT_ASSERT(res == VK_SUCCESS ||
+		          res == VK_ERROR_OUT_OF_DATE_KHR ||
+		          res == VK_SUBOPTIMAL_KHR);
 	}
 }
 
@@ -3062,14 +3073,6 @@ void Device::Submit(CmdBuffer& cmd_buffer,
 void Device::AcquireNextDisplayBuffer(Display& display)
 {
 	ut::uint32 next_buffer_id = display.AcquireNextBuffer();
-
-	// finish command buffer working with the next display buffer
-	ut::Optional<CmdBuffer&>& pending_cmd_buffer = display.pending_buffers[next_buffer_id];
-	if (pending_cmd_buffer)
-	{
-		WaitCmdBuffer(pending_cmd_buffer.Get());
-		pending_cmd_buffer = ut::Optional<CmdBuffer&>();
-	}
 
 	// acquire next buffer
 	display.current_buffer_id = next_buffer_id;

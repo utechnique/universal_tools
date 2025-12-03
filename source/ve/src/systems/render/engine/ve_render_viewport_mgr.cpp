@@ -13,7 +13,6 @@ START_NAMESPACE(render)
 // Constructor. Render thread is needed to operate with
 // displays that are associated with viewports.
 ViewportManager::ViewportManager(ut::SharedPtr<Device::Thread> rt) : render_thread(ut::Move(rt))
-                                                                   , vertical_synchronization(true)
 {
 	UT_ASSERT(render_thread);
 }
@@ -95,6 +94,12 @@ bool ViewportManager::HasPendingViewportTasks()
 	return !viewport_tasks.IsEmpty();
 }
 
+// Changes the number of buffers in a swap chain to the given value.
+void ViewportManager::SetSwapBufferCount(ut::uint32 count)
+{
+	swap_buffer_count = count;
+}
+
 // Enables or disables vertical synchronization.
 void ViewportManager::SetVerticalSynchronization(bool status)
 {
@@ -116,7 +121,9 @@ ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Dev
 	UT_ASSERT(display_quad_srgb2rgb_ps);
 
 	// create display for the viewport in the render thread
-	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport, vertical_synchronization);
+	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport,
+	                                                                     swap_buffer_count,
+	                                                                     vertical_synchronization);
 	if (!display_result)
 	{
 		return ut::MakeError(display_result.MoveAlt());

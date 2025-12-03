@@ -66,11 +66,6 @@ private:
 
 	// Whether vertical synchronization is enabled for this display.
 	bool vsync;
-
-	// command buffers associated with swap chain buffers of this display,
-	// display buffer can't be modified until all associated
-	// commands are executed
-	ut::Array< ut::Optional<CmdBuffer&> > pending_buffers;
 };
 
 //----------------------------------------------------------------------------//

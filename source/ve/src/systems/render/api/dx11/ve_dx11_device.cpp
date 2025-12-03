@@ -766,9 +766,12 @@ ut::Result<Target, ut::Error> Device::CreateTarget(const Target::Info& info)
 
 // Creates platform-specific representation of the rendering area inside a UI viewport.
 //    @param viewport - reference to UI viewport containing rendering area.
+//    @param swap_buffer_count - the number of swapchain buffers.
 //    @param vsync - boolean whether to enable vertical synchronization or not.
 //    @return - new display object or error if failed.
-ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewport, bool vsync)
+ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewport,
+                                                     ut::uint32 swap_buffer_count,
+                                                     bool vsync)
 {
 	// extract windows handle from the viewport widget
 	const HWND hwnd = fl_xid(&viewport);
@@ -786,7 +789,7 @@ ut::Result<Display, ut::Error> Device::CreateDisplay(ui::DesktopViewport& viewpo
 	// initialize swapchain description
 	DXGI_SWAP_CHAIN_DESC swapchain_desc;
 	ZeroMemory(&swapchain_desc, sizeof(swapchain_desc));
-	swapchain_desc.BufferCount = 1;
+	swapchain_desc.BufferCount = swap_buffer_count;
 	swapchain_desc.BufferDesc.Width = width;
 	swapchain_desc.BufferDesc.Height = height;
 	swapchain_desc.BufferDesc.Format = ConvertPixelFormatToDX11(backbuffer_info.format);

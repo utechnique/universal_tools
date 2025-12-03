@@ -10,11 +10,13 @@ START_NAMESPACE(ve)
 START_NAMESPACE(render)
 //----------------------------------------------------------------------------//
 static const ut::uint32 skDefaultFramesInFlightCount = 2;
-static const ut::uint32 skMaxFramesInFlightCount = 3;
+static const ut::uint32 skDefaultSwapchainBufferCount = 3;
+static const ut::uint32 skMaxFramesInFlightCount = 10;
 //----------------------------------------------------------------------------//
 // Constructor, default values are set here.
 Settings::Settings() : vsync(true)
                      , frames_in_flight(skDefaultFramesInFlightCount)
+                     , swapchain_buffer_count(skDefaultSwapchainBufferCount)
                      , ibl_enabled(true)
                      , ibl_size(256)
                      , ibl_frequency(1)
@@ -28,6 +30,7 @@ void Settings::Reflect(ut::meta::Snapshot& snapshot)
 {
 	snapshot.Add(vsync, "vertical_synchronization");
 	snapshot.Add(frames_in_flight, "frames_in_flight");
+	snapshot.Add(swapchain_buffer_count, "swapchain_buffer_count");
 	snapshot.Add(ibl_enabled, "ibl_enabled");
 	snapshot.Add(ibl_size, "ibl_size");
 	snapshot.Add(ibl_frequency, "ibl_frequency");
@@ -50,6 +53,20 @@ void Settings::Validate()
 		frames_in_flight = skMaxFramesInFlightCount;
 		ut::log.Lock() << "Warning: frames in flight count is too big. " <<
 		                  "Changed to the maximum value: " << frames_in_flight << ut::cret;
+	}
+
+	if (swapchain_buffer_count == 0)
+	{
+		swapchain_buffer_count = skDefaultSwapchainBufferCount;
+		ut::log.Lock() << "Warning: swapchain buffer count is zero. " <<
+			"Changed to the default value: " << swapchain_buffer_count << ut::cret;
+	}
+	else if (swapchain_buffer_count < frames_in_flight)
+	{
+		swapchain_buffer_count = frames_in_flight;
+		ut::log.Lock() << "Warning: swapchain buffer count cannot be "
+			"lower than the number of frames in flight. "
+			"Changed to the value: " << swapchain_buffer_count << ut::cret;
 	}
 
 	if (ibl_frequency != 1 && ibl_frequency != 2 && ibl_frequency != 3 && ibl_frequency != 6)

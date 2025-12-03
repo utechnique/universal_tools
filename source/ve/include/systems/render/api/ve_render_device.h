@@ -89,9 +89,12 @@ public:
 
 	// Creates platform-specific representation of the rendering area inside a UI viewport.
 	//    @param viewport - reference to UI viewport containing rendering area.
+	//    @param swap_buffer_count - the number of swapchain buffers.
 	//    @param vsync - boolean whether to enable vertical synchronization or not.
 	//    @return - new display object or error if failed.
-	ut::Result<Display, ut::Error> CreateDisplay(ui::PlatformViewport& viewport, bool vsync);
+	ut::Result<Display, ut::Error> CreateDisplay(ui::PlatformViewport& viewport,
+	                                             ut::uint32 swap_buffer_count,
+	                                             bool vsync);
 
 	// Creates an empty command buffer.
 	//    @param cmd_buffer_info - reference to the information about

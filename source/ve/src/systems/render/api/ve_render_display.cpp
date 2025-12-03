@@ -17,9 +17,7 @@ Display::Display(PlatformDisplay platform_display,
                                      , height(display_height)
                                      , current_buffer_id(0)
                                      , vsync(vertical_sync)
-{
-	pending_buffers.Resize(targets.Count());
-}
+{}
 
 // Move constructor.
 Display::Display(Display&&) noexcept = default;

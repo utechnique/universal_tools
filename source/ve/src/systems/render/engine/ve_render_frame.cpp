@@ -111,11 +111,7 @@ void FrameManager::SwapFrames()
 // Waits until all frames finish rendering.
 void FrameManager::WaitCmdBuffers()
 {
-	const size_t frame_count = frames.Count();
-	for (size_t i = 0; i < frame_count; i++)
-	{
-		device.WaitCmdBuffer(frames[i].cmd_buffer);
-	}
+	device.WaitIdle();
 }
 
 //----------------------------------------------------------------------------//

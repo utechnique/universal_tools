@@ -26,6 +26,9 @@ public:
 	// the engine in a moment
 	ut::uint32 frames_in_flight;
 
+	// specifies how many buffers can a swapchain have in a queue
+	ut::uint32 swapchain_buffer_count;
+
 	// set 'true' to enable image based lighting
 	bool ibl_enabled;
 
