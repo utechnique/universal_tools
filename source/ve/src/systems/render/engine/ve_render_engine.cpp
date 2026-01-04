@@ -17,15 +17,10 @@ Engine::Engine(Device& render_device,
 	SetSwapBufferCount(tools.config.swapchain_buffer_count);
 	SetVerticalSynchronization(tools.config.vsync);
 
-	// set display shaders
-	display_quad_vs = tools.shaders.quad_vs;
-	display_quad_ps = tools.shaders.img_quad_ps;
-	display_quad_rgb2srgb_ps = tools.shaders.img_quad_rgb2srgb_ps;
-	display_quad_srgb2rgb_ps = tools.shaders.img_quad_srgb2rgb_ps;
-
-	// initialize per-frame data
+	// create pipeline state for displaying images to user
+	const size_t quad_ps_id = static_cast<size_t>(QuadRenderer::ColorSpaceCvt::none);
 	ut::Optional<ut::Error> frames_error = tools.frame_mgr.AllocateFrames(tools.config.frames_in_flight,
-	                                                                      display_quad_ps.Get());
+	                                                                      tools.quad.ps[QuadRenderer::ShaderGrid::GetId(quad_ps_id)]);
 	if (frames_error)
 	{
 		throw frames_error.Move();
@@ -241,8 +236,16 @@ void Engine::DisplayImage(Context& context,
 		throw update_ub_error.Move();
 	}
 
+	// calculate backbuffer pipeline indices
+	const size_t pipeline_alpha_blend_id =
+		ViewportManager::Proxy::PipelineGrid::GetId(static_cast<size_t>(ViewportManager::Proxy::ColorSpaceCvt::none),
+		                                            static_cast<size_t>(ViewportManager::Proxy::AlphaMode::blend));
+	const size_t pipeline_srgb2rgb_no_alpha_id =
+		ViewportManager::Proxy::PipelineGrid::GetId(static_cast<size_t>(ViewportManager::Proxy::ColorSpaceCvt::srgb2rgb),
+		                                            static_cast<size_t>(ViewportManager::Proxy::AlphaMode::none));
+
 	// choose pipeline state according to the color space conversion type
-	PipelineState& pipeline_state = viewport.pipeline_srgb2rgb_no_alpha;
+	PipelineState& pipeline_state = viewport.pipeline[pipeline_srgb2rgb_no_alpha_id];
 
 	// set shader resources
 	frame.quad_desc_set.ub.BindUniformBuffer(frame.display_quad_ub);
@@ -260,7 +263,7 @@ void Engine::DisplayImage(Context& context,
 	// draw profiler info
 	if (display_profiler)
 	{
-		context.BindPipelineState(viewport.pipeline_state);
+		context.BindPipelineState(viewport.pipeline[pipeline_alpha_blend_id]);
 		tools.profiler.DrawStats(context,
 		                         frame,
 		                         viewport.ui_widget.GetId(),
@@ -287,6 +290,117 @@ void Engine::ProcessViewportEvents()
 		// viewport tasks can now be executed safely
 		ExecuteViewportTasks();
 	}
+}
+
+// Creates a new display and all associated render resources for the
+// provided viewport.
+//    @param viewport - reference to the viewport.
+//    @return - container with all render resources, or error if failed.
+ut::Result<ViewportManager::Proxy, ut::Error> Engine::CreateDisplay(ui::PlatformViewport& viewport)
+{
+	// create display for the viewport in the render thread
+	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport,
+	                                                                     GetSwapBufferCount(),
+	                                                                     IsVerticalSynchronizationEnabled());
+	if (!display_result)
+	{
+		return ut::MakeError(display_result.MoveAlt());
+	}
+
+	// check if display has at least one target
+	const ut::uint32 buffer_count = display_result.Get().GetBufferCount();
+	if (buffer_count == 0)
+	{
+		return ut::MakeError(ut::Error(ut::error::empty, "Render: display has empty target list."));
+	}
+
+	// initialize render pass info
+	pixel::Format format = display_result.Get().GetTarget(0).GetImage().GetInfo().format;
+	RenderTargetSlot color_slot(format,
+	                            RenderTargetSlot::LoadOperation::clear,
+	                            RenderTargetSlot::StoreOperation::save,
+	                            true);
+	ut::Array<RenderTargetSlot> slots;
+	slots.Add(color_slot);
+
+	// create render pass for this display
+	ut::Result<RenderPass, ut::Error> rp_result = device.CreateRenderPass(ut::Move(slots));
+	if (!rp_result)
+	{
+		return ut::MakeError(rp_result.MoveAlt());
+	}
+
+	// create framebuffer for every target
+	ut::Array<Framebuffer> framebuffers;
+	for (ut::uint32 i = 0; i < buffer_count; i++)
+	{
+		// initialize framebuffer info
+		ut::Array<Framebuffer::Attachment> color_targets;
+		color_targets.Add(display_result.Get().GetTarget(i));
+
+		// create framebuffer
+		ut::Result<Framebuffer, ut::Error> fb_result = device.CreateFramebuffer(rp_result.Get(),
+		                                                                        ut::Move(color_targets));
+		if (!fb_result)
+		{
+			return ut::MakeError(fb_result.MoveAlt());
+		}
+
+		// add framebuffer to the array
+		if (!framebuffers.Add(fb_result.Move()))
+		{
+			return ut::MakeError(ut::error::out_of_memory);
+		}
+	}
+
+	// create pipeline state for displaying images to user
+	ut::Array<PipelineState> pipeline;
+	constexpr size_t permutation_count = ViewportManager::Proxy::PipelineGrid::size;
+	for (size_t i = 0; i < permutation_count; i++)
+	{
+		const size_t color_space_cvt = Proxy::PipelineGrid::GetCoordinate<Proxy::color_space_cvt_column>(i);
+		const Proxy::AlphaMode alpha_mode = static_cast<Proxy::AlphaMode>(
+			Proxy::PipelineGrid::GetCoordinate<Proxy::alpha_mode_column>(i));
+
+		Shader& vertex_shader = tools.quad.vs;
+		Shader& pixel_shader = tools.quad.ps[QuadRenderer::ShaderGrid::GetId(color_space_cvt)];
+
+		PipelineState::Info info;
+		info.SetShader(Shader::Stage::vertex, vertex_shader);
+		info.SetShader(Shader::Stage::pixel, pixel_shader);
+		info.input_assembly_state = QuadRenderer::CreateInputAssemblyState();
+		info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
+		info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
+
+		if (alpha_mode == Proxy::AlphaMode::blend)
+		{
+			info.blend_state.attachments.Add(BlendState::CreateAlphaBlending());
+		}
+		else
+		{
+			info.blend_state.attachments.Add(BlendState::CreateNoBlending());
+		}
+
+		ut::Result<PipelineState,
+		           ut::Error> pipeline_result = device.CreatePipelineState(info,
+		                                                                   rp_result.Get());
+		if (!pipeline_result)
+		{
+			return ut::MakeError(pipeline_result.MoveAlt());
+		}
+
+		if (!pipeline.Add(pipeline_result.Move()))
+		{
+			return ut::MakeError(ut::error::out_of_memory);
+		}
+	}
+
+	// success
+	return Proxy(viewport,
+	             display_result.Move(),
+	             rp_result.Move(),
+	             ut::Move(pipeline),
+	             ut::Move(framebuffers));
 }
 
 //----------------------------------------------------------------------------//

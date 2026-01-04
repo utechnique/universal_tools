@@ -57,16 +57,8 @@ public:
 		alignas(16) ut::Color<4> color;
 	};
 
-	// Creates input assembly state for primitives that can be
-	// rendered directly to a display.
-	static InputAssemblyState CreateInputAssemblyState();
-
 	// Information about this frame.
 	Info info;
-
-private:
-	// vertex type for rendering quads directly to a display
-	typedef Vertex<float, 2, float, 2> QuadVertex;
 };
 
 //----------------------------------------------------------------------------//

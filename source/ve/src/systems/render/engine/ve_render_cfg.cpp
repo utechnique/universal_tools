@@ -20,6 +20,7 @@ Settings::Settings() : vsync(true)
                      , ibl_enabled(true)
                      , ibl_size(256)
                      , ibl_frequency(1)
+                     , supersampling(1)
                      , show_fps(true)
                      , show_render_stat(false)
 {}
@@ -34,6 +35,7 @@ void Settings::Reflect(ut::meta::Snapshot& snapshot)
 	snapshot.Add(ibl_enabled, "ibl_enabled");
 	snapshot.Add(ibl_size, "ibl_size");
 	snapshot.Add(ibl_frequency, "ibl_frequency");
+	snapshot.Add(supersampling, "supersampling");
 	snapshot.Add(show_fps, "show_fps");
 	snapshot.Add(show_render_stat, "show_render_stat");
 	snapshot.SetPostLoadCallback(ut::MemberFunction<Settings, void()>(this, &Settings::Validate));

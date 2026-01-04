@@ -125,7 +125,7 @@ Shader Fxaa::LoadFxaaShader()
 PipelineState Fxaa::CreatePipelineState(RenderPass& postprocess_pass)
 {
 	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, pixel_shader);
 	info.input_assembly_state = tools.rc_mgr.fullscreen_quad->subsets.GetFirst().CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;

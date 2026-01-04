@@ -11,6 +11,7 @@
 #include "ve_render_image_loader.h"
 #include "ve_shader_loader.h"
 #include "ve_sampler_cache.h"
+#include "ve_render_quad.h"
 #include "ve_render_profiler.h"
 
 //----------------------------------------------------------------------------//
@@ -40,19 +41,11 @@ public:
 	ShaderLoader shader_loader;
 	SamplerCache sampler_cache;
 	FrameManager frame_mgr;
+	QuadRenderer quad;
 	Profiler profiler;
 
 	// random generator
 	ut::rng::Generator<ut::rng::Algorithm::mt19937> random;
-
-	// common shaders
-	struct Shaders
-	{
-		Shader quad_vs;
-		Shader img_quad_ps;
-		Shader img_quad_rgb2srgb_ps;
-		Shader img_quad_srgb2rgb_ps;
-	} shaders;
 
 	// common formats
 	struct Formats

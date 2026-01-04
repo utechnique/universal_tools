@@ -24,6 +24,27 @@ void Policy<View>::Initialize(View& view)
 	ut::time::Counter timer;
 	timer.Start();
 
+	// set ssaa preset according to the configuration values
+	if (tools.config.supersampling >= 16)
+	{
+		view.ssaa = postprocess::Ssaa::SampleCount::s16;
+	}
+	else if (tools.config.supersampling >= 9)
+	{
+		view.ssaa = postprocess::Ssaa::SampleCount::s9;
+	}
+	else if (tools.config.supersampling >= 4)
+	{
+		view.ssaa = postprocess::Ssaa::SampleCount::s4;
+	}
+	else
+	{
+		view.ssaa = postprocess::Ssaa::SampleCount::s1;
+	}
+	const ut::Vector<2, ut::uint32> supersampled_size =
+		postprocess::Ssaa::CalculateSupersampledSize(ut::Vector<2, ut::uint32>(view.width, view.height),
+		                                             view.ssaa);
+
 	ut::Array<View::FrameData> frames;
 	for (ut::uint32 i = 0; i < tools.config.frames_in_flight; i++)
 	{
@@ -38,8 +59,8 @@ void Policy<View>::Initialize(View& view)
 		}
 
 		// hdr scene targets
-		ut::Result<View::SceneBuffer, ut::Error> scene_buffer = CreateSceneBuffer(view.width,
-		                                                                          view.height,
+		ut::Result<View::SceneBuffer, ut::Error> scene_buffer = CreateSceneBuffer(supersampled_size.X(),
+		                                                                          supersampled_size.Y(),
 		                                                                          false);
 		if (!scene_buffer)
 		{
@@ -55,8 +76,7 @@ void Policy<View>::Initialize(View& view)
 
 		// hitmask
 		ut::Result<HitMask::ViewData, ut::Error> hitmask_data = hitmask.CreateViewData(scene_buffer->depth_stencil,
-		                                                                               view.width,
-		                                                                               view.height);
+		                                                                               view.width, view.height);
 		if (!hitmask_data)
 		{
 			throw ut::Error(hitmask_data.MoveAlt());
@@ -66,6 +86,7 @@ void Policy<View>::Initialize(View& view)
 		ut::Result<postprocess::ViewData, ut::Error> post_process_data = post_process_mgr.CreateViewData(scene_buffer->depth_stencil,
 		                                                                                                 view.width,
 		                                                                                                 view.height,
+		                                                                                                 view.ssaa,
 		                                                                                                 tools.formats.ldr);
 		if (!post_process_data)
 		{
@@ -190,6 +211,12 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 	                                        view.light_pass_mode,
 	                                        ibl_cubemap);
 
+	const bool ssaa_enabled = view.ssaa != postprocess::Ssaa::SampleCount::s1;
+	const postprocess::SwapManager::Stage stage = ssaa_enabled ?
+	                                              postprocess::SwapManager::Stage::supersampled :
+	                                              postprocess::SwapManager::Stage::resolved;
+	frame.post_process.swap_mgr.SetStage(stage);
+
 	// apply tone mapping
 	ut::Optional<postprocess::SwapSlot&> color_buffer =
 		post_process_mgr.ApplyEffect<postprocess::Effect::tone_mapping>(context,
@@ -215,13 +242,14 @@ void Policy<View>::RenderView(Context& context, View& view, Light::Sources& ligh
 		                                  context,
 		                                  view.viewport_id);
 	frame.final_img = post_process_mgr.ApplyEffects
-	                  <postprocess::Effect::gradient_dithering,
-	                   postprocess::Effect::stencil_highlighting,
-	                   postprocess::Effect::fxaa>(context,
-	                                              frame.post_process,
-	                                              color_buffer,
-	                                              view.post_process,
-	                                              view.total_time_ms);
+	                  <postprocess::Effect::stencil_highlighting,
+	                   postprocess::Effect::fxaa,
+	                   postprocess::Effect::ssaa_resolve,
+	                   postprocess::Effect::gradient_dithering>(context,
+	                                                            frame.post_process,
+	                                                            color_buffer,
+	                                                            view.post_process,
+	                                                            view.total_time_ms);
 }
 
 //----------------------------------------------------------------------------->

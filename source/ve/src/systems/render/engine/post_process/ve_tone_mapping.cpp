@@ -31,7 +31,7 @@ Shader ClampToneMapper::LoadShader()
 PipelineState ClampToneMapper::CreatePipelineState()
 {
 	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, pixel_shader);
 	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;

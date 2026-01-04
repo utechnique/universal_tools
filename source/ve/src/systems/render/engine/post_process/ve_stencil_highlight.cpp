@@ -328,7 +328,7 @@ float StencilHighlight::CalculateLineOffset(const Parameters& parameters,
 PipelineState StencilHighlight::CreateFillPassPipelineState()
 {
 	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, fill_shader);
 	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
@@ -353,7 +353,7 @@ PipelineState StencilHighlight::CreateFillPassPipelineState()
 PipelineState StencilHighlight::CreateLinePassPipelineState()
 {
 	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, line_shader);
 	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
@@ -378,7 +378,7 @@ PipelineState StencilHighlight::CreateLinePassPipelineState()
 PipelineState StencilHighlight::CreateBlendPassPipelineState()
 {
 	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, blend_shader);
 	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;

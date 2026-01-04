@@ -157,7 +157,7 @@ Shader Dithering::LoadGradientDitheringShader()
 PipelineState Dithering::CreateGradientDitheringPipelineState()
 {
 	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, gradient_dithering_shader);
 	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;

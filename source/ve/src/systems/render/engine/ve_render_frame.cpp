@@ -19,17 +19,6 @@ Frame::Frame(Frame&&) noexcept = default;
 // Move operator.
 Frame& Frame::operator =(Frame&&) noexcept = default;
 
-// Creates input assembly state for primitives that can be
-// rendered directly to a display.
-InputAssemblyState Frame::CreateInputAssemblyState()
-{
-	InputAssemblyState input_assembly;
-	input_assembly.topology = primitive::Topology::triangle_list;
-	input_assembly.elements = QuadVertex::CreateLayout();
-	input_assembly.vertex_stride = QuadVertex::size;
-	return input_assembly;
-}
-
 //----------------------------------------------------------------------------//
 // Constructor.
 FrameManager::FrameManager(Device& device_ref) : device(device_ref)

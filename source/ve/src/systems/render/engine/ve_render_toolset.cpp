@@ -36,32 +36,13 @@ Toolset::Toolset(Device& dvc_ref) : device(dvc_ref)
                                   , shader_loader(dvc_ref)
                                   , sampler_cache(dvc_ref)
                                   , frame_mgr(dvc_ref)
+                                  , quad(dvc_ref, shader_loader)
                                   , profiler(dvc_ref,
                                              img_loader,
                                              config,
                                              rc_mgr,
                                              sampler_cache,
                                              frame_mgr)
-                                  , shaders {
-                                                shader_loader.Load(Shader::Stage::vertex,
-                                                                   "quad_vs",
-                                                                   "VS",
-                                                                   "quad_vs.hlsl").MoveOrThrow(),
-                                                shader_loader.Load(Shader::Stage::pixel,
-                                                                   "img_quad_ps",
-                                                                   "PS",
-                                                                   "img_quad_ps.hlsl").MoveOrThrow(),
-                                                shader_loader.Load(Shader::Stage::pixel,
-                                                                   "img_quad_rgb2srgb_ps",
-                                                                   "PS",
-                                                                   "img_quad_ps.hlsl",
-                                                                   GenQuadShaderConversionMacros(true)).MoveOrThrow(),
-                                                shader_loader.Load(Shader::Stage::pixel,
-                                                                   "img_quad_srgb2rgb_ps",
-                                                                   "PS",
-                                                                   "img_quad_ps.hlsl",
-                                                                   GenQuadShaderConversionMacros(false)).MoveOrThrow()
-                                            }
 {
     // check supported depth-stencil formats
     const Device::Info& device_info = device.GetInfo();

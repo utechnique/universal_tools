@@ -41,7 +41,7 @@ ut::Result<GaussianBlur::ViewData, ut::Error> GaussianBlur::CreateViewData(Rende
 {
 	// create pipeline state
 	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, blur_shader);
 	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;

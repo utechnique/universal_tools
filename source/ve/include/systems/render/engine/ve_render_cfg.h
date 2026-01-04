@@ -38,6 +38,11 @@ public:
 	// identifies how many IBL faces are rendered in one frame
 	ut::uint32 ibl_frequency;
 
+	// ssaa sample count per pixel,
+	// only such values are allowed:
+	// 1, 4, 9, 16
+	ut::uint32 supersampling;
+
 	// identifies whether to show fps value of now
 	bool show_fps;
 

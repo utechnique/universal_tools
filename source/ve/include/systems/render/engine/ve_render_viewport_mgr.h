@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/ui/ve_ui.h"
 #include "systems/render/ve_render_api.h"
+#include "ve_render_quad.h"
 //----------------------------------------------------------------------------//
 START_NAMESPACE(ve)
 START_NAMESPACE(render)
@@ -35,16 +36,26 @@ protected:
 	// Resources needed to render textured quads directly to the backbuffer.
 	struct Proxy
 	{
+		typedef QuadRenderer::ColorSpaceCvt ColorSpaceCvt;
+
+		enum class AlphaMode
+		{
+			none,
+			blend,
+			count
+		};
+
+		typedef ut::Grid<static_cast<size_t>(ColorSpaceCvt::count),
+		                 static_cast<size_t>(AlphaMode::count)> PipelineGrid;
+
+		static constexpr ut::uint32 color_space_cvt_column = 0;
+		static constexpr ut::uint32 alpha_mode_column = 1;
+
 		// Constructor.
 		Proxy(ui::PlatformViewport& in_ui_viewport,
 		      Display in_display,
 		      RenderPass in_quad_pass,
-		      PipelineState in_pipeline_state,
-		      PipelineState in_pipeline_state_no_alpha,
-		      PipelineState in_pipeline_rgb2srgb,
-		      PipelineState in_pipeline_rgb2srgb_no_alpha,
-		      PipelineState in_pipeline_srgb2rgb,
-		      PipelineState in_pipeline_srgb2rgb_no_alpha,
+		      ut::Array<PipelineState> in_pipeline,
 		      ut::Array<Framebuffer> in_framebuffers);
 
 		// ui viewport widget
@@ -55,13 +66,23 @@ protected:
 
 		// render pass rendering textured quads
 		RenderPass quad_pass;
-		PipelineState pipeline_state, pipeline_state_no_alpha;
-		PipelineState pipeline_rgb2srgb, pipeline_rgb2srgb_no_alpha;
-		PipelineState pipeline_srgb2rgb, pipeline_srgb2rgb_no_alpha;
 
-		// framebuffers for a swapchain
+		// pipeline permutations, see Proxy::PipelineGrid
+		ut::Array<PipelineState> pipeline;
+
+		// framebuffers for a swapchain, one framebuffer
+		// per each buffer in a swapchain
 		ut::Array<Framebuffer> framebuffers;
 	};
+
+	// Creates a new display and all associated render resources for the
+	// provided viewport.
+	//    @param viewport - reference to the viewport.
+	//    @return - container with all render resources, or error if failed.
+	virtual ut::Result<Proxy, ut::Error> CreateDisplay(ui::PlatformViewport& viewport)
+	{
+		return ut::MakeError(ut::error::not_implemented);
+	}
 
 	// Synchronizes all viewport events. Must be called after previous frame is
 	// finished and before the next one starts.
@@ -71,37 +92,44 @@ protected:
 	void ExecuteViewportTasks();
 
 	// Returns 'true' if at least one viewport task is waiting to be executed.
-	bool HasPendingViewportTasks();
+	bool HasPendingViewportTasks() const
+	{
+		return !viewport_tasks.IsEmpty();
+	}
 
-	// Changes the number of buffers in a swap chain to the given value.
-	void SetSwapBufferCount(ut::uint32 swap_buffer_count);
+	// Changes the number of buffers in the swap chain to the given value.
+	void SetSwapBufferCount(ut::uint32 count)
+	{
+		swap_buffer_count = count;
+	}
+
+	// Returns the number of buffers in the swap chain.
+	ut::uint32 GetSwapBufferCount() const
+	{
+		return swap_buffer_count;
+	}
 
 	// Enables or disables vertical synchronization.
-	void SetVerticalSynchronization(bool status);
+	void SetVerticalSynchronization(bool status)
+	{
+		vertical_synchronization = status;
+	}
+
+	// Returns the boolean value indicating if vertical
+	// synchronization is enabled.
+	bool IsVerticalSynchronizationEnabled() const
+	{
+		return vertical_synchronization;
+	}
 
 	// Array of viewports
 	ut::Array<Proxy> viewports;
-
-	// shaders rendering a quad to the backbuffer
-	ut::Optional<Shader&> display_quad_vs, display_quad_ps;
-
-	// pixel shaders drawing a quad to the backbuffer
-	// with color space conversion.
-	ut::Optional<Shader&> display_quad_rgb2srgb_ps, display_quad_srgb2rgb_ps;
 
 private:
 	// Viewport tasks are executed once per frame in a special synchronization
 	// member function - SyncViewportEvents(). Thus all task issuers must wait
 	// until the task is finished.
 	typedef ut::UniquePtr< ut::BaseTask<void> > ViewportTask;
-
-	// Creates a new display and all associated render resources for the
-	// provided viewport.
-	//    @param device - reference to the render device.
-	//    @param viewport - reference to the viewport.
-	//    @return - container with all render resources, or error if failed.
-	ut::Result<Proxy, ut::Error> CreateDisplay(Device& device,
-	                                           ui::PlatformViewport& viewport);
 
     // Resizes a display associated with provided viewport.
 	//    @param id - id of the viewport whose render display must be resized.

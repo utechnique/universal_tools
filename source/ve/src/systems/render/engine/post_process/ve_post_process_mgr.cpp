@@ -13,6 +13,7 @@ Manager::Manager(Toolset& toolset) : tools(toolset)
                                    , color_and_ds_pass(CreateColorAndDepthStencilRenderPass())
                                    , clear_color_and_ds_pass(CreateClearColorAndDepthStencilRenderPass())
                                    , gaussian_blur(toolset)
+                                   , downsampling(toolset, color_only_pass)
                                    , tone_mapper(toolset, color_only_pass)
                                    , stencil_highlight(toolset,
                                                        gaussian_blur,
@@ -21,39 +22,23 @@ Manager::Manager(Toolset& toolset) : tools(toolset)
                                                        clear_color_and_ds_pass)
                                    , dithering(toolset, color_only_pass)
                                    , fxaa(toolset, color_only_pass)
+                                   , ssaa(toolset, downsampling)
+                                   
 {}
 
 // Creates post-process (per-view) data.
 //    @param depth_stencil - reference to the depth buffer.
-//    @param width - width of the view in pixels.
-//    @param height - height of the view in pixels.
+//    @param width - width of the view in pixels, without supersampling.
+//    @param height - height of the view in pixels, without supersampling.
+//    @param ssaa_samples - the number of ssaa samples per final pixel.
 //    @param format - format of the final image.
 //    @return - a new postprocess::ViewData object or error if failed.
 ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
                                                         ut::uint32 width,
                                                         ut::uint32 height,
+                                                        Ssaa::SampleCount ssaa_samples,
                                                         pixel::Format format)
 {
-	// inremediate buffers
-	Target::Info info;
-	info.type = Image::Type::planar;
-	info.format = format;
-	info.mip_count = 1;
-	info.width = width;
-	info.height = height;
-	info.depth = 1;
-	info.usage = Target::Info::Usage::color;
-	ut::Array<Target> swap_targets;
-	for (ut::uint32 i = 0; i < SwapManager::skSlotCount; i++)
-	{
-		ut::Result<Target, ut::Error> swap_slot = tools.device.CreateTarget(info);
-		if (!swap_slot)
-		{
-			throw ut::Error(swap_slot.MoveAlt());
-		}
-		swap_targets.Add(swap_slot.Move());
-	}
-
 	// color-only render pass
 	RenderTargetSlot color_slot(format,
 	                            RenderTargetSlot::LoadOperation::dont_care,
@@ -92,33 +77,74 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 		return ut::MakeError(clear_color_and_ds_pass.MoveAlt());
 	}
 
-	// framebuffers
-	ut::Array<Framebuffer> color_only_framebuffers;
-	ut::Array<Framebuffer> color_and_ds_framebuffers;
-	for (ut::uint32 i = 0; i < SwapManager::skSlotCount; i++)
+	// create swap slots for supersampled and resolved stages
+	ut::Array<SwapSlots> swap_slots;
+	for (ut::uint32 stage_iter = 0; stage_iter < SwapManager::skStageCount; stage_iter++)
 	{
-		ut::Array<Framebuffer::Attachment> color_targets;
+		const bool supersampled_stage =
+			static_cast<SwapManager::Stage>(stage_iter) == SwapManager::Stage::supersampled;
 
-		// color-only
-		color_targets.Add(swap_targets[i]);
-		ut::Result<Framebuffer, ut::Error> color_only_framebuffer = tools.device.CreateFramebuffer(color_only_pass.Get(),
-		                                                                                           ut::Move(color_targets));
-		if (!color_only_framebuffer)
+		// skip supersampled stage if ssaa is not used
+		if (supersampled_stage && ssaa_samples == Ssaa::SampleCount::s1)
 		{
-			throw ut::Error(color_only_framebuffer.MoveAlt());
+			swap_slots.Add(SwapSlots());
+			continue;
 		}
-		color_only_framebuffers.Add(color_only_framebuffer.Move());
 
-		// color and depth-stencil
-		color_targets.Add(swap_targets[i]);
-		ut::Result<Framebuffer, ut::Error> color_and_ds_framebuffer = tools.device.CreateFramebuffer(color_and_ds_pass.Get(),
-		                                                                                             ut::Move(color_targets),
-		                                                                                             Framebuffer::Attachment(depth_stencil));
-		if (!color_and_ds_framebuffer)
+		// calculate slot width and height for the current stage
+		ut::Vector<2, ut::uint32> slot_size = ut::Vector<2, ut::uint32>(width, height);
+		if (supersampled_stage)
 		{
-			throw ut::Error(color_and_ds_framebuffer.MoveAlt());
+			slot_size = Ssaa::CalculateSupersampledSize(slot_size, ssaa_samples);
 		}
-		color_and_ds_framebuffers.Add(color_and_ds_framebuffer.Move());
+
+		// initialize slots
+		SwapSlots stage_slots;
+		for (ut::uint32 slot_iter = 0; slot_iter < SwapManager::skSlotCount; slot_iter++)
+		{
+			// slot render target
+			Target::Info info;
+			info.type = Image::Type::planar;
+			info.format = format;
+			info.mip_count = 1;
+			info.width = slot_size.X();
+			info.height = slot_size.Y();
+			info.depth = 1;
+			info.usage = Target::Info::Usage::color;
+			ut::Result<Target, ut::Error> swap_slot_target = tools.device.CreateTarget(info);
+			if (!swap_slot_target)
+			{
+				return ut::MakeError(swap_slot_target.MoveAlt());
+			}
+
+			// color-only framebuffer
+			ut::Array<Framebuffer::Attachment> color_targets;
+			color_targets.Add(swap_slot_target.Get());
+			ut::Result<Framebuffer, ut::Error> color_only_framebuffer = tools.device.CreateFramebuffer(color_only_pass.Get(),
+			                                                                                           ut::Move(color_targets));
+			if (!color_only_framebuffer)
+			{
+				return ut::MakeError(color_only_framebuffer.MoveAlt());
+			}
+
+			// color and depth-stencil framebuffer
+			color_targets.Add(swap_slot_target.Get());
+			ut::Result<Framebuffer, ut::Error> color_and_ds_framebuffer = tools.device.CreateFramebuffer(color_and_ds_pass.Get(),
+			                                                                                             ut::Move(color_targets),
+			                                                                                             Framebuffer::Attachment(depth_stencil));
+			if (!color_and_ds_framebuffer)
+			{
+				return ut::MakeError(color_and_ds_framebuffer.MoveAlt());
+			}
+
+			// add the new slot to the stage buffer
+			stage_slots.Add(SwapSlot{ false,
+			                          swap_slot_target.Move(),
+			                          color_only_framebuffer.Move(),
+			                          color_and_ds_framebuffer.Move() });
+		}
+		
+		swap_slots.Add(ut::Move(stage_slots));
 	}
 
 	// tone mapping
@@ -149,14 +175,12 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 		return ut::MakeError(fxaa_data.MoveAlt());
 	}
 
-	// swap slots
-	ut::Array<SwapSlot> swap_slots;
-	for (ut::uint32 i = 0; i < SwapManager::skSlotCount; i++)
+	// ssaa
+	ut::Result<Ssaa::ViewData, ut::Error> ssaa_data = ssaa.CreateViewData(width, height,
+	                                                                      ssaa_samples);
+	if (!ssaa_data)
 	{
-		swap_slots.Add(SwapSlot{ false,
-		                         ut::Move(swap_targets[i]),
-		                         ut::Move(color_only_framebuffers[i]),
-		                         ut::Move(color_and_ds_framebuffers[i]) });
+		return ut::MakeError(ssaa_data.MoveAlt());
 	}
 
 	// success
@@ -164,7 +188,8 @@ ut::Result<ViewData, ut::Error> Manager::CreateViewData(Target& depth_stencil,
 	                tone_mapping_data.Move(),
 	                stencil_highlight_data.Move(),
 	                dithering_data.Move(),
-	                fxaa_data.Move());
+	                fxaa_data.Move(),
+	                ssaa_data.Move());
 }
 
 // Applies tone mapping effect.
@@ -180,6 +205,20 @@ ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::tone_mapping>(Context& cont
 	                         data.tone_mapping,
 	                         source,
 	                         parameters.tone_mapping);
+}
+
+// Resolves SSAA buffer.
+template<>
+ut::Optional<SwapSlot&> Manager::ApplyEffect<Effect::ssaa_resolve>(Context& context,
+                                                                   ViewData& data,
+                                                                   Image& source,
+                                                                   const Parameters& parameters,
+                                                                   double time_ms)
+{
+	return ssaa.Resolve(data.swap_mgr,
+	                    context,
+	                    data.ssaa,
+	                    source);
 }
 
 // Applies gradient dithering effect.

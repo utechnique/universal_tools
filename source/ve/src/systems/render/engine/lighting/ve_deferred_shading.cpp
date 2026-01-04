@@ -1027,7 +1027,7 @@ ut::Result<PipelineState, ut::Error> DeferredShading::CreateLightPassPipeline(Li
 	PipelineState::Info info;
 	const size_t shader_id = LightPass::Grid::GetId(static_cast<size_t>(ibl_preset),
 	                                                static_cast<size_t>(source_type));
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, light_shader[shader_id]);
 	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
@@ -1110,7 +1110,7 @@ ut::Array<PipelineState> DeferredShading::CreateLightPassPipelinePermutations()
 PipelineState DeferredShading::CreateEmissivePipeline()
 {
 	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, emissive_shader);
 	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;
@@ -1134,7 +1134,7 @@ PipelineState DeferredShading::CreateEmissivePipeline()
 PipelineState DeferredShading::CreateIblPipeline()
 {
 	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, tools.shaders.quad_vs);
+	info.SetShader(Shader::Stage::vertex, tools.quad.vs);
 	info.SetShader(Shader::Stage::pixel, ibl_shader);
 	info.input_assembly_state = fullscreen_quad.CreateIaState();
 	info.depth_stencil_state.depth_test_enable = false;

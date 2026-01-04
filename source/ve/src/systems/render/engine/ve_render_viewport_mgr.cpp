@@ -52,7 +52,7 @@ void ViewportManager::OpenViewports(ui::Frontend& frontend)
 
 		// create render resources for the viewport
 		ut::Result<Proxy, ut::Error> result = ut::MakeError(ut::error::empty);
-		render_thread->Enqueue([&](Device& device) { result = CreateDisplay(device, viewport); });
+		render_thread->Enqueue([&](Device& device) { result = CreateDisplay(viewport); });
 		if (!result)
 		{
 			throw ut::Error(result.MoveAlt());
@@ -88,162 +88,6 @@ void ViewportManager::ExecuteViewportTasks()
 	viewport_tasks.Reset();
 }
 
-// Returns 'true' if at least one viewport task is waiting to be executed.
-bool ViewportManager::HasPendingViewportTasks()
-{
-	return !viewport_tasks.IsEmpty();
-}
-
-// Changes the number of buffers in a swap chain to the given value.
-void ViewportManager::SetSwapBufferCount(ut::uint32 count)
-{
-	swap_buffer_count = count;
-}
-
-// Enables or disables vertical synchronization.
-void ViewportManager::SetVerticalSynchronization(bool status)
-{
-	vertical_synchronization = status;
-}
-
-// Creates a new display and all associated render resources for the
-// provided viewport.
-//    @param device - reference to the render device.
-//    @param viewport - reference to the viewport.
-//    @return - container with all render resources, or error if failed.
-ut::Result<ViewportManager::Proxy, ut::Error> ViewportManager::CreateDisplay(Device& device,
-                                                                             ui::PlatformViewport& viewport)
-{
-	// shaders must be initialized at this point
-	UT_ASSERT(display_quad_vs);
-	UT_ASSERT(display_quad_ps);
-	UT_ASSERT(display_quad_rgb2srgb_ps);
-	UT_ASSERT(display_quad_srgb2rgb_ps);
-
-	// create display for the viewport in the render thread
-	ut::Result<Display, ut::Error> display_result = device.CreateDisplay(viewport,
-	                                                                     swap_buffer_count,
-	                                                                     vertical_synchronization);
-	if (!display_result)
-	{
-		return ut::MakeError(display_result.MoveAlt());
-	}
-
-	// check if display has at least one target
-	const ut::uint32 buffer_count = display_result.Get().GetBufferCount();
-	if (buffer_count == 0)
-	{
-		return ut::MakeError(ut::Error(ut::error::empty, "Render: display has empty target list."));
-	}
-
-	// initialize render pass info
-	pixel::Format format = display_result.Get().GetTarget(0).GetImage().GetInfo().format;
-	RenderTargetSlot color_slot(format,
-	                            RenderTargetSlot::LoadOperation::clear,
-	                            RenderTargetSlot::StoreOperation::save,
-	                            true);
-	ut::Array<RenderTargetSlot> slots;
-	slots.Add(color_slot);
-
-	// create render pass for this display
-	ut::Result<RenderPass, ut::Error> rp_result = device.CreateRenderPass(ut::Move(slots));
-	if (!rp_result)
-	{
-		return ut::MakeError(rp_result.MoveAlt());
-	}
-
-	// create framebuffer for every target
-	ut::Array<Framebuffer> framebuffers;
-	for (ut::uint32 i = 0; i < buffer_count; i++)
-	{
-		// initialize framebuffer info
-		ut::Array<Framebuffer::Attachment> color_targets;
-		color_targets.Add(display_result.Get().GetTarget(i));
-
-		// create framebuffer
-		ut::Result<Framebuffer, ut::Error> fb_result = device.CreateFramebuffer(rp_result.Get(),
-		                                                                        ut::Move(color_targets));
-		if (!fb_result)
-		{
-			return ut::MakeError(fb_result.MoveAlt());
-		}
-
-		// add framebuffer to the array
-		if (!framebuffers.Add(fb_result.Move()))
-		{
-			return ut::MakeError(ut::error::out_of_memory);
-		}
-	}
-	
-	// create pipeline state for displaying images to user
-	PipelineState::Info info;
-	info.SetShader(Shader::Stage::vertex, display_quad_vs.Get());
-	info.SetShader(Shader::Stage::pixel, display_quad_ps.Get());
-	info.input_assembly_state = Frame::CreateInputAssemblyState();
-	info.rasterization_state.polygon_mode = RasterizationState::PolygonMode::fill;
-	info.rasterization_state.cull_mode = RasterizationState::CullMode::off;
-	info.blend_state.attachments.Add(BlendState::CreateAlphaBlending());
-	ut::Result<PipelineState, ut::Error> pipeline = device.CreatePipelineState(info, rp_result.Get());
-	if (!pipeline)
-	{
-		return ut::MakeError(pipeline.MoveAlt());
-	}
-
-	// alpha blend disabled
-	info.blend_state.attachments.GetFirst() = BlendState::CreateNoBlending();
-	ut::Result<PipelineState, ut::Error> pipeline_no_alpha = device.CreatePipelineState(info, rp_result.Get());
-	if (!pipeline_no_alpha)
-	{
-		return ut::MakeError(pipeline_no_alpha.MoveAlt());
-	}
-
-	// pipeline with rgb->srgb conversion
-	info.blend_state.attachments.GetFirst() = BlendState::CreateAlphaBlending();
-	info.SetShader(Shader::Stage::pixel, display_quad_rgb2srgb_ps.Get());
-	ut::Result<PipelineState, ut::Error> rgb2srgb_pipeline = device.CreatePipelineState(info, rp_result.Get());
-	if (!rgb2srgb_pipeline)
-	{
-		return ut::MakeError(rgb2srgb_pipeline.MoveAlt());
-	}
-
-	// rgb->srgb with alpha blend disabled
-	info.blend_state.attachments.GetFirst() = BlendState::CreateNoBlending();
-	ut::Result<PipelineState, ut::Error> rgb2srgb_pipeline_no_alpha = device.CreatePipelineState(info, rp_result.Get());
-	if (!rgb2srgb_pipeline_no_alpha)
-	{
-		return ut::MakeError(rgb2srgb_pipeline_no_alpha.MoveAlt());
-	}
-
-	// pipeline with srgb->rgb conversion
-	info.blend_state.attachments.GetFirst() = BlendState::CreateAlphaBlending();
-	info.SetShader(Shader::Stage::pixel, display_quad_srgb2rgb_ps.Get());
-	ut::Result<PipelineState, ut::Error> srgb2rgb_pipeline = device.CreatePipelineState(info, rp_result.Get());
-	if (!srgb2rgb_pipeline)
-	{
-		return ut::MakeError(srgb2rgb_pipeline.MoveAlt());
-	}
-
-	// srgb->rgb with alpha blend disabled
-	info.blend_state.attachments.GetFirst() = BlendState::CreateNoBlending();
-	ut::Result<PipelineState, ut::Error> srgb2rgb_pipeline_no_alpha = device.CreatePipelineState(info, rp_result.Get());
-	if (!srgb2rgb_pipeline_no_alpha)
-	{
-		return ut::MakeError(srgb2rgb_pipeline_no_alpha.MoveAlt());
-	}
-
-	// success
-	return Proxy(viewport,
-	             display_result.Move(),
-	             rp_result.Move(),
-	             pipeline.Move(),
-	             pipeline_no_alpha.Move(),
-	             rgb2srgb_pipeline.Move(),
-	             rgb2srgb_pipeline_no_alpha.Move(),
-	             srgb2rgb_pipeline.Move(),
-	             srgb2rgb_pipeline_no_alpha.Move(),
-	             ut::Move(framebuffers));
-}
-
 // Resizes a display associated with provided viewport.
 //    @param id - id of the viewport whose render display must be resized.
 //    @param w - new width of render display in pixels.
@@ -264,7 +108,7 @@ void ViewportManager::ResizeViewport(ui::Viewport::Id id, ut::uint32 w, ut::uint
 		viewports.Remove(find_result.Get());
 
 		// re-create render resources
-		ut::Result<Proxy, ut::Error> vp_container_result = CreateDisplay(device, ui_widget);
+		ut::Result<Proxy, ut::Error> vp_container_result = CreateDisplay(ui_widget);
 		if (!vp_container_result)
 		{
 			throw ut::Error(vp_container_result.MoveAlt());
@@ -359,21 +203,11 @@ ut::Optional<size_t> ViewportManager::FindViewport(ui::Viewport::Id id)
 ViewportManager::Proxy::Proxy(ui::PlatformViewport& in_ui_viewport,
                               Display in_display,
                               RenderPass in_quad_pass,
-                              PipelineState in_pipeline_state,
-                              PipelineState in_pipeline_state_no_alpha,
-                              PipelineState in_pipeline_rgb2srgb,
-                              PipelineState in_pipeline_rgb2srgb_no_alpha,
-                              PipelineState in_pipeline_srgb2rgb,
-                              PipelineState in_pipeline_srgb2rgb_no_alpha,
+                              ut::Array<PipelineState> in_pipeline,
                               ut::Array<Framebuffer> in_framebuffers) : ui_widget(in_ui_viewport)
                                                                       , display(ut::Move(in_display))
                                                                       , quad_pass(ut::Move(in_quad_pass))
-                                                                      , pipeline_state(ut::Move(in_pipeline_state))
-                                                                      , pipeline_state_no_alpha(ut::Move(in_pipeline_state_no_alpha))
-                                                                      , pipeline_rgb2srgb(ut::Move(in_pipeline_rgb2srgb))
-                                                                      , pipeline_rgb2srgb_no_alpha(ut::Move(in_pipeline_rgb2srgb_no_alpha))
-                                                                      , pipeline_srgb2rgb(ut::Move(in_pipeline_srgb2rgb))
-                                                                      , pipeline_srgb2rgb_no_alpha(ut::Move(in_pipeline_srgb2rgb_no_alpha))
+                                                                      , pipeline(ut::Move(in_pipeline))
                                                                       , framebuffers(ut::Move(in_framebuffers))
 {}
 

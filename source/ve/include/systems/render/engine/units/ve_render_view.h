@@ -7,6 +7,7 @@
 #include "systems/render/engine/ve_render_resource.h"
 #include "systems/render/engine/post_process/ve_post_process_view_data.h"
 #include "systems/render/engine/post_process/ve_post_process_parameters.h"
+#include "systems/render/engine/post_process/ve_ssaa.h"
 #include "systems/render/engine/lighting/ve_lighting_view_data.h"
 #include "systems/render/engine/ve_render_hitmask.h"
 //----------------------------------------------------------------------------//
@@ -86,7 +87,10 @@ public:
 	ut::uint32 width = 640;
 	ut::uint32 height = 480;
 
-	// near and far frustum planes
+	// Supersampling.
+	postprocess::Ssaa::SampleCount ssaa = postprocess::Ssaa::SampleCount::s1;
+
+	// Near and far frustum planes
 	float znear = 0.1f;
 	float zfar = 1e+5f;
 

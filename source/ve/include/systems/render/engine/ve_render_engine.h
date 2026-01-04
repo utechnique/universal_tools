@@ -66,6 +66,12 @@ private:
 	// Executes viewport tasks (resize, close, etc.) in a safe manner.
 	void ProcessViewportEvents();
 
+	// Creates a new display and all associated render resources for the
+	// provided viewport.
+	//    @param viewport - reference to the viewport.
+	//    @return - container with all render resources, or error if failed.
+	ut::Result<Proxy, ut::Error> CreateDisplay(ui::PlatformViewport& viewport) override;
+
 	// render device
 	Device& device;
 

@@ -5,7 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/ve_render_api.h"
 #include "ve_render_cfg.h"
-#include "ve_render_frame.h"
+#include "ve_render_quad.h"
 #include "ve_render_rc_mgr.h"
 #include "ve_render_image_loader.h"
 #include "ve_sampler_cache.h"

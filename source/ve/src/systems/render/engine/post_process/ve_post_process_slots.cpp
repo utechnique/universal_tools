@@ -8,9 +8,19 @@ START_NAMESPACE(render)
 START_NAMESPACE(postprocess)
 //----------------------------------------------------------------------------//
 // Constructor.
-SwapManager::SwapManager(ut::Array<SwapSlot> in_swap_slots) : slots(ut::Move(in_swap_slots))
+SwapManager::SwapManager(ut::Array<SwapSlots> in_slots) : slots(ut::Move(in_slots))
 {
-	UT_ASSERT(slots.Count() == skSlotCount);
+	UT_ASSERT(slots.Count() == skStageCount);
+	for (const SwapSlots& stage_slots : slots)
+	{
+		UT_ASSERT(stage_slots.Count() == skSlotCount);
+	}
+}
+
+// Assigns a new stage that will be used for Swap() function calls.
+void SwapManager::SetStage(Stage new_stage)
+{
+	stage = new_stage;
 }
 
 // Returns a reference to the next intermediate buffer.
@@ -19,10 +29,13 @@ SwapManager::SwapManager(ut::Array<SwapSlot> in_swap_slots) : slots(ut::Move(in_
 //              using before the next Swap() call.
 ut::Optional<SwapSlot&> SwapManager::Swap()
 {
-	UT_ASSERT(slots.Count() == skSlotCount);
+	UT_ASSERT(slots.Count() == skStageCount);
+	SwapSlots& stage_slots = slots[static_cast<ut::uint32>(stage)];
+
+	UT_ASSERT(stage_slots.Count() == skSlotCount);
 	for (ut::uint32 i = 0; i < skSlotCount; i++)
 	{
-		SwapSlot& slot = slots[i];
+		SwapSlot& slot = stage_slots[i];
 		if (!slot.busy)
 		{
 			slot.busy = true;

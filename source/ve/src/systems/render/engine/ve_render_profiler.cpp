@@ -26,7 +26,7 @@ Profiler::Profiler(Device& in_device,
                                                         , sampler_cache(in_sampler_cache)
                                                         , frame_mgr(in_frame_mgr)
                                                         , font(img_loader.LoadFromFile(skFontPath).MoveOrThrow())
-                                                        , display_input_assembly(Frame::CreateInputAssemblyState())
+                                                        , display_input_assembly(QuadRenderer::CreateInputAssemblyState())
                                                         , font_width(font.GetInfo().width / skFontSize)
                                                         , font_height(font.GetInfo().height)
 {

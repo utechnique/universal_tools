@@ -16,6 +16,7 @@ START_NAMESPACE(postprocess)
 enum class Effect
 {
 	tone_mapping,
+	ssaa_resolve,
 	gradient_dithering,
 	stencil_highlighting,
 	fxaa
@@ -31,13 +32,15 @@ public:
 
 	// Creates post-process (per-view) data.
 	//    @param depth_stencil - reference to the depth buffer.
-	//    @param width - width of the view in pixels.
-	//    @param height - height of the view in pixels.
+	//    @param width - width of the view in pixels, without supersampling.
+	//    @param height - height of the view in pixels, without supersampling.
+	//    @param ssaa_samples - the number of ssaa samples per final pixel.
 	//    @param format - format of the final image.
 	//    @return - a new postprocess::ViewData object or error if failed.
 	ut::Result<ViewData, ut::Error> CreateViewData(Target& depth_stencil,
 	                                               ut::uint32 width,
 	                                               ut::uint32 height,
+	                                               Ssaa::SampleCount ssaa_samples,
 	                                               pixel::Format format);
 
 	// Applies desired post-process effects to the provided view.
@@ -143,17 +146,22 @@ private:
 	// Color slot is cleared when the renderpass begins.
 	RenderPass CreateClearColorAndDepthStencilRenderPass();
 
+	// Common rendering tools.
 	Toolset& tools;
 
+	// Render passes.
 	RenderPass color_only_pass;
 	RenderPass color_and_ds_pass;
 	RenderPass clear_color_and_ds_pass;
 
+	// Effects.
 	GaussianBlur gaussian_blur;
+	Downsampling downsampling;
 	ToneMapper tone_mapper;
 	StencilHighlight stencil_highlight;
 	Dithering dithering;
 	Fxaa fxaa;
+	Ssaa ssaa;
 };
 
 //----------------------------------------------------------------------------//
