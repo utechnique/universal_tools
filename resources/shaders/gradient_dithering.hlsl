@@ -49,10 +49,11 @@ float4 PS(PS_INPUT input) : SV_Target
 	                           color_difference.b);
 
 	// darker areas are allowed to have a larger displacement radius
-	float brightness = pow(length(original_color), 1.0f / 4.4f);
+	float brightness = dot(original_color.rgb, float3(0.2125f, 0.7154f, 0.0721f));
+	float brightness_weight = 1.0f - pow(length(brightness), 4.0f);
 
 	// return displaced color if it exceeds the threshold
-	float threshold = lerp(4.0, 1.0, brightness) / 255.0;
+	float threshold = lerp(1.0, 2.5, brightness_weight) / 255.0;
 	if (max_difference <= threshold)
 	{
 		return displaced_color;
