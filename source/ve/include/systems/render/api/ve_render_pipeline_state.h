@@ -53,8 +53,6 @@ struct Viewport
 	                                          , height(in_height)
 	                                          , min_depth(in_min_depth)
 	                                          , max_depth(in_max_depth)
-	                                          , buffer_width(in_buffer_width)
-	                                          , buffer_height(in_buffer_height)
 	{}
 
 	float x = 0.0f; // left position in pixels
@@ -63,8 +61,6 @@ struct Viewport
 	float height = 0.0f; // height in pixels
 	float min_depth = 0.0f; // 0 - 1
 	float max_depth = 0.0f; // 0 - 1
-	ut::uint32 buffer_width = 0; // actual width of render buffer in pixels
-	ut::uint32 buffer_height = 0; // actual height of render buffer in pixels
 	ut::Optional< ut::Rect<int> > scissor; // everything out of bounds is ignored
 };
 

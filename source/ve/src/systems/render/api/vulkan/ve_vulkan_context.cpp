@@ -704,6 +704,11 @@ void Context::BindPipelineState(PipelineState& pipeline_state,
 {
 	vkCmdBindPipeline(cmd_buffer.GetVkHandle(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_state.pipeline.GetVkHandle());
 
+	UT_ASSERT(bound_framebuffer_size);
+
+	const float framebuffer_width = static_cast<float>(bound_framebuffer_size->X());
+	const float framebuffer_height = static_cast<float>(bound_framebuffer_size->Y());
+
 	if (viewports)
 	{
 		const ut::uint32 viewport_count = static_cast<ut::uint32>(viewports->Count());
@@ -714,7 +719,7 @@ void Context::BindPipelineState(PipelineState& pipeline_state,
 			const Viewport& viewport = viewports.Get()[i];
 
 			vp[i].x = viewport.x;
-			vp[i].y = viewport.buffer_height - viewport.y;
+			vp[i].y = viewport.height - viewport.y;
 			vp[i].width = viewport.width;
 			vp[i].height = -viewport.height;
 			vp[i].minDepth = viewport.min_depth;
@@ -734,9 +739,6 @@ void Context::BindPipelineState(PipelineState& pipeline_state,
 				scissors[i].extent.width = static_cast<uint32_t>(viewport.width);
 				scissors[i].extent.height = static_cast<uint32_t>(viewport.height);
 			}
-
-			int32_t scissor_bottom = static_cast<int32_t>(viewport.buffer_height) - scissors[i].offset.y;
-			scissors[i].offset.y = scissor_bottom - scissors[i].extent.height;
 		}
 
 		vkCmdSetViewport(cmd_buffer.GetVkHandle(), 0, viewport_count, vp.GetAddress());
@@ -744,11 +746,6 @@ void Context::BindPipelineState(PipelineState& pipeline_state,
 	}
 	else
 	{
-		UT_ASSERT(bound_framebuffer_size);
-
-		const float framebuffer_width = static_cast<float>(bound_framebuffer_size->X());
-		const float framebuffer_height = static_cast<float>(bound_framebuffer_size->Y());
-
 		VkViewport vp;
 		vp.x = 0.0f;
 		vp.y = framebuffer_height;
