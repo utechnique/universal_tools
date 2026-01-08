@@ -405,8 +405,8 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenBoxVertices(Mesh::
 
 	// set indices
 	geometry.index_count = 36;
-	geometry.index_buffer.Resize(sizeof(ut::uint32) * geometry.index_count);
-	ut::uint32* indices = reinterpret_cast<ut::uint32*>(geometry.index_buffer.GetAddress());
+	geometry.index_buffer.Resize(sizeof(Mesh::IndexIntType) * geometry.index_count);
+	Mesh::IndexIntType* indices = reinterpret_cast<Mesh::IndexIntType*>(geometry.index_buffer.GetAddress());
 	indices[0] = 3;   indices[1] = 1;   indices[2] = 0;
 	indices[3] = 2;   indices[4] = 1;   indices[5] = 3;
 	indices[6] = 6;   indices[7] = 4;   indices[8] = 5;
@@ -483,15 +483,15 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenSphereVertices(Mes
 
 	// initialize indices
 	geometry.index_count = nv * nh * 6;
-	geometry.index_buffer.Resize(sizeof(ut::uint32) * geometry.index_count);
-	ut::uint32* indices = reinterpret_cast<ut::uint32*>(geometry.index_buffer.GetAddress());
-	ut::uint32 ind = 0;
-	for (ut::uint32 i = 0; i < nv; i++)
+	geometry.index_buffer.Resize(sizeof(Mesh::IndexIntType) * geometry.index_count);
+	Mesh::IndexIntType* indices = reinterpret_cast<Mesh::IndexIntType*>(geometry.index_buffer.GetAddress());
+	Mesh::IndexIntType ind = 0;
+	for (Mesh::IndexIntType i = 0; i < nv; i++)
 	{
-		for (ut::uint32 j = 0; j < nh; j++)
+		for (Mesh::IndexIntType j = 0; j < nh; j++)
 		{
-			const ut::uint32 vi = (nh + 1) * i + j;
-			const ut::uint32 di = (nh + 1);
+			const Mesh::IndexIntType vi = (nh + 1) * i + j;
+			const Mesh::IndexIntType di = (nh + 1);
 
 			indices[3 * ind + 1] = vi;
 			indices[3 * ind + 2] = vi + di;
@@ -548,8 +548,8 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenTorusVertices(Mesh
 
 	// allocate index buffer
 	geometry.index_count = radial_segment_count * tubular_segment_count * 6;
-	geometry.index_buffer.Resize(sizeof(ut::uint32) * geometry.index_count);
-	ut::uint32* indices = reinterpret_cast<ut::uint32*>(geometry.index_buffer.GetAddress());
+	geometry.index_buffer.Resize(sizeof(Mesh::IndexIntType) * geometry.index_count);
+	Mesh::IndexIntType* indices = reinterpret_cast<Mesh::IndexIntType*>(geometry.index_buffer.GetAddress());
 
 	// calculate the orientation basis
 	ut::byte basis_id[3];
@@ -599,10 +599,10 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenTorusVertices(Mesh
 			// Add indices for a quad (two triangles)
 			if (i < radial_segment_count && j < tubular_segment_count)
 			{
-				ut::uint32 a = i * (tubular_segment_count + 1) + j;
-				ut::uint32 b = (i + 1) * (tubular_segment_count + 1) + j;
-				ut::uint32 c = (i + 1) * (tubular_segment_count + 1) + (j + 1);
-				ut::uint32 d = i * (tubular_segment_count + 1) + (j + 1);
+				Mesh::IndexIntType a = i * (tubular_segment_count + 1) + j;
+				Mesh::IndexIntType b = (i + 1) * (tubular_segment_count + 1) + j;
+				Mesh::IndexIntType c = (i + 1) * (tubular_segment_count + 1) + (j + 1);
+				Mesh::IndexIntType d = i * (tubular_segment_count + 1) + (j + 1);
 
 				indices[0] = a;
 				indices[1] = b;
@@ -656,8 +656,8 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreatePrimitive(ut::Op
 	Buffer::Info index_buffer_info;
 	index_buffer_info.type = Buffer::Type::index;
 	index_buffer_info.usage = render::memory::Usage::gpu_immutable;
-	index_buffer_info.size = sizeof(ut::uint32) * geometry_data.index_count;
-	index_buffer_info.stride = sizeof(ut::uint32);
+	index_buffer_info.size = sizeof(Mesh::IndexIntType) * geometry_data.index_count;
+	index_buffer_info.stride = sizeof(Mesh::IndexIntType);
 	index_buffer_info.data = ut::Move(geometry_data.index_buffer);
 	ut::Result<Buffer, ut::Error> index_buffer = device.CreateBuffer(ut::Move(index_buffer_info));
 	if (!index_buffer)
@@ -701,11 +701,11 @@ void ResourceCreator<Mesh>::ComputeTangents(const InputAssemblyState& input_asse
                                             GeometryData& geometry_data)
 {
 	VertexReflector vertices(input_assembly, geometry_data.vertex_buffer.GetAddress());
-	const ut::uint32* indices = reinterpret_cast<const ut::uint32*>(geometry_data.index_buffer.GetAddress());
+	const Mesh::IndexIntType* indices = reinterpret_cast<const Mesh::IndexIntType*>(geometry_data.index_buffer.GetAddress());
 
-	for (ut::uint32 i = 0; i < geometry_data.index_count; i = i + 3)
+	for (Mesh::IndexIntType i = 0; i < geometry_data.index_count; i = i + 3)
 	{
-		ut::uint32 vid[3] = { indices[i], indices[i + 1], indices[i + 2] };
+		Mesh::IndexIntType vid[3] = { indices[i], indices[i + 1], indices[i + 2] };
 
 		const ut::Vector<3> positions[3] =
 		{
