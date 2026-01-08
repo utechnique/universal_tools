@@ -10,6 +10,9 @@
 #include "math/ut_matrix.h"
 #include "math/ut_quaternion.h"
 #include "math/ut_rect.h"
+#include "math/ut_box.h"
+#include "math/ut_circle.h"
+#include "math/ut_sphere.h"
 #include "math/ut_average.h"
 #include "math/ut_rand.h"
 
