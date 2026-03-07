@@ -1,7 +1,7 @@
 //----------------------------------------------------------------------------//
 //---------------------------------|  V  E  |---------------------------------//
 //----------------------------------------------------------------------------//
-// These function are less accurate but fast.
+// These functions are less accurate but fast.
 float3 ApproxRgb2Srgb(float3 c)
 {
 	return pow(c, 1.0 / 2.2);
@@ -13,7 +13,7 @@ float3 ApproxSrgb2Rgb(float3 c)
 }
 
 //----------------------------------------------------------------------------//
-// These function are more accurate than the pow 2.2 approximation.
+// These functions are more accurate than the pow 2.2 approximation.
 float3 AccurateRgb2Srgb(float3 c)
 {
 	float3 lo = c * 12.92;
