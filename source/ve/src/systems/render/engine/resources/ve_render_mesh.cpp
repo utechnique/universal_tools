@@ -421,7 +421,7 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenBoxVertices(Mesh::
 	indices[33] = 23; indices[34] = 20; indices[35] = 22;
 
 	// calculate tangents
-	ComputeTangents(geometry.input_assembly, geometry);
+	ComputeTangents(geometry);
 
 	// apply position offset
 	for (ut::uint32 i = 0; i < geometry.vertex_count; i++)
@@ -505,7 +505,7 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenSphereVertices(Mes
 	}
 
 	// calculate tangents
-	ComputeTangents(geometry.input_assembly, geometry);
+	ComputeTangents(geometry);
 
 	// apply position offset
 	for (ut::uint32 i = 0; i < geometry.vertex_count; i++)
@@ -618,7 +618,7 @@ ResourceCreator<Mesh>::GeometryData ResourceCreator<Mesh>::GenTorusVertices(Mesh
 	}
 
 	// calculate tangents
-	ComputeTangents(geometry.input_assembly, geometry);
+	ComputeTangents(geometry);
 
 	// apply position offset
 	for (ut::uint32 i = 0; i < geometry.vertex_count; i++)
@@ -639,6 +639,9 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreatePrimitive(ut::Op
                                                                           Device& device,
                                                                           ResourceManager& rc_mgr)
 {
+	// calculate boundaries
+	Mesh::BoundingVolumes boundaries = ComputeBoundingVolumes(geometry_data);
+
 	// create vertex buffer
 	Buffer::Info vertex_buffer_info;
 	vertex_buffer_info.type = Buffer::Type::vertex;
@@ -689,6 +692,7 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreatePrimitive(ut::Op
 		subset.polygon_mode = geometry_data.polygon_mode;
 		subset.offset = 0;
 		subset.count = geometry_data.index_count;
+		subset.boundaries = ut::Move(boundaries);
 		subsets.Add(ut::Move(subset));
 	}
 
@@ -697,10 +701,10 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreatePrimitive(ut::Op
 }
 
 // Helper function to compute tangents.
-void ResourceCreator<Mesh>::ComputeTangents(const InputAssemblyState& input_assembly,
-                                            GeometryData& geometry_data)
+void ResourceCreator<Mesh>::ComputeTangents(GeometryData& geometry_data)
 {
-	VertexReflector vertices(input_assembly, geometry_data.vertex_buffer.GetAddress());
+	VertexReflector vertices(geometry_data.input_assembly,
+	                         geometry_data.vertex_buffer.GetAddress());
 	const Mesh::IndexIntType* indices = reinterpret_cast<const Mesh::IndexIntType*>(geometry_data.index_buffer.GetAddress());
 
 	for (Mesh::IndexIntType i = 0; i < geometry_data.index_count; i = i + 3)
@@ -760,6 +764,55 @@ void ResourceCreator<Mesh>::ComputeTangents(const InputAssemblyState& input_asse
 	}
 }
 
+// Helper function to compute boundaries.
+Mesh::BoundingVolumes ResourceCreator<Mesh>::ComputeBoundingVolumes(GeometryData& geometry_data)
+{
+	Mesh::BoundingVolumes boundaries;
+
+	ut::Vector<3> min_position(0), max_position(0);
+	float* min_data = min_position.GetData();
+	float* max_data = max_position.GetData();
+
+	// itarate all vertices
+	VertexReflector vertices(geometry_data.input_assembly,
+	                         geometry_data.vertex_buffer.GetAddress());
+	for (size_t vertex_id = 0; vertex_id < geometry_data.vertex_count; vertex_id++)
+	{
+		// read position
+		const ut::Vector<3> position = vertices.Get<vertex_traits::position>(vertex_id).Read<3, float>();
+		const float* pos_data = position.GetData();
+
+		// update min/max for each axis
+		for (ut::byte axis_id = 0; axis_id < 3; axis_id++)
+		{
+			const float pos_scalar = pos_data[axis_id];
+
+			// update min
+			if (pos_scalar < min_data[axis_id])
+			{
+				min_data[axis_id] = pos_scalar;
+			}
+
+			// update max
+			if (pos_scalar > max_data[axis_id])
+			{
+				max_data[axis_id] = pos_scalar;
+			}
+		}
+	}
+
+	// calculate aabb
+	boundaries.aabb.offset = min_position;
+	boundaries.aabb.extent = max_position - min_position;
+
+	// calculate bounding sphere
+	const ut::Vector<3> half_extent = boundaries.aabb.extent.ElementWise() * 0.5f;
+	boundaries.sphere.center = boundaries.aabb.offset + half_extent;
+	boundaries.sphere.radius = half_extent.Length();
+
+	return boundaries;
+}
+
 // Creates a box from the provided generator prompt.
 // Acceptable prompt attributes are:
 //   'x': x-coordinate offset, must be a floating point number,
@@ -812,7 +865,6 @@ ut::Result<RcRef<Mesh>, ut::Error> ResourceCreator<Mesh>::CreateBox(const ut::St
 	                                                   Mesh::PolygonMode::triangle;
 
 	// generate vertices and indices
-	InputAssemblyState input_assembly = Mesh::CreateIaState(vertex_format, Mesh::PolygonMode::triangle);
 	GeometryData geometry_data = GenBoxVertices(vertex_format, polygon_mode, position, extent);
 
 	// create final primitive

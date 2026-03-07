@@ -68,6 +68,13 @@ public:
 		IndexType format;
 	};
 
+	// Bounding volumes that define the boundaries of the mesh.
+	struct BoundingVolumes
+	{
+		ut::Box<float> aabb;
+		ut::Sphere<float> sphere;
+	};
+
 	// Mesh::Subset is a part of the mesh with a separate material
 	// and rendering options to be rendered with one draw call.
 	struct Subset
@@ -93,6 +100,9 @@ public:
 		// Number of indices to draw if the @index_buffer has non-nullptr
 		// value or a number of vertices in @vertex_buffer otherwise.
 		ut::uint32 count = 0;
+
+		// These bounding volumes MUST be initialized.
+		BoundingVolumes boundaries;
 
 		// Creates the input assembly state for this subset.
 		InputAssemblyState CreateIaState(Instancing instancing = Instancing::off) const
@@ -248,8 +258,10 @@ public:
 	                                     AxisOrientation orientation);
 
 	// Helper function to compute tangents.
-	static void ComputeTangents(const InputAssemblyState& input_assembly,
-	                            GeometryData& geometry_data);
+	static void ComputeTangents(GeometryData& geometry_data);
+
+	// Helper function to compute boundaries.
+	static Mesh::BoundingVolumes ComputeBoundingVolumes(GeometryData& geometry_data);
 
 	// Generator attributes.
 	struct Generator

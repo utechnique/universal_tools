@@ -323,6 +323,8 @@ Image& Policy<View>::RenderLightPass(Context& context,
 	// update view uniform buffer
 	UpdateViewUniforms(context, scene, view_matrix, proj_matrix, view_position, face);
 
+	// initialize the frustum culler
+	FrustumCulling<float> frustum_culler(view_matrix * proj_matrix);
 	
 	{ // bake deferred shading data
 		ut::Optional<Profiler::ScopeCounter> gbuffer_bake_scope_counter =
@@ -336,6 +338,7 @@ Image& Policy<View>::RenderLightPass(Context& context,
 		                                                 scene.lighting.deferred_shading,
 		                                                 scene.view_ub[static_cast<ut::uint32>(face)],
 		                                                 mesh_instance_policy.batcher,
+		                                                 frustum_culler,
 		                                                 face);
 	}
 
@@ -382,6 +385,7 @@ Image& Policy<View>::RenderLightPass(Context& context,
 		                                  scene.view_ub[static_cast<ut::uint32>(face)],
 		                                  view_position,
 		                                  mesh_instance_policy.batcher,
+		                                  frustum_culler,
 		                                  lights,
 		                                  ibl_cubemap,
 		                                  face);

@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_toolset.h"
 #include "systems/render/engine/ve_render_batcher.h"
+#include "systems/render/engine/ve_frustum_culling.h"
 #include "systems/render/engine/units/ve_render_directional_light.h"
 #include "systems/render/engine/units/ve_render_point_light.h"
 #include "systems/render/engine/units/ve_render_spot_light.h"
@@ -47,6 +48,7 @@ public:
 	          Buffer& view_uniform_buffer,
 	          const ut::Vector<3>& view_position,
 	          Batcher& batcher,
+	          const FrustumCulling<float>& frustum_culler,
 	          Light::Sources& lights,
 	          ut::Optional<Image&> ibl_cubemap,
 	          Image::Cube::Face cubeface = Image::Cube::Face::positive_x);
@@ -284,6 +286,7 @@ private:
 	// Performes Z-sotring for transparent objects and stores the result in
 	// @z_sorted_dc_indices array.
 	void SortTransparentDrawCalls(const ut::Vector<3>& view_position,
+	                              const FrustumCulling<float>& frustum_culler,
 	                              ut::Array<MeshInstance::DrawCall>& draw_list);
 
 	// Creates a render pass for the shading techniques.

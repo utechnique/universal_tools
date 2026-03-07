@@ -5,6 +5,7 @@
 //----------------------------------------------------------------------------//
 #include "systems/render/engine/ve_render_toolset.h"
 #include "systems/render/engine/ve_render_batcher.h"
+#include "systems/render/engine/ve_frustum_culling.h"
 #include "systems/render/engine/units/ve_render_directional_light.h"
 #include "systems/render/engine/units/ve_render_point_light.h"
 #include "systems/render/engine/units/ve_render_spot_light.h"
@@ -58,6 +59,7 @@ public:
 	                        DeferredShading::ViewData& data,
 	                        Buffer& view_uniform_buffer,
 	                        Batcher& batcher,
+	                        const FrustumCulling<float>& frustum_culler,
 	                        Image::Cube::Face cubeface = Image::Cube::Face::positive_x);
 
 	// Applies lighting techniques to the provided target.
@@ -215,6 +217,7 @@ private:
 	                             DeferredShading::ViewData& data,
 	                             Buffer& view_uniform_buffer,
 	                             Batcher& batcher,
+	                             const FrustumCulling<float>& frustum_culler,
 	                             Image::Cube::Face cubeface);
 
 	// Renders specified range of mesh instances.
@@ -222,6 +225,7 @@ private:
 	                                DeferredShading::ViewData& data,
 	                                Buffer& view_uniform_buffer,
 	                                Batcher& batcher,
+	                                const FrustumCulling<float>& frustum_culler,
 	                                ut::uint32 thread_id,
 	                                ut::uint32 offset,
 	                                ut::uint32 count);

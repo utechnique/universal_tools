@@ -161,9 +161,15 @@ void DeferredShading::BakeOpaqueGeometry(Context& context,
                                          DeferredShading::ViewData& data,
                                          Buffer& view_uniform_buffer,
                                          Batcher& batcher,
+                                         const FrustumCulling<float>& frustum_culler,
                                          Image::Cube::Face cubeface)
 {
-	BakeOpaqueMeshInstances(context, data, view_uniform_buffer, batcher, cubeface);
+	BakeOpaqueMeshInstances(context,
+	                        data,
+	                        view_uniform_buffer,
+	                        batcher,
+	                        frustum_culler,
+	                        cubeface);
 
 	// copy depth to the intermediate buffer
 	context.SetTargetState(depth_stencil, Target::Info::State::transfer_src);
@@ -237,6 +243,7 @@ void DeferredShading::BakeOpaqueMeshInstances(Context& context,
                                               DeferredShading::ViewData& data,
                                               Buffer& view_uniform_buffer,
                                               Batcher& batcher,
+                                              const FrustumCulling<float>& frustum_culler,
                                               Image::Cube::Face cubeface)
 {
 	// get the number of available threads
@@ -274,6 +281,7 @@ void DeferredShading::BakeOpaqueMeshInstances(Context& context,
 			                           data,
 			                           view_uniform_buffer,
 			                           batcher,
+			                           frustum_culler,
 			                           thread_id,
 			                           offset,
 			                           count);
@@ -335,6 +343,7 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
                                                  DeferredShading::ViewData& data,
                                                  Buffer& view_uniform_buffer,
                                                  Batcher& batcher,
+                                                 const FrustumCulling<float>& frustum_culler,
                                                  ut::uint32 thread_id,
                                                  ut::uint32 offset,
                                                  ut::uint32 count)
@@ -387,9 +396,12 @@ void DeferredShading::BakeOpaqueMeshInstancesJob(Context& context,
 		Mesh::Subset& subset = mesh.subsets[dc.subset_id];
 		Material& material = subset.material;
 		const bool is_transparent = material.alpha == Material::Alpha::transparent;
+		const bool is_culled = frustum_culler.CullSphere(subset.boundaries.sphere,
+		                                                 dc.instance.world_transform);
 
 		// skip transparent and unlit materials
-		const bool skip = is_transparent ||
+		const bool skip = is_culled ||
+		                  is_transparent ||
 		                  material.unlit ||
 		                  dc.instance.force_forward_renderer;
 		if (skip)

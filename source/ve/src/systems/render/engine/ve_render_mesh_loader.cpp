@@ -150,6 +150,9 @@ ut::Result<render::Mesh, ut::Error> Gltf::ExportMesh(Device& device,
 			}
 			ResourceCreator<render::Mesh>::GeometryData& geometry = geometry_result.Get();
 
+			// calculate boundaries
+			render::Mesh::BoundingVolumes boundaries = ResourceCreator<render::Mesh>::ComputeBoundingVolumes(geometry);
+
 			// accumulate vertices of the same format in one buffer
 			ut::uint32 vertex_id_offset = 0;
 			ut::Optional<render::Buffer::Info&> vertex_find_result = vertex_data.Find(geometry.vertex_format);
@@ -224,6 +227,7 @@ ut::Result<render::Mesh, ut::Error> Gltf::ExportMesh(Device& device,
 			                              vertex_id_offset;
 			subset.count = has_indices ? geometry.index_count :
 			                             geometry.vertex_count;
+			subset.boundaries = ut::Move(boundaries);
 			subsets.Add(ut::Move(subset));
 
 			subset_ia_info.Add(SubsetIaInfo{ geometry.vertex_format, has_indices });
@@ -809,8 +813,7 @@ ut::Result<ResourceCreator<render::Mesh>::GeometryData,
 	                               [=](const VertexElement& e) { return e.semantic_name == tangent_semantic_name; });
 	if (has_tangents && !tangents)
 	{
-		ResourceCreator<render::Mesh>::ComputeTangents(geometry_data.input_assembly,
-		                                               geometry_data);
+		ResourceCreator<render::Mesh>::ComputeTangents(geometry_data);
 	}
 
 	// reverse winding order (gltf does it backwards)

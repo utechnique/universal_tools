@@ -86,6 +86,7 @@ void ForwardShading::Draw(Context& context,
                           Buffer& view_uniform_buffer,
                           const ut::Vector<3>& view_position,
                           Batcher& batcher,
+                          const FrustumCulling<float>& frustum_culler,
                           Light::Sources& lights,
                           ut::Optional<Image&> ibl_cubemap,
                           Image::Cube::Face cubeface)
@@ -95,7 +96,7 @@ void ForwardShading::Draw(Context& context,
 	UT_ASSERT(thread_count == light_pass_desc_set.Count());
 
 	// perform z-sorting
-	SortTransparentDrawCalls(view_position, batcher.draw_calls);
+	SortTransparentDrawCalls(view_position, frustum_culler, batcher.draw_calls);
 	const ut::uint32 sorted_dc_count = static_cast<ut::uint32>(z_sorted_dc_indices.Count());
 
 	// initialize secondary buffers for a parallel work
@@ -543,18 +544,21 @@ void ForwardShading::DrawMesh(Context& context,
 // Performes Z-sotring for transparent objects and stores the result in
 // @z_sorted_dc_indices array.
 void ForwardShading::SortTransparentDrawCalls(const ut::Vector<3>& view_position,
+                                              const FrustumCulling<float>& frustum_culler,
                                               ut::Array<MeshInstance::DrawCall>& draw_list)
 {
 	z_sorted_dc_indices.Reset();
 	const ut::uint32 dc_count = static_cast<ut::uint32>(draw_list.Count());
 	for (ut::uint32 dc_index = 0; dc_index < dc_count; dc_index++)
 	{
-		// skip opaque and unlit draw calls
+		// skip opaque, unlit and culled draw calls
 		const MeshInstance::DrawCall& dc = draw_list[dc_index];
 		const Mesh::Subset& subset = dc.instance.mesh->subsets[dc.subset_id];
 		const Material& material = subset.material;
 		const bool skip_opaque = !dc.instance.force_forward_renderer &&
 		                         material.alpha != Material::Alpha::transparent;
+		const bool is_culled = frustum_culler.CullSphere(subset.boundaries.sphere,
+		                                                 dc.instance.world_transform);
 		const bool skip = material.unlit || skip_opaque;
 		if (skip)
 		{
